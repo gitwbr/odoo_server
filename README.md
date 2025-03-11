@@ -842,3 +842,5 @@ docker save custom-postgres-db_default:latest > ~/docker_images/custom-postgres-
 # 載入鏡像
 docker load < /tmp/custom-odoo-web_default.tar
 docker load < /tmp/custom-postgres-db_default.tar
+
+test
