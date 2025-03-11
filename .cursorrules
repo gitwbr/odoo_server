@@ -1,0 +1,52 @@
+# 备份文件
+*.bak
+
+# 数据库文件
+*.sql
+pgadmin-data/
+
+# 环境文件
+.env
+.venv/
+env/
+
+
+# 排除不需要索引的目录
+node_modules/
+build/
+
+# 排除特定类型文件
+*.log
+*.pyc
+*.pyo
+*.zip
+*.tar
+*.tar.gz
+*.tar.bz2
+*.tar.xz
+*.tar.wim
+*.tar.zst   
+*.rar
+*.7z
+*.deb
+*.rpm
+*.msi
+*.dmg
+*.pkg
+*.dmg
+*.pkg
+*.deb
+*.rpm
+*.msi
+*.dmg   
+
+# 排除临时文件或缓存
+.cache/
+tmp/
+
+# 排除特定文件
+.gitignore
+.git/
+
+# 日志文件
+*.log 

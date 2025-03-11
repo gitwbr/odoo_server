@@ -1,0 +1,49 @@
+<odoo>
+    <!-- Tree View -->
+    <record id="view_product_attribute_value_tree_custom" model="ir.ui.view">
+        <field name="name">product.attribute.value.tree.custom</field>
+        <field name="model">product.attribute.value</field>
+        <field name="arch" type="xml">            
+            <tree editable="bottom">
+                <field name="name"/>
+                <field name="make_ori_product_id" options="{'no_create': True, 'no_create_edit': True}"/>
+                <field name="stock_type" />
+                <field name="price_extra" widget='monetary' groups="dtsc.group_dtsc_yw,dtsc.group_dtsc_kj"/>  
+            </tree>
+        </field>
+    </record>
+	
+
+    <!-- Search View -->
+    <record id="product_attribute_search" model="ir.ui.view">
+        <field name="name">product.attribute.value.search</field>
+        <field name="model">product.attribute.value</field>
+        <field name="arch" type="xml">
+            <search>
+                <searchpanel>
+                    <field name="attribute_id"/>
+                </searchpanel>
+				<field name="name" string="值/變體名"/>
+            </search>
+        </field>        
+    </record> 
+
+    <!-- Action to display the tree and form view with a default domain -->
+    <record id="action_product_attribute_value" model="ir.actions.act_window">
+        <field name="name">變體價格溢價</field> 
+        <field name="res_model">product.attribute.value</field>
+        <field name="view_mode">tree,form</field>
+		<field name="domain">[('name','not in',['無','不叫配件'])]</field>
+    </record>
+
+
+	<record id="view_product_template_attribute_value_tree" model="ir.ui.view">
+		<field name="model">product.template.attribute.value</field>
+		<field name="inherit_id" ref="product.product_template_attribute_value_view_tree"/>
+		<field name="arch" type="xml">
+			<field name="name" position="before">
+				<field name="sequence" widget="handle"/>
+			</field>
+		</field>
+	</record>
+</odoo>

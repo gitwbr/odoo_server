@@ -1,0 +1,288 @@
+<odoo>
+	<record id="view_billinvoice_tree" model="ir.ui.view">
+        <field name="name">dtsc.billinvoice.tree</field>
+        <field name="model">dtsc.billinvoice</field>
+        <field name="arch" type="xml">
+            <tree>
+				<field name="name" readonly="1"/>
+				<field name="partner_id" readonly="1"/>
+				<field name="bill_invoice_status" readonly="1"/>
+				<field name="origin_invoice" readonly="1"/>
+                
+            </tree>
+        </field>
+    </record>
+	
+	<record id="view_allowances_tree" model="ir.ui.view">
+        <field name="name">dtsc.allowances.tree</field>
+        <field name="model">dtsc.allowances</field>
+        <field name="arch" type="xml">
+            <tree>
+				<field name="name" readonly="1"/>
+				<field name="partner_id" readonly="1"/>
+				<field name="allowances_status" readonly="1"/>
+            </tree>
+        </field>
+    </record>
+	<!-- Report Action -->
+	<record id="action_report_bill_invoice" model="ir.actions.report">
+        <field name="name">发票报告</field>
+        <field name="model">dtsc.billinvoice</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">dtsc.report_bill_invoice</field>
+        <field name="report_file">dtsc.report_bill_invoice</field>
+        <field name="binding_model_id" ref="model_dtsc_billinvoice"/>
+        <field name="binding_type">report</field>
+    </record>
+	
+			
+	<record id="view_billinvoice_form" model="ir.ui.view">
+        <field name="name">dtsc.billinvoice.form</field>
+        <field name="model">dtsc.billinvoice</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+					<button name="open_bill_btn" string="開票" type="object" class="oe_highlight" attrs="{'invisible':[('bill_invoice_status','not in',['0'])]}" /> 
+					<button name="print_bill_btn_qrcode" string="列印發票(qrcode)" type="object" class="oe_highlight" attrs="{'invisible':[('bill_invoice_status','not in',['1'])]}" /> 
+					<button name="print_bill_btn_a4" string="列印發票(A4)" type="object" class="oe_highlight" attrs="{'invisible':[('bill_invoice_status','not in',['1'])]}" /> 
+					<button name="del_bill_btn" string="作廢發票" type="object" class="oe_highlight" attrs="{'invisible':[('bill_invoice_status','not in',['1'])]}" /> 
+					
+					<field name="bill_invoice_status" widget="statusbar" statusbar_visible="0,1,2"/>
+				</header>
+                <sheet>
+					<!-- <div class="oe_title" style="text-align: center;"> -->
+					<div style="text-align: center;">
+						<h1>發票明細</h1>
+					</div>
+					<group col="6">
+						<group colspan="2">
+							<field name="name" readonly="1"/> 							
+							<!-- <field name="phonenum" /> 							 -->
+						</group>
+						<group colspan="2">
+							<field name="bill_time" readonly="1"/> 
+							<!-- <field name="email" />  -->
+						</group>
+						<group colspan="2">
+							<field name="partner_id" readonly="1" widget='selection'/>
+							<field name="vat" readonly="1" widget='selection'/>
+						</group>
+					</group>
+					<group col="6">
+						<group colspan="2">
+							<field name="sale_value" readonly="1"/>
+						</group>
+						<group colspan="2">
+							<field name="tax_value" readonly="1"/>
+						</group>
+						<group colspan="2">
+							<field name="total_value" readonly="1"/>
+						</group>
+					</group>
+				
+					<!--  <notebook>
+						<page string="清單"> -->
+					<field name="billinvoice_line_ids">
+						<tree editable="bottom">
+							<field name="name" attrs="{'readonly':[('parent.bill_invoice_status','not in',['0'])]}"/>
+							<field name="quantity" attrs="{'readonly':[('parent.bill_invoice_status','not in',['0'])]}"/>
+							<field name="unit_price" attrs="{'readonly':[('parent.bill_invoice_status','not in',['0'])]}"/>
+							<field name="saleprice" sum="Total" attrs="{'readonly':[('parent.bill_invoice_status','not in',['0'])]}"/>
+						</tree> 
+					</field>
+					<!-- <group> -->
+						<!-- <field name="html_content" widget='html' /> -->
+					<!-- </group> -->
+                </sheet>
+            </form>
+        </field>
+    </record>
+	
+	
+	<record id="view_allowances_form" model="ir.ui.view">
+        <field name="name">dtsc.allowances.form</field>
+        <field name="model">dtsc.allowances</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+					<button name="open_bill_btn" string="開立" type="object" class="oe_highlight" attrs="{'invisible':[('allowances_status','not in',['0'])]}" /> 
+					<!-- <button name="print_bill_btn_qrcode" string="打印發票(qrcode)" type="object" class="oe_highlight" attrs="{'invisible':[('bill_invoice_status','not in',['1'])]}" />  -->
+					<!-- <button name="print_bill_btn_a4" string="打印發票(A4)" type="object" class="oe_highlight" attrs="{'invisible':[('bill_invoice_status','not in',['1'])]}" />  -->
+					<button name="del_bill_btn" string="作廢折讓" type="object" class="oe_highlight" attrs="{'invisible':[('allowances_status','not in',['1'])]}" /> 
+					
+					<field name="allowances_status" widget="statusbar" statusbar_visible="0,1,2"/>
+				</header>
+                <sheet>
+					<!-- <div class="oe_title" style="text-align: center;"> -->
+					<div style="text-align: center;">
+						<h1>折讓明細</h1>
+					</div>
+					<group>
+						<group>
+							<field name="partner_id"/>
+							<field name="name"/>
+							<field name="bill_invoice_id"/>
+						</group>
+						<group>
+							<field name="phonenum"/>
+							<field name="email"/>
+							<field name="vat"/>
+						</group>
+					</group>
+					<!--  <notebook>
+						<page string="清單"> -->
+					<field name="allowancesline_ids">
+						<tree editable="bottom">
+							<field name="name" />
+							<field name="quantity"/>
+							<field name="unit_price"/>
+							<field name="saleprice" sum="Total"/>
+						</tree> 
+					</field>
+					<!-- <group> -->
+						<!-- <field name="html_content" widget='html' /> -->
+					<!-- </group> -->
+                </sheet>
+            </form>
+        </field>
+    </record>
+	
+   <template id="report_bill_invoice">
+		
+		<t t-call="web.html_container">
+			<head>
+				<meta charset="utf-8"/>
+				<style>
+					.header-text {
+						text-align: center;
+					}
+					.page {
+						/* 其他样式 */
+					}
+					.invoice-table td {
+						border: 1px solid #000; /* 给单元格添加边框 */
+					}
+					.invoice-table {
+						border-collapse: collapse; /* 删除单元格间的间隔 */
+						width: 100%; /* 表格宽度 */
+					}
+					.invoice-table th {
+						border: 1px solid #000; /* 给表头单元格添加边框 */
+					}
+					.grid-container {
+						display: grid;
+						grid-template-columns: repeat(7, 1fr);
+						/* 其他样式 */
+					}
+					.grid-item {
+						/* 样式 */
+					}
+					 .no-border td {
+						border-bottom: none;
+					}
+				</style>
+			</head>	
+			<t t-foreach="docs" t-as="doc">
+				<div class="page">
+					<div class="header-text">
+						<p><span style="font-size: 24px;">科影數位影像股份有限公司</span></p>
+						<p><span style="font-size: 24px;">電子發票證明聯</span></p>
+						<p><span style="font-size: 24px;" t-esc="doc.bill_time.strftime('%Y-%m-%d')" /></p>
+					</div>
+					<table style="width:100%">
+						<tr><td style="width:10%">發票號碼:</td><td style="width:40%"><span t-esc="doc.name"/></td><td style="width:50%"> 格式:25</td></tr>
+						<tr><td style="width:10%">買房:</td><td style="width:40%" colspan="2"><span t-esc="doc.partner_id.name"/></td></tr>
+						<tr><td style="width:10%">統一編號:</td><td style="width:40%" colspan="2"><span t-esc="doc.vat"/></td></tr>
+						<tr><td style="width:10%">地址:</td><td style="width:40%" colspan="2"><span t-esc="doc.partner_id.street"/></td></tr>
+					
+					</table>
+					<table width="100%" class="invoice-table">
+						<tr>
+							<th style="width:30%">品名</th>
+							<th style="width:10%">數量</th>
+							<th style="width:10%">單價</th>
+							<th style="width:10%">金額</th>
+							<th style="width:40%">備註</th>
+						</tr>
+						<t t-set="total_saleprice" t-value="0"/>
+						<t t-foreach="doc.billinvoice_line_ids" t-as="o">
+							<tr class="no-border">
+								<td><span t-esc="o.name"/></td>
+							
+								<td><span t-esc="o.quantity"/></td>
+							
+								<td><span t-esc="o.unit_price"/></td>
+							
+								<td><span t-esc="o.saleprice"/></td>
+							
+								<td></td>
+								<t t-set="total_saleprice" t-value="total_saleprice + o.saleprice"/>
+							</tr>
+						</t>
+						<t t-set="empty_rows" t-value="15 - len(doc.billinvoice_line_ids)"/>  <!-- 假设总行数为10 -->
+						<t t-foreach="range(empty_rows)" t-as="empty">
+							<tr class="no-border">
+								<td><span t-esc="'\u00A0'"/></td>
+								<td><span t-esc="'\u00A0'"/></td>
+								<td><span t-esc="'\u00A0'"/></td>
+								<td><span t-esc="'\u00A0'"/></td>
+								<td><span t-esc="'\u00A0'"/></td>
+							</tr>
+						</t>
+						<tr>
+							<td colspan="3">銷售額合計</td>
+							<td><span t-esc="total_saleprice"/></td>
+							<td>營業人蓋統一發票專用章</td>
+						</tr>
+						<tr>
+							<td colspan="3">
+								<table style="width: 100%; border-collapse: collapse;">
+									<tr>
+										<td style="border: none;">營業稅</td>
+										<td style="border: none;">應稅</td>
+										<td style="border: none;">√</td>
+										<td style="border: none;">零稅率</td>
+										<td style="border: none;"></td>
+										<td style="border: none;">免稅</td>
+										<td style="border: none;"></td>
+									</tr>
+								</table>
+							</td>
+							<td>
+								<span t-esc="int(total_saleprice * 0.05 + 0.5)"/>
+							</td>
+							<td rowspan="3">
+								賣　　方：科影數位影像股份有限公司<br/>
+								統一編號：46520308<br/>
+								地　　址：新北市中和區中山路二段482巷15號
+							</td>
+						</tr>
+						<tr>
+							<td colspan="3">
+								總計					
+							</td>
+							<td>
+								<span t-esc="int(total_saleprice * 1.05 + 0.5)"/>
+							</td>
+						</tr>
+						<tr>
+							<td colspan="4"  >
+								<table style="width:100%">
+									<tr>
+										<td  text-align="left" style="width:40%;border: none;">
+											總計新臺幣(中文大寫)
+										</td>
+										<td  style="width:60%;border: none;text-align:right">
+											<span t-esc="doc.number_to_chinese(int(total_saleprice * 1.05 + 0.5))"/>
+										</td>
+									</tr>
+								</table> 
+												
+							</td>
+						</tr>
+					</table>
+				</div>
+			</t>
+		</t>
+	</template>
+</odoo>

@@ -1,0 +1,1077 @@
+﻿
+<odoo>
+
+    
+    <!--大图订单页面其它相关权限-->
+    <record id="group_common_permissions_dd" model="res.groups">
+        <field name="name">大圖訂單通用權限</field>
+    </record>
+    <record id="model_mrp_bom_access_common" model="ir.model.access">
+        <field name="name">mrp.bom access for 大圖訂單通用權限</field>
+        <field name="model_id" ref="mrp.model_mrp_bom"/>
+        <field name="group_id" ref="dtsc.group_common_permissions_dd"/>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="True"/>
+        <field name="perm_create" eval="True"/>
+        <field name="perm_unlink" eval="True"/>
+    </record>    
+    <record id="model_stock_move_access_common" model="ir.model.access">
+        <field name="name">stock.move access for 大圖訂單通用權限</field>
+        <field name="model_id" ref="stock.model_stock_move"/>
+        <field name="group_id" ref="dtsc.group_common_permissions_dd"/>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="True"/>
+        <field name="perm_create" eval="True"/>
+        <field name="perm_unlink" eval="True"/>
+    </record>    
+    <!-- 大图订单页面相关权限 -->
+    
+    <!-- 定义组 -->
+    <record id="module_category_large_image" model="ir.module.category">
+        <field name="name">大图</field>
+        <field name="description">大图模块分类描述</field>
+        <field name="sequence">10</field>
+    </record>
+
+     <record id="group_dtsc_bs" model="res.groups">
+		<field name="name">base</field>
+		<field name="category_id" ref="module_category_large_image" />
+        <field name="implied_ids" eval="[(4,ref('dtsc.group_common_permissions_dd'))]" />
+    </record>
+    
+    <record id="group_dtsc_ck" model="res.groups">
+		<field name="name">倉庫管理</field>
+		<field name="category_id" ref="module_category_large_image" />
+        <field name="implied_ids" eval="[(4,ref('dtsc.group_dtsc_bs'))]" />
+    </record>
+    
+    <record id="group_dtsc_cg" model="res.groups">
+		<field name="name">採購</field>
+		<field name="category_id" ref="module_category_large_image" />
+        <field name="implied_ids" eval="[(4,ref('dtsc.group_dtsc_bs'))]" />
+    </record>    
+    
+    <record id="group_dtsc_sc" model="res.groups">
+		<field name="name">生產</field>
+		<field name="category_id" ref="module_category_large_image" />
+        <field name="implied_ids" eval="[(4,ref('dtsc.group_dtsc_bs'))]" />
+    </record>
+    
+     <record id="group_dtsc_kj" model="res.groups">
+		<field name="name">會計</field>
+		<field name="category_id" ref="module_category_large_image" />
+        <field name="implied_ids" eval="[(4,ref('dtsc.group_dtsc_bs')),(4,ref('account.group_account_invoice'))]" />
+    </record>
+    
+    <record id="group_dtsc_mg" model="res.groups">
+		<field name="name">美工</field>
+		<field name="category_id" ref="module_category_large_image" />
+        <field name="implied_ids" eval="[(4,ref('dtsc.group_dtsc_bs'))]" />
+    </record>
+    
+    <record id="group_dtsc_yw" model="res.groups">
+		<field name="name">業務</field>
+		<field name="category_id" ref="module_category_large_image" />
+        <field name="implied_ids" eval="[(4,ref('dtsc.group_dtsc_bs'))]" />
+    </record>
+    
+    
+    <record id="group_dtsc_gly" model="res.groups">
+		<field name="name">管理部</field>
+		<field name="category_id" ref="module_category_large_image" />
+        <field name="implied_ids" eval="[(4,ref('base.group_user')),(4,ref('dtsc.group_dtsc_mg')),(4,ref('dtsc.group_dtsc_yw')),(4,ref('dtsc.group_dtsc_kj')),(4,ref('dtsc.group_dtsc_sc')),(4,ref('dtsc.group_dtsc_cg')),(4,ref('dtsc.group_dtsc_ck')),(4,ref('dtsc.group_dtsc_bs'))]" />
+    </record>
+    
+    <!-- 定义组 -->
+    <!-- 大圖訂單 -->
+    <record id="model_dtsc_checkout_rule_mg" model="ir.model.access"> 
+        <field name="name">大圖訂單美工</field>
+        <field name="model_id" ref="dtsc.model_dtsc_checkout"/>
+        <field name="group_id" ref="dtsc.group_dtsc_mg"/>
+        <field name="perm_create" eval="True"/>
+        <field name="perm_unlink" eval="True"/>
+    </record>
+    
+    <record id="model_dtsc_checkoutline_rule_mg" model="ir.model.access"> 
+        <field name="name">大圖訂單line美工</field>
+        <field name="model_id" ref="dtsc.model_dtsc_checkoutline"/>
+        <field name="group_id" ref="dtsc.group_dtsc_mg"/>
+        <field name="perm_create" eval="True"/>
+        <field name="perm_unlink" eval="True"/>
+    </record>
+	
+	<record id="model_dtsc_checkoutlineafter_rule_mg" model="ir.model.access"> 
+        <field name="name">大圖訂單lineafter美工</field>
+        <field name="model_id" ref="dtsc.model_dtsc_checkoutlineaftermakepricelist"/>
+        <field name="group_id" ref="dtsc.group_dtsc_mg"/>
+        <field name="perm_create" eval="True"/>
+        <field name="perm_unlink" eval="True"/>
+    </record>
+    
+    
+    <!-- <record id="model_dtsc_checkout_rule_yw" model="ir.model.access"> 
+        <field name="name">大圖訂單業務</field>
+        <field name="model_id" ref="dtsc.model_dtsc_checkout"/>
+        <field name="group_id" ref="dtsc.group_dtsc_yw"/>
+        <field name="perm_create" eval="True"/>
+    </record> -->
+    
+    <record id="model_dtsc_checkoutline_rule_yw" model="ir.model.access"> 
+        <field name="name">大圖訂單line業務</field>
+        <field name="model_id" ref="dtsc.model_dtsc_checkoutline"/>
+        <field name="group_id" ref="dtsc.group_dtsc_yw"/>
+        <field name="perm_create" eval="True"/>
+    </record>
+	<!-- 大圖訂單 -->
+	<!-- 委內 -->
+    <record id="model_dtsc_makein_rule_mg" model="ir.model.access"> 
+        <field name="name">委內美工</field>
+        <field name="model_id" ref="dtsc.model_dtsc_makein"/>
+        <field name="group_id" ref="dtsc.group_dtsc_mg"/>
+        <field name="perm_create" eval="True"/>
+    </record>
+    
+    <record id="model_dtsc_makeinline_rule_mg" model="ir.model.access"> 
+        <field name="name">委內line美工</field>
+        <field name="model_id" ref="dtsc.model_dtsc_makeinline"/>
+        <field name="group_id" ref="dtsc.group_dtsc_mg"/>
+        <field name="perm_create" eval="True"/>
+    </record>
+	<!-- 委內 -->
+	<!-- 委外 -->
+    <record id="model_dtsc_makeout_rule_mg" model="ir.model.access"> 
+        <field name="name">委外美工</field>
+        <field name="model_id" ref="dtsc.model_dtsc_makeout"/>
+        <field name="group_id" ref="dtsc.group_dtsc_mg"/>
+        <field name="perm_create" eval="True"/>
+    </record>
+    
+    <record id="model_dtsc_makeoutline_rule_mg" model="ir.model.access"> 
+        <field name="name">委外line美工</field>
+        <field name="model_id" ref="dtsc.model_dtsc_makeoutline"/>
+        <field name="group_id" ref="dtsc.group_dtsc_mg"/>
+        <field name="perm_create" eval="True"/>
+    </record>
+	<!-- 委外 -->
+	<!-- 施工 -->
+    <record id="model_dtsc_installproduct_rule_mg" model="ir.model.access"> 
+        <field name="name">施工美工</field>
+        <field name="model_id" ref="dtsc.model_dtsc_installproduct"/>
+        <field name="group_id" ref="dtsc.group_dtsc_mg"/>
+        <field name="perm_write" eval="True"/>
+        <field name="perm_create" eval="True"/>
+    </record>
+    
+    <record id="model_dtsc_installproductline_rule_mg" model="ir.model.access"> 
+        <field name="name">施工line美工</field>
+        <field name="model_id" ref="dtsc.model_dtsc_installproductline"/>
+        <field name="group_id" ref="dtsc.group_dtsc_mg"/>
+        <field name="perm_write" eval="True"/>
+        <field name="perm_create" eval="True"/>
+    </record>
+    
+    <record id="model_dtsc_installproduct_rule_yw" model="ir.model.access"> 
+        <field name="name">施工業務</field>
+        <field name="model_id" ref="dtsc.model_dtsc_installproduct"/>
+        <field name="group_id" ref="dtsc.group_dtsc_yw"/>
+        <field name="perm_write" eval="True"/>
+    </record>
+    
+    <record id="model_dtsc_installproductline_rule_yw" model="ir.model.access"> 
+        <field name="name">施工line業務</field>
+        <field name="model_id" ref="dtsc.model_dtsc_installproductline"/>
+        <field name="group_id" ref="dtsc.group_dtsc_yw"/>
+        <field name="perm_write" eval="True"/>
+    </record>
+        <!-- imagelist -->
+        <record id="model_dtsc_imagelist_rule_mg" model="ir.model.access"> 
+            <field name="name">imagelist美工</field>
+            <field name="model_id" ref="dtsc.model_dtsc_imagelist"/>
+            <field name="group_id" ref="dtsc.group_dtsc_mg"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="True"/>
+        </record>
+        
+        <record id="model_dtsc_imagelist_rule_yw" model="ir.model.access"> 
+            <field name="name">imagelist業務</field>
+            <field name="model_id" ref="dtsc.model_dtsc_imagelist"/>
+            <field name="group_id" ref="dtsc.group_dtsc_yw"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="True"/>
+        </record>
+        <!-- imagelist -->
+	<!-- 施工 -->
+    <!-- 委內扣料表 -->
+    <record id="model_dtsc_mpr_rule_mg" model="ir.model.access"> 
+        <field name="name">委內扣料美工</field>
+        <field name="model_id" ref="dtsc.model_dtsc_mpr"/>
+        <field name="group_id" ref="dtsc.group_dtsc_mg"/>
+        <field name="perm_create" eval="True"/>
+        <field name="perm_unlink" eval="True"/>
+    </record>
+    <record id="model_dtsc_mpr_rule_sc" model="ir.model.access"> 
+        <field name="name">委內扣料生產</field>
+        <field name="model_id" ref="dtsc.model_dtsc_mpr"/>
+        <field name="group_id" ref="dtsc.group_dtsc_sc"/>
+        <field name="perm_create" eval="True"/>
+    </record>
+    <record id="model_dtsc_mpr_rule_ck" model="ir.model.access"> 
+        <field name="name">委內扣料倉管</field>
+        <field name="model_id" ref="dtsc.model_dtsc_mpr"/>
+        <field name="group_id" ref="dtsc.group_dtsc_ck"/>
+        <field name="perm_create" eval="True"/>
+    </record>
+	
+	 <record id="model_dtsc_lotmpr_rule_mg" model="ir.model.access"> 
+        <field name="name">捲料扣料美工</field>
+        <field name="model_id" ref="dtsc.model_dtsc_lotmpr"/>
+        <field name="group_id" ref="dtsc.group_dtsc_mg"/>
+        <field name="perm_create" eval="True"/>
+        <field name="perm_unlink" eval="True"/>
+    </record>
+    <record id="model_dtsc_lotmpr_rule_sc" model="ir.model.access"> 
+        <field name="name">捲料扣料生產</field>
+        <field name="model_id" ref="dtsc.model_dtsc_lotmpr"/>
+        <field name="group_id" ref="dtsc.group_dtsc_sc"/>
+        <field name="perm_create" eval="True"/>
+    </record>
+    <record id="model_dtsc_lotmpr_rule_ck" model="ir.model.access"> 
+        <field name="name">捲料扣料倉管</field>
+        <field name="model_id" ref="dtsc.model_dtsc_lotmpr"/>
+        <field name="group_id" ref="dtsc.group_dtsc_ck"/>
+        <field name="perm_create" eval="True"/>
+    </record>
+	
+     <record id="model_dtsc_mprline_rule_mg" model="ir.model.access"> 
+        <field name="name">委內扣料line美工</field>
+        <field name="model_id" ref="dtsc.model_dtsc_mprline"/>
+        <field name="group_id" ref="dtsc.group_dtsc_mg"/>
+        <field name="perm_create" eval="True"/>
+        <field name="perm_unlink" eval="True"/>
+    </record>
+    <record id="model_dtsc_mprline_rule_sc" model="ir.model.access"> 
+        <field name="name">委內扣料line生產</field>
+        <field name="model_id" ref="dtsc.model_dtsc_mprline"/>
+        <field name="group_id" ref="dtsc.group_dtsc_sc"/>
+        <field name="perm_create" eval="True"/>
+    </record>
+    <record id="model_dtsc_mprline_rule_ck" model="ir.model.access"> 
+        <field name="name">委內扣料line倉管</field>
+        <field name="model_id" ref="dtsc.model_dtsc_mprline"/>
+        <field name="group_id" ref="dtsc.group_dtsc_ck"/>
+        <field name="perm_create" eval="True"/>
+    </record>
+	
+	<record id="model_dtsc_lotmprline_rule_mg" model="ir.model.access"> 
+        <field name="name">捲料扣料line美工</field>
+        <field name="model_id" ref="dtsc.model_dtsc_lotmprline"/>
+        <field name="group_id" ref="dtsc.group_dtsc_mg"/>
+        <field name="perm_create" eval="True"/>
+        <field name="perm_unlink" eval="True"/>
+    </record>
+    <record id="model_dtsc_lotmprline_rule_sc" model="ir.model.access"> 
+        <field name="name">捲料扣料line生產</field>
+        <field name="model_id" ref="dtsc.model_dtsc_lotmprline"/>
+        <field name="group_id" ref="dtsc.group_dtsc_sc"/>
+        <field name="perm_create" eval="True"/>
+		<field name="perm_unlink" eval="True"/>
+    </record>
+    <record id="model_dtsc_lotmprline_rule_ck" model="ir.model.access"> 
+        <field name="name">捲料扣料line倉管</field>
+        <field name="model_id" ref="dtsc.model_dtsc_lotmprline"/>
+        <field name="group_id" ref="dtsc.group_dtsc_ck"/>
+        <field name="perm_create" eval="True"/>
+		<field name="perm_unlink" eval="True"/>
+    </record>
+         <!-- 批次 -->
+        <record id="model_dtsc_stock_rule_mg" model="ir.model.access"> 
+            <field name="name">批次美工</field>
+            <field name="model_id" ref="stock.model_stock_lot"/>
+            <field name="group_id" ref="dtsc.group_dtsc_mg"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="True"/>
+        </record>
+        <record id="model_dtsc_stock_rule_sc" model="ir.model.access"> 
+            <field name="name">批次生產</field>
+            <field name="model_id" ref="stock.model_stock_lot"/>
+            <field name="group_id" ref="dtsc.group_dtsc_sc"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="True"/>
+        </record> 
+        <record id="model_dtsc_stock_rule_ck" model="ir.model.access"> 
+            <field name="name">批次倉管</field>
+            <field name="model_id" ref="stock.model_stock_lot"/>
+            <field name="group_id" ref="dtsc.group_dtsc_ck"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="True"/>
+        </record>    
+        <record id="model_dtsc_stock_rule_cg" model="ir.model.access"> 
+            <field name="name">批次採購</field>
+            <field name="model_id" ref="stock.model_stock_lot"/>
+            <field name="group_id" ref="dtsc.group_dtsc_cg"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="True"/>
+        </record>   
+        <record id="model_dtsc_stock_picking_rule_mg" model="ir.model.access"> 
+            <field name="name">批次调拨美工</field>
+            <field name="model_id" ref="stock.model_stock_picking"/>
+            <field name="group_id" ref="dtsc.group_dtsc_mg"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="True"/>
+        </record>
+		<record id="model_dtsc_stock_picking_rule_yw" model="ir.model.access"> 
+            <field name="name">批次调拨业务</field>
+            <field name="model_id" ref="stock.model_stock_picking"/>
+            <field name="group_id" ref="dtsc.group_dtsc_yw"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="True"/>
+        </record>
+        <record id="model_dtsc_stock_picking_rule_sc" model="ir.model.access"> 
+            <field name="name">批次调拨生產</field>
+            <field name="model_id" ref="stock.model_stock_picking"/>
+            <field name="group_id" ref="dtsc.group_dtsc_sc"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="True"/>
+        </record>    
+        <record id="model_dtsc_stock_picking_rule_ck" model="ir.model.access"> 
+            <field name="name">批次调拨倉管</field>
+            <field name="model_id" ref="stock.model_stock_picking"/>
+            <field name="group_id" ref="dtsc.group_dtsc_ck"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="True"/>
+        </record>    
+        <record id="model_dtsc_stock_picking_rule_cg" model="ir.model.access"> 
+            <field name="name">批次调拨採購</field>
+            <field name="model_id" ref="stock.model_stock_picking"/>
+            <field name="group_id" ref="dtsc.group_dtsc_cg"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="True"/>
+        </record>
+        <record id="model_dtsc_stock_picking_rule_kj" model="ir.model.access"> 
+            <field name="name">批次调拨会计</field>
+            <field name="model_id" ref="stock.model_stock_picking"/>
+            <field name="group_id" ref="dtsc.group_dtsc_kj"/>
+            <field name="perm_read" eval="True"/>
+        </record>
+        <!-- 批次 -->
+        <!-- 最小庫存規則 -->
+        <record id="model_dtsc_stock_warehouse_orderpoint_rule_mg" model="ir.model.access"> 
+            <field name="name">最小庫存規則美工</field>
+            <field name="model_id" ref="stock.model_stock_warehouse_orderpoint"/>
+            <field name="group_id" ref="dtsc.group_dtsc_mg"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="True"/>
+        </record>
+        <record id="model_dtsc_stock_warehouse_orderpoint_rule_sc" model="ir.model.access"> 
+            <field name="name">最小庫存規則生產</field>
+            <field name="model_id" ref="stock.model_stock_warehouse_orderpoint"/>
+            <field name="group_id" ref="dtsc.group_dtsc_sc"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="True"/>
+        </record>   
+        <record id="model_dtsc_stock_warehouse_orderpoint_rule_ck" model="ir.model.access"> 
+            <field name="name">最小庫存規則倉管</field>
+            <field name="model_id" ref="stock.model_stock_warehouse_orderpoint"/>
+            <field name="group_id" ref="dtsc.group_dtsc_ck"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="True"/>
+        </record>   
+        <record id="model_dtsc_stock_warehouse_orderpoint_rule_cg" model="ir.model.access"> 
+            <field name="name">最小庫存規則採購</field>
+            <field name="model_id" ref="stock.model_stock_warehouse_orderpoint"/>
+            <field name="group_id" ref="dtsc.group_dtsc_cg"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="True"/>
+        </record>   
+        <!-- 最小庫存規則 -->
+        <!-- 調撥 -->
+		<record id="model_dtsc_stock_immediate_transfer_rule_sc" model="ir.model.access"> 
+            <field name="name">大圖立即調撥</field>
+            <field name="model_id" ref="stock.model_stock_immediate_transfer"/>
+            <field name="group_id" ref="dtsc.group_dtsc_sc"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="True"/>
+        </record>   
+		<record id="model_dtsc_stock_immediate_transfer_line_rule_sc" model="ir.model.access"> 
+            <field name="name">大圖立即調撥line</field>
+            <field name="model_id" ref="stock.model_stock_immediate_transfer_line"/>
+            <field name="group_id" ref="dtsc.group_dtsc_sc"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="True"/>
+        </record>   
+        <!-- 調撥 -->
+        <!-- purchase order -->
+        <record id="model_dtsc_purchase_rule_mg" model="ir.model.access"> 
+            <field name="name">purchase order美工</field>
+            <field name="model_id" ref="model_purchase_order"/>
+            <field name="group_id" ref="dtsc.group_dtsc_mg"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="True"/>
+        </record>
+        <record id="model_dtsc_purchase_rule_sc" model="ir.model.access"> 
+            <field name="name">purchase order生產</field>
+            <field name="model_id" ref="model_purchase_order"/>
+            <field name="group_id" ref="dtsc.group_dtsc_sc"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="True"/>
+        </record>        
+        <record id="model_dtsc_purchase_rule_ck" model="ir.model.access"> 
+            <field name="name">purchase order倉管</field>
+            <field name="model_id" ref="model_purchase_order"/>
+            <field name="group_id" ref="dtsc.group_dtsc_ck"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="True"/>
+        </record>
+        <record id="model_dtsc_purchase_rule_cg" model="ir.model.access"> 
+            <field name="name">purchase order採購</field>
+            <field name="model_id" ref="model_purchase_order"/>
+            <field name="group_id" ref="dtsc.group_dtsc_cg"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="True"/>
+        </record>   
+        <record id="model_dtsc_purchase_rule_kj" model="ir.model.access"> 
+            <field name="name">purchase order会计</field>
+            <field name="model_id" ref="model_purchase_order"/>
+            <field name="group_id" ref="dtsc.group_dtsc_kj"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="True"/>
+        </record>   
+        <record id="model_dtsc_purchaseline_rule_mg" model="ir.model.access"> 
+            <field name="name">purchase order line美工</field>
+            <field name="model_id" ref="purchase.model_purchase_order_line"/>
+            <field name="group_id" ref="dtsc.group_dtsc_mg"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="True"/>
+        </record>
+        <record id="model_dtsc_purchaseline_rule_sc" model="ir.model.access"> 
+            <field name="name">purchase order line生產</field>
+            <field name="model_id" ref="purchase.model_purchase_order_line"/>
+            <field name="group_id" ref="dtsc.group_dtsc_sc"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="True"/>
+        </record>        
+        <record id="model_dtsc_purchaseline_rule_ck" model="ir.model.access"> 
+            <field name="name">purchase order line倉管</field>
+            <field name="model_id" ref="purchase.model_purchase_order_line"/>
+            <field name="group_id" ref="dtsc.group_dtsc_ck"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="True"/>
+        </record>
+        <record id="model_dtsc_purchaseline_rule_cg" model="ir.model.access"> 
+            <field name="name">purchase order line採購</field>
+            <field name="model_id" ref="purchase.model_purchase_order_line"/>
+            <field name="group_id" ref="dtsc.group_dtsc_cg"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="True"/>
+        </record>   
+        <record id="model_dtsc_purchaseline_rule_kj" model="ir.model.access"> 
+            <field name="name">purchase order line会计</field>
+            <field name="model_id" ref="purchase.model_purchase_order_line"/>
+            <field name="group_id" ref="dtsc.group_dtsc_kj"/>
+            <field name="perm_read" eval="True"/>
+        </record>                          
+        <!-- purchase order -->
+    
+	<!-- 委內扣料表 -->
+   
+	<!-- 出貨單 -->
+    <record id="model_dtsc_deliveryordert_rule_mg" model="ir.model.access"> 
+        <field name="name">deliveryorder美工</field>
+        <field name="model_id" ref="dtsc.model_dtsc_deliveryorder"/>
+        <field name="group_id" ref="dtsc.group_dtsc_mg"/>
+        <field name="perm_create" eval="True"/>
+    </record>
+    <record id="model_dtsc_deliveryordertline_rule_mg" model="ir.model.access"> 
+        <field name="name">deliveryorderline美工</field>
+        <field name="model_id" ref="dtsc.model_dtsc_deliveryorderline"/>
+        <field name="group_id" ref="dtsc.group_dtsc_mg"/>
+        <field name="perm_create" eval="True"/>
+    </record>
+		<!-- 暂时增加生产权限 -->
+	<record id="model_dtsc_deliveryordert_rule_sc" model="ir.model.access"> 
+        <field name="name">deliveryorder生产</field>
+        <field name="model_id" ref="dtsc.model_dtsc_deliveryorder"/>
+        <field name="group_id" ref="dtsc.group_dtsc_sc"/>
+        <field name="perm_create" eval="True"/>
+    </record>
+    <record id="model_dtsc_deliveryordertline_rule_sc" model="ir.model.access"> 
+        <field name="name">deliveryorderline生产</field>
+        <field name="model_id" ref="dtsc.model_dtsc_deliveryorderline"/>
+        <field name="group_id" ref="dtsc.group_dtsc_sc"/>
+        <field name="perm_create" eval="True"/>
+    </record>
+	<!-- 出貨單 -->
+	<!-- 客戶 -->
+        <!-- 原生禁用 -->
+        <record id="base.access_res_partner_group_partner_manager" model="ir.model.access">
+            <field name="name">res.partner.group.partner.manager.access</field>
+            <field name="model_id" ref="base.model_res_partner"/>
+            <field name="group_id" ref="base.group_partner_manager"/>
+            <field name="perm_read">0</field>
+            <field name="perm_write">0</field>
+            <field name="perm_create">0</field>
+            <field name="perm_unlink">0</field>
+        </record>
+        <delete id="base.res_partner_rule_private_employee" model="ir.rule"/>
+        <!-- 管理员 -->
+        <record id="res_partner_rule_admin_supplier_edit" model="ir.rule">
+            <field name="name">客户供应商全开管理员</field>
+            <field name="model_id" ref="base.model_res_partner"/>
+            <field name="groups" eval="[(4, ref('dtsc.group_dtsc_gly'))]"/>
+            <field name="domain_force">[]</field>
+            <field name="perm_read">1</field>
+            <field name="perm_write">1</field>
+            <field name="perm_create">1</field>
+            <field name="perm_unlink">1</field>
+        </record>
+        <!-- 美工 -->
+            <record id="model_res_partner_rule_mg" model="ir.model.access"> 
+                <field name="name">res_partner美工</field>
+                <field name="model_id" ref="base.model_res_partner"/>
+                <field name="group_id" ref="dtsc.group_dtsc_mg"/>
+                <field name="perm_read" eval="True"/>
+                <field name="perm_write" eval="True"/>
+                <field name="perm_create" eval="True"/>
+                <field name="perm_unlink" eval="True"/>
+            </record>   
+        
+            <!-- 只包括客户 -->
+            <record id="res_partner_rule_mg_base" model="ir.rule"><!-- 美工（客户供应商）读的权限 -->
+                <field name="name">baserule美工</field>
+                <field name="model_id" ref="base.model_res_partner"/>
+                <field name="groups" eval="[(4, ref('dtsc.group_dtsc_mg'))]"/>
+                <field name="perm_read">1</field>
+                <field name="perm_write">0</field> 
+                <field name="perm_create">0</field>
+                <field name="perm_unlink">0</field>
+            </record>
+            
+            <record id="res_partner_rule_mg_no_supplier_edit" model="ir.rule">
+                <field name="name">只能编辑非供应商美工</field>
+                <field name="model_id" ref="base.model_res_partner"/>
+                <field name="groups" eval="[(4, ref('dtsc.group_dtsc_mg'))]"/>
+                <field name="domain_force">[('supplier_rank','=',0)]</field> <!-- 应用于非供应商 -->
+                <field name="perm_read">1</field>
+                <field name="perm_write">1</field>
+                <field name="perm_create">1</field>
+                <field name="perm_unlink">1</field>
+            </record>
+         <!-- 美工 -->
+
+            <record id="model_res_partner_rule_yw" model="ir.model.access"> 
+                <field name="name">res_partner業務</field>
+                <field name="model_id" ref="base.model_res_partner"/>
+                <field name="group_id" ref="dtsc.group_dtsc_yw"/>
+                <field name="perm_read" eval="True"/>
+                <field name="perm_write" eval="True"/>
+                <field name="perm_create" eval="True"/>
+                <field name="perm_unlink" eval="True"/>
+            </record>
+            <record id="model_res_partner_rule_cg" model="ir.model.access"> 
+                <field name="name">res_partner採購</field>
+                <field name="model_id" ref="base.model_res_partner"/>
+                <field name="group_id" ref="dtsc.group_dtsc_cg"/>
+                <field name="perm_read" eval="True"/>
+                <field name="perm_write" eval="True"/>
+                <field name="perm_create" eval="True"/>
+                <field name="perm_unlink" eval="True"/>
+            </record>
+
+	<!-- 客戶 -->
+    <!-- 产品 -->
+        <!-- 产品（銷售採購） -->
+         <record id="product_template_rule_admin_supplier_edit" model="ir.rule">
+            <field name="name">銷售採購產品全开管理员</field>
+            <field name="model_id" ref="product.model_product_template"/>
+            <field name="groups" eval="[(4, ref('dtsc.group_dtsc_gly'))]"/>
+            <field name="domain_force">[]</field>
+            <field name="perm_read">1</field>
+            <field name="perm_write">1</field>
+            <field name="perm_create">1</field>
+            <field name="perm_unlink">1</field>
+        </record>
+        <record id="model_dtsc_template_rule_mg" model="ir.model.access"> 
+            <field name="name">产品美工</field>
+            <field name="model_id" ref="product.model_product_template"/>
+            <field name="group_id" ref="dtsc.group_dtsc_mg"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="True"/>
+        </record>
+        <record id="model_dtsc_template_rule_cg" model="ir.model.access"> 
+            <field name="name">产品採購</field>
+            <field name="model_id" ref="product.model_product_template"/>
+            <field name="group_id" ref="dtsc.group_dtsc_cg"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="True"/>
+        </record>
+        
+        <record id="product_template_rule_mg_base" model="ir.rule">
+            <field name="name">product_template baserule 美工</field>
+            <field name="model_id" ref="product.model_product_template"/>
+            <field name="groups" eval="[(4, ref('dtsc.group_dtsc_mg'))]"/>
+            <field name="perm_read">1</field>
+            <field name="perm_write">0</field> 
+            <field name="perm_create">0</field>
+            <field name="perm_unlink">0</field>
+        </record>
+        <record id="product_template_rule_cg_base" model="ir.rule">
+            <field name="name">product_template baserule 採購</field>
+            <field name="model_id" ref="product.model_product_template"/>
+            <field name="groups" eval="[(4, ref('dtsc.group_dtsc_cg'))]"/>
+            <field name="perm_read">1</field>
+            <field name="perm_write">0</field> 
+            <field name="perm_create">0</field>
+            <field name="perm_unlink">0</field>
+        </record>
+       <record id="product_template_rule_mg" model="ir.rule">
+            <field name="name">销售产品规则美工</field>
+            <field name="model_id" ref="product.model_product_template"/>
+            <field name="groups" eval="[(4, ref('dtsc.group_dtsc_mg'))]"/>
+            <field name="domain_force">[('sale_ok','=',True)]</field>
+            <field name="perm_read">1</field>
+            <field name="perm_write">1</field>
+            <field name="perm_create">1</field>
+            <field name="perm_unlink">1</field>
+        </record>
+        <record id="product_template_rule_cg" model="ir.rule">
+            <field name="name">採購产品规则採購</field>
+            <field name="model_id" ref="product.model_product_template"/>
+            <field name="groups" eval="[(4, ref('dtsc.group_dtsc_cg'))]"/>
+            <field name="domain_force">[('purchase_ok','=',True)]</field>
+            <field name="perm_read">1</field>
+            <field name="perm_write">1</field>
+            <field name="perm_create">1</field>
+            <field name="perm_unlink">1</field>
+        </record>
+
+    
+    <record id="model_dtsc_attribute_value_rule_mg" model="ir.model.access"> 
+        <field name="name">产品变体美工</field>
+        <field name="model_id" ref="product.model_product_attribute_value"/>
+        <field name="group_id" ref="dtsc.group_dtsc_mg"/>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="True"/>
+        <field name="perm_create" eval="True"/>
+        <field name="perm_unlink" eval="True"/>
+    </record>
+    <record id="model_dtsc_category_rule_gly" model="ir.model.access"> 
+        <field name="name">产品分类管理</field>
+        <field name="model_id" ref="product.model_product_category"/>
+        <field name="group_id" ref="dtsc.group_dtsc_gly"/>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="True"/>
+        <field name="perm_create" eval="True"/>
+        <field name="perm_unlink" eval="True"/>
+    </record>
+    <record id="model_dtsc_attribute_rule_mg" model="ir.model.access"> 
+        <field name="name">产品属性美工</field>
+        <field name="model_id" ref="product.model_product_attribute"/>
+        <field name="group_id" ref="dtsc.group_dtsc_mg"/>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="True"/>
+        <field name="perm_create" eval="True"/>
+        <field name="perm_unlink" eval="True"/>
+    </record>
+    <!-- 产品 -->
+    <!-- 設置 -->
+    <record id="model_dtsc_maketype_rule_gly" model="ir.model.access"> 
+        <field name="name">後加工方式管理員</field>
+        <field name="model_id" ref="dtsc.model_dtsc_maketype"/>
+        <field name="group_id" ref="dtsc.group_dtsc_gly"/>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="True"/>
+        <field name="perm_create" eval="True"/>
+        <field name="perm_unlink" eval="True"/>
+    </record> 
+    <record id="model_dtsc_maketyperel_rule_gly" model="ir.model.access"> 
+        <field name="name">後加工方式rel管理員</field>
+        <field name="model_id" ref="dtsc.model_product_maketype_rel"/>
+        <field name="group_id" ref="dtsc.group_dtsc_gly"/>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="True"/>
+        <field name="perm_create" eval="True"/>
+        <field name="perm_unlink" eval="True"/>
+    </record>  
+    <record id="model_dtsc_machineprice_rule_gly" model="ir.model.access"> 
+        <field name="name">machineprice管理員</field>
+        <field name="model_id" ref="dtsc.model_dtsc_machineprice"/>
+        <field name="group_id" ref="dtsc.group_dtsc_gly"/>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="True"/>
+        <field name="perm_create" eval="True"/>
+        <field name="perm_unlink" eval="True"/>
+    </record>    
+    <record id="model_dtsc_userlist_rule_kj" model="ir.model.access"> 
+        <field name="name">userlist會計</field>
+        <field name="model_id" ref="dtsc.model_dtsc_userlist"/>
+        <field name="group_id" ref="dtsc.group_dtsc_kj"/>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="True"/>
+        <field name="perm_create" eval="True"/>
+        <field name="perm_unlink" eval="True"/>
+    </record>
+	<record id="model_dtsc_userlistbefore_rule_kj" model="ir.model.access"> 
+        <field name="name">userlistbefore會計</field>
+        <field name="model_id" ref="dtsc.model_dtsc_userlistbefore"/>
+        <field name="group_id" ref="dtsc.group_dtsc_kj"/>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="True"/>
+        <field name="perm_create" eval="True"/>
+        <field name="perm_unlink" eval="True"/>
+    </record>        
+	<record id="model_dtsc_reworklist_rule_kj" model="ir.model.access"> 
+        <field name="name">reworklist會計</field>
+        <field name="model_id" ref="dtsc.model_dtsc_reworklist"/>
+        <field name="group_id" ref="dtsc.group_dtsc_kj"/>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="True"/>
+        <field name="perm_create" eval="True"/>
+        <field name="perm_unlink" eval="True"/>
+    </record>        
+    <!-- 設置 -->
+    <!-- 應收應付 -->
+    <record id="model_dtsc_account_move_rule_kj" model="ir.model.access"> 
+        <field name="name">account_move會計</field>
+        <field name="model_id" ref="account.model_account_move"/>
+        <field name="group_id" ref="dtsc.group_dtsc_kj"/>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="True"/>
+        <field name="perm_create" eval="True"/>
+        <field name="perm_unlink" eval="True"/>
+    </record>    
+    <record id="model_dtsc_account_move_line_rule_kj" model="ir.model.access"> 
+        <field name="name">account_moveline會計</field>
+        <field name="model_id" ref="account.model_account_move_line"/>
+        <field name="group_id" ref="dtsc.group_dtsc_kj"/>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="True"/>
+        <field name="perm_create" eval="True"/>
+        <field name="perm_unlink" eval="True"/>
+    </record>
+    <record id="model_dtsc_billinvoice_rule_kj" model="ir.model.access"> 
+        <field name="name">發票會計</field>
+        <field name="model_id" ref="dtsc.model_dtsc_billinvoice"/>
+        <field name="group_id" ref="dtsc.group_dtsc_kj"/>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="True"/>
+        <field name="perm_create" eval="True"/>
+        <field name="perm_unlink" eval="True"/>
+    </record>    
+    <record id="model_dtsc_billinvoice_line_rule_kj" model="ir.model.access"> 
+        <field name="name">發票line會計</field>
+        <field name="model_id" ref="dtsc.model_dtsc_billinvoiceline"/>
+        <field name="group_id" ref="dtsc.group_dtsc_kj"/>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="True"/>
+        <field name="perm_create" eval="True"/>
+        <field name="perm_unlink" eval="True"/>
+    </record>
+    <record id="model_dtsc_allowances_rule_kj" model="ir.model.access"> 
+        <field name="name">折讓會計</field>
+        <field name="model_id" ref="dtsc.model_dtsc_allowances"/>
+        <field name="group_id" ref="dtsc.group_dtsc_kj"/>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="True"/>
+        <field name="perm_create" eval="True"/>
+        <field name="perm_unlink" eval="True"/>
+    </record>    
+    <record id="model_dtsc_allowances_line_rule_kj" model="ir.model.access"> 
+        <field name="name">折讓line會計</field>
+        <field name="model_id" ref="dtsc.model_dtsc_allowancesline"/>
+        <field name="group_id" ref="dtsc.group_dtsc_kj"/>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="True"/>
+        <field name="perm_create" eval="True"/>
+        <field name="perm_unlink" eval="True"/>
+    </record>
+    <record id="model_dtsc_account_move_rule_yw" model="ir.model.access"> 
+        <field name="name">account_move業務</field>
+        <field name="model_id" ref="account.model_account_move"/>
+        <field name="group_id" ref="dtsc.group_dtsc_yw"/>
+        <field name="perm_read" eval="True"/>
+    </record>    
+    <record id="model_dtsc_account_move_line_rule_yw" model="ir.model.access"> 
+        <field name="name">account_moveline業務</field>
+        <field name="model_id" ref="account.model_account_move_line"/>
+        <field name="group_id" ref="dtsc.group_dtsc_yw"/>
+        <field name="perm_read" eval="True"/>
+    </record>   
+    
+    <record id="account_move_rule_own_sales" model="ir.rule">
+        <field name="name">account_move業務（只看自己）</field>
+        <field name="model_id" ref="account.model_account_move"/>
+        <field name="domain_force">[('partner_id.user_id', '=', user.id)]</field>
+        <field name="groups" eval="[(4, ref('dtsc.group_dtsc_yw'))]"/>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="False"/>
+        <field name="perm_create" eval="False"/>
+        <field name="perm_unlink" eval="False"/>
+    </record>
+    
+    <record id="model_dtsc_account_move_rule_cg" model="ir.model.access"> 
+        <field name="name">account_move採購</field>
+        <field name="model_id" ref="account.model_account_move"/>
+        <field name="group_id" ref="dtsc.group_dtsc_cg"/>
+        <field name="perm_read" eval="True"/>
+    </record>    
+    <record id="model_dtsc_account_move_line_rule_cg" model="ir.model.access"> 
+        <field name="name">account_moveline採購</field>
+        <field name="model_id" ref="account.model_account_move_line"/>
+        <field name="group_id" ref="dtsc.group_dtsc_cg"/>
+        <field name="perm_read" eval="True"/>
+    </record>           
+    
+    <!-- 應收應付 -->
+    <!-- 库存 -->
+    <record id="model_dtsc_stock_quant_rule_ck" model="ir.model.access"> 
+        <field name="name">仓库盘点仓管</field>
+        <field name="model_id" ref="stock.model_stock_quant"/>
+        <field name="group_id" ref="dtsc.group_dtsc_ck"/>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="True"/>
+        <field name="perm_create" eval="True"/>
+        <field name="perm_unlink" eval="True"/>
+    </record>           
+    <!-- 库存 -->
+    <!-- 其它 美工转业务-->
+	<record id="model_dtsc_sale_order_mg" model="ir.model.access"> 
+        <field name="name">大图订单确认销售订单(美工)</field>
+        <field name="model_id" ref="sale.model_sale_order"/>
+        <field name="group_id" ref="dtsc.group_dtsc_mg"/>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="True"/>
+        <field name="perm_create" eval="True"/>
+        <field name="perm_unlink" eval="True"/>
+    </record>        
+    <record id="model_dtsc_sale_order_line_mg" model="ir.model.access"> 
+        <field name="name">大图订单确认销售订单line(美工)</field>
+        <field name="model_id" ref="sale.model_sale_order_line"/>
+        <field name="group_id" ref="dtsc.group_dtsc_mg"/>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="True"/>
+        <field name="perm_create" eval="True"/>
+        <field name="perm_unlink" eval="True"/>
+    </record>       
+	<record id="model_dtsc_sale_order_yw" model="ir.model.access"> 
+        <field name="name">大图订单确认销售订单(业务)</field>
+        <field name="model_id" ref="sale.model_sale_order"/>
+        <field name="group_id" ref="dtsc.group_dtsc_yw"/>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="True"/>
+        <field name="perm_create" eval="True"/>
+        <field name="perm_unlink" eval="True"/>
+    </record>        
+    <record id="model_dtsc_sale_order_line_yw" model="ir.model.access"> 
+        <field name="name">大图订单确认销售订单line(业务)</field>
+        <field name="model_id" ref="sale.model_sale_order_line"/>
+        <field name="group_id" ref="dtsc.group_dtsc_yw"/>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="True"/>
+        <field name="perm_create" eval="True"/>
+        <field name="perm_unlink" eval="True"/>
+    </record>        
+    <!-- 其它 -->
+	
+    <!-- 网站 -->
+    <record id="model_dtsc_checkout_rule_wz" model="ir.model.access"> 
+        <field name="name">大圖訂單网站</field>
+        <field name="model_id" ref="dtsc.model_dtsc_checkout"/>
+        <field name="group_id" ref="base.group_portal"/>
+        <field name="perm_read" eval="True"/>
+    </record>
+	
+	<record id="model_dtsc_checkoutline_rule_wz" model="ir.model.access"> 
+        <field name="name">大圖訂單line网站</field>
+        <field name="model_id" ref="dtsc.model_dtsc_checkoutline"/>
+        <field name="group_id" ref="base.group_portal"/>
+        <field name="perm_read" eval="True"/>
+    </record>
+	 
+	<!-- 网站 -->
+	
+	<!-- 外部 -->
+	<record id="model_dtsc_checkout_rule_wb" model="ir.model.access"> 
+        <field name="name">大圖訂單外部</field>
+        <field name="model_id" ref="dtsc.model_dtsc_checkout"/>
+        <field name="group_id" ref="base.group_public"/>
+        <field name="perm_read" eval="True"/>
+		<field name="perm_create" eval="True"/>
+    </record>
+	
+	<record id="model_dtsc_checkoutline_rule_wb" model="ir.model.access"> 
+        <field name="name">大圖訂單line外部</field>
+        <field name="model_id" ref="dtsc.model_dtsc_checkoutline"/>
+        <field name="group_id" ref="base.group_public"/>
+        <field name="perm_read" eval="True"/>
+		<field name="perm_create" eval="True"/>
+    </record>
+	
+	<record id="model_dtsc_checkoutlineaftermakepricelist_rule_wb" model="ir.model.access"> 
+        <field name="name">checkoutlineaftermakepricelist外部</field>
+        <field name="model_id" ref="dtsc.model_dtsc_checkoutlineaftermakepricelist"/>
+        <field name="group_id" ref="base.group_public"/>
+        <field name="perm_read" eval="True"/>
+		<field name="perm_create" eval="True"/>
+    </record>
+	
+	<record id="model_dtsc_quotation_rule_wb" model="ir.model.access"> 
+        <field name="name">quotation外部</field>
+        <field name="model_id" ref="dtsc.model_dtsc_quotation"/>
+        <field name="group_id" ref="base.group_public"/>
+        <field name="perm_read" eval="True"/>
+    </record>
+	
+	<record id="model_dtsc_product_maketype_rel_rule_wb" model="ir.model.access"> 
+        <field name="name">product_maketype_rel外部</field>
+        <field name="model_id" ref="dtsc.model_product_maketype_rel"/>
+        <field name="group_id" ref="base.group_public"/>
+        <field name="perm_read" eval="True"/>
+    </record>
+	
+	<record id="model_dtsc_dtsc_maketype_rule_wb" model="ir.model.access"> 
+        <field name="name">dtsc_maketype外部</field>
+        <field name="model_id" ref="dtsc.model_dtsc_maketype"/>
+        <field name="group_id" ref="base.group_public"/>
+        <field name="perm_read" eval="True"/>
+    </record>
+	
+	<record id="model_unit_conversion_rule_wb" model="ir.model.access"> 
+        <field name="name">unit_conversion外部</field>
+        <field name="model_id" ref="dtsc.model_dtsc_unit_conversion"/>
+        <field name="group_id" ref="base.group_public"/>
+        <field name="perm_read" eval="True"/>
+    </record>
+	
+	<record id="model_aftermakepricelist_rule_wb" model="ir.model.access"> 
+        <field name="name">aftermakepricelist外部</field>
+        <field name="model_id" ref="dtsc.model_dtsc_aftermakepricelist"/>
+        <field name="group_id" ref="base.group_public"/>
+        <field name="perm_read" eval="True"/>
+    </record>
+
+	<record id="model_dtsc_quotationproductattributeprice_rule_wb" model="ir.model.access"> 
+        <field name="name">dtsc_quotationproductattributeprice外部</field>
+        <field name="model_id" ref="dtsc.model_dtsc_quotationproductattributeprice"/>
+        <field name="group_id" ref="base.group_public"/>
+        <field name="perm_read" eval="True"/>
+    </record>
+	
+	<record id="model_dtsc_userlistbefore_rule_wb" model="ir.model.access"> 
+        <field name="name">dtsc_userlistbefore外部</field>
+        <field name="model_id" ref="dtsc.model_dtsc_userlistbefore"/>
+        <field name="group_id" ref="base.group_public"/>
+        <field name="perm_read" eval="True"/>
+    </record>
+	
+	<record id="model_dtsc_machineprice_rule_wb" model="ir.model.access"> 
+        <field name="name">machineprice外部</field>
+        <field name="model_id" ref="dtsc.model_dtsc_machineprice"/>
+        <field name="group_id" ref="base.group_public"/>
+        <field name="perm_read" eval="True"/>
+    </record>
+	
+	<record id="model_dtsc_order_preview_rule_wb" model="ir.model.access"> 
+        <field name="name">dtsc_order_preview外部</field>
+        <field name="model_id" ref="dtsc.model_dtsc_order_preview"/>
+        <field name="group_id" ref="base.group_public"/>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="True"/>
+        <field name="perm_create" eval="True"/>
+        <field name="perm_unlink" eval="True"/>
+    </record>
+	
+	<!-- <record id="model_dtsc_product_template_rule_wb" model="ir.model.access"> 
+        <field name="name">product_template外部</field>
+        <field name="model_id" ref="product.model_product_template"/>
+        <field name="group_id" ref="base.group_public"/>
+        <field name="perm_read" eval="True"/>
+    </record> -->
+	
+	<!-- Record Rule for product.template Public Read -->
+	<record id="product_template_public_rule" model="ir.rule">
+		<field name="name">Product Template Public Read</field>
+		<field name="model_id" ref="product.model_product_template"/>
+		<field name="groups" eval="[(4, ref('base.group_public'))]"/>
+		<field name="perm_read" eval="True"/>
+		<field name="perm_write" eval="False"/>
+		<field name="perm_create" eval="False"/>
+		<field name="perm_unlink" eval="False"/>
+		<field name="domain_force">[("sale_ok", "=", True)]</field>
+	</record>
+
+	<!-- 外部 -->
+
+	
+
+	
+    <data>
+        <!-- Inherit the form view of purchase.order -->
+        <record id="view_purchase_order_form_inherit" model="ir.ui.view">
+            <field name="name">purchase.order.form.inherit</field>
+            <field name="model">purchase.order</field>
+            <field name="inherit_id" ref="purchase.purchase_order_form"/>
+            <field name="arch" type="xml">
+                <!-- Use XPath to find the specific button by its name attribute -->
+                <xpath expr="//button[@name='action_create_invoice']" position="attributes">
+                    <!-- Change the string attribute to change the button's name -->
+                    <attribute name="string">New Button Name</attribute>
+                </xpath>
+            </field>
+        </record>
+    </data>
+	
+</odoo>

@@ -1,0 +1,11 @@
+{
+    "reportMissingImports": false,
+    "reportMissingModuleSource": false,
+    "pythonPath": "/usr/bin/python3",
+    "venvPath": ".",
+    "analysis": {
+        "autoImportCompletions": true,
+        "useLibraryCodeForTypes": true,
+        "diagnosticMode": "workspace"
+    }
+} 

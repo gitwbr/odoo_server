@@ -1,0 +1,199 @@
+<odoo>
+	<record id="view_purchase_order_form_inherit" model="ir.ui.view">
+        <field name="name">purchase.order.form.inherit</field>
+        <field name="model">purchase.order</field>
+        <field name="inherit_id" ref="purchase.purchase_order_form"/>
+        <field name="arch" type="xml">
+            <!-- 隐藏原有的状态栏 -->
+			
+			<field name="product_id" position="attributes">
+                <attribute name="options">{'no_create': True, 'no_create_edit': True}</attribute>
+            </field>
+			<field name="state" position="before">
+                <field name="my_state" widget="statusbar" statusbar_visible="1,2,3,4,5"/>
+            </field>
+            <field name="state" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </field>
+			
+            <field name="partner_id" position="after">
+				<field name="custom_id"/>
+            </field>
+			
+            <field name="notes" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </field>
+			<field name="notes" position="after">
+                <field colspan="2" name="purchase_comment" nolabel="1" placeholder="采購備註"/>
+            </field>
+            <field name="state" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </field>
+            
+			<field name="effective_date" position="attributes">
+                <attribute name="readonly">False</attribute>
+            </field>
+			<xpath expr="//field[@name='order_line']/tree/control/create[@name='add_section_control']" position="attributes">
+				<attribute name="invisible">1</attribute>
+			</xpath>
+			<xpath expr="//field[@name='order_line']/tree/control/create[@name='add_note_control']" position="attributes">
+				<attribute name="invisible">1</attribute>
+			</xpath>
+            <!-- <create name="add_section_control" position="attributes"> -->
+                <!-- <attribute name="invisible">1</attribute> -->
+            <!-- </create> -->
+            <!-- <create name="add_note_control" position="attributes"> -->
+                <!-- <attribute name="invisible">1</attribute> -->
+            <!-- </create> -->
+            <field name="currency_id" position="after">
+                <field name="is_return_goods"/>
+                <field name="return_goods_comment" attrs="{'invisible': [('is_return_goods', '=', False)]}"/>
+            </field>
+            <field name="effective_date" position="after">
+                <field name="supp_invoice_form"/>
+            </field>
+            <!-- 添加新的状态栏 -->
+             <field name="partner_id" position="attributes">
+                 <attribute name="widget" delete="1"/>
+                <!-- 添加域以限制只选择供应商 -->
+				<attribute name="options">{'no_create': True, 'no_create_edit': True}</attribute>
+                <attribute name="domain">[('supplier_rank', '>', 0)]</attribute>
+            </field>
+            <!-- <field name="action_rfq_send" position="attributes"> -->
+                 <!-- <attribute name="invisible">1</attribute> -->
+            <!-- </field> -->
+			<button name="button_cancel" position="before">
+				<button name="go_to_zuofei" type="object" class="oe_highlight" confirm="確定要作廢此單嗎？" string="作廢" attrs="{'invisible':[('my_state','in',['5'])]}" />
+					
+			</button>
+			
+			<button name="action_rfq_send" states="draft" position="attributes">
+				<attribute name="invisible">1</attribute>
+			</button>
+			<button name="action_rfq_send" states="sent" position="attributes">
+				<attribute name="invisible">1</attribute>
+			</button>
+			<button name="action_rfq_send" states="purchase" position="attributes">
+				<attribute name="invisible">1</attribute>
+			</button>
+			
+			<button name="print_quotation" states="draft" position="attributes">
+				<attribute name="invisible">1</attribute>
+			</button>
+			<button name="print_quotation" states="sent" position="attributes">
+				<attribute name="invisible">1</attribute>
+			</button>
+			<button name="confirm_reminder_mail" position="attributes">
+				<attribute name="invisible">1</attribute>
+			</button>
+			<button name="button_done" position="attributes">
+				<attribute name="invisible">1</attribute>
+			</button>
+			<button name="button_unlock" position="attributes">
+				<attribute name="invisible">1</attribute>
+			</button>
+        </field>
+    </record>
+	
+	<record id="view_purchase_order_tree_inherit" model="ir.ui.view">
+        <field name="name">dtsc.purchase.order.tree.inherit</field>
+        <field name="model">purchase.order</field>
+        <field name="inherit_id" ref="purchase.purchase_order_tree"/>
+        <field name="arch" type="xml">
+            <!-- 隐藏原有的状态栏 -->
+			 <!-- <xpath expr="//tree" position="attributes"> -->
+				<!-- <attribute name="default_group_by">partner_id</attribute> -->
+			<!-- </xpath> -->
+			<!-- 隐藏原有的状态栏 -->
+			<xpath expr="//field[@name='state']" position="attributes">
+				<attribute name="invisible">1</attribute>
+			</xpath>
+			<xpath expr="//field[@name='date_planned']" position="attributes">
+				<attribute name="invisible">1</attribute>
+			</xpath>
+			<xpath expr="//field[@name='user_id']" position="attributes">
+				<attribute name="invisible">1</attribute>
+			</xpath>
+			<xpath expr="//field[@name='origin']" position="attributes">
+				<attribute name="invisible">1</attribute>
+			</xpath>
+			<!-- 在原有状态栏之前添加新的状态栏 -->
+			<xpath expr="//field[@name='state']" position="before">
+				<field name="my_state"/>
+				<field name="no_vat_price"/>
+			</xpath>
+			<xpath expr="//field[@name='partner_id']" position="after">
+				<field name="is_return_goods"/>
+				<field name="custom_id"/>
+			</xpath>
+			<xpath expr="//field[@name='date_approve']" position="after">
+				<field name="effective_date"/>
+			</xpath>
+			<xpath expr="//field[@name='date_approve']" position="attributes">
+				<attribute name="invisible">1</attribute>
+			</xpath>
+			<field name="amount_untaxed" position="attributes">
+				<attribute name="optional">hide</attribute>
+			</field>
+			<field name="amount_total" position="attributes">
+				<attribute name="optional">hide</attribute>
+			</field>
+        </field>
+    </record>
+	<record id="purchase_order_tree_view_inherit" model="ir.ui.view">
+        <field name="name">purchase.order.tree.inherit</field>
+        <field name="model">purchase.order</field>
+        <field name="inherit_id" ref="purchase.purchase_order_kpis_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//tree/header/button[@name='action_create_invoice']" position="attributes">
+                <attribute name="string">New Button Name</attribute>
+            </xpath>
+        </field>
+    </record>
+	
+	
+	<record id="purchase_order_search_view_inherit" model="ir.ui.view">
+		<field name="name">purchase.order.search.view.inherit</field>
+		<field name="model">purchase.order</field>
+		<field name="inherit_id" ref="purchase.purchase_order_view_search"/>
+		<field name="arch" type="xml">
+			<xpath expr="//search" position="inside">
+				<searchpanel>
+					<field name="my_state" select="one"/>
+				</searchpanel>
+				<filter string="隱藏已轉應付" name="exclude_state_4" domain="[('my_state', '!=', 4)]"/> 
+				<separator/>
+				<filter string="隱藏無需開單單據" name="exclude_invoice_status_no" domain="[('invoice_status', '!=', 'no')]"/> 
+				<field name="search_line" string="全部信息"/>				
+			</xpath> 
+			<field name="name" position="replace"/>
+			<field name="partner_id" position="replace"/>
+			<field name="user_id" position="replace"/>
+			<field name="product_id" position="replace"/>
+		</field>
+	</record>
+	
+	
+	<record id="purchase.action_purchase_batch_bills" model="ir.actions.server">
+            <field name='groups_id' eval="[(4, ref('dtsc.group_dtsc_kj'))]"/>
+            <field name="code">
+                if records:
+                    action = records.action_create_invoice_muti()
+            </field>
+        </record>
+	
+	<record id="supplierinfo_tree" model="ir.ui.view">
+		<field name="name">product.supplierinfo.tree</field>
+		<field name="model">product.supplierinfo</field>
+		<field name="arch" type="xml">
+			<tree editable="top">				
+				<field name="partner_id" domain="[('supplier_rank', '>', 0)]" options="{'no_create': True, 'no_create_edit': True}" />
+				<field name="product_tmpl_id" domain="[('purchase_ok','=',True)]" options="{'no_create': True, 'no_create_edit': True}" />
+				<field name="price" />
+				<field name="company_id" invisible="1"/>
+			</tree>
+		</field>	
+	</record>		
+	
+	<delete id="purchase.action_accrued_expense_entry" model="ir.actions.act_window"/>
+</odoo>

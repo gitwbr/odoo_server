@@ -1,0 +1,60 @@
+<odoo>
+	
+	<record model="ir.ui.view" id="dtsc_userlist_tree">
+		<field name="name">dtsc.userlist.tree</field>
+		<field name="model">dtsc.userlist</field>
+		<field name="arch" type="xml">
+			<tree editable="bottom">
+				<field name="name"/>
+				<field name="worktype_ids"  widget="many2many_tags"/>
+			</tree>
+		</field>
+    </record>
+	
+	
+	<record model="ir.ui.view" id="dtsc_userlistbefore_tree">
+		<field name="name">dtsc.userlistbefore.tree</field>
+		<field name="model">dtsc.userlistbefore</field>
+		<field name="arch" type="xml">
+			<tree editable="bottom">
+				<field name="name"/>
+				<!-- <field name="worktype_ids"  widget="many2many_tags"/> -->
+			</tree>
+		</field>
+    </record>
+	
+	<record model="ir.ui.view" id="dtsc_reworklist_tree">
+		<field name="name">dtsc.reworklist.tree</field>
+		<field name="model">dtsc.reworklist</field>
+		<field name="arch" type="xml">
+			<tree editable="bottom">
+				<field name="name"/>
+			</tree>
+		</field>
+    </record>
+	<!-- <record model="ir.ui.view" id="dtsc_userlist_form"> -->
+      <!-- <field name="name">dtsc.userlist.form</field> -->
+      <!-- <field name="model">dtsc.userlist</field> -->
+      <!-- <field name="arch" type="xml"> -->
+		<!-- <form string="123"> -->
+		    <!-- <sheet> -->
+				<!-- <div class="oe_title"> -->
+					<!-- <h1>客戶分類與價格設置</h1> -->
+				<!-- </div> -->
+				<!-- <group> -->
+					<!-- <group> -->
+						<!-- <field name="name"/> -->
+					<!-- </group> -->
+				<!-- </group> -->
+				
+		  <!-- </sheet> -->
+		  
+		<!-- </form> -->
+      <!-- </field> -->
+    <!-- </record> -->
+	
+	
+	
+
+	
+</odoo>

@@ -1,0 +1,16 @@
+.detail-row {
+    display: flex; // 使用flex布局让标签和输入框水平对齐
+    justify-content: space-between; // 使标签和输入框间隔均匀
+    margin-top: 10px; // 上下间距
+}
+
+.detail-label, .detail-input {
+    width: 23%; // 为标签和输入框设置宽度
+    box-sizing: border-box;
+}
+
+.detail-input {
+    padding: 5px;
+    border: 1px solid #ccc;
+}
+

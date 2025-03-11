@@ -1,0 +1,160 @@
+<odoo>
+
+    <!-- <record id="dtsc_stock_quant_inherit" model="ir.ui.view">
+        <field name="name">dtsc.stock_quant.inherit</field>
+        <field name="model">stock.quant</field>
+        <field name="inherit_id" ref="stock.view_stock_quant_tree_inventory_editable"/>
+        <field name="arch" type="xml">
+            <xpath expr="//header" position="inside">
+                <button name="%(dtsc.action_report_stock_quant)d" string="列印库存报告" type="action" context="{'active_ids': [1172,1188]}" class="oe_highlight"/>
+            </xpath>
+        </field>
+    </record> -->
+	
+	<record id="view_dtsc_stock_report" model="ir.ui.view">
+		<field name="name">dtsc.stockreportwizard.report</field>
+		<field name="model">dtsc.stockreportwizard</field>
+		<field name="arch" type="xml">
+			<form>
+				<group>
+					<field name="endtime"/>
+					<field name="select_method"/>		
+				</group>																		
+				<footer>
+					<button string="確認列印" type="object" name="your_confirm_method"/>
+					<button string="取消" class="btn-secondary" special="cancel"/>
+				</footer>
+			</form>
+		</field>
+	</record>
+	
+	<record id="dtsc_stock_quant_report" model="ir.actions.server">
+		<field name="name">列印庫存</field>
+		<field name="model_id" ref="dtsc.model_stock_quant"/>
+		<field name="binding_model_id" ref="dtsc.model_stock_quant"/>
+		<field name="state">code</field>
+		<field name="code">
+			action = {
+				'type': 'ir.actions.act_window',
+				'name': '列印庫存',
+				'res_model': 'dtsc.stockreportwizard',
+				'view_mode': 'form',
+				'target': 'new',
+			}
+		</field>
+	</record>
+		
+     <record id="action_report_stock_quant3" model="ir.actions.report">
+			<field name="name">庫存表</field>
+			<field name="model">stock.quant</field>
+			<field name="report_type">qweb-pdf</field>
+			<field name="report_name">dtsc.report_inventory</field>
+			<field name="report_file">dtsc.report_inventory</field>
+			<field name="binding_model_id" ref="stock.model_stock_quant"/>
+			<field name="binding_type">report</field>
+		</record>
+		
+		<record id="action_report_stock_quant_amount3" model="ir.actions.report">
+			<field name="name">庫存表(金額)</field>
+			<field name="model">stock.quant</field>
+			<field name="report_type">qweb-pdf</field>
+			<field name="report_name">dtsc.report_inventory_amount</field>
+			<field name="report_file">dtsc.report_inventory_amount</field>
+			<field name="binding_model_id" ref="stock.model_stock_quant"/>
+			<field name="binding_type">report</field>
+		</record>
+		
+		<record id="action_report_stock_quant_base3" model="ir.actions.report">
+			<field name="name">庫存表-展開</field>
+			<field name="model">stock.quant</field>
+			<field name="report_type">qweb-pdf</field>
+			<field name="report_name">dtsc.report_inventory_base</field>
+			<field name="report_file">dtsc.report_inventory_base</field>
+			<field name="binding_model_id" ref="stock.model_stock_quant"/>
+			<field name="binding_type">report</field>
+		</record>
+	
+	<record id="dtsc_stock_picking_internal_form_inherit" model="ir.ui.view">
+		<field name="name">dtsc.stock.picking.form.inherit</field>
+		<field name="model">stock.picking</field>
+		<field name="inherit_id" ref="stock.view_picking_form"/>
+		<field name="arch" type="xml">
+			 <xpath expr="//page[@name='operations']//field[@name='product_id']" position="attributes">
+            <!-- 为 `product_id` 字段添加一个 domain 限制产品只能是可用于采购的产品 -->
+				<attribute name="domain">[('purchase_ok', '=', True)]</attribute>
+				<attribute name="options">{'no_create': True, 'no_create_edit': True}</attribute>
+			</xpath>
+			 <xpath expr="//page[@name='operations']//field[@name='product_id']" position="after">
+				<field name="now_stock"/>
+			</xpath>
+			<!-- 定位到第一个 button_validate 按钮 -->
+			<xpath expr="//button[@name='button_validate' and contains(@class, 'oe_highlight')]" position="attributes">
+				<!-- 添加新的权限组到 groups 属性 -->
+				<attribute name="groups">stock.group_stock_user,dtsc.group_dtsc_sc</attribute>
+			</xpath>
+			<!-- <field name="location_id" domain="[('usage', '=', 'internal')]"> -->
+			<!-- <field name="location_dest_id" domain="[('usage', '=', 'internal')]"> -->
+			<xpath expr="//field[@name='location_id' and @groups='stock.group_stock_multi_locations']" position="attributes">
+				<attribute name="domain">[('usage', '=', 'internal')]</attribute>
+			</xpath>
+			
+			<!-- 只在 location_dest_id 字段添加 domain，保留其他配置 -->
+			<xpath expr="//field[@name='location_dest_id' and @groups='stock.group_stock_multi_locations']" position="attributes">
+				<attribute name="domain">[('usage', '=', 'internal')]</attribute> <!-- 添加 domain -->
+			</xpath><!-- 定位到第二个 button_validate 按钮 -->
+			<xpath expr="//button[@name='button_validate' and contains(@class, 'o_btn_validate')]" position="attributes">
+				<!-- 添加新的权限组到 groups 属性 -->
+				<attribute name="groups">stock.group_stock_user,dtsc.group_dtsc_sc</attribute>
+			</xpath>
+			<button name="action_confirm" position="attributes">				
+				<attribute name="invisible">1</attribute>
+			</button>
+			<button name="action_open_label_type" position="attributes">				
+				<attribute name="invisible">1</attribute>
+			</button>
+			<button name="button_scrap" position="attributes">				
+				<attribute name="invisible">1</attribute>
+			</button>
+			<button name="action_confirm" position="after">
+				<button name="action_move_done" string="確認調撥" type="object" class="oe_highlight" attrs="{'invisible':[('state','not in',['draft'])]}"/>
+			</button>
+		</field>
+	</record>
+	
+	<record id="stock_qunat_search_inherit" model="ir.ui.view">
+		<field name="name">stock.quant.inherit</field>
+		<field name="model">stock.quant</field>
+		<field name="inherit_id" ref="stock.quant_search_view"/>
+		<field name="arch" type="xml">
+			<xpath expr="//search" position="inside">
+				<searchpanel>
+					<field name="location_id" select="one"/>
+					<field name="categ_id" string="產品分類"/>
+				</searchpanel>
+			</xpath> 
+		</field>
+	</record>
+	
+	<record id="stock_quant_tree_view_inherit" model="ir.ui.view">
+		<field name="name">stock.quant.tree.view.inherit</field>
+		<field name="model">stock.quant</field>
+		<field name="inherit_id" ref="stock.view_stock_quant_tree_inventory_editable"/>
+		<field name="arch" type="xml">
+		
+			<xpath expr="//field[@name='user_id']" position="before">
+				<field name="is_set_date" invisible="1"/>					
+				<field name="stock_date" invisible="1"/>					
+				<field name="stock_date_num" invisible="context.get('default_is_set_date') != True "/>			
+				<field name="lastmodifydate"/>					
+				<field name="average_price"/>
+				<field name="total_value"/>
+			</xpath>
+			<xpath expr="//field[@name='product_uom_id']" position="before">
+				<field name="zksl_cai"/>		 
+			</xpath>
+			<xpath expr="//field[@name='inventory_date']" position="attributes">
+				<attribute name="invisible">1</attribute>	
+			</xpath>
+		</field>
+	</record>
+</odoo>

@@ -1,0 +1,78 @@
+# 备份文件
+*.bak
+
+# 数据库文件
+*.sql
+pgadmin-data/
+
+
+# 大文件
+*.zip
+*.tar
+*.tar.gz
+*.tar.bz2
+*.tar.xz
+*.tar.wim
+*.tar.7z
+*.tar.lzma  
+
+# 环境文件
+.env
+.venv/
+env/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# 备份文件
+*.bak
+
+# 日志文件
+*.log 
+
+
+# 系统文件
+.DS_Store
+Thumbs.db
+
+# 排除数据目录
+*/data/
+*/logs/
+*/postgresql/
+client*/data/
+client*/logs/
+client*/postgresql/
+
+# 其他文件
+*.log
+*.pyc
+*.pyo
+
+docker-compose.yml
+
+addons/

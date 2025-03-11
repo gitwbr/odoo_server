@@ -1,0 +1,169 @@
+<odoo>
+	<template id="report_crm_checkout_template">
+        <t t-call="web.html_container">
+            <style>
+	
+			</style>
+			<div class="page">
+				<t t-foreach="docs" t-as="doc">
+					<t t-call="dtsc.external_layout_coin">
+						<table class="table table-condensed">
+                            <tbody>
+                                <tr>
+                                    <td rowspan="2" ><img t-if="company.logo" t-att-src="'data:image/png;base64,%s' % company.logo.decode('utf-8')" style="width: 50px; max-height:50px"/><span t-field="company.name" /></td>
+                                    <td>報價單</td>
+                                    <td><span t-field="company.street" /></td>
+                                </tr>
+                                <tr>
+                                    <td>Mail:<span t-field="company.email" /></td>
+                                    <td>Fax:<span t-field="company.fax" /></td>
+                                </tr>
+                                <tr>
+									<td>客戶名稱:<span t-field="doc.customer_id.name" /></td>
+									<td>統一編號:<span t-field="doc.customer_id.vat" /></td>
+									<td>付款條件:<span t-field="doc.customer_id.property_payment_term_id" /></td>
+                                </tr>
+                                <tr>
+									<td>聯絡人:<span t-field="doc.customer_id.custom_contact_person" /></td>
+									<td>電話:<span t-field="doc.customer_id.phone" /></td>
+									<td>收款方式:<span t-field="doc.customer_id.custom_pay_mode" /></td>
+                                </tr>
+                                <tr>
+									<td>地址:<span t-field="doc.customer_id.street" /></td>
+									<td>傳真:<span t-field="doc.customer_id.custom_fax" /></td>
+									<td>報價日期:<span t-field="doc.create_date" /></td>
+                                </tr>
+                                <tr>
+									<td>E-mail:<span t-field="doc.customer_id.email" /></td>
+									<td>行動電話:<span t-field="doc.customer_id.mobile" /></td>
+									<td>有效期限:一個月</td>
+                                </tr>
+                            </tbody>
+                        </table>	
+						<div>
+							<div class="row" style="border-bottom: 2px solid black;  margin-bottom:10px;">
+								<div class="col text-center">項</div>
+								<div class="col text-center">製作内容</div>
+								<div class="col text-center">尺寸cm</div>
+								<div class="col text-center">才數</div>
+								<div class="col text-center">數量</div>
+								<div class="col text-center">單價</div>
+								<div class="col text-center">其它</div>
+								<div class="col text-center">小計</div>
+							</div>	
+							<t t-foreach="doc.product_ids" t-as="order">
+								<div class="row" style="border-bottom: 1px solid lightgray; margin-bottom: 10px;">
+									<div class="col text-center" style="flex: 1;">
+										<span t-field="order.sequence" />	
+									</div>
+									<div class="col text-center" style="flex: 1;">
+										<span t-field="order.project_product_name" />	
+									</div>
+									<div class="col text-center" style="flex: 1;">
+										<span t-field="order.product_width" />x<span t-field="order.product_height" />	
+									</div>
+									<div class="col text-center" style="flex: 1;">
+										<span t-field="order.total_units" />
+									</div>
+									<div class="col text-center" style="flex: 1;">
+										<span t-field="order.quantity" />
+									</div>
+									<div class="col text-center" style="flex: 1;">
+										<span t-field="order.units_price" />
+									</div>
+									<div class="col text-center" style="flex: 1;">
+										<span t-esc="order.total_make_price + order.peijian_price"/>
+									</div>
+									<div class="col text-center" style="flex: 1;">
+										<span t-field="order.price" />
+									</div>
+								</div>
+							</t>
+							<div class="row" style="border-bottom: 1px solid lightgray; margin-bottom: 10px;">
+									<div class="col text-center" style="flex: 1;"></div><div class="col text-center" style="flex: 1;"></div><div class="col text-center" style="flex: 1;"></div><div class="col text-center" style="flex: 1;"></div>
+									<div class="col text-center" style="flex: 1;"></div><div class="col text-center" style="flex: 1;"></div>
+									<div class="col text-center" style="flex: 1;">
+										小計
+									</div>
+									<div class="col text-center" style="flex: 1;">
+										<span t-field="doc.record_price_and_construction_charge" />
+									</div>
+							</div>
+							<div class="row" style="border-bottom: 1px solid lightgray; margin-bottom: 10px;">
+									<div class="col text-center" style="flex: 1;"></div><div class="col text-center" style="flex: 1;"></div><div class="col text-center" style="flex: 1;"></div><div class="col text-center" style="flex: 1;"></div>
+									<div class="col text-center" style="flex: 1;"></div><div class="col text-center" style="flex: 1;"></div>
+									<div class="col text-center" style="flex: 1;">
+										稅金
+									</div>
+									<div class="col text-center" style="flex: 1;">
+										<span t-field="doc.tax_of_price" />
+									</div>
+							</div>
+							<div class="row" style="border-bottom: 1px solid lightgray; margin-bottom: 10px;">
+									<div class="col text-center" style="flex: 1;"></div><div class="col text-center" style="flex: 1;"></div><div class="col text-center" style="flex: 1;"></div><div class="col text-center" style="flex: 1;"></div>
+									<div class="col text-center" style="flex: 1;"></div><div class="col text-center" style="flex: 1;"></div>
+									<div class="col text-center" style="flex: 1;">
+										合計
+									</div>
+									<div class="col text-center" style="flex: 1;">
+										<span t-field="doc.total_price_added_tax" />
+									</div>
+							</div>
+						</div>
+						<table class="table table-condensed">
+                            <tbody>
+                                <tr>
+                                    <td rowspan="4" width="10%" >備註</td>
+                                    <td colspan="3">1.以上報價含稅。</td>
+                                </tr>
+                                <tr>
+                                    <td colspan="3">2.客戶自備印刷檔案</td>
+                                </tr>
+                                <tr>
+                                    <td colspan="3">3.確認訂單後製作時間21~30天,不含假日</td>
+                                </tr>
+                                <tr>
+                                    <td colspan="3">4.下單後請先支付款項</td>
+                                </tr>
+                                <!-- <tr> -->
+                                    <!-- <td colspan="4" class="col text-center" style="background-color:gray">匯款銀行:合作金庫 南土城分行006 戶名:科影數位影像(股)公司. 帳號:3605717004868</td> -->
+                                <!-- </tr> -->
+								<tr>
+									<td width="10%">業務</td>
+									<td width="40%"></td>
+									<td width="10%">聯絡電話</td>
+									<td width="40%"></td>
+								</tr>
+								<tr>
+									<td width="50%" colspan="2">主管確認簽章</td>
+									<td width="50%" colspan="2">客戶確認簽章</td>
+								</tr>
+                            </tbody>
+                        </table>	
+					</t>
+				</t>
+			</div>
+            <!-- <t t-foreach="docs" t-as="doc"> -->
+				<!-- <t t-call="dtsc.external_layout_coin"> -->
+					<!-- <div class="company-header"> -->
+                    <!-- <img t-if="company.logo" t-att-src="'data:image/png;base64,%s' % company.logo.decode('utf-8')" class="company-logo" /> -->
+                    <!-- <div class="company-name"> -->
+                        <!-- <span t-field="company.name" /> -->
+                    <!-- </div> -->
+                <!-- </div> -->
+				<!-- </t> -->
+			<!-- </t> -->
+		</t>
+	</template>
+
+
+	<record id="action_report_crm_checkout" model="ir.actions.report">
+        <field name="name">報價單</field>
+        <field name="model">dtsc.checkout</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">dtsc.report_crm_checkout_template</field>
+        <field name="report_file">dtsc.report_crm_checkout_template</field>
+        <field name="binding_model_id" ref="model_dtsc_checkout"/>
+        <field name="binding_type">report</field>
+    </record>
+</odoo>

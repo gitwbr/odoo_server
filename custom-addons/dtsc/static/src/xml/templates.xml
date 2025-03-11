@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <template id="my_js_assets">
+        <script type="text/javascript" src="/dtsc/static/src/js/checkout.js"/>
+    </template>
+</odoo>

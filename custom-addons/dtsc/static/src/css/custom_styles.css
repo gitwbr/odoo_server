@@ -1,0 +1,139 @@
+/* 调整表格栏位宽度 */
+.table th, .table td {
+    text-align: center;
+    vertical-align: top;
+}
+
+/* 日期栏位 */
+.custom-order-table th:nth-child(1), .custom-order-table td:nth-child(1) {
+    width: 15%; /* 为日期栏位分配 12% 的宽度 */
+}
+
+/* 訂單流水號栏位 */
+.custom-order-table th:nth-child(2), .custom-order-table td:nth-child(2) {
+    width: 15%; /* 为訂單流水號分配 15% 的宽度 */
+}
+
+/* 訂單內容栏位 */
+.custom-order-table th:nth-child(3), .custom-order-table td:nth-child(3) {
+    width: 20%; /* 为訂單內容分配 20% 的宽度 */
+}
+
+/* 金額栏位 */
+.custom-order-table th:nth-child(4), .custom-order-table td:nth-child(4) {
+    width: 8%; /* 为金額分配 8% 的宽度 */
+}
+
+/* 訂單狀態栏位 
+.custom-order-table th:nth-child(5), .custom-order-table td:nth-child(5) {
+    width: 10%; 
+}*/
+
+/* 進度表栏位 */
+.custom-order-table th:nth-child(5), .custom-order-table td:nth-child(5) {
+    width: 22%; /* 为進度表分配 25% 的宽度，以适应进度条显示 */
+}
+
+/* 取消訂單原因栏位 */
+.custom-order-table th:nth-child(6), .custom-order-table td:nth-child(6) {
+    width: 20%; /* 为取消訂單原因分配 10% 的宽度 */
+}
+
+/* 进度条样式 */
+.progress {
+    height: 20px;
+    display: flex;
+    border-radius: 5px;
+    overflow: hidden;
+    position: relative;
+    background-color: #e9ecef;
+}
+
+/* 进度条段样式 */
+.progress-bar {
+    line-height: 20px;
+    color: #fff;
+    text-align: center;
+    flex: 1;
+    transition: width 0.4s ease;
+}
+
+
+/* 状态颜色样式 */
+.progress-bar-warning {
+    background-color: #ffc107;
+}
+
+.progress-bar-info {
+    /* background-color: #17a2b8; */
+    background-color: #ffc107;
+}
+
+.progress-bar-success {
+   /*  background-color: #28a745; */
+    background-color: #ffc107;
+}
+
+.progress-bar-secondary {
+    background-color: #e9ecef;
+}
+
+.bg-secondary {
+    background-color: #e9ecef !important;
+}
+
+.progress-bar-cancel {
+    background-color: #e9ecef;
+    width: 100%;
+}
+
+select.form-control {
+    #width: auto !important;
+    width: 100%;
+}
+
+
+tr.tr_product_attribute_class th:nth-child(1),
+tr.tr_product_attribute_class td:nth-child(1) {
+    width: 15%; 
+}
+
+tr.tr_product_attribute_class th:nth-child(2),
+tr.tr_product_attribute_class td:nth-child(2) {
+    width: 15%; 
+}
+
+tr.tr_product_attribute_class th:nth-child(3),
+tr.tr_product_attribute_class td:nth-child(3) {
+    width: 20%; 
+}
+
+tr.tr_product_attribute_class th:nth-child(4),
+tr.tr_product_attribute_class td:nth-child(4) {
+    width: 10%; 
+}
+
+tr.tr_product_attribute_class th:nth-child(5),
+tr.tr_product_attribute_class td:nth-child(5) {
+    width: 10%; 
+}
+
+/* tr.tr_product_attribute_class th:nth-child(8),
+tr.tr_product_attribute_class td:nth-child(8) {
+    width: 40%; 
+} */
+
+tr.tr_product_attribute_class th:nth-child(9),
+tr.tr_product_attribute_class td:nth-child(9) {
+    width: 30%; 
+}
+
+.custom-file-label {
+	font-size:15px;
+}
+
+.formula_calculation {
+	text-align: center;
+	width: 80px;	
+	display: inline-block;
+}

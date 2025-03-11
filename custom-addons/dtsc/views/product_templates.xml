@@ -1,0 +1,158 @@
+<odoo>
+	<record id="product_tree_form_view_inherit" model="ir.ui.view">
+		<field name="name">product.tree.form.view.inherit</field>
+		<field name="model">product.template</field>
+		<field name="inherit_id" ref="product.product_template_search_view"/>
+		<field name="arch" type="xml">
+			<xpath expr="//search" position="inside">
+				<searchpanel>
+					<field name="categ_id" select="one"/>
+				</searchpanel>
+			</xpath> 
+		</field>
+	</record>
+
+	<record id="dtsc_product_tree_search_view_inherit" model="ir.ui.view">
+		<field name="name">product.tree.search.view.inherit</field>
+		<field name="model">product.template</field>
+		<field name="inherit_id" ref="product.product_template_tree_view"/>
+		<field name="arch" type="xml">
+			<xpath expr="//field[@name='list_price']" position="attributes">
+				<attribute name="invisible">1</attribute>	
+			</xpath>
+			<xpath expr="//field[@name='product_tag_ids']" position="attributes">
+				<attribute name="invisible">1</attribute>	
+			</xpath>
+			<xpath expr="//field[@name='default_code']" position="attributes">
+				<attribute name="invisible">1</attribute>	
+			</xpath>
+			<xpath expr="//field[@name='responsible_id']" position="attributes">
+				<attribute name="invisible">1</attribute>	
+			</xpath>
+			<xpath expr="//field[@name='standard_price']" position="attributes">
+				<attribute name="invisible">1</attribute>	
+			</xpath>
+			<xpath expr="//field[@name='qty_available']" position="attributes">
+				<attribute name="invisible">1</attribute>	
+			</xpath>
+			<xpath expr="//field[@name='virtual_available']" position="attributes">
+				<attribute name="invisible">1</attribute>	
+			</xpath>
+			<xpath expr="//field[@name='uom_id']" position="attributes">
+				<attribute name="invisible">1</attribute>	
+			</xpath>
+		</field>
+	</record>
+
+	<record id="product_template_form_view_inherit" model="ir.ui.view">
+		<field name="name">product.template.form.view.inherit</field>
+		<field name="model">product.template</field>
+		<field name="inherit_id" ref="product.product_template_only_form_view"/>
+		<field name="arch" type="xml">
+			<field name="value_ids" position="attributes">
+                <attribute name="options">{'no_create': True, 'no_create_edit': True}</attribute>
+            </field>
+			<xpath expr="//field[@name='invoice_policy']" position="attributes">
+				<attribute name="invisible">1</attribute>	
+			</xpath>
+			
+			<xpath expr="//field[@name='categ_id']" position="attributes">
+				<attribute name="invisible">1</attribute>	
+			</xpath>
+			
+			<xpath expr="//field[@name='attribute_id']" position="attributes">
+				<attribute name="options">{'no_create': True, 'no_create_edit': True}</attribute>	
+			</xpath>
+			
+			<xpath expr="//field[@name='company_id']" position="attributes">
+				<attribute name="invisible">1</attribute>	
+			</xpath>
+		
+			<xpath expr="//field[@name='detailed_type']" position="after">
+				<field name="categ_id" invisible="0"/>		
+			</xpath>
+			<!--浮動價格-->
+			<xpath expr="//field[@name='default_code']" position="before">
+				<field name="price_fudong"/>		
+			</xpath>
+			
+			<xpath expr="//field[@name='product_tooltip']" position="attributes">
+				<attribute name="invisible">1</attribute>	
+			</xpath>
+			<xpath expr="//field[@name='attribute_id']" position="before">
+                <field name="sequence" widget="handle"/>
+            </xpath>
+					
+			<xpath expr="//field[@name='categ_id']" position="after">
+				<field name="unit_conversion_id"/>
+				<field name="make_ori_product_id" options="{'no_create': True, 'no_create_edit': True}"/>
+				<!-- <field name="product_liucheng"/> -->
+			</xpath>
+			
+			<xpath expr="//field[@name='uom_id']" position="replace"/>
+			<xpath expr="//field[@name='uom_po_id']" position="replace"/>
+			
+			<xpath expr="//field[@name='taxes_id']" position="after">
+				<field name="uom_id" options="{'no_create': True, 'no_create_edit': True}"/>
+				<field name="uom_po_id" options="{'no_create': True, 'no_create_edit': True}"/>
+			</xpath>
+			
+			<xpath expr="//notebook/page/field[@name='attribute_line_ids']" position="after">
+				<group>
+					<field name="is_add_mode"/>
+					<button name="action_open_make_type_selection" type="object" string="加入" class="oe_highlight w100" attrs="{'invisible':[('is_add_mode','=',False)]}"/>
+				</group>
+				<field name="make_type_ids" widget="one2many" attrs="{'invisible':[('is_add_mode','=',False)]}">
+					<tree string="後加工屬性" create="false">
+						<field name="sequence" widget="handle"/>
+						<field name="make_type_id"  options="{'no_create': True, 'no_create_edit': True}"/>
+					</tree>
+				</field>
+			</xpath>
+			
+		</field>
+	</record> 
+	<record id="view_dtsc_make_type_selection_form" model="ir.ui.view">
+		<field name="name">dtsc.maketypeselection.form</field>
+		<field name="model">dtsc.maketypeselection</field>
+		<field name="arch" type="xml">
+			<form string="選擇後加工屬性">
+				<group>
+					<field name="product_id" readonly="1"/>
+					<field name="make_type_existing_ids" invisible="1"/>
+					<field name="make_type_ids" options="{'no_create': True, 'no_create_edit': True}"  widget="many2many_tags" domain="[('id', 'not in', make_type_existing_ids)]"/>
+				</group>
+				<footer>
+					<button name="action_confirm" type="object" string="確認" class="oe_highlight"/>
+					<button string="取消" class="btn-secondary" special="cancel"/>
+				</footer>
+			</form>
+		</field>
+	</record> 
+	<record id="view_move_line_tree_inherit" model="ir.ui.view">
+        <field name="name">stock.view_move_line_tree.inherit</field>
+        <field name="model">stock.move.line</field>
+        <field name="inherit_id" ref="stock.view_move_line_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='location_id']" position="before">
+                <field name="origin"/>
+            </xpath>
+            <!-- 使用 xpath 移除字段 -->
+            <xpath expr="//field[@name='location_id']" position="replace"/>
+            <xpath expr="//field[@name='location_dest_id']" position="replace"/>
+            
+        </field>
+    </record>
+	
+	<!-- <record id="sale_order_view_inherit" model="ir.ui.view"> -->
+		<!-- <field name="name">sale.order.form.view.inherit</field> -->
+		<!-- <field name="model">sale.order</field> -->
+		<!-- <field name="inherit_id" ref="sale.view_order_form"/> -->
+		<!-- <field name="arch" type="xml"> -->
+			<!-- <xpath expr="//field[@name='partner_id']" position="after"> -->
+				<!-- <field name="total_price"/> -->
+				
+			<!-- </xpath> -->
+		<!-- </field> -->
+	<!-- </record> -->
+</odoo>

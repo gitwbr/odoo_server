@@ -1,0 +1,341 @@
+<odoo>
+	<record id="view_move_tree_custom" model="ir.ui.view">
+		<field name="name">account.move.tree.custom</field>
+		<field name="model">account.move</field>
+		<field name="inherit_id" ref="account.view_invoice_tree"/>
+		<field name="arch" type="xml">
+			<!-- <xpath expr="//field[@name='name']" position="after"> -->
+				<!-- <field name="yw" readonly="1"/> -->
+			<!-- </xpath> -->
+			<xpath expr="//field[@name='amount_untaxed_signed']" position="after">
+				<field name="sale_price" width="140px" sum="Total"/>
+				<field name="tax_price" width="140px" sum="Total"/>
+				<field name="total_price" width="140px" sum="Total" />
+			</xpath>
+			<xpath expr="//field[@name='name']" position="after">
+				<field name="pay_type"/>
+				<field name="pay_date_due" invisible="context.get('default_move_type') not in ('in_invoice', 'in_refund','in_receipt')"/>
+				<field name="pay_mode" />
+				<!-- <field name="move_type" /> -->
+			</xpath>
+			<xpath expr="//field[@name='amount_untaxed_signed']" position="attributes">
+				<attribute name="invisible">1</attribute>
+			</xpath>
+			<xpath expr="//field[@name='amount_total_signed']" position="attributes">
+				<attribute name="invisible">1</attribute>
+			</xpath>
+			<xpath expr="//field[@name='amount_total_in_currency_signed']" position="attributes">
+				<attribute name="invisible">1</attribute>
+			</xpath>
+			<xpath expr="//field[@name='invoice_partner_display_name'][1]" position="attributes">
+				<attribute name="invisible">1</attribute>
+			</xpath>
+			<xpath expr="//field[@name='invoice_partner_display_name'][2]" position="attributes">
+				<attribute name="invisible">1</attribute>
+			</xpath>
+			<xpath expr="//field[@name='payment_state']" position="attributes">
+				<attribute name="invisible">1</attribute>
+			</xpath>
+			<xpath expr="//field[@name='state']" position="attributes">
+				<attribute name="invisible">1</attribute>
+			</xpath>
+		</field>
+	</record>
+
+	<record id="view_move_form_custom" model="ir.ui.view">
+		<field name="name">account.move.form.custom</field>
+		<field name="model">account.move</field>
+		<field name="inherit_id" ref="account.view_move_form"/>
+		<field name="arch" type="xml">
+			
+			<xpath expr="//field[@name='partner_bank_id']" position="after">
+				<field name="pay_type"/>
+				<field name="pay_date_due"  attrs="{'invisible':[('move_type','=','out_invoice')]}"/>
+				<field name="pay_mode" />
+			</xpath>
+			
+			
+			<xpath expr="//field[@name='partner_bank_id']" position="attributes">
+				<attribute name="invisible">1</attribute>
+			</xpath>
+			<xpath expr="//label[@for='invoice_date_due']" position="attributes">
+				<attribute name="invisible">1</attribute>
+			</xpath>
+			<xpath expr="//label[@for='invoice_payment_term_id']" position="attributes">
+				<attribute name="invisible">1</attribute>
+			</xpath>
+			<xpath expr="//span[@class='o_form_label mx-3 oe_edit_only']" position="attributes">
+				<attribute name="invisible">1</attribute>
+			</xpath>
+
+			<xpath expr="//field[@name='invoice_date_due']" position="attributes">
+				<attribute name="invisible">1</attribute>
+			</xpath>
+		
+			<xpath expr="//field[@name='invoice_payment_term_id']" position="attributes">
+				<attribute name="invisible">1</attribute>
+			</xpath>
+		
+			<xpath expr="//field[@name='invoice_line_ids']/tree/field[@name='name']" position="after">
+				<field name="ys_name" attrs="{'column_invisible':[('parent.move_type','=','in_invoice')]}"/>
+				<field name="in_out_id"  attrs="{'column_invisible':[('parent.move_type','=','in_invoice')]}"/>
+				<field name="size_value"  attrs="{'column_invisible':[('parent.move_type','=','in_invoice')]}" />
+				<field name="comment"  attrs="{'column_invisible':[('parent.move_type','=','in_invoice')]}"/>
+				<field name="quantity_show"  attrs="{'column_invisible':[('parent.move_type','=','in_invoice')]}"/>
+				<field name="price_unit_show"  attrs="{'column_invisible':[('parent.move_type','=','in_invoice')]}"/>
+				<field name="make_price"  attrs="{'column_invisible':[('parent.move_type','=','in_invoice')]}"/>
+				<field name="account_move_change_id" options="{'no_create': True, 'no_create_edit': True}" optional="hide" domain="[('partner_id','=',partner_id)]" attrs="{'column_invisible':[('parent.move_type','=','in_invoice')]}"/>
+				<button name="action_confirm_transfer" string="確認" confirm="確定要轉移該項次嗎？" type="object" class="oe_highlight" attrs="{'invisible': [('account_move_change_id', '=', False)]}"/>
+				<button name="action_cancel_transfer" string="清空" type="object" class="oe_highlight" attrs="{'invisible': [('account_move_change_id', '=', False)]}"/>
+			</xpath>
+			<xpath expr="//field[@name='invoice_line_ids']/tree/field[@name='tax_ids']" position="before">
+				<field name="zhekou"  attrs="{'column_invisible':[('parent.move_type','=','in_invoice')]}"/>
+			</xpath>
+			<xpath expr="//field[@name='invoice_line_ids']/tree/field[@name='name']" position="attributes">
+				<attribute name="attrs">{'column_invisible':[('parent.move_type','=','out_invoice')]}</attribute>
+			</xpath>
+			<xpath expr="//field[@name='invoice_line_ids']/tree/field[@name='quantity']" position="attributes">
+				<attribute name="attrs">{'column_invisible':[('parent.move_type','=','out_invoice')]}</attribute>
+			</xpath>
+			<xpath expr="//field[@name='invoice_line_ids']/tree/field[@name='price_unit']" position="attributes">
+				<attribute name="attrs">{'column_invisible':[('parent.move_type','=','out_invoice')]}</attribute>
+			</xpath>
+			<xpath expr="//field[@name='invoice_line_ids']/tree/field[@name='product_uom_id']" position="attributes">
+				<attribute name="attrs">{'column_invisible':[('parent.move_type','=','out_invoice')]}</attribute>
+			</xpath>
+			<xpath expr="//field[@name='invoice_line_ids']/tree/field[@name='ys_name']" position="attributes">
+				<attribute name="attrs">{'column_invisible':[('parent.move_type','=','in_invoice')]}</attribute>
+			</xpath>
+			<xpath expr="//field[@name='partner_shipping_id']" position="after">
+				<field name="custom_invoice_form"  attrs="{'invisible':[('move_type','=','in_invoice')]}" readonly="1"/>				
+				<field name="supp_invoice_form"  attrs="{'invisible':[('move_type','=','out_invoice')]}" readonly="1"/>
+				<field name="vat_num" attrs="{'invisible':[('move_type','=','out_invoice')]}"/> 
+				<field name="comment_infu"  attrs="{'invisible':[('move_type','=','out_invoice')]}" />
+				<field name="supp_bank_id"  attrs="{'invisible':[('move_type','=','out_invoice')]}" options="{'no_create': True, 'no_create_edit': True}" domain="[('partner_id', '=', partner_id)]"/>
+			</xpath>
+
+			<xpath expr="//label[@for='ref']" position="attributes">
+				<attribute name="invisible">1</attribute>
+			</xpath>
+			<xpath expr="//field[@name='ref'][1]" position="attributes">
+				<attribute name="invisible">1</attribute>
+			</xpath>
+			<xpath expr="//field[@name='ref'][2]" position="attributes">
+				<attribute name="invisible">1</attribute>
+			</xpath>
+			<xpath expr="//label[@for='invoice_vendor_bill_id']" position="attributes">
+				<attribute name="invisible">1</attribute>
+			</xpath> 
+			<xpath expr="//field[@name='invoice_vendor_bill_id']" position="attributes">
+				<attribute name="invisible">1</attribute>
+			</xpath> 
+			<!-- <xpath expr="//field[@name='ref'][3]" position="attributes"> -->
+				<!-- <attribute name="invisible">1</attribute> -->
+			<!-- </xpath> -->
+			<xpath expr="//field[@name='purchase_vendor_bill_id']" position="attributes">
+				<attribute name="invisible">1</attribute>
+			</xpath>
+            <xpath expr="//group[@class='oe_subtotal_footer oe_right']" position="replace">
+                <group colspan="4" class="oe_subtotal_footer oe_right">
+                    <!-- Hide tax totals -->
+                    <field name="tax_totals" invisible="1"/>
+                    <!-- Hide invoice payments -->
+                    <field name="invoice_payments_widget" invisible="1"/>
+                    <!-- Hide amount residual -->
+                    <field name="amount_residual" invisible="1"/>
+                    <field name="sale_price"/>
+                    <!-- Hide invoice payments -->
+                    <field name="tax_price"/>
+                    <!-- Hide amount residual -->
+                    <field name="total_price"/>
+                </group>
+            </xpath>
+
+		</field>
+	</record>
+	<record id="view_move_form_custom_search" model="ir.ui.view">
+		<field name="name">account.move.form.custom</field>
+		<field name="model">account.move</field>
+		<field name="inherit_id" ref="account.view_invoice_tree"/>
+		<field name="arch" type="xml">
+			<xpath expr="//field[@name='invoice_date_due']" position="attributes">
+				<attribute name="invisible">1</attribute>
+			</xpath>
+			<xpath expr="//field[@name='activity_ids']" position="attributes">
+				<attribute name="invisible">1</attribute>
+			</xpath>
+			<!-- <xpath expr="//field[@name='name']" position="after"> -->
+				<!-- <field name="custom_id"/> -->
+			<!-- </xpath> -->
+			
+		</field>
+	</record>
+	
+	<record id="view_account_move_search_inherit" model="ir.ui.view">
+		<field name="name">account.move.search.inherit</field>
+		<field name="model">account.move</field> <!-- 替换为您的模型名 -->
+		<field name="inherit_id" ref="account.view_account_invoice_filter"/> <!-- 替换为现有视图的外部ID -->
+		<field name="arch" type="xml">
+		
+			
+			<xpath expr="//filter[@name='due_date']" position="attributes">
+				<attribute name="invisible">1</attribute>
+			</xpath>
+			<search>
+				<searchpanel>
+                    <field name="report_year" string="年"  select="multi"/>
+                    <field name="report_month" string="月" context="{'group_by': 'report_year'}" select="multi"/>
+
+                </searchpanel>
+				<filter string="Date Range" name="date_range" date="invoice_date"/>
+			</search>
+		</field>
+	</record>
+	<!-- <record id="action_printexcel_delivery_list" model="ir.actions.server">
+		<field name="name">轉Excel</field>
+		<field name="model_id" ref="account.model_account_move"/>
+		<field name="state">code</field>
+		<field name="code">
+			action = env['account.move'].with_context(env.context).action_printexcel_account_move()
+		</field>
+		<field name="binding_model_id" ref="account.model_account_move"/>
+		<field name="binding_type">action</field>
+		<field name="binding_view_types">list</field>
+        <field name="groups_id" eval="[(4, ref('dtsc.group_dtsc_gly'))]"/>
+	</record> -->
+	
+ <record id="view_dtsc_billdate_form" model="ir.ui.view">
+        <field name="name">dtsc.billdate.form</field>
+        <field name="model">dtsc.billdate</field>
+        <field name="arch" type="xml">
+            <form string="請確認帳單日期">
+                <group>
+                    <field name="selected_date"/>
+                </group>
+                <footer>
+                    <button string="確認" type="object" name="action_confirm" class="btn-primary"/>
+                    <button string="取消" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+	 <record id="view_my_module_config_settings" model="ir.ui.view">
+            <field name="model">res.config.settings</field>
+            <field name="inherit_id" ref="base.res_config_settings_view_form"/>
+            <field name="arch" type="xml">
+                <xpath expr="//div[@class='settings']" position="inside">
+                    <div class="app_settings_block" data-key="my_module_settings" string="大圖訂單設定">
+                        <h2>大圖訂單設定</h2>
+                        <div class="row mt16 o_settings_container">
+                            <div class="col-12 col-lg-6 o_setting_box">
+								<label for="invoice_due_date" string="帳單日："/>
+                                <field name="invoice_due_date"/>
+							</div>
+                            <div class="col-12 col-lg-6 o_setting_box">	
+								<label for="ftp_server" string="FTP地址："/>
+                                <field name="ftp_server"/>
+							</div>	
+							
+                            <div class="col-12 col-lg-6 o_setting_box">	
+								<label for="ftp_user" string="FTP用戶名："/>
+                                <field name="ftp_user"/>
+							</div>	
+							
+                            <div class="col-12 col-lg-6 o_setting_box">	
+								<label for="ftp_password" string="FTP密碼："/>
+                                <field name="ftp_password"/>
+							</div>	
+							
+                            <div class="col-12 col-lg-6 o_setting_box">	
+								<label for="ftp_target_folder" string="FTP目標文件夾："/>
+                                <field name="ftp_target_folder"/>
+							</div>	
+							
+                            <div class="col-12 col-lg-6 o_setting_box">	
+								<label for="ftp_local_path" string="FTP本地路徑："/>
+                                <field name="ftp_local_path"/>
+                            </div>
+							
+                            <div class="col-12 col-lg-6 o_setting_box">	
+								<label for="is_open_makein_qrcode" string="是否開啓工單掃碼流程："/>
+                                <field name="is_open_makein_qrcode"/>
+                            </div>
+							
+                            <div class="col-12 col-lg-6 o_setting_box">	
+								<label for="is_open_full_checkoutorder" string="是否打開高階訂單流程："/>
+                                <field name="is_open_full_checkoutorder"/>
+                            </div>
+                        </div>
+                    </div>
+                </xpath>
+            </field>
+        </record>
+	
+	
+	   <!-- <record id="view_dtsc_config_settings" model="ir.ui.view"> -->
+            <!-- <field name="name">dtsc.config.settings.form</field> -->
+            <!-- <field name="model">dtsc.config.settings</field> -->
+            <!-- <field name="inherit_id" ref="base.res_config_settings_view_form"/> -->
+            <!-- <field name="arch" type="xml"> -->
+                <!-- <xpath expr="//div[hasclass('settings')]" position="inside"> -->
+                    <!-- <div class="app_settings_block" data-string="My Module Settings"> -->
+                        <!-- <h2>My Module</h2> -->
+                        <!-- <div class="row mt16 o_settings_container"> -->
+                            <!-- <div class="col-12 col-lg-6 o_setting_box" id="my_module_settings"> -->
+                                <!-- <div class="o_setting_left_pane"> -->
+                                    <!-- <field name="invoice_due_date"/> -->
+                                <!-- </div> -->
+                                <!-- <div class="o_setting_right_pane"> -->
+                                    <!-- <label for="invoice_due_date"/> -->
+                                <!-- </div> -->
+                            <!-- </div> -->
+                        <!-- </div> -->
+                    <!-- </div> -->
+                <!-- </xpath> -->
+            <!-- </field> -->
+        <!-- </record> -->
+		
+	    <!-- <record id="view_dtsc_config_settings" model="ir.ui.view"> -->
+            <!-- <field name="name">dtsc.config.settings.view</field> -->
+            <!-- <field name="model">res.config.settings</field> -->
+            <!-- <field name="arch" type="xml"> -->
+                <!-- <form> -->
+                    <!-- <header> -->
+                        <!-- <button string="Save" type="object" name="execute" class="oe_highlight"/> -->
+                        <!-- <button string="Cancel" type="object" name="cancel" class="oe_link"/> -->
+                    <!-- </header> -->
+                    <!-- <sheet> -->
+                        <!-- <div class="app_settings_block" id="my_module_settings"> -->
+                            <!-- <h2>大圖訂單設定</h2> -->
+                            <!-- <div class="row mt16 o_settings_container"> -->
+                                <!-- <div class="col-12 col-lg-6 o_setting_box"> -->
+                                    <!-- <div class="o_setting_left_pane"> -->
+                                        <!-- <field name="invoice_due_date"/> -->
+                                    <!-- </div> -->
+                                <!-- </div> -->
+                            <!-- </div> -->
+                        <!-- </div> -->
+                    <!-- </sheet> -->
+                <!-- </form> -->
+            <!-- </field> -->
+        <!-- </record> -->
+		
+        <!-- <record id="action_my_module_settings" model="ir.actions.act_window"> -->
+            <!-- <field name="name">大圖訂單設定</field> -->
+            <!-- <field name="type">ir.actions.act_window</field> -->
+            <!-- <field name="res_model">res.config.settings</field> -->
+            <!-- <field name="view_mode">form</field> -->
+            <!-- <field name="target">inline</field> -->
+            <!-- <field name="view_id" ref="view_dtsc_config_settings"/> -->
+        <!-- </record> -->
+        <!-- <menuitem id="menu_my_module_settings" -->
+                  <!-- name="大圖設定" -->
+                  <!-- parent="base.menu_administration" -->
+                  <!-- action="action_my_module_settings" -->
+                  <!-- sequence="10"/> -->
+                  
+        
+</odoo>
+
+
+     

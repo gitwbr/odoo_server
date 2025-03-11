@@ -1,0 +1,631 @@
+<odoo>
+	<!-- <record id="action_vat_to_menu" model="ir.actions.server">
+		<field name="name">同步賬號</field>
+		<field name="model_id" ref="model_dtsc_vatlogin"/>
+		<field name="state">code</field>
+		<field name="code">
+			action = env['dtsc.vatlogin'].with_context(env.context).asyn_vatlogin()
+		</field>
+		<field name="binding_model_id" ref="model_dtsc_vatlogin"/>
+		<field name="binding_type">action</field>
+		<field name="binding_view_types">list</field>
+		
+        <field name="groups_id" eval="[(4, ref('dtsc.group_dtsc_mg'))]"/>
+	</record> -->
+
+
+
+	<record id="view_vatlogin_tree" model="ir.ui.view">
+		<field name="name">dtsc.vatlogin.tree</field>
+		<field name="model">dtsc.vatlogin</field>
+		<field name="arch" type="xml">
+			<tree>				
+				<field name="partner_id"/>
+				<field name="vat"/>
+				<field name="vat_password"/>
+
+			</tree>
+		</field>	
+	</record>
+	
+	<record id="report_worktime_treee" model="ir.ui.view">
+		<field name="name">dtsc.worktime.tree</field>
+		<field name="model">dtsc.worktime</field>
+		<field name="arch" type="xml">
+			<tree>	 			
+				<field name="name"  readonly="1" />
+				<field name="start_time" readonly="1"  />
+				<field name="end_time" readonly="1"  />
+				<field name="seqname" readonly="1"  />
+				<field name="work_type" readonly="1"  />
+				<field name="in_out_type" readonly="1"  />
+				<field name="cai_done" readonly="1" sum="才數" />
+			</tree>
+		</field>	
+	</record>
+	<record id="search_worktime" model="ir.ui.view">
+		<field name="name">dtsc.worktime.search</field>
+		<field name="model">dtsc.worktime</field>
+		<field name="arch" type="xml">
+			<search>
+				<searchpanel>
+					<field name="report_year" string="年"  select="multi"/>
+					<field name="report_month" string="月" context="{'group_by': 'report_year'}" select="multi"/>
+
+				</searchpanel>
+				<filter string="結束時間" name="group_by_end_time" domain="[]" context="{'group_by': 'end_time'}"/>	
+				<filter string="工種類型" name="group_by_in_out_type" domain="[]" context="{'group_by': 'in_out_type'}"/>	
+				<filter string="員工姓名" name="group_by_name" domain="[]" context="{'group_by': 'name'}"/>	
+			</search>
+		</field>		
+	</record>
+	<record id="report_workqrcode_treee" model="ir.ui.view">
+		<field name="name">dtsc.workqrcode.report.tree</field>
+		<field name="model">dtsc.workqrcode</field>
+		<field name="arch" type="xml">
+			<tree>	 			
+				<field name="name"  readonly="1"  />
+				<!-- <field name="gonghao"  readonly="1"  /> -->
+				<!-- <field name="is_iq"  readonly="1"  /> -->
+				<!-- <field name="is_cx"  readonly="1"  /> -->
+				<!-- <field name="is_sc"  readonly="1"  /> -->
+				<!-- <field name="is_hz"  readonly="1"  /> -->
+				<!-- <field name="is_pg"  readonly="1"  /> -->
+				<!-- <field name="is_cz"  readonly="1"  /> -->
+				<field name="bar_image"  widget="image" readonly="1"  />
+				<field name="line_user_id" />
+
+			</tree>
+		</field>	
+	</record>
+
+	<template id="order_not_found" name="Order Details">
+		<t t-call="website.layout">
+			<div class="container">
+				您所提供的链接有误！请联系科影客服处理！
+			</div>
+		</t>
+	</template>		
+	
+
+	
+	
+	<template id="order_details" name="訂單詳情">
+		<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet"/>
+		<div class="container" style="max-width: 800px; margin: 50px auto; border: 3px solid #007bff; border-radius: 10px; padding: 20px; background-color: #f9f9f9;">
+			
+			 <!-- 返回按钮 -->
+			<div style="position: absolute; top: 20px; left: 20px;">
+				<a href="/order/list" style="text-decoration: none; display: flex; align-items: center; color: #007bff; font-size: 16px;">
+					<i class="fa fa-arrow-left" style="margin-right: 8px;"></i> 返回
+				</a>
+			</div>
+			
+			<h1 style="text-align: center; color: #007bff; font-family: Arial, sans-serif; margin-bottom: 20px;">訂單詳情</h1>
+			<p style="font-size: 16px; color: #333; margin-bottom: 10px;">訂單編號: <strong style="color: #007bff;"><t t-esc="order.name" /></strong></p>
+			<p style="font-size: 16px; color: #333; margin-bottom: 10px;">客戶: <strong style="color: #007bff;"><t t-esc="order.customer_id.name" />(<t t-esc="order.customer_bianhao" />)</strong></p>
+			<p style="font-size: 16px; color: #333; margin-bottom: 20px;">訂單成立日期: <strong style="color: #007bff;"><span t-field="order.create_date" t-options='{"format": "yyyy-MM-dd"}'/></strong></p>
+			<p style="font-size: 16px; color: #333; margin-bottom: 20px;">訂單完成日期: <strong style="color: #007bff;"><span t-field="order.estimated_date" t-options='{"format": "yyyy-MM-dd"}'/></strong></p>
+
+			<table class="table table-bordered" style="width: 100%; border-collapse: collapse; font-family: Arial, sans-serif;">
+				<thead style="background-color: #007bff; color: white;">
+					<tr>
+						<th style="text-align: center; padding: 10px; width: 5%;">項</th>
+						<th style="text-align: center; padding: 10px; width: 19%;">檔名</th>
+						<th style="text-align: center; padding: 10px; width: 19%;">尺寸</th>
+						<th style="text-align: center; padding: 10px; width: 19%;">生產中</th>
+						<th style="text-align: center; padding: 10px; width: 19;">待出貨</th>
+						<th style="text-align: center; padding: 10px; width: 19%;">已出貨</th>
+					</tr>
+				</thead>
+				<tbody>
+					<t t-foreach="order.product_ids" t-as="line">
+						<tr style="text-align: center;">
+							<td style="padding: 10px; color: #333; border: 1px solid #007bff;">
+								<t t-esc="line.sequence" />
+							</td>
+							<td style="padding: 10px; color: #333; border: 1px solid #007bff;">
+								<t t-esc="line.project_product_name" />
+							</td>
+							<td style="padding: 10px; color: #333; border: 1px solid #007bff;">
+								<t t-esc="line.product_width" />x<t t-esc="line.product_height" />
+							</td>
+							<!-- 定义状态分组 -->
+							<t t-set="groups" t-value="{'生產中': ['outman', 'lengbiao_sign', 'guoban_sign', 'caiqie_sign'], '待出貨': ['pinguan_sign','daichuhuo_sign'], '已出貨': ['yichuhuo_sign']}"/>
+							<t t-set="last_active_group" t-value="None"/>
+
+							<!-- 查找最后一个有值的状态分组 -->
+							<t t-foreach="groups.items()" t-as="group">
+								<t t-foreach="group[1]" t-as="field">
+									<t t-if="line[field]">
+										<t t-set="last_active_group" t-value="group[0]"/>
+									</t>
+								</t>
+							</t>
+
+							<!-- 如果所有字段都为空 -->
+							<t t-if="last_active_group == None">
+								<!-- 生產中 -->
+								<td style="padding: 10px; color: #333; border: 1px solid #007bff;">
+									<i class="fa fa-check-circle text-success" style="color: green;"></i>
+								</td>
+								<!-- 待出貨 -->
+								<td style="padding: 10px; color: #333; border: 1px solid #007bff;">
+									<i class="fa fa-circle-o" style="color: grey;"></i>
+								</td>
+								<!-- 已出貨 -->
+								<td style="padding: 10px; color: #333; border: 1px solid #007bff;">
+									<i class="fa fa-circle-o" style="color: grey;"></i>
+								</td>
+							</t>
+							<t t-else="">
+								<!-- 生產中 -->
+								<td style="padding: 10px; color: #333; border: 1px solid #007bff;">
+									<t t-if="last_active_group == '生產中'">
+										<!-- 当前状态：绿色圆圈 -->
+										<i class="fa fa-check-circle text-success" style="color: green;"></i>
+									</t>
+									<t t-elif="last_active_group != '生產中'">
+										<!-- 已完成状态：灰色实心圆圈 -->
+										<i class="fa fa-circle text-muted" style="color: grey;"></i>
+									</t>
+								</td>
+
+								<!-- 待出貨 -->
+								<td style="padding: 10px; color: #333; border: 1px solid #007bff;">
+									<t t-if="last_active_group == '待出貨'">
+										<!-- 当前状态：绿色圆圈 -->
+										<i class="fa fa-check-circle text-success" style="color: green;"></i>
+									</t>
+									<t t-elif="last_active_group == '已出貨'">
+										<!-- 已完成状态：灰色实心圆圈 -->
+										<i class="fa fa-circle text-muted" style="color: grey;"></i>
+									</t>
+									<t t-else="">
+										<!-- 未完成状态：黑色空心圆圈 -->
+										<i class="fa fa-circle-o" style="color: grey;"></i>
+									</t>
+								</td>
+
+								<!-- 已出貨 -->
+								<td style="padding: 10px; color: #333; border: 1px solid #007bff;">
+									<t t-if="last_active_group == '已出貨'">
+										<!-- 当前状态：绿色圆圈 -->
+										<i class="fa fa-check-circle text-success" style="color: green;"></i>
+									</t>
+									<t t-else="">
+										<!-- 未完成状态：黑色空心圆圈 -->
+										<i class="fa fa-circle-o" style="color: grey;"></i> 
+									</t>
+								</td>
+							</t>
+						</tr>
+					</t>
+					<tr>
+                    <td colspan="6" style="text-align: left; padding: 10px; color: #333; font-style: italic; font-size: 14px; border: 1px solid #007bff;">
+                        閲讀説明：<br/>
+                        - 製作物進度顯示綠點,代表完成正在進行下一關的製作<br/>
+                        - 若待出貨顯示綠點時,代表此製作物已完成可以取件
+                    </td>
+                </tr>
+				</tbody>
+			</table>
+		</div>
+	</template>
+
+
+	<template id="custom_login_page" name="Custom Login Page">
+		<style>
+			body {
+				margin: 0;
+				padding: 0;
+				font-family: Arial, sans-serif;
+				background-color: #f3f3f3;
+				height: 100vh;
+				display: flex;
+				justify-content: center;
+				align-items: center;
+			}
+
+			.login-container {
+				background-color: #fff;
+				padding: 20px;
+				border-radius: 8px;
+				box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+				width: 350px;
+			}
+
+			.login-container h2 {
+				text-align: center;
+				color: #333;
+				margin-bottom: 20px;
+			}
+
+			.login-container form div {
+				margin-bottom: 15px;
+			}
+
+			.login-container label {
+				display: block;
+				font-size: 14px;
+				margin-bottom: 5px;
+				color: #666;
+			}
+
+			.login-container input {
+				width: 100%;
+				padding: 10px;
+				border: 1px solid #ccc;
+				border-radius: 5px;
+				font-size: 14px;
+			}
+
+			.login-container button {
+				width: 100%;
+				padding: 10px;
+				background-color: #007bff;
+				color: #fff;
+				font-size: 16px;
+				border: none;
+				border-radius: 5px;
+				cursor: pointer;
+			}
+
+			.login-container button:hover {
+				background-color: #0056b3;
+			}
+
+			.login-container p {
+				text-align: center;
+				font-size: 12px;
+				color: #999;
+				margin-top: 10px;
+			}
+
+			.login-container a {
+				color: #007bff;
+				text-decoration: none;
+			}
+
+			.login-container a:hover {
+				text-decoration: underline;
+			}
+		</style>
+
+		<div class="login-container">
+			<h2>客戶登錄</h2>
+			<t t-if="error">
+				<div style="color: red; margin-bottom: 15px;">
+					<t t-esc="error"/>
+				</div>
+			</t>
+			<form action="/custom/loginconfirm" method="post">
+				<div>
+					<label for="login">統編</label>
+					<input type="text" name="login" id="login" placeholder="請輸入統編"  />
+				</div>
+				<div>
+					<label for="password">密碼(第一次登錄使用統編)</label>
+					<input type="password" name="password" id="password" placeholder="請輸入密碼"  />
+				</div>
+				<button type="submit">登錄</button>
+			</form>
+			<p>重置密碼<a href="/reset/password">點擊這裡重置</a></p>
+		</div>
+	</template>
+
+
+	<template id="order_list" name="Order List">
+		<div class="container"
+			 style="max-width: 800px; margin: 50px auto; border: 3px solid #007bff; border-radius: 10px; padding: 20px; background-color: #f9f9f9;">
+			
+			<!-- 這裡用一個相對定位區塊，把標題置中，按鈕放在右上位置 -->
+			<div style="position: relative; margin-bottom: 20px;">
+				<h2 style="text-align: center; color: #007bff; font-family: Arial, sans-serif; margin: 0;">
+					所有案件
+				</h2>
+				<t t-if="coin_can_cust">
+					<button type="button"
+							onclick="location.href='/order'"
+							style="position: absolute; right: 0; top: 50%; transform: translateY(-50%);
+								   padding: 10px 20px; background-color: #007bff; color: white;
+								   border: none; border-radius: 5px; cursor: pointer;">
+						下單
+					</button>
+				</t>
+			</div>
+
+			<table class="table table-bordered"
+				   style="width: 100%; border-collapse: collapse; font-family: Arial, sans-serif;">
+				<thead style="background-color: #007bff; color: white;">
+					<tr>
+						<th style="text-align: center; padding: 10px; width: 50%;">訂單編號</th>
+						<th style="text-align: center; padding: 10px; width: 50%;">案名</th>
+					</tr>
+				</thead>
+				<tbody>
+					<t t-set="current_date" t-value="datetime.datetime.now()"/>
+					<t t-foreach="orders" t-as="order">
+						<!-- 這裡維持你原先的判斷與邏輯 -->
+						<t t-set="is_all_shipped" t-value="True"/>
+						<t t-foreach="order.product_ids" t-as="line">
+							<t t-if="not line.yichuhuo_sign">
+								<t t-set="is_all_shipped" t-value="False"/>
+							</t>
+						</t>
+
+						<t t-if="order.estimated_date">
+							<!-- 如果有 estimated_date，檢查是否超過 7 天 -->
+							<t t-if="(order.estimated_date + timedelta(days=7)) >= current_date">
+								<tr t-attf-style="text-align: center; color: #{'red' if is_all_shipped else '#333'};">
+									<td style="padding: 10px; font-weight: bold; border: 1px solid #007bff;">
+										<a t-att-href="'/order/%s' % order.id"
+										   style="text-decoration: none; color: inherit;">
+											<t t-esc="order.name"/>
+										</a>
+									</td>
+									<td style="padding: 10px; font-weight: bold; border: 1px solid #007bff;">
+										<a t-att-href="'/order/%s' % order.id"
+										   style="text-decoration: none; color: inherit;">
+											<t t-esc="order.project_name"/>
+										</a>
+									</td>
+								</tr>
+							</t>
+						</t>
+						<t t-else="">
+							<!-- 如果沒有 estimated_date，就直接顯示 -->
+							<tr t-attf-style="text-align: center; color: #{'red' if is_all_shipped == 'stock_in' else '#333'};">
+								<td style="padding: 10px; font-weight: bold; border: 1px solid #007bff;">
+									<a t-att-href="'/order/%s' % order.id"
+									   style="text-decoration: none; color: inherit;">
+										<t t-esc="order.name"/>
+									</a>
+								</td>
+								<td style="padding: 10px; font-weight: bold; border: 1px solid #007bff;">
+									<a t-att-href="'/order/%s' % order.id"
+									   style="text-decoration: none; color: inherit;">
+										<t t-esc="order.project_name"/>
+									</a>
+								</td>
+							</tr>
+						</t>
+					</t>
+					<tr>
+						<td colspan="2"
+							style="text-align: left; padding: 10px; color: #333; font-style: italic; font-size: 14px; border: 1px solid #007bff;">
+							閲讀説明：<br/>
+							- 案件呈現黑色代表案件已成立，正在進行中（可以點選進入查看訂單詳情）<br/>
+							- 案件呈現紅色代表已完成取貨或施工完成
+						</td>
+					</tr>
+				</tbody>
+			</table>
+		</div>
+	</template>
+
+	
+	<template id="reset_password_page" name="Reset Password Page">
+		<style>
+			.login-container {
+				background-color: #fff;
+				padding: 20px;
+				border-radius: 8px;
+				box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+				width: 350px;
+				margin: 50px auto;
+				font-family: Arial, sans-serif;
+			}
+
+			.login-container h2 {
+				text-align: center;
+				color: #333;
+				margin-bottom: 20px;
+			}
+
+			.login-container form div {
+				margin-bottom: 15px;
+			}
+
+			.login-container label {
+				display: block;
+				font-size: 14px;
+				margin-bottom: 5px;
+				color: #666;
+			}
+
+			.login-container input {
+				width: 100%;
+				padding: 10px;
+				border: 1px solid #ccc;
+				border-radius: 5px;
+				font-size: 14px;
+			}
+
+			.login-container button {
+				width: 100%;
+				padding: 10px;
+				background-color: #007bff;
+				color: #fff;
+				font-size: 16px;
+				border: none;
+				border-radius: 5px;
+				cursor: pointer;
+			}
+
+			.login-container button:hover {
+				background-color: #0056b3;
+			}
+
+			.login-container p {
+				text-align: center;
+				font-size: 12px;
+				color: #999;
+				margin-top: 10px;
+			}
+
+			.login-container a {
+				color: #007bff;
+				text-decoration: none;
+			}
+
+			.login-container a:hover {
+				text-decoration: underline;
+			}
+
+			.alert-success {
+				color: #155724;
+				background-color: #d4edda;
+				border-color: #c3e6cb;
+				padding: 10px;
+				margin-bottom: 15px;
+				border-radius: 5px;
+				font-size: 14px;
+			}
+		</style>
+
+		<div class="login-container">
+			<h2>重置密碼</h2>
+			<!-- 成功提示 -->
+			<t t-if="success">
+				<div class="alert-success">
+					<t t-esc="success" />
+				</div>
+			</t>
+			<!-- 錯誤提示 -->
+			<t t-if="error">
+				<div style="color: red; margin-bottom: 15px;">
+					<t t-esc="error"/>
+				</div>
+			</t>
+			<form action="/reset/passwordconfirm" method="post">
+				<div>
+					<label for="account">統編</label>
+					<input type="text" name="account" id="account" placeholder="請輸入統編"  />
+				</div>
+				<div>
+					<label for="old_password">舊密碼</label>
+					<input type="password" name="old_password" id="old_password" placeholder="請輸入舊密碼"  />
+				</div>
+				<div>
+					<label for="new_password">新密碼</label>
+					<input type="password" name="new_password" id="new_password" placeholder="請輸入新密碼"  />
+				</div>
+				<div>
+					<label for="confirm_password">確認新密碼</label>
+					<input type="password" name="confirm_password" id="confirm_password" placeholder="請再次輸入新密碼"  />
+				</div>
+				<button type="submit">確認修改</button>
+			</form>
+			<p>返回<a href="/custom/login">登錄頁面</a></p>
+		</div>
+	</template>
+	
+	
+	<record id="action_qrcode_makein" model="ir.actions.report">
+        <field name="name">項次Qrcode</field>
+        <field name="model">dtsc.makein</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">dtsc.makein_qrcode_label</field>
+        <field name="report_file">dtsc.makein_qrcode_label</field>
+        <field name="binding_model_id" ref="model_dtsc_makein"/>
+        <field name="binding_type">report</field>
+    </record>
+	
+	<record id="action_qrcode_makeout" model="ir.actions.report">
+        <field name="name">項次Qrcode</field>
+        <field name="model">dtsc.makeout</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">dtsc.makeout_qrcode_label</field>
+        <field name="report_file">dtsc.makeout_qrcode_label</field>
+        <field name="binding_model_id" ref="model_dtsc_makeout"/>
+        <field name="binding_type">report</field>
+    </record>
+	
+	
+		<template id="makein_qrcode_label">
+			<t t-call="web.html_container">
+				<style>
+					@media print {
+						body {
+							margin: 0;
+							padding: 0;
+							width: 100%;
+							height: auto;
+						}
+						.label-container {
+							page-break-inside: avoid;
+							page-break-after: always;
+							<!-- height: 100px; /* 固定高度，确保标签一致 */ -->
+							width: 100%;
+							text-align: center;
+							box-sizing: border-box;
+						}
+					}
+				</style>
+				<div>
+					<t t-foreach="docs" t-as="x">
+						<t t-foreach="x.order_ids" t-as="o">
+							<div class="label-container">
+								<!-- 如果有条形码图片，显示 -->
+								<t t-if="o.bar_image">
+									<t t-set="barcode_data" t-value="'data:image/png;base64,' + o.bar_image.decode('utf-8')"/>
+								</t>
+								<t t-else="">
+									<t t-set="barcode_data" t-value="False"/>
+								</t>
+								<img t-if="barcode_data" t-att-src="barcode_data" alt="Barcode" style="width:35%; height:auto; display: block; margin: auto;"/>
+								<!-- 条形码编号 -->
+								<div style="margin-top: 10px;">
+									<span t-esc="o.barcode"/>
+								</div>
+							</div>
+						</t>
+					</t>
+				</div>
+			</t>
+		</template>	
+		
+		<template id="makeout_qrcode_label">
+			<t t-call="web.html_container">
+				<style>
+					@media print {
+						body {
+							margin: 0;
+							padding: 0;
+							width: 100%;
+							height: auto;
+						}
+						.label-container {
+							page-break-inside: avoid;
+							page-break-after: always;
+							<!-- height: 100px; /* 固定高度，确保标签一致 */ -->
+							width: 100%;
+							text-align: center;
+							box-sizing: border-box;
+						}
+					}
+				</style>
+				<div>
+					<t t-foreach="docs" t-as="x">
+						<t t-foreach="x.order_ids" t-as="o">
+							<div class="label-container">
+								<!-- 如果有条形码图片，显示 -->
+								<t t-if="o.bar_image">
+									<t t-set="barcode_data" t-value="'data:image/png;base64,' + o.bar_image.decode('utf-8')"/>
+								</t>
+								<t t-else="">
+									<t t-set="barcode_data" t-value="False"/>
+								</t>
+								<img t-if="barcode_data" t-att-src="barcode_data" alt="Barcode" style="width:35%; height:auto; display: block; margin: auto;"/>
+								<!-- 条形码编号 -->
+								<div style="margin-top: 10px;">
+									<span t-esc="o.barcode"/>
+								</div>
+							</div>
+						</t>
+					</t>
+				</div>
+			</t>
+		</template>
+</odoo>
