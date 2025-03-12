@@ -11,14 +11,14 @@ from flask_cors import CORS
 from flask_mail import Mail
 from routes.auth import auth
 from routes.user import user
-from routes.instance import instance
+# from routes.instance import instance  # 暫時註釋掉
 import redis
 from config import (
     DB_CONFIG, 
     MAIL_CONFIG, 
     REDIS_CONFIG, 
     GOOGLE_CONFIG,
-    SYSTEM_CONFIG
+    DOMAIN
 )
 
 def create_app():
@@ -30,9 +30,6 @@ def create_app():
     
     # 配置 Google OAuth2
     app.config['GOOGLE_CONFIG'] = GOOGLE_CONFIG
-    
-    # 添加系統配置
-    app.config['SYSTEM_CONFIG'] = SYSTEM_CONFIG
     
     # 設置密鑰
     app.secret_key = 'your-secret-key'  # 建議使用隨機生成的密鑰
@@ -50,6 +47,6 @@ def create_app():
     # 注冊藍圖
     app.register_blueprint(auth, url_prefix='/api')
     app.register_blueprint(user, url_prefix='/api/user')
-    app.register_blueprint(instance, url_prefix='/api/instance')
+    # app.register_blueprint(instance, url_prefix='/api/instance')  # 暫時註釋掉
     
     return app 

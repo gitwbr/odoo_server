@@ -21,27 +21,36 @@ def login():
         username = data.get('username')
         password = data.get('password')
         
-        if not username or not password:
-            return jsonify({'error': '請輸入用戶名和密碼'}), 400
-            
+        logger.debug(f'Login attempt with username: {username}')
+        
         user = User.get_by_email_or_username(username)
         if not user:
+            logger.debug(f'User not found: {username}')
             return jsonify({'error': '用戶名或密碼錯誤'}), 401
             
-        if bcrypt.checkpw(password.encode('utf-8'), user[3].encode('utf-8')):
+        logger.debug(f'Found user: {user}')
+        
+        # 添加密碼驗證的詳細日誌
+        try:
+            is_valid = bcrypt.checkpw(password.encode('utf-8'), user[3].encode('utf-8'))
+            logger.debug(f'Password validation result: {is_valid}')
+        except Exception as e:
+            logger.error(f'Password validation error: {str(e)}')
+            return jsonify({'error': '登錄失敗'}), 500
+            
+        if is_valid:
+            session['user_id'] = user[0]
             return jsonify({
                 'message': '登錄成功',
-                'redirect': '/dashboard',
-                'user_id': user[0],
-                'username': user[1],
-                'email': user[2]
+                'redirect': '/dashboard'
             }), 200
         else:
+            logger.debug('Password incorrect')
             return jsonify({'error': '用戶名或密碼錯誤'}), 401
             
     except Exception as e:
-        logger.error(f'登錄失敗: {str(e)}')
-        return jsonify({'error': '登錄失敗'}), 500 
+        logger.error(f'Login error: {str(e)}')
+        return jsonify({'error': '登錄失敗'}), 500
 
 @auth.route('/send-verify-code', methods=['POST'])
 def send_verify_code():
@@ -236,6 +245,9 @@ def google_callback():
             else:
                 user_id = user[0]
                 
+            # 添加這行：保存用戶 ID 到 session
+            session['user_id'] = user_id
+            
             # 修改重定向 URL
             return f'''
                 <script>

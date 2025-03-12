@@ -65,3 +65,19 @@ class User:
         except Exception as e:
             logger.error(f'創建用戶失敗: {str(e)}')
             raise e 
+
+    @staticmethod
+    def get_by_id(user_id):
+        try:
+            with get_db_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("""
+                        SELECT id, username, email, status 
+                        FROM users 
+                        WHERE id = %s
+                    """, (user_id,))
+                    return cur.fetchone()
+                    
+        except Exception as e:
+            logger.error(f'查詢用戶失敗: {str(e)}')
+            return None 
