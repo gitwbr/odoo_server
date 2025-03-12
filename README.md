@@ -615,10 +615,15 @@ docker-compose exec web2 psql -h db2 -U odoo2 -d postgres -c "\l" | cat
 
 ## Nginx 配置步骤
 
+
 1. 复制并启用 Nginx 配置：
 ```bash
-sudo cp odoo_nginx.conf /etc/nginx/sites-available/
-sudo ln -sf /etc/nginx/sites-available/odoo_nginx.conf /etc/nginx/sites-enabled/
+
+apt update
+apt install nginx -y
+#sudo cp odoo_nginx.conf /etc/nginx/sites-available/
+#sudo ln -sf /etc/nginx/sites-available/odoo_nginx.conf /etc/nginx/sites-enabled/
+ln -s /home/odoo/odoo16/odoo_nginx.conf /etc/nginx/sites-enabled/
 sudo rm -f /etc/nginx/sites-enabled/default
 sudo nginx -t
 ```
@@ -843,4 +848,76 @@ docker save custom-postgres-db_default:latest > ~/docker_images/custom-postgres-
 docker load < /tmp/custom-odoo-web_default.tar
 docker load < /tmp/custom-postgres-db_default.tar
 
-test
+
+## web本地处理
+# 1. 在当前目录创建www目录
+mkdir -p /home/odoo/odoo16/www/html
+
+# 2. 创建一个测试页面
+cat > /home/odoo/odoo16/www/html/index.html << 'EOF'
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Welcome to Odoo Server</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 40px;
+            text-align: center;
+        }
+        h1 {
+            color: #875A7B;
+        }
+    </style>
+</head>
+<body>
+    <h1>Welcome to Odoo Server</h1>
+    <p>This is the default page.</p>
+</body>
+</html>
+EOF
+
+# 3. 删除原有链接并创建新的软链接
+rm -rf /var/www/html
+ln -s /home/odoo/odoo16/www/html /var/www/html
+
+# 4. 设置权限
+
+chown -R www-data:www-data /home/odoo/odoo16/www
+chmod -R 755 /home/odoo/odoo16/www
+   # 后加
+chmod 755 /var/www
+chmod 755 /home/odoo
+chmod 755 /home/odoo/odoo16
+chmod -R 755 /home/odoo/odoo16/www
+
+
+## 关闭端口占用进程
+lsof -i :5001
+kill $(lsof -t -i:5001)
+
+## api server
+# 重新加载systemd
+sudo systemctl daemon-reload
+
+# 重启服务
+sudo systemctl restart saas-api
+
+# 查看状态
+sudo systemctl status saas-api
+
+# 设置开机启动
+sudo systemctl enable saas-api
+
+# 查看状态
+systemctl status saas-api
+
+journalctl -u saas-api -n 50
+
+# 创建日志文件并设置权限
+sudo touch /var/log/saas-api.log /var/log/saas-api.error.log
+sudo chown odoo:odoo /var/log/saas-api.log /var/log/saas-api.error.log
+
+# 查看日志文件
+tail -f /var/log/saas-api.log
+tail -f /var/log/saas-api.error.log

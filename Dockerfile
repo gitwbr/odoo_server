@@ -32,7 +32,11 @@ RUN pip3 install --no-cache-dir \
     redis \
     haversine \
     svglib>=1.5.1 \
-    pymupdf>=1.23.7
+    pymupdf>=1.23.7 \
+    flask \
+    flask-cors \
+    psycopg2-binary \
+    bcrypt
 
 # 创建中文字体软链接
 RUN ln -sf /usr/share/fonts/truetype/wqy/wqy-zenhei.ttc /usr/share/fonts/wqy-zenhei.ttc && \

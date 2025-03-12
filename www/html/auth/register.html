@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>註冊 - Odoo SaaS 管理系統</title>
+    <style>
+        /* 複用登錄頁面的樣式 */
+        body {
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        }
+        .register-container {
+            width: 90%;
+            max-width: 360px;  /* 減小容器最大寬度 */
+            margin: 40px auto;
+            padding: 2rem;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 1rem;
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+        }
+        .form-input {
+            width: calc(100% - 2rem);  /* 減去padding的寬度 */
+            padding: 0.75rem 1rem;
+            margin: 0.5rem 0;
+            border: 1px solid #e2e8f0;  /* 邊框更細 */
+            border-radius: 0.5rem;
+            font-size: 0.95rem;  /* 稍微小一點的字體 */
+            transition: all 0.3s ease;
+        }
+        .form-input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2);
+        }
+        .btn {
+            width: 100%;
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 0.5rem;
+            font-size: 1rem;
+            font-weight: 600;
+            color: white;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+        .error-message {
+            color: #e53e3e;
+            font-size: 0.875rem;
+            margin-top: 0.25rem;
+            display: none;
+        }
+        .form-group {
+            margin-bottom: 1rem;
+        }
+        .optional-label {
+            color: #718096;
+            font-size: 0.8rem;
+            margin-left: 0.5rem;
+        }
+        .verify-code-btn {
+            width: 120px;
+            padding: 0.5rem;
+            border: 1px solid #667eea;
+            border-radius: 0.5rem;
+            background: white;
+            color: #667eea;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .verify-code-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .form-group-inline {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+        .form-input.verify-code {
+            width: calc(100% - 130px);
+        }
+    </style>
+</head>
+<body>
+    <div class="register-container">
+        <h2 style="text-align: center; font-size: 1.5rem; font-weight: 700; color: #1a202c; margin-bottom: 1.5rem;">
+            創建新賬戶
+        </h2>
+        
+        <form id="registerForm">
+            <div class="form-group">
+                <input type="text" id="username" class="form-input" placeholder="用戶名" required>
+                <div id="username-error" class="error-message"></div>
+            </div>
+            <div class="form-group">
+                <input type="email" id="email" class="form-input" placeholder="郵箱地址" required>
+                <div id="email-error" class="error-message"></div>
+            </div>
+            <div class="form-group-inline">
+                <input type="text" id="verify-code" class="form-input verify-code" placeholder="驗證碼" required>
+                <button type="button" id="send-code-btn" class="verify-code-btn">發送驗證碼</button>
+            </div>
+            <div id="verify-code-error" class="error-message"></div>
+            <div class="form-group">
+                <input type="password" id="password" class="form-input" placeholder="密碼" required>
+                <div id="password-error" class="error-message"></div>
+            </div>
+            <div class="form-group">
+                <input type="password" id="confirm-password" class="form-input" placeholder="確認密碼" required>
+                <div id="confirm-password-error" class="error-message"></div>
+            </div>
+            <div class="form-group">
+                <input type="text" id="phone" class="form-input" placeholder="手機號碼（選填）">
+            </div>
+            <div class="form-group">
+                <input type="text" id="invite-code" class="form-input" placeholder="邀請碼（選填）">
+            </div>
+            
+            <button type="submit" class="btn">註冊</button>
+        </form>
+        
+        <p style="text-align: center; margin-top: 1.5rem; color: #4a5568; font-size: 0.9rem;">
+            已有賬號？
+            <a href="/auth" style="color: #667eea; text-decoration: none;">立即登錄</a>
+        </p>
+    </div>
+
+    <script>
+        let verifyCodeTimer = null;
+        let hasVerifyCodeSent = false;  // 添加標記，記錄是否發送過驗證碼
+        const sendCodeBtn = document.getElementById('send-code-btn');
+        const submitBtn = document.querySelector('button[type="submit"]');
+        const emailInput = document.getElementById('email');
+        const verifyCodeInput = document.getElementById('verify-code');
+
+        // 發送驗證碼
+        sendCodeBtn.addEventListener('click', async function() {
+            const email = emailInput.value;
+            if (!email) {
+                document.getElementById('email-error').textContent = '請輸入郵箱地址';
+                document.getElementById('email-error').style.display = 'block';
+                return;
+            }
+
+            // 禁用按鈕並開始倒計時
+            sendCodeBtn.disabled = true;
+            let countdown = 60;
+            sendCodeBtn.textContent = `${countdown}秒後重試`;
+            
+            verifyCodeTimer = setInterval(() => {
+                countdown--;
+                if (countdown <= 0) {
+                    clearInterval(verifyCodeTimer);
+                    sendCodeBtn.disabled = false;
+                    sendCodeBtn.textContent = '發送驗證碼';
+                } else {
+                    sendCodeBtn.textContent = `${countdown}秒後重試`;
+                }
+            }, 1000);
+
+            try {
+                const response = await fetch('/api/send-verify-code', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email })
+                });
+
+                const data = await response.json();
+                if (!response.ok) {
+                    throw new Error(data.error || '發送失敗');
+                }
+
+                hasVerifyCodeSent = true;  // 標記已發送驗證碼
+                alert('驗證碼已發送，請查收郵件');
+            } catch (error) {
+                alert(error.message);
+                clearInterval(verifyCodeTimer);
+                sendCodeBtn.disabled = false;
+                sendCodeBtn.textContent = '發送驗證碼';
+            }
+        });
+
+        // 移除實時驗證
+        const inputs = document.querySelectorAll('.form-input');
+        inputs.forEach(input => {
+            input.addEventListener('input', () => {
+                // 只在輸入時清除對應字段的錯誤提示
+                const errorEl = document.getElementById(`${input.id}-error`);
+                if (errorEl) {
+                    errorEl.style.display = 'none';
+                    errorEl.textContent = '';
+                }
+            });
+        });
+
+        // 表單提交
+        document.getElementById('registerForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            console.log('提交表單');
+
+            // 清除所有錯誤提示
+            document.querySelectorAll('.error-message').forEach(el => {
+                el.style.display = 'none';
+                el.textContent = '';
+            });
+
+            // 基本驗證
+            const formData = {
+                username: document.getElementById('username').value.trim(),
+                email: emailInput.value.trim(),
+                password: document.getElementById('password').value,
+                confirmPassword: document.getElementById('confirm-password').value,
+                verifyCode: verifyCodeInput.value.trim(),
+                phone: document.getElementById('phone').value.trim(),
+                inviteCode: document.getElementById('invite-code').value.trim()
+            };
+
+            // 檢查是否發送過驗證碼
+            if (!hasVerifyCodeSent) {
+                document.getElementById('verify-code-error').textContent = '請先獲取驗證碼';
+                document.getElementById('verify-code-error').style.display = 'block';
+                return;
+            }
+
+            submitBtn.disabled = true;
+            submitBtn.textContent = '註冊中...';
+
+            try {
+                const response = await fetch('/api/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(formData)
+                });
+
+                const data = await response.json();
+                console.log('註冊響應:', data);  // 添加調試日誌
+                
+                if (response.ok) {
+                    alert(data.message);
+                    window.location.href = data.redirect;  // 使用返回的重定向地址
+                } else {
+                    if (data.errors) {
+                        Object.keys(data.errors).forEach(key => {
+                            const errorEl = document.getElementById(`${key}-error`);
+                            if (errorEl) {
+                                errorEl.textContent = data.errors[key];
+                                errorEl.style.display = 'block';
+                            }
+                        });
+                    } else if (data.error) {
+                        // 顯示驗證碼相關錯誤
+                        document.getElementById('verify-code-error').textContent = data.error;
+                        document.getElementById('verify-code-error').style.display = 'block';
+                    } else {
+                        throw new Error('註冊失敗');
+                    }
+                }
+            } catch (error) {
+                alert(error.message);
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = '註冊';
+            }
+        });
+    </script>
+</body>
+</html>

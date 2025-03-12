@@ -73,6 +73,14 @@ client*/postgresql/
 *.pyc
 *.pyo
 
+# PostgreSQL数据目录
+pgdata/
+postgresql_manager/
+
+# 数据库备份文件
+*.sql
+*.backup
+
 docker-compose.yml
 
 addons/

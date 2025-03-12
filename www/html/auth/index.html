@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Odoo SaaS 管理系統</title>
+    <link href="/auth/css/tailwind.min.css" rel="stylesheet">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        }
+        .login-container {
+            width: 100%;
+            max-width: 400px;
+            margin: 40px auto;
+            padding: 2rem;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 1rem;
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+        }
+        .form-input {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            margin: 0.5rem 0;
+            border: 2px solid #e2e8f0;
+            border-radius: 0.5rem;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+        }
+        .form-input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
+        }
+        .btn {
+            width: 100%;
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 0.5rem;
+            font-size: 1rem;
+            font-weight: 600;
+            color: white;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+        .social-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            padding: 0.75rem;
+            margin: 0.5rem 0;
+            border: 1px solid #e2e8f0;
+            border-radius: 0.5rem;
+            background: white;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .social-btn:hover {
+            background: #f8fafc;
+            transform: translateY(-1px);
+        }
+        .divider {
+            margin: 1.5rem 0;
+            text-align: center;
+            position: relative;
+        }
+        .divider::before {
+            content: "";
+            position: absolute;
+            top: 50%;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: #e2e8f0;
+        }
+        .divider span {
+            background: white;
+            padding: 0 1rem;
+            color: #64748b;
+            position: relative;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <h2 style="text-align: center; font-size: 1.875rem; font-weight: 700; color: #1a202c; margin-bottom: 1.5rem;">
+            歡迎回來
+        </h2>
+        
+        <form id="loginForm">
+            <div>
+                <input type="email" class="form-input" placeholder="郵箱地址" required id="username">
+            </div>
+            <div>
+                <input type="password" class="form-input" placeholder="密碼" required id="password">
+            </div>
+            
+            <div style="display: flex; justify-content: space-between; margin: 1rem 0;">
+                <label style="display: flex; align-items: center;">
+                    <input type="checkbox" style="margin-right: 0.5rem;">
+                    <span style="color: #4a5568;">記住我</span>
+                </label>
+                <a href="#" style="color: #667eea; text-decoration: none;">忘記密碼？</a>
+            </div>
+            
+            <button type="submit" class="btn">登錄</button>
+            
+            <div class="divider">
+                <span>或者使用</span>
+            </div>
+            
+            <button type="button" class="social-btn">
+                <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 488 512'%3E%3Cpath fill='%234285f4' d='M488 261.8C488 403.3 391.1 504 248 504 110.8 504 0 393.2 0 256S110.8 8 248 8c66.8 0 123 24.5 166.3 64.9l-67.5 64.9C258.5 52.6 94.3 116.6 94.3 256c0 86.5 69.1 156.6 153.7 156.6 98.2 0 135-70.4 140.8-106.9H248v-85.3h236.1c2.3 12.7 3.9 24.9 3.9 41.4z'/%3E%3C/svg%3E" 
+                     style="width: 24px; height: 24px; margin-right: 0.5rem;">
+                使用Google賬號登錄
+            </button>
+        </form>
+        
+        <p style="text-align: center; margin-top: 1.5rem; color: #4a5568;">
+            還沒有賬號？
+            <a href="/auth/register.html" style="color: #667eea; text-decoration: none;">立即註冊</a>
+        </p>
+    </div>
+
+    <script>
+    // 登錄表單提交處理
+    document.getElementById('loginForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        try {
+            const response = await fetch('/api/login', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    username: document.getElementById('username').value,
+                    password: document.getElementById('password').value
+                })
+            });
+
+            const data = await response.json();
+            if (response.ok) {
+                alert(data.message);
+                window.location.href = data.redirect;  // 使用返回的重定向地址
+            } else {
+                alert(data.error || '登錄失敗');
+            }
+        } catch (error) {
+            alert('登錄失敗，請稍後重試');
+        }
+    });
+    </script>
+</body>
+</html>

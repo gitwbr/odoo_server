@@ -471,7 +471,7 @@
 	</record>
 	
     <!-- Top menu item -->
-    <menuitem name="印刷訂單系統" id="dtsc.menu_root" web_icon="dtsc,static/description/icon.png"/>
+    <menuitem name="印刷訂單系統" id="dtsc.menu_root" />
     <!-- menu categories -->
     <menuitem name="大圖訂單" id="dtsc.checkout" sequence="1" action="dtsc.action_window" parent="dtsc.menu_root" groups="dtsc.group_dtsc_mg,dtsc.group_dtsc_yw,dtsc.group_dtsc_kj,dtsc.group_dtsc_sc,dtsc.group_dtsc_ck"/>
     <!-- <menuitem name="製作物" id="dtsc.menu_make" action="dtsc.action_window_make" parent="dtsc.menu_root"/> -->
