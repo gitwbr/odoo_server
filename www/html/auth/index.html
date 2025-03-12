@@ -161,6 +161,69 @@
             alert('登錄失敗，請稍後重試');
         }
     });
+
+    document.querySelector('.social-btn').addEventListener('click', async function() {
+        try {
+            const response = await fetch('/api/google/login');
+            if (!response.ok) {
+                const text = await response.text();
+                console.error('Response:', text);
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            const data = await response.json();
+            if (data.auth_url) {
+                window.location.href = data.auth_url;
+            }
+        } catch (error) {
+            console.error('Google登錄失敗:', error);
+            console.error('Error details:', error.message);
+        }
+    });
+
+    // 添加檢查 URL 參數的代碼
+    window.addEventListener('load', async function() {
+        // 檢查是否是從 Google 回調過來的
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.has('state') && urlParams.has('code')) {
+            try {
+                const response = await fetch(`/api/google/callback${window.location.search}`);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const data = await response.json();
+                if (data.redirect) {
+                    // 登錄成功，重定向到主頁面
+                    window.location.href = data.redirect;
+                }
+            } catch (error) {
+                console.error('處理 Google 回調失敗:', error);
+            }
+        }
+        
+        // 檢查錯誤信息
+        if (urlParams.has('error')) {
+            const error = urlParams.get('error');
+            let errorMessage = '登錄失敗';
+            switch(error) {
+                case 'invalid_state':
+                    errorMessage = '無效的請求';
+                    break;
+                case 'no_code':
+                    errorMessage = '未收到授權碼';
+                    break;
+                case 'no_email':
+                    errorMessage = '未獲取到郵箱';
+                    break;
+                case 'token_failed':
+                    errorMessage = '認證失敗，請稍後重試';
+                    break;
+                case 'callback_failed':
+                    errorMessage = '登錄處理失敗';
+                    break;
+            }
+            alert(errorMessage);
+        }
+    });
     </script>
 </body>
 </html>

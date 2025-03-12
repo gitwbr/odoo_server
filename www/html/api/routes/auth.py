@@ -1,13 +1,16 @@
-from flask import Blueprint, request, jsonify, current_app
+from flask import Blueprint, request, jsonify, current_app, session
 import bcrypt
 from models.user import User
 from utils.email import send_email
-from config import logger
+from config import logger, DOMAIN
 from utils.verify_code import (
     generate_verify_code, save_verify_code, get_verify_code, 
     delete_verify_code, validate_email, validate_password
 )
 from datetime import datetime
+from google.oauth2 import id_token
+from google.auth.transport import requests as google_requests
+from google_auth_oauthlib.flow import Flow
 
 auth = Blueprint('auth', __name__)
 
@@ -76,9 +79,15 @@ def register():
         data = request.get_json()
         email = data.get('email')
         verify_code = data.get('verifyCode')
+        password = data.get('password')
+        confirm_password = data.get('confirmPassword')  # 獲取確認密碼
         
         logger.debug(f'收到註冊請求: {data}')
         
+        # 驗證密碼是否相同
+        if password != confirm_password:
+            return jsonify({'errors': {'confirmPassword': '兩次輸入的密碼不一致'}}), 400
+            
         # 驗證驗證碼
         stored_data = get_verify_code(current_app.redis_client, email)
         if not stored_data:
@@ -131,3 +140,121 @@ def register():
     except Exception as e:
         logger.error(f'註冊錯誤: {str(e)}')
         return jsonify({'error': f'註冊失敗: {str(e)}'}), 500 
+
+@auth.route('/google/login')
+def google_login():
+    try:
+        flow = Flow.from_client_config(
+            {
+                "web": {
+                    "client_id": current_app.config['GOOGLE_CONFIG']['client_id'],
+                    "client_secret": current_app.config['GOOGLE_CONFIG']['client_secret'],
+                    "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+                    "token_uri": "https://oauth2.googleapis.com/token",
+                }
+            },
+            scopes=current_app.config['GOOGLE_CONFIG']['scope']
+        )
+        
+        flow.redirect_uri = current_app.config['GOOGLE_CONFIG']['redirect_uri']
+        
+        authorization_url, state = flow.authorization_url(
+            access_type='offline',
+            include_granted_scopes='true'
+        )
+        
+        session['state'] = state
+        
+        return jsonify({'auth_url': authorization_url}), 200
+        
+    except Exception as e:
+        logger.error(f'Google登錄失敗: {str(e)}')
+        return jsonify({'error': str(e)}), 500
+
+@auth.route('/google/callback')
+def google_callback():
+    try:
+        state = request.args.get('state')
+        if not state or state != session.get('state'):
+            return f'''
+                <script>
+                window.location.href = "{DOMAIN}/auth/index.html?error=invalid_state";
+                </script>
+            '''
+            
+        code = request.args.get('code')
+        if not code:
+            return '''
+                <script>
+                window.location.href = "/auth/index.html?error=no_code";
+                </script>
+            '''
+            
+        flow = Flow.from_client_config(
+            {
+                "web": {
+                    "client_id": current_app.config['GOOGLE_CONFIG']['client_id'],
+                    "client_secret": current_app.config['GOOGLE_CONFIG']['client_secret'],
+                    "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+                    "token_uri": "https://oauth2.googleapis.com/token",
+                }
+            },
+            scopes=current_app.config['GOOGLE_CONFIG']['scope'],
+            state=state
+        )
+        flow.redirect_uri = current_app.config['GOOGLE_CONFIG']['redirect_uri']
+        
+        try:
+            flow.fetch_token(code=code, include_client_id=True)
+            
+            credentials = flow.credentials
+            user_info = id_token.verify_oauth2_token(
+                credentials.id_token, 
+                google_requests.Request(),
+                current_app.config['GOOGLE_CONFIG']['client_id']
+            )
+            
+            # 處理用戶信息
+            email = user_info.get('email')
+            if not email:
+                return '''
+                    <script>
+                    window.location.href = "/auth/index.html?error=no_email";
+                    </script>
+                '''
+                
+            # 查找或創建用戶
+            user = User.get_by_email_or_username(email)
+            if not user:
+                # 創建新用戶
+                user_id = User.create(
+                    username=user_info.get('name', email.split('@')[0]),
+                    email=email,
+                    password=None,
+                    google_id=user_info.get('sub')
+                )
+            else:
+                user_id = user[0]
+                
+            # 修改重定向 URL
+            return f'''
+                <script>
+                window.location.href = "{DOMAIN}/dashboard";
+                </script>
+            '''
+            
+        except Exception as e:
+            logger.error(f'Token 請求失敗: {str(e)}')
+            return f'''
+                <script>
+                window.location.href = "{DOMAIN}/auth/index.html?error=token_failed";
+                </script>
+            '''
+            
+    except Exception as e:
+        logger.error(f'Google回調處理失敗: {str(e)}')
+        return f'''
+            <script>
+            window.location.href = "{DOMAIN}/auth/index.html?error=callback_failed";
+            </script>
+        ''' 

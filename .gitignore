@@ -81,6 +81,8 @@ postgresql_manager/
 *.sql
 *.backup
 
+config.py  
+
 docker-compose.yml
 
 addons/
