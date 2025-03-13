@@ -40,6 +40,11 @@ class User:
                     if cur.fetchone():
                         raise Exception('用戶名已被使用')
                         
+                    # 如果沒有提供邀請碼，生成一個隨機的
+                    if not invite_code:
+                        import secrets
+                        invite_code = secrets.token_hex(10)  # 生成20個字符的隨機邀請碼
+                        
                     # 如果是普通註冊，使用提供的密碼
                     # 如果是 Google 登錄，生成隨機密碼
                     if password:
@@ -53,8 +58,8 @@ class User:
                         
                     # 插入用戶記錄
                     cur.execute('''
-                        INSERT INTO users (username, email, password_hash, phone, invite_code, google_id, status, register_type)
-                        VALUES (%s, %s, %s, %s, %s, %s, 'active', %s)
+                        INSERT INTO users (username, email, password_hash, phone, invite_code, google_oauth_id, register_type)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s)
                         RETURNING id
                     ''', (username, email, password_hash, phone, invite_code, google_id, register_type))
                     

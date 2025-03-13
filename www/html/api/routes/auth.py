@@ -11,6 +11,9 @@ from datetime import datetime
 from google.oauth2 import id_token
 from google.auth.transport import requests as google_requests
 from google_auth_oauthlib.flow import Flow
+import requests
+import urllib3
+import os
 
 auth = Blueprint('auth', __name__)
 
@@ -214,12 +217,20 @@ def google_callback():
         flow.redirect_uri = current_app.config['GOOGLE_CONFIG']['redirect_uri']
         
         try:
-            flow.fetch_token(code=code, include_client_id=True)
+            # 禁用 SSL 驗證
+            os.environ['CURL_CA_BUNDLE'] = ''
+            
+            # 創建一個禁用 SSL 驗證的會話
+            req_session = requests.Session()
+            req_session.verify = False
+            flow.fetch_token(code=code, include_client_id=True, session=req_session)
             
             credentials = flow.credentials
+            google_request = google_requests.Request(session=req_session)
+            
             user_info = id_token.verify_oauth2_token(
                 credentials.id_token, 
-                google_requests.Request(),
+                google_request,
                 current_app.config['GOOGLE_CONFIG']['client_id']
             )
             
