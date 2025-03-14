@@ -76,7 +76,7 @@
                 </div>
 
                 <div style="text-align: center;">
-                    <button id="createBtn" class="create-btn">
+                    <button id="createBtn" class="create-btn" onclick="createInstance()">
                         創建試用實例
                     </button>
                 </div>
@@ -92,5 +92,66 @@
     </div>
 
     <script src="/dashboard/js/common.js"></script>
+    <script>
+    // 檢查用戶狀態並控制按鈕
+    async function checkUserStatus() {
+        try {
+            const response = await fetch('/api/user/can_create_instance');
+        const data = await response.json();
+        
+        const createBtn = document.getElementById('createBtn');
+        
+        if (!data.can_create) {
+            createBtn.disabled = true;
+            createBtn.title = '創建失敗請重試';
+        }
+            
+        } catch (error) {
+            console.error('獲取用戶信息失敗:', error);
+        }
+    }
+
+    // 創建實例
+    async function createInstance() {
+        try {
+            const createBtn = document.getElementById('createBtn');
+            createBtn.disabled = true;
+            createBtn.textContent = '創建中...';
+
+            const response = await fetch('/api/instance/create', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    version_id: 1  // 測試版
+                })
+            });
+
+            const data = await response.json();
+            
+            if (response.ok) {
+                // 創建成功
+                alert('實例創建成功！');
+                // 刷新頁面
+                window.location.reload();
+            } else {
+                // 創建失敗
+                alert('創建失敗：' + (data.error || '未知錯誤'));
+                createBtn.disabled = false;
+                createBtn.textContent = '創建試用實例';
+            }
+        } catch (error) {
+            console.error('創建實例失敗:', error);
+            alert('創建失敗：網絡錯誤');
+            const createBtn = document.getElementById('createBtn');
+            createBtn.disabled = false;
+            createBtn.textContent = '創建試用實例';
+        }
+    }
+
+    // 頁面加載時檢查用戶狀態
+    window.addEventListener('load', checkUserStatus);
+    </script>
 </body>
 </html> 

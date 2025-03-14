@@ -272,6 +272,8 @@ docker-compose exec -u root web5 pip3 install --no-cache-dir --force-reinstall p
    docker-compose exec web5 python3 -c "import fitz; print('PyMuPDF installed successfully')"
 docker-compose exec -u root web5 pip3 install --no-cache-dir svglib>=1.5.1 PyMuPDF>=1.23.7 Pillow>=10.0.0
 ```
+# 进入容器查看实际的挂载点
+docker exec odoo16-web2-1 ls -l /mnt/
 
 2. 重启容器使依赖生效：
 ```bash
@@ -921,3 +923,22 @@ sudo chown odoo:odoo /var/log/saas-api.log /var/log/saas-api.error.log
 # 查看日志文件
 tail -f /var/log/saas-api.log
 tail -f /var/log/saas-api.error.log
+
+## www-data瀏覽器權限設置
+# 添加 www-data 到 docker 组
+sudo usermod -aG docker www-data
+
+# 验证组成员
+groups www-data
+
+# 检查权限
+ls -l /var/run/docker.sock
+
+# 如果需要，修改权限
+sudo chmod 666 /var/run/docker.sock
+
+# 重启 docker
+sudo systemctl restart docker
+
+# 重启 apache
+sudo systemctl restart nginx

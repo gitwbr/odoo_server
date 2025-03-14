@@ -3,6 +3,12 @@ from utils.database import get_db_connection
 from config import logger
 
 class User:
+    def __init__(self, id, username, email, status):
+        self.id = id
+        self.username = username
+        self.email = email
+        self.status = status
+
     @staticmethod
     def get_by_email_or_username(identifier):
         try:
@@ -81,8 +87,10 @@ class User:
                         FROM users 
                         WHERE id = %s
                     """, (user_id,))
-                    return cur.fetchone()
-                    
+                    result = cur.fetchone()
+                    if result:
+                        return User(*result)  # 创建User对象并返回
+                    return None
         except Exception as e:
-            logger.error(f'查詢用戶失敗: {str(e)}')
+            logger.error(f'获取用户信息失败: {str(e)}')
             return None 

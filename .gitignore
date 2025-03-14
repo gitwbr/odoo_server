@@ -86,3 +86,4 @@ config.py
 docker-compose.yml
 
 addons/
+instances/
