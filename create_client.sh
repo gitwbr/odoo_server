@@ -63,16 +63,19 @@ function create_client() {
     sed "s/{CLIENT}/${CLIENT_NUM}/g; s/{DB_HOST}/${DB_HOST}/g; s/{DB_USER}/${DB_USER}/g; s/{DB_PASSWORD}/${DB_PASSWORD}/g" odoo.conf.template > ${CLIENT}/config/odoo.conf
     chmod 777 ${CLIENT}/config/odoo.conf
 
+    # 创建并复制 custom-addons-client 目录
+    mkdir -p ${CLIENT}/custom-addons-client
+    cp -r custom-addons-client/* ${CLIENT}/custom-addons-client/
+    
+    # 创建 filestore 目录并设置权限
+    mkdir -p ${CLIENT}/data/filestore
+    chmod -R 777 ${CLIENT}/data
+    chown -R odoo:odoo ${CLIENT}/data
+    
     # 添加权限修复命令
-    (
-        while true; do
-            sleep 5
-            if [ -d "${CLIENT}/data/addons" ] || [ -d "${CLIENT}/data/filestore" ] || [ -d "${CLIENT}/data/sessions" ]; then
-                sudo chmod -R 777 ${CLIENT}/data/*
-                break
-            fi
-        done
-    ) &
+    chmod -R 777 ${CLIENT}/config
+    chmod -R 777 ${CLIENT}/logs
+    chmod -R 777 ${CLIENT}/postgresql
 
     # 添加服务到 docker-compose.yml
     local CONFIG="  # Client${CLIENT_NUM} 服務\n"
@@ -88,6 +91,7 @@ function create_client() {
     CONFIG+="      - ./${CLIENT}/logs:/var/log/odoo\n"
     CONFIG+="      - ./addons:/mnt/addons\n"
     CONFIG+="      - ./custom-addons:/mnt/custom-addons\n"
+    CONFIG+="      - ./${CLIENT}/custom-addons-client:/mnt/custom-addons-client\n"
     CONFIG+="    ports:\n"
     CONFIG+="      - \"${WEB_PORT}:8069\"\n"
     CONFIG+="      - \"${LONGPOLLING_PORT}:8072\"\n"
@@ -97,7 +101,7 @@ function create_client() {
     #CONFIG+="    command: -- --init=base,product,mrp,web,sale,stock,website_sale,account,purchase,delivery,crm,note,hr_expense,hr_holidays,hr_attendance,dtsc\n"
     CONFIG+="    command:\n"
     CONFIG+="      - -u\n"
-    CONFIG+="      - dtsc\n"
+    CONFIG+="      - dtsc,dtsc_custom\n"
     CONFIG+="    networks:\n"
     CONFIG+="      - odoo_net\n"
     CONFIG+="    restart: unless-stopped\n\n"
@@ -129,6 +133,7 @@ function create_client() {
     echo "Longpolling port: ${LONGPOLLING_PORT}"
     echo "Database port: ${DB_PORT}"
 
+    chmod -R 777 ${CLIENT}
     # 启动新创建的服务
     echo "Starting services..."
     docker-compose up -d web${CLIENT_NUM} db${CLIENT_NUM}
@@ -143,12 +148,13 @@ function create_client() {
     ./restore_db.sh "$CLIENT_NUM" default ./backup/default_db.dump.gz
     if [ $? -eq 0 ]; then
         print_success "数据库恢复成功"
-        docker-compose start web${CLIENT_NUM}  # 恢复成功后再启动web服务
+        chmod -R 777 ${CLIENT}
+        docker-compose restart web${CLIENT_NUM}  # 恢复成功后再启动web服务
     else
         print_error "数据库恢复失败"
         exit 1
     fi
-
+    
     # 终止脚本，不继续执行
     echo "已删除 nginx 配置，脚本停止执行。"
     exit 1

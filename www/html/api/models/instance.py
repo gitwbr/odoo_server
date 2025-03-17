@@ -6,6 +6,8 @@ import subprocess
 import shutil
 import stat
 import pwd
+from config import DB_RESTORE
+import time
 
 logger = logging.getLogger(__name__)
 
@@ -177,8 +179,48 @@ class Instance:
                         conn.commit()
                         raise e
 
-                    return instance_id
+                    # 创建容器后，恢复默认数据库
+                    logger.info('开始恢复默认数据库...')
                     
+                    # 先停止 web 容器
+                    web_name = f'client{instance_id}-web{instance_id}-1'
+                    subprocess.run(['docker', 'stop', web_name], check=True)
+                    
+                    # 执行数据库恢复
+                    result = subprocess.run(
+                        [DB_RESTORE['script_path'], 
+                         str(instance_id), 
+                         DB_RESTORE['default_db_name'], 
+                         DB_RESTORE['backup_file']],
+                        check=True,
+                        capture_output=True,
+                        text=True
+                    )
+                    
+                    if result.returncode == 0:
+                        # 等待几秒确保数据库恢复完成
+                        time.sleep(5)  
+                        
+                        # 设置目录权限
+                        logger.info('设置目录权限')
+                        instance_dir = f'/home/odoo/odoo16/instances/client{instance_id}'
+                        subprocess.run(
+                            ['sudo', 'chmod', '-R', '777', instance_dir],
+                            check=True,
+                            capture_output=True,
+                            text=True
+                        )
+                        
+                        # 重启 web 容器（不是简单的 start）
+                        subprocess.run(['docker', 'restart', web_name], check=True)
+                        # 等待几秒让服务完全启动
+                        time.sleep(5)
+                        
+                        return instance_id
+                    else:
+                        logger.error(f'数据库恢复失败: {result.stderr}')
+                        raise Exception('数据库恢复失败')
+
         except Exception as e:
             logger.error(f'创建实例失败: {str(e)}')
             raise e
@@ -217,23 +259,48 @@ class Instance:
                 raise
             
             # 创建实例目录结构
-            for dir_name in ['config', 'data', 'logs', 'postgresql', 'db']:
-                logger.info(f'正在创建子目录: {dir_name}')
+            os.makedirs(f'{instance_dir}/config', exist_ok=True)
+            os.makedirs(f'{instance_dir}/data', exist_ok=True)
+            os.makedirs(f'{instance_dir}/logs', exist_ok=True)
+            os.makedirs(f'{instance_dir}/postgresql', exist_ok=True)
+            
+            # 创建并复制 custom-addons-client 目录
+            custom_addons_dir = f'{instance_dir}/custom-addons-client'
+            os.makedirs(custom_addons_dir, exist_ok=True)
+            
+            # 复制 custom-addons-client 内容
+            source_dir = '/home/odoo/odoo16/custom-addons-client'
+            if os.path.exists(source_dir):
                 try:
-                    dir_path = f'{instance_dir}/{dir_name}'
-                    if not os.path.exists(dir_path):
-                        os.makedirs(dir_path, exist_ok=True)
-                        logger.info(f'子目录创建成功: {dir_path}')
-                        
-                        os.chmod(dir_path, 0o777)
-                        logger.info(f'子目录权限设置成功: {dir_path}')
+                    # 使用 shutil.copytree 来复制目录内容
+                    for item in os.listdir(source_dir):
+                        source_item = os.path.join(source_dir, item)
+                        dest_item = os.path.join(custom_addons_dir, item)
+                        if os.path.isdir(source_item):
+                            shutil.copytree(source_item, dest_item)
+                        else:
+                            shutil.copy2(source_item, dest_item)
+                    
+                    # 设置目录权限
+                    subprocess.run(['chmod', '-R', '777', instance_dir], check=True)
+                    subprocess.run(['chown', '-R', 'odoo:odoo', f'{instance_dir}/data'], check=True)
                 except Exception as e:
-                    logger.error(f'创建目录 {dir_path} 失败: {str(e)}')
-                    # 检查目录是否存在
-                    if os.path.exists(dir_path):
-                        logger.info(f'目录已存在，检查权限')
-                        subprocess.run(['ls', '-l', dir_path], check=True)
+                    logger.error(f'复制目录失败: {str(e)}')
                     raise
+            else:
+                logger.warning(f'源目录不存在: {source_dir}')
+            
+            # 创建 filestore 目录并设置权限
+            os.makedirs(f'{instance_dir}/data/filestore', exist_ok=True)
+            
+            # 先设置所有者
+            subprocess.run(['sudo', 'chown', '-R', 'odoo:odoo', instance_dir], check=True)
+            # 然后设置权限
+            subprocess.run(['sudo', 'chmod', '-R', '777', instance_dir], check=True)
+            
+            # 特别确保 data 目录的权限
+            subprocess.run(['sudo', 'chmod', '-R', '777', f'{instance_dir}/data'], check=True)
+            subprocess.run(['sudo', 'chown', '-R', 'odoo:odoo', f'{instance_dir}/data'], check=True)
             
             # 从模板复制并修改配置文件
             logger.info('正在创建配置文件')
@@ -257,12 +324,14 @@ services:
     image: custom-odoo-web_default:latest
     depends_on:
       - {db_host}
+    user: "odoo:odoo"
     volumes:
       - {instance_dir}/config:/etc/odoo
       - {instance_dir}/data:/var/lib/odoo/{client_name}
       - {instance_dir}/logs:/var/log/odoo
       - /home/odoo/odoo16/addons:/mnt/addons
       - /home/odoo/odoo16/custom-addons:/mnt/custom-addons
+      - {instance_dir}/custom-addons-client:/mnt/custom-addons-client
     ports:
       - "{web_port}:8069"
       - "{longpolling_port}:8072"
@@ -271,7 +340,7 @@ services:
       - TZ=Asia/Taipei
     command:
       - -u
-      - dtsc
+      - dtsc,dtsc_custom
     networks:
       - odoo_net
     restart: unless-stopped
@@ -326,6 +395,15 @@ networks:
                     capture_output=True,
                     text=True
                 )
+                
+                """ # 设置目录权限为777
+                logger.info('设置目录权限')
+                subprocess.run(
+                    ['sudo','chmod', '-R', '777', instance_dir],
+                    check=True,
+                    capture_output=True,
+                    text=True
+                ) """
             except subprocess.CalledProcessError as e:
                 logger.error(f'Docker命令输出: {e.stdout}\n错误输出: {e.stderr}')
                 raise

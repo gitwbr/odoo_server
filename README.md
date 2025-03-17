@@ -273,7 +273,7 @@ docker-compose exec -u root web5 pip3 install --no-cache-dir --force-reinstall p
 docker-compose exec -u root web5 pip3 install --no-cache-dir svglib>=1.5.1 PyMuPDF>=1.23.7 Pillow>=10.0.0
 ```
 # 进入容器查看实际的挂载点
-docker exec odoo16-web6-1 ls -l /mnt/
+docker exec odoo16-web3-1 ls -l /mnt/
 
 2. 重启容器使依赖生效：
 ```bash
@@ -948,3 +948,9 @@ sudo systemctl restart nginx
 # 给odoo用户  sudo删除不需要密码权限
 sudo visudo
 odoo ALL=(ALL) NOPASSWD: /usr/bin/rm -rf /home/odoo/odoo16/instances/client*
+odoo ALL=(ALL) NOPASSWD: /bin/chmod -R 777 /home/odoo/odoo16/instances/client*
+odoo ALL=(ALL) NOPASSWD: /bin/chmod -R * /home/odoo/odoo16/instances/*, /bin/chown -R * /home/odoo/odoo16/instances/*
+
+# 删除gitbub已经管理内容
+# 从 Git 缓存中删除 client* 文件夹，但保留本地文件
+git rm -r --cached client*/

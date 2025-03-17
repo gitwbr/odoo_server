@@ -1,5 +1,5 @@
 [options]
-addons_path = /mnt/addons,/mnt/custom-addons
+addons_path = /mnt/addons,/mnt/custom-addons,/mnt/custom-addons-client
 data_dir = /var/lib/odoo/client{CLIENT}
 admin_passwd = admin_123
 

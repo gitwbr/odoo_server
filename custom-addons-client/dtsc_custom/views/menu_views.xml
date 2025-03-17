@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <record id="dtsc_menu_root_inherit" model="ir.ui.view">
+            <field name="name">dtsc.menu.root.inherit</field>
+            <field name="model">ir.ui.menu</field>
+            <field name="inherit_id" ref="dtsc.menu_root"/>
+            <field name="arch" type="xml">
+                <xpath expr="." position="attributes">
+                    <attribute name="web_icon">dtsc_custom,static/description/icon.png</attribute>
+                </xpath>
+            </field>
+        </record>
+    </data>
+</odoo> 
