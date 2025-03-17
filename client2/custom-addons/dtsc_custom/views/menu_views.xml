@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<odoo>
-    <data>
-        <!-- 这里可以添加或修改菜单项 -->
-        <record id="dtsc.menu_root" model="ir.ui.menu">
-            <field name="web_icon">dtsc_custom,static/description/icon.png</field>
-        </record>
-    </data>
-</odoo> 
