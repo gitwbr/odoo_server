@@ -4,6 +4,8 @@ import logging
 import os
 import subprocess
 import shutil
+import stat
+import pwd
 
 logger = logging.getLogger(__name__)
 
@@ -18,6 +20,64 @@ class Instance:
         self.status = status
         self.version_id = version_id
         self.ssl_status = ssl_status
+
+    def to_dict(self):
+        """将实例信息转换为字典,添加更多展示信息"""
+        status_map = {
+            0: {'text': '创建中', 'color': 'blue'},
+            1: {'text': '运行中', 'color': 'green'},
+            2: {'text': '已停止', 'color': 'orange'},
+            3: {'text': '已过期', 'color': 'red'},
+            4: {'text': '创建失败', 'color': 'red'}
+        }
+
+        ssl_status_map = {
+            0: {'text': '未启用', 'color': 'gray'},
+            1: {'text': '已启用', 'color': 'green'}
+        }
+
+        return {
+            'id': self.id,
+            'domain': self.domain or f'client{self.id}.localhost',
+            'port': self.port,
+            'web_url': f'http://localhost:{self.port}',
+            'created_at': self.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+            'expires_at': self.expires_at.strftime('%Y-%m-%d %H:%M:%S'),
+            'days_remaining': (self.expires_at - datetime.now()).days,
+            'status': {
+                'code': self.status,
+                'text': status_map[self.status]['text'],
+                'color': status_map[self.status]['color']
+            },
+            'ssl_status': {
+                'code': self.ssl_status,
+                'text': ssl_status_map[self.ssl_status]['text'],
+                'color': ssl_status_map[self.ssl_status]['color']
+            },
+            'version': {
+                'id': self.version_id,
+                'name': 'Odoo 16.0'
+            }
+        }
+
+    @staticmethod
+    def get_all_by_user_id(user_id):
+        """获取用户的所有实例"""
+        try:
+            with get_db_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("""
+                        SELECT id, user_id, domain, port, created_at, 
+                               expires_at, status, version_id, ssl_status
+                        FROM instances 
+                        WHERE user_id = %s
+                        ORDER BY created_at DESC
+                    """, (user_id,))
+                    results = cur.fetchall()
+                    return [Instance(*row).to_dict() for row in results]
+        except Exception as e:
+            logger.error(f'获取实例列表失败: {str(e)}')
+            return []
 
     @staticmethod
     def get_next_available_port():
@@ -298,4 +358,117 @@ networks:
                     return None
         except Exception as e:
             logger.error(f'获取实例失败: {str(e)}')
-            return None 
+            return None
+
+    @classmethod
+    def get_by_id(cls, instance_id):
+        """根据ID获取实例"""
+        try:
+            with get_db_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("""
+                        SELECT id, user_id, domain, port, created_at, 
+                               expires_at, status, version_id, ssl_status
+                        FROM instances 
+                        WHERE id = %s
+                    """, (instance_id,))
+                    result = cur.fetchone()
+                    if result:
+                        return cls(*result)  # 使用解包创建Instance对象
+                    return None
+        except Exception as e:
+            logger.error(f"获取实例失败: {str(e)}")
+            raise Exception("获取实例失败")
+
+    def delete(self):
+        """删除实例及其相关资源"""
+        try:
+            # 1. 获取实例信息用于删除资源
+            instance_id = self.id
+            client_name = f'client{self.id}'  # 客户端名称
+            port = self.port
+
+            # 2. 删除 Docker 容器和相关资源
+            web_name = f'{client_name}-web{instance_id}-1'  # web容器名
+            db_name = f'{client_name}-db{instance_id}-1'    # db容器名
+            
+            logger.info(f"删除实例 {instance_id} 开始...")
+            
+            success = True  # 标记是否所有操作都成功
+            
+            # 停止和删除 web 容器
+            logger.info(f"停止 web 容器: {web_name}")
+            result = subprocess.run(['docker', 'stop', web_name], check=False, capture_output=True, text=True)
+            if result.returncode != 0:
+                logger.error(f"停止 web 容器失败: {result.stderr}")
+                success = False
+            
+            logger.info(f"删除 web 容器: {web_name}")
+            result = subprocess.run(['docker', 'rm', web_name], check=False, capture_output=True, text=True)
+            if result.returncode != 0:
+                logger.error(f"删除 web 容器失败: {result.stderr}")
+                success = False
+            
+            # 停止和删除 db 容器
+            logger.info(f"停止 db 容器: {db_name}")
+            result = subprocess.run(['docker', 'stop', db_name], check=False, capture_output=True, text=True)
+            if result.returncode != 0:
+                logger.error(f"停止 db 容器失败: {result.stderr}")
+                success = False
+            
+            logger.info(f"删除 db 容器: {db_name}")
+            result = subprocess.run(['docker', 'rm', db_name], check=False, capture_output=True, text=True)
+            if result.returncode != 0:
+                logger.error(f"删除 db 容器失败: {result.stderr}")
+                success = False
+            
+            # 删除实例目录
+            instance_dir = f'/home/odoo/odoo16/instances/{client_name}'
+            if os.path.exists(instance_dir):
+                logger.info(f"删除实例目录: {instance_dir}")
+                try:
+                    # 打印当前用户信息
+                    current_user = pwd.getpwuid(os.getuid()).pw_name
+                    current_group = pwd.getpwuid(os.getgid()).pw_name
+                    logger.info(f"当前用户: {current_user}, 用户组: {current_group}")
+                    logger.info(f"UID: {os.getuid()}, GID: {os.getgid()}")
+                    
+                    # 使用 sudo 删除目录
+                    result = subprocess.run(['sudo', 'rm', '-rf', instance_dir], 
+                                          check=False, 
+                                          capture_output=True, 
+                                          text=True)
+                    if result.returncode != 0:
+                        logger.error(f"删除命令返回错误: {result.stderr}")
+                        success = False
+                except Exception as e:
+                    logger.error(f"删除目录时发生异常: {str(e)}")
+                    success = False
+
+            # 只有当所有操作都成功时，才更新数据库
+            if success:
+                with get_db_connection() as conn:
+                    with conn.cursor() as cur:
+                        # 释放端口
+                        logger.info(f"释放端口: {port}")
+                        cur.execute("""
+                            UPDATE port_allocations 
+                            SET is_used = false 
+                            WHERE port = %s
+                        """, (port,))
+                        
+                        # 删除实例记录
+                        logger.info(f"删除数据库记录: {instance_id}")
+                        cur.execute(
+                            "DELETE FROM instances WHERE id = %s",
+                            (instance_id,)
+                        )
+                        conn.commit()
+                        logger.info(f"删除实例 {instance_id} 完成")
+                        return True
+            else:
+                raise Exception("删除实例资源失败")
+
+        except Exception as e:
+            logger.error(f"删除实例失败: {str(e)}")
+            raise Exception("删除实例失败") 

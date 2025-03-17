@@ -273,7 +273,7 @@ docker-compose exec -u root web5 pip3 install --no-cache-dir --force-reinstall p
 docker-compose exec -u root web5 pip3 install --no-cache-dir svglib>=1.5.1 PyMuPDF>=1.23.7 Pillow>=10.0.0
 ```
 # 进入容器查看实际的挂载点
-docker exec odoo16-web2-1 ls -l /mnt/
+docker exec odoo16-web6-1 ls -l /mnt/
 
 2. 重启容器使依赖生效：
 ```bash
@@ -927,6 +927,8 @@ tail -f /var/log/saas-api.error.log
 ## www-data瀏覽器權限設置
 # 添加 www-data 到 docker 组
 sudo usermod -aG docker www-data
+# 备用
+# sudo usermod -aG docker odoo
 
 # 验证组成员
 groups www-data
@@ -942,3 +944,7 @@ sudo systemctl restart docker
 
 # 重启 apache
 sudo systemctl restart nginx
+
+# 给odoo用户  sudo删除不需要密码权限
+sudo visudo
+odoo ALL=(ALL) NOPASSWD: /usr/bin/rm -rf /home/odoo/odoo16/instances/client*

@@ -16,26 +16,22 @@
             <ul class="nav-menu">
                 <li>
                     <a href="/dashboard/index.html" class="nav-item">
-                        <i class="material-icons">dashboard</i>
-                        控制台
+                        ◈ 控制台
                     </a>
                 </li>
                 <li>
                     <a href="/dashboard/instance.html" class="nav-item active">
-                        <i class="material-icons">apps</i>
-                        實例管理
+                        ◇ 實例管理
                     </a>
                 </li>
                 <li>
                     <a href="#" class="nav-item">
-                        <i class="material-icons">settings</i>
-                        系統設置
+                        ⚬ 系統設置
                     </a>
                 </li>
                 <li>
                     <a href="#" class="nav-item" onclick="logout()">
-                        <i class="material-icons">logout</i>
-                        登出
+                        ⊗ 登出
                     </a>
                 </li>
             </ul>
@@ -46,7 +42,7 @@
                 <div class="welcome">實例管理</div>
                 <div class="user-menu">
                     <div class="user-info">
-                        <div class="user-avatar">U</div>
+                        <div class="user-avatar">👤</div>
                         <span id="user-fullname">用戶名</span>
                     </div>
                 </div>
@@ -84,8 +80,8 @@
 
             <div class="instance-list">
                 <h2>我的實例</h2>
-                <div class="empty-state">
-                    暫無實例
+                <div id="instanceContainer">
+                    <!-- 实例将通过JS动态添加 -->
                 </div>
             </div>
         </div>
@@ -152,6 +148,176 @@
 
     // 頁面加載時檢查用戶狀態
     window.addEventListener('load', checkUserStatus);
+
+    // 获取并显示实例列表
+    async function loadInstances() {
+        try {
+            const response = await fetch('/api/instance/list');
+            const data = await response.json();
+            
+            console.log('API返回数据:', data);
+            
+            const instanceContainer = document.getElementById('instanceContainer');
+            instanceContainer.innerHTML = '';
+            
+            if (!data.instances || data.instances.length === 0) {
+                instanceContainer.innerHTML = `
+                    <div class="empty-state">
+                        <p>暫無實例</p>
+                        <button class="create-btn" onclick="createInstance()">創建新實例</button>
+                    </div>
+                `;
+                return;
+            }
+
+            // 先打印一个实例的数据看看结构
+            console.log('第一个实例数据:', data.instances[0]);
+            
+            data.instances.forEach(instance => {
+                // 构建实例卡片HTML
+                instanceContainer.innerHTML += `
+                    <div class="instance-main">
+                        <div class="instance-header">
+                            <div class="name-container">
+                                <span class="icon">◈</span>
+                                <h3>${instance.domain || '未命名實例'}</h3>
+                                <span class="status-badge">${getStatusText(instance.status)}</span>
+                            </div>
+                            <div class="actions">
+                                <button class="action-btn" onclick="window.open('http://${instance.domain}:${instance.port}', '_blank')" title="訪問實例">
+                                    ↗ 訪問
+                                </button>
+                                <button class="action-btn" onclick="manageInstance(${instance.id})" title="管理實例">
+                                    ⋮ 管理
+                                </button>
+                                <button class="action-btn" onclick="deleteInstance(${instance.id})" title="刪除實例">
+                                    × 刪除
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="info-grid">
+                            <div class="info-item">
+                                <h3>Web訪問</h3>
+                                <p>http://${instance.domain}:${instance.port}</p>
+                            </div>
+                            <div class="info-item">
+                                <h3>數據庫</h3>
+                                <p>Port ${instance.port ? instance.port - 2000 : '未知'}</p>
+                            </div>
+                            <div class="info-item">
+                                <h3>版本</h3>
+                                <p>${instance.version_id === 1 ? 'Odoo 測試版' : 'Odoo 正式版'}</p>
+                            </div>
+                            <div class="info-item">
+                                <h3>實例ID</h3>
+                                <p>#${instance.id}</p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+        } catch (error) {
+            console.error('加載實例列表失敗:', error);
+            instanceContainer.innerHTML = `
+                <div class="error-state">
+                    <p>加載失敗，請稍後重試</p>
+                    <button onclick="loadInstances()">重新加載</button>
+                </div>
+            `;
+        }
+    }
+
+    // 获取状态文本
+    function getStatusText(status) {
+        const statusTexts = {
+            0: '創建中',
+            1: '運行中',
+            2: '已停止',
+            3: '已過期',
+            4: '創建失敗'
+        };
+        return statusTexts[status] || '未知';
+    }
+
+    // 页面加载时获取实例列表
+    document.addEventListener('DOMContentLoaded', loadInstances);
+
+    // 删除实例
+    async function deleteInstance(instanceId) {
+        if (!confirm('確定要刪除此實例嗎？此操作不可恢復。')) {
+            return;
+        }
+
+        try {
+            const response = await fetch(`/api/instance/delete/${instanceId}`, {
+                method: 'DELETE'
+            });
+
+            const data = await response.json();
+            
+            if (response.ok && data.message) {
+                await loadInstances();
+                showMessage(data.message, 'success');
+            } else {
+                throw new Error(data.error || '刪除失敗');
+            }
+        } catch (error) {
+            console.error('刪除實例失敗:', error);
+            showMessage(error.message, 'error');
+        }
+    }
+
+    // 显示消息提示
+    function showMessage(message, type = 'success') {
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `message ${type}`;
+        messageDiv.textContent = message;
+        
+        document.body.appendChild(messageDiv);
+        
+        // 3秒后自动消失
+        setTimeout(() => {
+            messageDiv.remove();
+        }, 3000);
+    }
+
+    // 添加消息样式
+    const style = document.createElement('style');
+    style.textContent = `
+    .message {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        padding: 1rem 2rem;
+        border-radius: 0.5rem;
+        color: white;
+        font-weight: 500;
+        animation: slideIn 0.3s ease;
+        z-index: 1000;
+    }
+
+    .message.success {
+        background: #10B981;
+    }
+
+    .message.error {
+        background: #EF4444;
+    }
+
+    @keyframes slideIn {
+        from {
+            transform: translateX(100%);
+            opacity: 0;
+        }
+        to {
+            transform: translateX(0);
+            opacity: 1;
+        }
+    }
+    `;
+
+    document.head.appendChild(style);
     </script>
 </body>
 </html> 
