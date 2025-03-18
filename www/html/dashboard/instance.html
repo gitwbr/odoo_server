@@ -339,27 +339,25 @@
         }
 
         // Toast 通知函数
-        function showToast(title, message, type = 'info', duration = 5000) {
-            const container = document.getElementById('toastContainer');
+        function showToast(title, message, type = 'info') {
+            const toastContainer = document.getElementById('toastContainer');
             const toast = document.createElement('div');
             toast.className = `toast ${type}`;
+            
             toast.innerHTML = `
                 <div class="toast-content">
                     <div class="toast-title">${title}</div>
                     <div class="toast-message">${message}</div>
                 </div>
-                <div class="toast-close" onclick="this.parentElement.remove()">
-                    <i class="material-icons" style="font-size: 18px;">close</i>
-                </div>
+                <span class="toast-close" onclick="this.parentElement.remove()">×</span>
             `;
-            container.appendChild(toast);
-
-            if (duration > 0) {
-                setTimeout(() => {
-                    toast.remove();
-                }, duration);
-            }
-            return toast;
+            
+            toastContainer.appendChild(toast);
+            
+            // 3秒后自动移除
+            setTimeout(() => {
+                toast.remove();
+            }, 3000);
         }
 
         // 修改检查登录状态函数
@@ -388,49 +386,27 @@
                 createBtn.innerHTML = '<i class="material-icons" style="font-size: 16px;">hourglass_empty</i> 創建中...';
 
                 // 显示创建进度的通知
-                const progressToast = showToast('創建實例', '正在準備創建新實例...', 'info', 0);
-
-                // 5秒后更新提示信息
-                const initTimeout = setTimeout(() => {
-                    progressToast.querySelector('.toast-message').textContent = '正在初始化，請稍等...';
-                }, 5000);
+                showToast('創建實例', '正在準備創建新實例...', 'info');
 
                 const response = await fetch('/api/instance/create', {
                     method: 'POST'
                 });
 
                 const data = await response.json();
-                console.log('创建响应:', data);  // 添加日志看看响应内容
+                console.log('创建响应:', data);
 
-                // 只要服务器返回了响应，就清除初始化提示
-                clearTimeout(initTimeout);
-
-                // 修改判断逻辑，检查 response.ok 而不是 status === 200
-                console.log('response:', response);
-                if (response.ok) {  // response.ok 为 true 表示状态码在 200-299 之间
-                    // 更新进度通知为成功
-                    progressToast.className = 'toast success';
-                    progressToast.querySelector('.toast-title').textContent = '創建成功';
-                    progressToast.querySelector('.toast-message').textContent = data.message;
-
-                    // 立即重新加载实例列表
-                    await loadInstances();
+                if (response.ok) {
+                    showToast('成功', '實例創建成功', 'success');
+                    // 重新加载实例列表
+                    loadInstances();
                 } else {
-                    // 更新进度通知为错误
-                    progressToast.className = 'toast error';
-                    progressToast.querySelector('.toast-title').textContent = '創建失敗';
-                    progressToast.querySelector('.toast-message').textContent = data.error || '創建過程中發生錯誤';
+                    showToast('錯誤', data.error || '創建實例失敗', 'error');
                 }
-
-                // 3秒后移除通知
-                setTimeout(() => {
-                    progressToast.remove();
-                }, 3000);
-
             } catch (error) {
                 console.error('創建實例失敗:', error);
-                showToast('創建失敗', '請稍後重試', 'error', 3000);
+                showToast('錯誤', '創建實例失敗', 'error');
             } finally {
+                // 恢复按钮状态
                 const createBtn = document.getElementById('createBtn');
                 createBtn.disabled = false;
                 createBtn.innerHTML = '<i class="material-icons" style="font-size: 16px;">add</i> 創建實例';
@@ -476,7 +452,7 @@
                                 </span>
                             </td>
                             <td>${instance.port}</td>
-                            <td>${instance.version_id === 1 ? 'Odoo 測試版' : 'Odoo 正式版'}</td>
+                            <td>${instance.version_id === 1 ? 'Odoo 試用版' : 'Odoo 正式版'}</td>
                             <td>${new Date(instance.created_at).toLocaleString()}</td>
                             <td>${new Date(instance.expires_at).toLocaleString()}</td>
                             <td>
@@ -498,13 +474,9 @@
             }
         }
 
-        // 修改删除实例函数
+        // 删除实例
         async function deleteInstance(instanceId) {
-            if (!await checkLoginStatus()) {
-                return;
-            }
-
-            if (!confirm('確定要刪除此實例嗎？此操作不可恢復。')) {
+            if (!confirm('確定要刪除此實例嗎？')) {
                 return;
             }
 
@@ -512,18 +484,18 @@
                 const response = await fetch(`/api/instance/delete/${instanceId}`, {
                     method: 'DELETE'
                 });
-
                 const data = await response.json();
-                
+
                 if (response.ok) {
-                    alert(data.message);
-                    await loadInstances();  // 重新加载实例列表
+                    showToast('成功', '實例已刪除', 'success');
+                    // 重新加载实例列表
+                    loadInstances();
                 } else {
-                    alert(data.error || '刪除失敗');
+                    showToast('錯誤', data.error || '刪除實例失敗', 'error');
                 }
             } catch (error) {
                 console.error('刪除實例失敗:', error);
-                alert('刪除失敗，請稍後重試');
+                showToast('錯誤', '刪除實例失敗', 'error');
             }
         }
 
