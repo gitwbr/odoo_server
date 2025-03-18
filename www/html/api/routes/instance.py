@@ -118,3 +118,11 @@ def delete_instance(instance_id):
         return jsonify({
             'error': '删除实例失败'
         }), 500
+
+@instance.route('/status/<int:instance_id>')
+def get_instance_status(instance_id):
+    try:
+        status = Instance.get_containers_status(instance_id)
+        return jsonify(status)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500

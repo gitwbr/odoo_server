@@ -155,31 +155,138 @@
             }
         }
 
-        // 修改加载实例列表函数，添加错误处理和状态显示
+        // 添加获取容器状态的函数
+        async function getContainerStatus(instanceId) {
+            try {
+                const response = await fetch(`/api/instance/status/${instanceId}`);
+                return await response.json();
+            } catch (error) {
+                console.error('获取容器状态失败:', error);
+                return { web: 'error', db: 'error' };
+            }
+        }
+
+        // 修改状态显示部分
+        function getStatusBadge(status, type) {
+            // 状态样式映射
+            const statusClass = {
+                'running': 'running',
+                'exited': 'stopped',
+                'created': 'creating',
+                'restarting': 'running',
+                'paused': 'stopped',
+                'not found': 'failed',
+                'error': 'failed'
+            }[status] || 'failed';
+
+            // 状态文本映射
+            const statusText = {
+                'running': '運行中',
+                'exited': '已停止',
+                'created': '已創建',
+                'restarting': '重啟中',
+                'paused': '已暫停',
+                'not found': '未找到',
+                'error': '錯誤'
+            }[status] || '未知';
+
+            return `
+                <span class="status-badge ${statusClass}" title="${status}">
+                    ${type}: ${statusText}
+                </span>
+            `;
+        }
+
+        // 修改定时更新状态的部分
+        let statusUpdateInterval;
+
+        async function updateInstanceStatus() {
+            try {
+                // 获取所有实例
+                const response = await fetch('/api/instance/list');
+                const data = await response.json();
+                
+                if (!data.instances || data.instances.length === 0) {
+                    return;
+                }
+
+                // 遍历每个实例，更新其状态
+                for (const instance of data.instances) {
+                    const statusCell = document.querySelector(`#instance-${instance.id}-status`);
+                    if (!statusCell) continue;
+
+                    let statusHtml = '';
+                    
+                    // 获取容器状态（不管实例状态如何，都获取容器实际状态）
+                    const containerStatus = await getContainerStatus(instance.id);
+                    
+                    if (instance.status === 1) {  // 运行中状态
+                        statusHtml = `
+                            <div style="display: flex; flex-direction: column; gap: 4px;">
+                                ${getStatusBadge(containerStatus.web, 'Web')}
+                                ${getStatusBadge(containerStatus.db, 'DB')}
+                            </div>
+                        `;
+                    } else {  // 其他状态
+                        // 显示实例状态，同时在tooltip中显示容器状态
+                        statusHtml = `
+                            <div style="display: flex; flex-direction: column; gap: 4px;">
+                                <span class="status-badge ${getStatusClass(instance.status)}" 
+                                      title="Web: ${containerStatus.web}, DB: ${containerStatus.db}">
+                                    ${getStatusText(instance.status)}
+                                </span>
+                            </div>
+                        `;
+                    }
+                    
+                    statusCell.innerHTML = statusHtml;
+                }
+            } catch (error) {
+                console.error('更新状态失败:', error);
+            }
+        }
+
+        function startStatusUpdateInterval() {
+            // 清除之前的定时器
+            if (statusUpdateInterval) {
+                clearInterval(statusUpdateInterval);
+            }
+
+            // 立即执行一次
+            updateInstanceStatus();
+
+            // 每10秒更新一次状态
+            statusUpdateInterval = setInterval(updateInstanceStatus, 5000);
+        }
+
+        // 修改实例列表加载函数，添加状态单元格的ID
         async function loadInstances() {
             try {
                 const response = await fetch('/api/instance/list');
                 const data = await response.json();
-                console.log('获取实例列表响应:', data);
-
-                const container = document.getElementById('instanceContainer');
                 
+                const container = document.getElementById('instanceContainer');
                 if (!data.instances || data.instances.length === 0) {
-                    container.innerHTML = `
-                        <tr>
-                            <td colspan="7" style="text-align: center; padding: 32px;">
-                                暫無實例
-                            </td>
-                        </tr>
-                    `;
+                    container.innerHTML = `<tr><td colspan="7">暫無實例</td></tr>`;
                     return;
                 }
 
                 container.innerHTML = '';
-                data.instances.forEach(instance => {
-                    const statusClass = getStatusClass(instance.status);
-                    const statusText = getStatusText(instance.status);
+                for (const instance of data.instances) {
+                    let statusHtml = '';
                     
+                    if (instance.status === 1) {
+                        const containerStatus = await getContainerStatus(instance.id);
+                        statusHtml = `
+                            <div style="display: flex; flex-direction: column; gap: 4px;">
+                                ${getStatusBadge(containerStatus.web, 'Web')}
+                                ${getStatusBadge(containerStatus.db, 'DB')}
+                            </div>
+                        `;
+                    } else {
+                        statusHtml = `<span class="status-badge ${getStatusClass(instance.status)}">${getStatusText(instance.status)}</span>`;
+                    }
+
                     container.innerHTML += `
                         <tr>
                             <td>
@@ -188,11 +295,7 @@
                                     client${instance.id}-web${instance.id}-1
                                 </div>
                             </td>
-                            <td>
-                                <span class="status-badge ${statusClass}">
-                                    ${statusText}
-                                </span>
-                            </td>
+                            <td id="instance-${instance.id}-status">${statusHtml}</td>
                             <td>${instance.port}</td>
                             <td>${instance.version_id === 1 ? 'Odoo 試用版' : 'Odoo 正式版'}</td>
                             <td>${new Date(instance.created_at).toLocaleString()}</td>
@@ -209,7 +312,11 @@
                             </td>
                         </tr>
                     `;
-                });
+                }
+
+                // 启动状态更新
+                startStatusUpdateInterval();
+
             } catch (error) {
                 console.error('加載實例列表失敗:', error);
                 showToast('加載失敗', '無法獲取實例列表', 'error');

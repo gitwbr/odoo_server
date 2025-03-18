@@ -580,4 +580,36 @@ networks:
                     
         except Exception as e:
             logger.error(f'获取用户实例列表失败: {str(e)}')
-            raise e 
+            raise e
+
+    @staticmethod
+    def get_containers_status(instance_id):
+        """获取实例的容器状态"""
+        try:
+            # 构建容器名称
+            web_container = f"client{instance_id}-web{instance_id}-1"
+            db_container = f"client{instance_id}-db{instance_id}-1"
+            
+            # 获取容器状态
+            web_status = subprocess.run(
+                ['docker', 'inspect', web_container, '--format', '{{.State.Status}}'],
+                capture_output=True,
+                text=True
+            ).stdout.strip() or 'not found'
+            
+            db_status = subprocess.run(
+                ['docker', 'inspect', db_container, '--format', '{{.State.Status}}'],
+                capture_output=True,
+                text=True
+            ).stdout.strip() or 'not found'
+            
+            return {
+                'web': web_status,
+                'db': db_status
+            }
+        except Exception as e:
+            logger.error(f'获取容器状态失败: {str(e)}')
+            return {
+                'web': 'error',
+                'db': 'error'
+            } 
