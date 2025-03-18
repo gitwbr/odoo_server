@@ -11,21 +11,32 @@ def create():
         # 获取当前用户ID
         user_id = session.get('user_id')
         if not user_id:
+            logger.error('创建实例失败：未登录')
             return jsonify({'error': '未登录'}), 401
-            
+
+        logger.info(f'开始创建实例，用户ID: {user_id}')
+        
         # 创建新实例
-        instance_id = Instance.create(
-            user_id=user_id,
-            version_id=1  # 测试版
-        )
-        
-        return jsonify({
-            'message': '實例創建成功',
-            'instance_id': instance_id
-        })
-        
+        try:
+            instance_id = Instance.create(
+                user_id=user_id,
+                version_id=1  # 测试版
+            )
+            
+            logger.info(f'实例创建成功，ID: {instance_id}')
+            return jsonify({
+                'message': '實例創建成功',
+                'instance_id': instance_id
+            })
+            
+        except Exception as e:
+            logger.error(f'创建实例失败: {str(e)}')
+            return jsonify({
+                'error': str(e)
+            }), 400
+            
     except Exception as e:
-        logger.error(f'創建實例失敗: {str(e)}')
+        logger.error(f'系统错误: {str(e)}')
         return jsonify({
             'error': str(e)
         }), 500
@@ -59,21 +70,23 @@ def get_status():
 @instance.route('/list', methods=['GET'])
 def list_instances():
     try:
+        # 获取当前用户ID
         user_id = session.get('user_id')
         if not user_id:
             return jsonify({'error': '未登录'}), 401
-            
-        instances = Instance.get_all_by_user_id(user_id)
+
+        # 获取用户的实例列表
+        instances = Instance.get_user_instances(user_id)
+        
         return jsonify({
-            'instances': instances,
-            'total': len(instances)
+            'instances': instances
         })
         
     except Exception as e:
         logger.error(f'获取实例列表失败: {str(e)}')
         return jsonify({
-            'error': '获取实例列表失败'
-        }), 500 
+            'error': str(e)
+        }), 500
 
 @instance.route('/delete/<int:instance_id>', methods=['DELETE'])
 def delete_instance(instance_id):

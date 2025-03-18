@@ -5,319 +5,560 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>實例管理 - Odoo SaaS</title>
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
-    <link href="/dashboard/css/style.css" rel="stylesheet">
+    <link rel="stylesheet" href="/css/dashboard.css">
+    <style>
+        :root {
+            --sidebar-width: 180px;
+            --primary-color: #1a73e8;
+            --border-color: #e5e5e5;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: #f5f6f7;
+        }
+
+        .dashboard {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* 左侧菜单 */
+        .sidebar {
+            width: var(--sidebar-width);
+            background: white;
+            border-right: 1px solid var(--border-color);
+            transition: all 0.3s ease;
+            z-index: 100;
+        }
+
+        .logo {
+            height: 60px;
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            border-bottom: 1px solid var(--border-color);
+            font-size: 16px;
+            font-weight: 500;
+            color: #1d2129;
+        }
+
+        .nav-menu {
+            list-style: none;
+            padding: 12px 0;
+            margin: 0;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            padding: 12px 20px;
+            color: #4e5969;
+            text-decoration: none;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+
+        .nav-item:hover {
+            background: #f2f3f5;
+            color: var(--primary-color);
+        }
+
+        .nav-item.active {
+            background: #e8f0fe;
+            color: var(--primary-color);
+            font-weight: 500;
+        }
+
+        .nav-item i {
+            margin-right: 12px;
+            font-size: 18px;
+        }
+
+        /* 主内容区 */
+        .main-content {
+            flex: 1;
+            padding: 20px 24px;
+            overflow-x: hidden;
+        }
+
+        /* 顶部标签页 */
+        .tabs {
+            margin-bottom: 16px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            gap: 32px;
+        }
+
+        .tab {
+            padding: 12px 0;
+            font-size: 14px;
+            color: #4e5969;
+            cursor: pointer;
+            position: relative;
+            transition: all 0.2s;
+        }
+
+        .tab:hover {
+            color: var(--primary-color);
+        }
+
+        .tab.active {
+            color: var(--primary-color);
+            font-weight: 500;
+        }
+
+        .tab.active::after {
+            content: '';
+            position: absolute;
+            bottom: -1px;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: var(--primary-color);
+        }
+
+        /* 表格样式 */
+        .instance-table {
+            width: 100%;
+            background: white;
+            border-radius: 8px;
+            border-spacing: 0;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+        }
+
+        .instance-table th {
+            background: #fafafa;
+            padding: 16px;
+            text-align: left;
+            font-weight: 500;
+            color: #1d2129;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .instance-table td {
+            padding: 16px;
+            border-bottom: 1px solid var(--border-color);
+            color: #4e5969;
+        }
+
+        .instance-table tr:hover td {
+            background: #f8f9fa;
+        }
+
+        /* 按钮样式 */
+        .create-btn {
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .create-btn:hover {
+            background: #1557b0;
+        }
+
+        /* 状态标签 */
+        .status-badge {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+
+        .status-badge.running {
+            background: #e8f5e9;
+            color: #43a047;
+        }
+
+        .status-badge.stopped {
+            background: #fbe9e7;
+            color: #d84315;
+        }
+
+        /* 操作按钮 */
+        .action-btn {
+            padding: 4px;
+            border: none;
+            background: transparent;
+            color: #4e5969;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .action-btn:hover {
+            color: var(--primary-color);
+        }
+
+        /* Toast 通知样式 */
+        .toast-container {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            z-index: 1000;
+        }
+
+        .toast {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            padding: 16px;
+            margin-top: 8px;
+            min-width: 300px;
+            max-width: 400px;
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            animation: slideIn 0.3s ease;
+        }
+
+        .toast.info {
+            border-left: 4px solid var(--primary-color);
+        }
+
+        .toast.success {
+            border-left: 4px solid #43a047;
+        }
+
+        .toast.error {
+            border-left: 4px solid #d32f2f;
+        }
+
+        .toast-content {
+            flex: 1;
+        }
+
+        .toast-title {
+            font-weight: 500;
+            margin-bottom: 4px;
+            color: #1d2129;
+        }
+
+        .toast-message {
+            color: #4e5969;
+            font-size: 13px;
+        }
+
+        .toast-close {
+            color: #909399;
+            cursor: pointer;
+            padding: 4px;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+    </style>
 </head>
 <body>
     <div class="dashboard">
-        <div class="sidebar">
-            <div class="logo">
-                管理系統
-            </div>
-            <ul class="nav-menu">
-                <li>
-                    <a href="/dashboard/index.html" class="nav-item">
-                        ◈ 控制台
-                    </a>
-                </li>
-                <li>
-                    <a href="/dashboard/instance.html" class="nav-item active">
-                        ◇ 實例管理
-                    </a>
-                </li>
-                <li>
-                    <a href="#" class="nav-item">
-                        ⚬ 系統設置
-                    </a>
-                </li>
-                <li>
-                    <a href="#" class="nav-item" onclick="logout()">
-                        ⊗ 登出
-                    </a>
-                </li>
-            </ul>
-        </div>
-
+        <!-- 侧边栏会由 JavaScript 动态插入 -->
         <div class="main-content">
-            <div class="header">
-                <div class="welcome">實例管理</div>
-                <div class="user-menu">
-                    <div class="user-info">
-                        <div class="user-avatar">👤</div>
-                        <span id="user-fullname">用戶名</span>
-                    </div>
-                </div>
+            <div class="tabs">
+                <div class="tab active" onclick="switchTab('instances')">實例列表</div>
+                <div class="tab" onclick="switchTab('domains')">域名管理</div>
             </div>
 
-            <div class="instance-card">
-              
-                <div class="status-info">
-                    <div class="info-item">
-                        <h3>用戶等級</h3>
-                        <p>
-                            <span class="status-badge">普通用戶</span>
-                        </p>
-                    </div>
-                    <div class="info-item">
-                        <h3>試用時間</h3>
-                        <p>30 天</p>
-                    </div>
-                    <div class="info-item">
-                        <h3>可用實例等級</h3>
-                        <p>測試版本</p>
-                    </div>
-                    <div class="info-item">
-                        <h3>可創建數量</h3>
-                        <p>1 個</p>
-                    </div>
-                </div>
-
-                <div style="text-align: center;">
+            <div id="instances" class="tab-content">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                    <h2 style="margin: 0; font-size: 16px; color: #1d2129;">實例列表</h2>
                     <button id="createBtn" class="create-btn" onclick="createInstance()">
-                        創建試用實例
+                        <i class="material-icons" style="font-size: 16px;">add</i>
+                        創建實例
                     </button>
                 </div>
+
+                <div class="table-container">
+                    <table class="instance-table">
+                        <thead>
+                            <tr>
+                                <th>實例名稱</th>
+                                <th>狀態</th>
+                                <th>端口</th>
+                                <th>版本</th>
+                                <th>創建時間</th>
+                                <th>到期時間</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="instanceContainer">
+                            <!-- 實例數據將通過 JS 動態添加 -->
+                        </tbody>
+                    </table>
+                </div>
             </div>
 
-            <div class="instance-list">
-                <h2>我的實例</h2>
-                <div id="instanceContainer">
-                    <!-- 实例将通过JS动态添加 -->
-                </div>
+            <div id="domains" class="tab-content" style="display: none;">
+                <h2 style="margin: 0; font-size: 16px; color: #1d2129;">域名管理</h2>
+                <!-- 域名管理的内容 -->
             </div>
         </div>
     </div>
 
-    <script src="/dashboard/js/common.js"></script>
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- 引入公共布局脚本 -->
+    <script src="/js/layout.js"></script>
     <script>
-    // 檢查用戶狀態並控制按鈕
-    async function checkUserStatus() {
-        try {
-            const response = await fetch('/api/user/can_create_instance');
-        const data = await response.json();
-        
-        const createBtn = document.getElementById('createBtn');
-        
-        if (!data.can_create) {
-            createBtn.disabled = true;
-            createBtn.title = '創建失敗請重試';
-        }
-            
-        } catch (error) {
-            console.error('獲取用戶信息失敗:', error);
-        }
-    }
+        // 在文件开头添加全局变量
+        let mainDomain = '';
 
-    // 創建實例
-    async function createInstance() {
-        try {
-            const createBtn = document.getElementById('createBtn');
-            createBtn.disabled = true;
-            createBtn.textContent = '創建中...';
-
-            const response = await fetch('/api/instance/create', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    version_id: 1  // 測試版
-                })
-            });
-
-            const data = await response.json();
-            
-            if (response.ok) {
-                // 創建成功
-                alert('實例創建成功！');
-                // 刷新頁面
-                window.location.reload();
-            } else {
-                // 創建失敗
-                alert('創建失敗：' + (data.error || '未知錯誤'));
-                createBtn.disabled = false;
-                createBtn.textContent = '創建試用實例';
+        // 添加获取域名的函数
+        async function getMainDomain() {
+            try {
+                const response = await fetch('/api/config/domain');
+                const data = await response.json();
+                mainDomain = data.domain;
+            } catch (error) {
+                console.error('获取域名配置失败:', error);
             }
-        } catch (error) {
-            console.error('創建實例失敗:', error);
-            alert('創建失敗：網絡錯誤');
-            const createBtn = document.getElementById('createBtn');
-            createBtn.disabled = false;
-            createBtn.textContent = '創建試用實例';
         }
-    }
 
-    // 頁面加載時檢查用戶狀態
-    window.addEventListener('load', checkUserStatus);
+        // 添加标签切换功能
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.style.display = 'none');
+            
+            event.target.classList.add('active');
+            document.getElementById(tabId).style.display = 'block';
+        }
 
-    // 获取并显示实例列表
-    async function loadInstances() {
-        try {
-            const response = await fetch('/api/instance/list');
-            const data = await response.json();
-            
-            console.log('API返回数据:', data);
-            
-            const instanceContainer = document.getElementById('instanceContainer');
-            instanceContainer.innerHTML = '';
-            
-            if (!data.instances || data.instances.length === 0) {
-                instanceContainer.innerHTML = `
-                    <div class="empty-state">
-                        <p>暫無實例</p>
-                        <button class="create-btn" onclick="createInstance()">創建新實例</button>
-                    </div>
-                `;
+        // Toast 通知函数
+        function showToast(title, message, type = 'info', duration = 5000) {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.innerHTML = `
+                <div class="toast-content">
+                    <div class="toast-title">${title}</div>
+                    <div class="toast-message">${message}</div>
+                </div>
+                <div class="toast-close" onclick="this.parentElement.remove()">
+                    <i class="material-icons" style="font-size: 18px;">close</i>
+                </div>
+            `;
+            container.appendChild(toast);
+
+            if (duration > 0) {
+                setTimeout(() => {
+                    toast.remove();
+                }, duration);
+            }
+            return toast;
+        }
+
+        // 修改检查登录状态函数
+        async function checkLoginStatus() {
+            try {
+                const response = await fetch('/api/user/info');
+                const data = await response.json();
+                
+                if (response.ok) {
+                    return true;
+                }
+                
+                console.error('未登录或会话已过期');
+                return false;
+            } catch (error) {
+                console.error('检查登录状态失败:', error);
+                return false;
+            }
+        }
+
+        // 修改创建实例函数
+        async function createInstance() {
+            try {
+                const createBtn = document.getElementById('createBtn');
+                createBtn.disabled = true;
+                createBtn.innerHTML = '<i class="material-icons" style="font-size: 16px;">hourglass_empty</i> 創建中...';
+
+                // 显示创建进度的通知
+                const progressToast = showToast('創建實例', '正在準備創建新實例...', 'info', 0);
+
+                // 5秒后更新提示信息
+                const initTimeout = setTimeout(() => {
+                    progressToast.querySelector('.toast-message').textContent = '正在初始化，請稍等...';
+                }, 5000);
+
+                const response = await fetch('/api/instance/create', {
+                    method: 'POST'
+                });
+
+                const data = await response.json();
+                console.log('创建响应:', data);  // 添加日志看看响应内容
+
+                // 只要服务器返回了响应，就清除初始化提示
+                clearTimeout(initTimeout);
+
+                // 修改判断逻辑，检查 response.ok 而不是 status === 200
+                console.log('response:', response);
+                if (response.ok) {  // response.ok 为 true 表示状态码在 200-299 之间
+                    // 更新进度通知为成功
+                    progressToast.className = 'toast success';
+                    progressToast.querySelector('.toast-title').textContent = '創建成功';
+                    progressToast.querySelector('.toast-message').textContent = data.message;
+
+                    // 立即重新加载实例列表
+                    await loadInstances();
+                } else {
+                    // 更新进度通知为错误
+                    progressToast.className = 'toast error';
+                    progressToast.querySelector('.toast-title').textContent = '創建失敗';
+                    progressToast.querySelector('.toast-message').textContent = data.error || '創建過程中發生錯誤';
+                }
+
+                // 3秒后移除通知
+                setTimeout(() => {
+                    progressToast.remove();
+                }, 3000);
+
+            } catch (error) {
+                console.error('創建實例失敗:', error);
+                showToast('創建失敗', '請稍後重試', 'error', 3000);
+            } finally {
+                const createBtn = document.getElementById('createBtn');
+                createBtn.disabled = false;
+                createBtn.innerHTML = '<i class="material-icons" style="font-size: 16px;">add</i> 創建實例';
+            }
+        }
+
+        // 修改加载实例列表函数，添加错误处理和状态显示
+        async function loadInstances() {
+            try {
+                const response = await fetch('/api/instance/list');
+                const data = await response.json();
+                console.log('获取实例列表响应:', data);
+
+                const container = document.getElementById('instanceContainer');
+                
+                if (!data.instances || data.instances.length === 0) {
+                    container.innerHTML = `
+                        <tr>
+                            <td colspan="7" style="text-align: center; padding: 32px;">
+                                暫無實例
+                            </td>
+                        </tr>
+                    `;
+                    return;
+                }
+
+                container.innerHTML = '';
+                data.instances.forEach(instance => {
+                    const statusClass = getStatusClass(instance.status);
+                    const statusText = getStatusText(instance.status);
+                    
+                    container.innerHTML += `
+                        <tr>
+                            <td>
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <i class="material-icons" style="color: var(--primary-color);">dns</i>
+                                    client${instance.id}-web${instance.id}-1
+                                </div>
+                            </td>
+                            <td>
+                                <span class="status-badge ${statusClass}">
+                                    ${statusText}
+                                </span>
+                            </td>
+                            <td>${instance.port}</td>
+                            <td>${instance.version_id === 1 ? 'Odoo 測試版' : 'Odoo 正式版'}</td>
+                            <td>${new Date(instance.created_at).toLocaleString()}</td>
+                            <td>${new Date(instance.expires_at).toLocaleString()}</td>
+                            <td>
+                                <div style="display: flex; gap: 8px;">
+                                    <button class="action-btn" onclick="window.open('http://${mainDomain}:${instance.port}', '_blank')" title="訪問實例">
+                                        <i class="material-icons">open_in_new</i>
+                                    </button>
+                                    <button class="action-btn" onclick="deleteInstance(${instance.id})" title="刪除實例">
+                                        <i class="material-icons">delete</i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+                });
+            } catch (error) {
+                console.error('加載實例列表失敗:', error);
+                showToast('加載失敗', '無法獲取實例列表', 'error');
+            }
+        }
+
+        // 修改删除实例函数
+        async function deleteInstance(instanceId) {
+            if (!await checkLoginStatus()) {
                 return;
             }
 
-            // 先打印一个实例的数据看看结构
-            console.log('第一个实例数据:', data.instances[0]);
-            
-            data.instances.forEach(instance => {
-                // 构建实例卡片HTML
-                instanceContainer.innerHTML += `
-                    <div class="instance-main">
-                        <div class="instance-header">
-                            <div class="name-container">
-                                <span class="icon">◈</span>
-                                <h3>${instance.domain || '未命名實例'}</h3>
-                                <span class="status-badge">${getStatusText(instance.status)}</span>
-                            </div>
-                            <div class="actions">
-                                <button class="action-btn" onclick="window.open('http://${instance.domain}:${instance.port}', '_blank')" title="訪問實例">
-                                    ↗ 訪問
-                                </button>
-                                <button class="action-btn" onclick="manageInstance(${instance.id})" title="管理實例">
-                                    ⋮ 管理
-                                </button>
-                                <button class="action-btn" onclick="deleteInstance(${instance.id})" title="刪除實例">
-                                    × 刪除
-                                </button>
-                            </div>
-                        </div>
-
-                        <div class="info-grid">
-                            <div class="info-item">
-                                <h3>Web訪問</h3>
-                                <p>http://${instance.domain}:${instance.port}</p>
-                            </div>
-                            <div class="info-item">
-                                <h3>數據庫</h3>
-                                <p>Port ${instance.port ? instance.port - 2000 : '未知'}</p>
-                            </div>
-                            <div class="info-item">
-                                <h3>版本</h3>
-                                <p>${instance.version_id === 1 ? 'Odoo 測試版' : 'Odoo 正式版'}</p>
-                            </div>
-                            <div class="info-item">
-                                <h3>實例ID</h3>
-                                <p>#${instance.id}</p>
-                            </div>
-                        </div>
-                    </div>
-                `;
-            });
-        } catch (error) {
-            console.error('加載實例列表失敗:', error);
-            instanceContainer.innerHTML = `
-                <div class="error-state">
-                    <p>加載失敗，請稍後重試</p>
-                    <button onclick="loadInstances()">重新加載</button>
-                </div>
-            `;
-        }
-    }
-
-    // 获取状态文本
-    function getStatusText(status) {
-        const statusTexts = {
-            0: '創建中',
-            1: '運行中',
-            2: '已停止',
-            3: '已過期',
-            4: '創建失敗'
-        };
-        return statusTexts[status] || '未知';
-    }
-
-    // 页面加载时获取实例列表
-    document.addEventListener('DOMContentLoaded', loadInstances);
-
-    // 删除实例
-    async function deleteInstance(instanceId) {
-        if (!confirm('確定要刪除此實例嗎？此操作不可恢復。')) {
-            return;
-        }
-
-        try {
-            const response = await fetch(`/api/instance/delete/${instanceId}`, {
-                method: 'DELETE'
-            });
-
-            const data = await response.json();
-            
-            if (response.ok && data.message) {
-                await loadInstances();
-                showMessage(data.message, 'success');
-            } else {
-                throw new Error(data.error || '刪除失敗');
+            if (!confirm('確定要刪除此實例嗎？此操作不可恢復。')) {
+                return;
             }
-        } catch (error) {
-            console.error('刪除實例失敗:', error);
-            showMessage(error.message, 'error');
+
+            try {
+                const response = await fetch(`/api/instance/delete/${instanceId}`, {
+                    method: 'DELETE'
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    alert(data.message);
+                    await loadInstances();  // 重新加载实例列表
+                } else {
+                    alert(data.error || '刪除失敗');
+                }
+            } catch (error) {
+                console.error('刪除實例失敗:', error);
+                alert('刪除失敗，請稍後重試');
+            }
         }
-    }
 
-    // 显示消息提示
-    function showMessage(message, type = 'success') {
-        const messageDiv = document.createElement('div');
-        messageDiv.className = `message ${type}`;
-        messageDiv.textContent = message;
-        
-        document.body.appendChild(messageDiv);
-        
-        // 3秒后自动消失
-        setTimeout(() => {
-            messageDiv.remove();
-        }, 3000);
-    }
-
-    // 添加消息样式
-    const style = document.createElement('style');
-    style.textContent = `
-    .message {
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        padding: 1rem 2rem;
-        border-radius: 0.5rem;
-        color: white;
-        font-weight: 500;
-        animation: slideIn 0.3s ease;
-        z-index: 1000;
-    }
-
-    .message.success {
-        background: #10B981;
-    }
-
-    .message.error {
-        background: #EF4444;
-    }
-
-    @keyframes slideIn {
-        from {
-            transform: translateX(100%);
-            opacity: 0;
+        // 获取状态样式类
+        function getStatusClass(status) {
+            const statusClasses = {
+                0: 'creating',
+                1: 'running',
+                2: 'stopped',
+                3: 'expired',
+                4: 'failed'
+            };
+            return statusClasses[status] || '';
         }
-        to {
-            transform: translateX(0);
-            opacity: 1;
-        }
-    }
-    `;
 
-    document.head.appendChild(style);
+        // 获取状态文本
+        function getStatusText(status) {
+            const statusTexts = {
+                0: '創建中',
+                1: '運行中',
+                2: '已停止',
+                3: '已過期',
+                4: '創建失敗'
+            };
+            return statusTexts[status] || '未知';
+        }
+
+        // 页面加载时执行
+        document.addEventListener('DOMContentLoaded', async () => {
+            console.log('页面加载完成，开始初始化...');
+            await getMainDomain();  // 先获取域名配置
+            if (await checkLoginStatus()) {
+                loadInstances();
+            }
+        });
     </script>
 </body>
 </html> 

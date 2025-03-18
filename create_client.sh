@@ -162,13 +162,7 @@ function create_client() {
     # 生成当前客户端的nginx配置
     echo "生成nginx配置文件..."
     CERT_DOMAIN=${DOMAIN}
-    # 如果是client1或client2，使用自己的证书，否则使用client1的证书
-    #if [ ${CLIENT_NUM} -le 2 ]; then
-    #    CERT_DOMAIN=${DOMAIN}
-    #else
-    #    CERT_DOMAIN="client1.euhon.com"
-    #fi
-    #CERT_DOMAIN="client1.euhon.com"
+
     
     # 在生成 nginx 配置的部分修改如下
 cat > ${CLIENT}_nginx.conf << EOL

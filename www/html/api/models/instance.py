@@ -179,6 +179,8 @@ class Instance:
                         conn.commit()
                         raise e
 
+                    # 暫時返回
+                    return instance_id
                     # 创建容器后，恢复默认数据库
                     logger.info('开始恢复默认数据库...')
                     
@@ -549,4 +551,33 @@ networks:
 
         except Exception as e:
             logger.error(f"删除实例失败: {str(e)}")
-            raise Exception("删除实例失败") 
+            raise Exception("删除实例失败")
+
+    @staticmethod
+    def get_user_instances(user_id):
+        try:
+            with get_db_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("""
+                        SELECT id, domain, port, status, version_id, created_at, expires_at
+                        FROM instances 
+                        WHERE user_id = %s
+                        ORDER BY created_at DESC
+                    """, (user_id,))
+                    
+                    instances = []
+                    for row in cur.fetchall():
+                        instances.append({
+                            'id': row[0],
+                            'domain': row[1],
+                            'port': row[2],
+                            'status': row[3],
+                            'version_id': row[4],
+                            'created_at': row[5].isoformat() if row[5] else None,
+                            'expires_at': row[6].isoformat() if row[6] else None
+                        })
+                    return instances
+                    
+        except Exception as e:
+            logger.error(f'获取用户实例列表失败: {str(e)}')
+            raise e 

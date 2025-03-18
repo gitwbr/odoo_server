@@ -1,0 +1,353 @@
+:root {
+    --sidebar-width: 180px;
+    --primary-color: #1a73e8;
+    --border-color: #e5e5e5;
+}
+
+body {
+    margin: 0;
+    padding: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: #f5f6f7;
+}
+
+.dashboard {
+    display: flex;
+    min-height: 100vh;
+}
+
+/* 左侧菜单 */
+.sidebar {
+    width: var(--sidebar-width);
+    background: white;
+    border-right: 1px solid var(--border-color);
+    transition: all 0.3s ease;
+    z-index: 100;
+}
+
+.logo {
+    height: 60px;
+    display: flex;
+    align-items: center;
+    padding: 0 20px;
+    border-bottom: 1px solid var(--border-color);
+    font-size: 16px;
+    font-weight: 500;
+    color: #1d2129;
+}
+
+.nav-menu {
+    list-style: none;
+    padding: 12px 0;
+    margin: 0;
+}
+
+.nav-item {
+    display: flex;
+    align-items: center;
+    padding: 12px 20px;
+    color: #4e5969;
+    text-decoration: none;
+    font-size: 14px;
+    transition: all 0.2s;
+}
+
+.nav-item:hover {
+    background: #f2f3f5;
+    color: var(--primary-color);
+}
+
+.nav-item.active {
+    background: #e8f0fe;
+    color: var(--primary-color);
+    font-weight: 500;
+}
+
+.nav-item i {
+    margin-right: 12px;
+    font-size: 18px;
+}
+
+/* 主内容区 */
+.main-content {
+    flex: 1;
+    padding: 20px 24px;
+    overflow-x: hidden;
+}
+
+/* 头部样式 */
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+}
+
+.welcome {
+    font-size: 20px;
+    font-weight: 500;
+    color: #1d2129;
+}
+
+.user-menu {
+    display: flex;
+    align-items: center;
+}
+
+.user-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.user-info:hover {
+    background: #f2f3f5;
+}
+
+.user-avatar {
+    width: 32px;
+    height: 32px;
+    background: var(--primary-color);
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 500;
+}
+
+/* 卡片样式 */
+.cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.card {
+    background: white;
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+
+.card-title {
+    color: #4e5969;
+    font-size: 14px;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+}
+
+.card-value {
+    font-size: 24px;
+    font-weight: 500;
+    color: #1d2129;
+    margin-bottom: 8px;
+}
+
+.card-description {
+    font-size: 13px;
+    color: #86909c;
+}
+
+/* 表格样式 */
+.instance-table {
+    width: 100%;
+    background: white;
+    border-radius: 8px;
+    border-spacing: 0;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+
+.instance-table th {
+    background: #fafafa;
+    padding: 16px;
+    text-align: left;
+    font-weight: 500;
+    color: #1d2129;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.instance-table td {
+    padding: 16px;
+    border-bottom: 1px solid var(--border-color);
+    color: #4e5969;
+}
+
+.instance-table tr:hover td {
+    background: #f8f9fa;
+}
+
+/* 标签页样式 */
+.tabs {
+    margin-bottom: 16px;
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    gap: 32px;
+}
+
+.tab {
+    padding: 12px 0;
+    font-size: 14px;
+    color: #4e5969;
+    cursor: pointer;
+    position: relative;
+    transition: all 0.2s;
+}
+
+.tab:hover {
+    color: var(--primary-color);
+}
+
+.tab.active {
+    color: var(--primary-color);
+    font-weight: 500;
+}
+
+.tab.active::after {
+    content: '';
+    position: absolute;
+    bottom: -1px;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: var(--primary-color);
+}
+
+/* 按钮样式 */
+.create-btn {
+    background: var(--primary-color);
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.create-btn:hover {
+    background: #1557b0;
+}
+
+/* 状态标签 */
+.status-badge {
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+}
+
+.status-badge.running {
+    background: #e8f5e9;
+    color: #43a047;
+}
+
+.status-badge.stopped {
+    background: #fbe9e7;
+    color: #d84315;
+}
+
+.status-badge.creating {
+    background: #e3f2fd;
+    color: #1976d2;
+}
+
+.status-badge.failed {
+    background: #ffebee;
+    color: #d32f2f;
+}
+
+.status-badge.expired {
+    background: #fafafa;
+    color: #757575;
+}
+
+/* 操作按钮 */
+.action-btn {
+    padding: 4px;
+    border: none;
+    background: transparent;
+    color: #4e5969;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.action-btn:hover {
+    color: var(--primary-color);
+}
+
+/* Toast 通知样式 */
+.toast-container {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    z-index: 1000;
+}
+
+.toast {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    padding: 16px;
+    margin-top: 8px;
+    min-width: 300px;
+    max-width: 400px;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    animation: slideIn 0.3s ease;
+}
+
+.toast.info {
+    border-left: 4px solid var(--primary-color);
+}
+
+.toast.success {
+    border-left: 4px solid #43a047;
+}
+
+.toast.error {
+    border-left: 4px solid #d32f2f;
+}
+
+.toast-content {
+    flex: 1;
+}
+
+.toast-title {
+    font-weight: 500;
+    margin-bottom: 4px;
+    color: #1d2129;
+}
+
+.toast-message {
+    color: #4e5969;
+    font-size: 13px;
+}
+
+.toast-close {
+    color: #909399;
+    cursor: pointer;
+    padding: 4px;
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+/* ... 其他样式 ... */ 

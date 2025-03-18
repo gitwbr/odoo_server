@@ -3,44 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>控制台 - 管理系統</title>
+    <title>控制台 - Odoo SaaS</title>
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
-    <link href="/dashboard/css/style.css" rel="stylesheet">
+    <link rel="stylesheet" href="/css/dashboard.css">
 </head>
 <body>
     <div class="dashboard">
-        <div class="sidebar">
-            <div class="logo">
-                管理系統
-            </div>
-            <ul class="nav-menu">
-                <li>
-                    <a href="/dashboard/index.html" class="nav-item active">
-                        <i class="material-icons">dashboard</i>
-                        控制台
-                    </a>
-                </li>
-                <li>
-                    <a href="/dashboard/instance.html" class="nav-item">
-                        <i class="material-icons">apps</i>
-                        實例管理
-                    </a>
-                </li>
-                <li>
-                    <a href="#" class="nav-item">
-                        <i class="material-icons">settings</i>
-                        系統設置
-                    </a>
-                </li>
-                <li>
-                    <a href="#" class="nav-item" onclick="logout()">
-                        <i class="material-icons">logout</i>
-                        登出
-                    </a>
-                </li>
-            </ul>
-        </div>
-
         <div class="main-content">
             <div class="header">
                 <div class="welcome">歡迎回來</div>
@@ -55,7 +23,7 @@
             <div class="cards">
                 <div class="card">
                     <div class="card-title">
-                        <i class="material-icons" style="vertical-align: middle; margin-right: 8px;">dns</i>
+                        <i class="material-icons" style="margin-right: 8px;">dns</i>
                         實例總數
                     </div>
                     <div class="card-value">0</div>
@@ -63,7 +31,7 @@
                 </div>
                 <div class="card">
                     <div class="card-title">
-                        <i class="material-icons" style="vertical-align: middle; margin-right: 8px;">play_circle</i>
+                        <i class="material-icons" style="margin-right: 8px;">play_circle</i>
                         運行中
                     </div>
                     <div class="card-value">0</div>
@@ -71,7 +39,7 @@
                 </div>
                 <div class="card">
                     <div class="card-title">
-                        <i class="material-icons" style="vertical-align: middle; margin-right: 8px;">stop_circle</i>
+                        <i class="material-icons" style="margin-right: 8px;">stop_circle</i>
                         已停止
                     </div>
                     <div class="card-value">0</div>
@@ -81,6 +49,7 @@
         </div>
     </div>
 
+    <script src="/js/layout.js"></script>
     <script src="/dashboard/js/common.js"></script>
 </body>
 </html> 

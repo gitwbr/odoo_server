@@ -14,6 +14,7 @@ from flask_mail import Mail
 from routes.auth import auth
 from routes.user import user
 from routes.instance import instance
+from routes.config import config
 import redis
 from config import (
     DB_CONFIG, 
@@ -69,5 +70,6 @@ def create_app():
     app.register_blueprint(auth, url_prefix='/api')
     app.register_blueprint(user, url_prefix='/api/user')
     app.register_blueprint(instance, url_prefix='/api/instance')
+    app.register_blueprint(config, url_prefix='/api')
     
     return app 
