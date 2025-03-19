@@ -1,6 +1,7 @@
 from flask import Blueprint, jsonify, request, session
 from models.instance import Instance
 import logging
+import subprocess
 
 logger = logging.getLogger(__name__)
 instance = Blueprint('instance', __name__)
@@ -126,3 +127,70 @@ def get_instance_status(instance_id):
         return jsonify(status)
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+@instance.route('/restart/<int:instance_id>', methods=['POST'])
+def restart_instance(instance_id):
+    try:
+        logger.info(f'收到重啟實例請求: instance_id={instance_id}')
+        
+        # 获取实例信息
+        instance_info = Instance.get_by_id(instance_id)
+        if not instance_info:
+            logger.error(f'實例不存在: instance_id={instance_id}')
+            return jsonify({'error': '實例不存在'}), 404
+            
+        # 检查用户权限
+        current_user_id = session.get('user_id')
+        logger.info(f'檢查用戶權限: user_id={current_user_id}, instance_owner={instance_info.user_id}')
+        
+        if instance_info.user_id != current_user_id:
+            logger.error(f'無權限重啟實例: user_id={current_user_id}, instance_id={instance_id}')
+            return jsonify({'error': '無權限操作此實例'}), 403
+            
+        # 重启 Web 容器
+        web_container = f'client{instance_id}-web{instance_id}-1'
+        logger.info(f'開始重啟 Web 容器: container={web_container}')
+        
+        web_result = subprocess.run(['docker', 'restart', web_container], 
+                                  capture_output=True, 
+                                  text=True)
+        
+        if web_result.returncode != 0:
+            logger.error(f'Web容器重啟失敗: {web_result.stderr}')
+            return jsonify({'error': f'Web容器重啟失敗: {web_result.stderr}'}), 500
+            
+        logger.info(f'Web容器重啟成功: {web_result.stdout}')
+        
+        # 重启 DB 容器
+        db_container = f'client{instance_id}-db{instance_id}-1'
+        logger.info(f'開始重啟 DB 容器: container={db_container}')
+        
+        db_result = subprocess.run(['docker', 'restart', db_container], 
+                                 capture_output=True, 
+                                 text=True)
+        
+        if db_result.returncode != 0:
+            logger.error(f'DB容器重啟失敗: {db_result.stderr}')
+            return jsonify({'error': f'DB容器重啟失敗: {db_result.stderr}'}), 500
+            
+        logger.info(f'DB容器重啟成功: {db_result.stdout}')
+        
+        # 记录成功信息
+        logger.info(f'實例重啟成功: instance_id={instance_id}')
+        return jsonify({
+            'message': '重啟指令已發送',
+            'details': {
+                'web_container': web_container,
+                'db_container': db_container
+            }
+        }), 200
+        
+    except subprocess.CalledProcessError as e:
+        error_msg = f'Docker命令執行失敗: {str(e)}'
+        logger.error(error_msg)
+        return jsonify({'error': error_msg}), 500
+        
+    except Exception as e:
+        error_msg = f'重啟實例時發生錯誤: {str(e)}'
+        logger.error(error_msg)
+        return jsonify({'error': error_msg}), 500

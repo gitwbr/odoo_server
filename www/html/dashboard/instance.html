@@ -80,28 +80,7 @@
             document.getElementById(tabId).style.display = 'block';
         }
 
-        // Toast 通知函数
-        function showToast(title, message, type = 'info') {
-            const toastContainer = document.getElementById('toastContainer');
-            const toast = document.createElement('div');
-            toast.className = `toast ${type}`;
-            
-            toast.innerHTML = `
-                <div class="toast-content">
-                    <div class="toast-title">${title}</div>
-                    <div class="toast-message">${message}</div>
-                </div>
-                <span class="toast-close" onclick="this.parentElement.remove()">×</span>
-            `;
-            
-            toastContainer.appendChild(toast);
-            
-            // 3秒后自动移除
-            setTimeout(() => {
-                toast.remove();
-            }, 3000);
-        }
-
+        
         // 修改检查登录状态函数
         async function checkLoginStatus() {
             try {
@@ -130,6 +109,18 @@
                 // 显示创建进度的通知
                 showToast('創建實例', '正在準備創建新實例...', 'info');
 
+                // 创建一个不会自动消失的初始化提示 div
+                const initDiv = document.createElement('div');
+                initDiv.className = 'toast info';
+                initDiv.style.display = 'flex';
+                initDiv.innerHTML = `
+                    <div class="toast-content">
+                        <div class="toast-title">初始化中</div>
+                        <div class="toast-message">正在初始化，請耐心等待...</div>
+                    </div>
+                `;
+                document.getElementById('toastContainer').appendChild(initDiv);
+
                 const response = await fetch('/api/instance/create', {
                     method: 'POST'
                 });
@@ -140,13 +131,20 @@
                 if (response.ok) {
                     showToast('成功', '實例創建成功', 'success');
                     // 重新加载实例列表
-                    loadInstances();
+                    await loadInstances();
+                    // 移除初始化提示
+                    initDiv.remove();
                 } else {
+                    // 移除初始化提示
+                    initDiv.remove();
                     showToast('錯誤', data.error || '創建實例失敗', 'error');
                 }
             } catch (error) {
                 console.error('創建實例失敗:', error);
                 showToast('錯誤', '創建實例失敗', 'error');
+                // 确保移除初始化提示
+                const initDiv = document.querySelector('.toast.info');
+                if (initDiv) initDiv.remove();
             } finally {
                 // 恢复按钮状态
                 const createBtn = document.getElementById('createBtn');
@@ -305,6 +303,11 @@
                                     <button class="action-btn" onclick="window.open('http://${mainDomain}:${instance.port}', '_blank')" title="訪問實例">
                                         <i class="material-icons">open_in_new</i>
                                     </button>
+                                    ${instance.status === 1 ? `
+                                        <button class="action-btn" onclick="restartInstance(${instance.id})" title="重啟實例">
+                                            <i class="material-icons">restart_alt</i>
+                                        </button>
+                                    ` : ''}
                                     <button class="action-btn" onclick="deleteInstance(${instance.id})" title="刪除實例">
                                         <i class="material-icons">delete</i>
                                     </button>
@@ -370,6 +373,44 @@
                 4: '創建失敗'
             };
             return statusTexts[status] || '未知';
+        }
+
+        // 修改重启实例的函数
+        async function restartInstance(instanceId) {
+            try {
+                console.log(`開始重啟實例 ${instanceId}`);
+                showToast('提示', '正在重啟實例...', 'info');
+
+                const response = await fetch(`/api/instance/restart/${instanceId}`, {
+                    method: 'POST'
+                });
+                const data = await response.json();
+
+                if (response.ok) {
+                    console.log(`實例 ${instanceId} 重啟指令已發送:`, data);
+                    
+                    // 显示详细的成功信息
+                    showToast('成功', `
+                        實例重啟成功！<br>
+                        Web容器: ${data.details.web_container}<br>
+                        DB容器: ${data.details.db_container}
+                    `, 'success');
+                    
+                    // 等待几秒后刷新实例状态
+                    setTimeout(async () => {
+                        console.log(`檢查實例 ${instanceId} 重啟狀態`);
+                        await loadInstances();
+                        // 重启完成后再显示一个提示
+                        showToast('完成', '實例已重新啟動完成', 'success');
+                    }, 5000);
+                } else {
+                    console.error(`重啟實例失敗:`, data.error);
+                    showToast('錯誤', data.error || '重啟失敗', 'error');
+                }
+            } catch (error) {
+                console.error('重啟實例時發生錯誤:', error);
+                showToast('錯誤', '重啟失敗', 'error');
+            }
         }
 
     </script>
