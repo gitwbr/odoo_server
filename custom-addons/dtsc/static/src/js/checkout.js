@@ -337,6 +337,7 @@ odoo.define('dtsc.checkout', function (require) {
 					qty:
 				}]); */
             }); 
+			/* 暂时停止 */
 			/* console.log("vals",vals);
 			return; */
             try {

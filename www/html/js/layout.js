@@ -7,7 +7,8 @@ function createLayout() {
     const currentPath = window.location.pathname;
     const navItems = {
         '/dashboard/index.html': 'nav-dashboard',
-        '/dashboard/instance.html': 'nav-instance'
+        '/dashboard/instance.html': 'nav-instance',
+        '/dashboard/profile.html': 'nav-profile'  // 添加个人资料页面
     };
     
     const activeNavId = navItems[currentPath];
@@ -24,8 +25,8 @@ function insertLayout() {
     header.innerHTML = `
         <div class="header-content">
             <div class="welcome">
-                <i class="material-icons">dashboard</i>
-                <span>歡迎回來</span>
+                <i class="material-icons">verified_user</i>
+                <span id="user-status"></span>
             </div>
             <div class="user-menu">
                 <div class="user-info">
@@ -73,6 +74,12 @@ function insertLayout() {
                 </a>
             </li>
             <li>
+                <a href="/dashboard/profile.html" class="nav-item" id="nav-profile">
+                    <i class="material-icons">person</i>
+                    個人資料
+                </a>
+            </li>
+            <li>
                 <a href="#" class="nav-item" id="nav-settings">
                     <i class="material-icons">settings</i>
                     系統設置
@@ -114,6 +121,25 @@ function insertLayout() {
         // 调用 common.js 中的 logout 函数
         await logout();
     });
+
+    // 更新用户状态显示
+    function updateUserStatus(status) {
+        const statusText = status === 0 ? '超级用户' : '普通用户';
+        const statusEl = document.getElementById('user-status');
+        if (statusEl) {
+            statusEl.textContent = statusText;
+        }
+    }
+
+    // 在获取用户信息后更新状态
+    fetch('/api/user/info')
+        .then(response => response.json())
+        .then(data => {
+            if (data.status !== undefined) {
+                updateUserStatus(data.status);
+            }
+        })
+        .catch(error => console.error('获取用户状态失败:', error));
 }
 
 // 页面加载时初始化布局

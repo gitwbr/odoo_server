@@ -1,6 +1,6 @@
 :root {
-    --sidebar-width: 180px;
-    --primary-color: #1a73e8;
+    --sidebar-width: 240px;
+    --primary-color: #7c5cff;
     --border-color: #e5e5e5;
 }
 
@@ -400,4 +400,3 @@ body {
     font-size: 13px;
 }
 
-/* 其他样式... */

@@ -3,11 +3,14 @@ from utils.database import get_db_connection
 from config import logger
 
 class User:
-    def __init__(self, id, username, email, status):
+    def __init__(self, id, username, email, status, phone, invite_code, created_at):
         self.id = id
         self.username = username
         self.email = email
         self.status = status
+        self.phone = phone
+        self.invite_code = invite_code
+        self.created_at = created_at
 
     @staticmethod
     def get_by_email_or_username(identifier):
@@ -83,7 +86,7 @@ class User:
             with get_db_connection() as conn:
                 with conn.cursor() as cur:
                     cur.execute("""
-                        SELECT id, username, email, status 
+                        SELECT id, username, email, status, phone, invite_code, created_at
                         FROM users 
                         WHERE id = %s
                     """, (user_id,))

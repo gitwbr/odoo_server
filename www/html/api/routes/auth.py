@@ -217,6 +217,7 @@ def google_callback():
         flow.redirect_uri = current_app.config['GOOGLE_CONFIG']['redirect_uri']
         
         try:
+            logger.info(f'DOMAIN: {DOMAIN}')
             # 禁用 SSL 驗證
             os.environ['CURL_CA_BUNDLE'] = ''
             

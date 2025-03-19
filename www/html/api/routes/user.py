@@ -26,6 +26,9 @@ def get_user_info():
         return jsonify({
             'username': user_info.username,
             'email': user_info.email,
+            'phone': user_info.phone,
+            'invite_code': user_info.invite_code,
+            'created_at': user_info.created_at,
             'status': user_info.status
         })
         

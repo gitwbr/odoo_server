@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>個人資料 - Odoo SaaS</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+    <link rel="stylesheet" href="/dashboard/css/dashboard.css">
+    <style>
+        /* 从 dashboard.css 移过来的样式，并移除宽度限制 */
+        .profile-container {
+            background: white;
+            border-radius: 8px;
+            padding: 24px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin: 0;
+        }
+
+        .profile-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .profile-section {
+            margin-bottom: 24px;
+        }
+
+        .change-password-section {
+            margin-top: 32px;
+            padding-top: 24px;
+            border-top: 1px solid #eee;
+        }
+
+        /* 表单行样式 - 保持两列布局 */
+        .form-row {
+            display: flex;
+            gap: 80px;
+            margin-bottom: 40px;
+        }
+
+        .form-col {
+            flex: 1;
+            min-width: 0;
+        }
+
+       
+        /* 表单组样式 */
+        .form-group {
+            margin-bottom: 0;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 12px;
+            color: #4e5969;
+            font-weight: 500;
+            font-size: 14px;
+        }
+
+        /* 输入框容器 */
+        .input-wrapper {
+            position: relative;
+            width: 100%;  /* 确保输入框容器撑满整个列宽 */
+        }
+
+        .input-icon {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #6b7280;
+            font-size: 20px;
+        }
+
+        /* 输入框样式 */
+        .input-with-icon {
+            width: 100%;
+            padding: 12px 16px 12px 44px !important;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            font-size: 15px;
+            background-color: #f8f9fa;
+            color: #4e5969;
+            box-sizing: border-box;  /* 确保padding不会增加宽度 */
+        }
+
+        .input-with-icon:disabled {
+            background: #f8f9fa;
+            border-color: #e5e7eb;
+            cursor: not-allowed;
+        }
+
+        .profile-avatar {
+            width: 100px;  /* 增大头像 */
+            height: 100px;
+            border-radius: 50%;
+            background: var(--primary-color);  /* 使用主题色 */
+            margin-right: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);  /* 添加阴影 */
+        }
+
+        .profile-avatar i {
+            font-size: 48px;  /* 增大图标 */
+            color: white;  /* 白色图标 */
+        }
+
+        .profile-info h1 {
+            margin: 0 0 12px 0;
+            font-size: 28px;  /* 增大字号 */
+            color: #1d2129;
+            font-weight: 600;
+        }
+
+        .profile-info p {
+            margin: 0;
+            color: #4e5969;
+            font-size: 16px;
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard">
+        <div class="main-content">
+            <div class="profile-container">
+                <div class="profile-header">
+                    <div class="profile-avatar">
+                        <i class="material-icons">person</i>
+                    </div>
+                    <div class="profile-info">
+                        <h1 id="profile-name">加載中...</h1>
+                        <p id="profile-email">加載中...</p>
+                    </div>
+                </div>
+
+                <div class="profile-section">
+                    <h2>基本資料</h2>
+                    <div class="form-row">
+                        <div class="form-col">
+                            <div class="form-group">
+                                <label>用戶名</label>
+                                <div class="input-wrapper">
+                                    <i class="material-icons input-icon">person</i>
+                                    <input type="text" id="username" class="input-with-icon" disabled>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-col">
+                            <div class="form-group">
+                                <label>電子郵箱</label>
+                                <div class="input-wrapper">
+                                    <i class="material-icons input-icon">email</i>
+                                    <input type="email" id="email" class="input-with-icon" disabled>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-col">
+                            <div class="form-group">
+                                <label>電話號碼</label>
+                                <div class="input-wrapper">
+                                    <i class="material-icons input-icon">phone</i>
+                                    <input type="text" id="phone" class="input-with-icon" disabled>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-col">
+                            <div class="form-group">
+                                <label>邀請碼</label>
+                                <div class="input-wrapper">
+                                    <i class="material-icons input-icon">card_membership</i>
+                                    <input type="text" id="invite_code" class="input-with-icon" disabled>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-col">
+                            <div class="form-group">
+                                <label>註冊時間</label>
+                                <div class="input-wrapper">
+                                    <i class="material-icons input-icon">event</i>
+                                    <input type="text" id="created_at" class="input-with-icon" disabled>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/dashboard/js/common.js"></script>
+    <script src="/js/layout.js"></script>
+    <script>
+        let originalData = {};
+
+        // 加載用戶資料
+        async function loadProfile() {
+            try {
+                const response = await fetch('/api/user/info');
+                const data = await response.json();
+                
+                if (response.ok) {
+                    originalData = data;
+                    document.getElementById('profile-name').textContent = data.username;
+                    document.getElementById('profile-email').textContent = data.email;
+                    document.getElementById('username').value = data.username;
+                    document.getElementById('email').value = data.email;
+                    document.getElementById('phone').value = data.phone;
+                    document.getElementById('invite_code').value = data.invite_code;
+                    document.getElementById('created_at').value = new Date(data.created_at).toLocaleString();
+                } else {
+                    showToast('錯誤', data.error || '加載用戶資料失敗', 'error');
+                }
+            } catch (error) {
+                console.error('加載用戶資料失敗:', error);
+                showToast('錯誤', '加載用戶資料失敗', 'error');
+            }
+        }       
+
+        // 頁面加載時初始化
+        document.addEventListener('DOMContentLoaded', async () => {
+            // 等待布局加載完成
+            await new Promise(resolve => setTimeout(resolve, 100));
+            await loadProfile();
+        });
+    </script>
+</body>
+</html> 
