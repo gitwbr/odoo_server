@@ -207,50 +207,45 @@ body {
 /* Toast 通知样式 */
 .toast-container {
     position: fixed;
-    bottom: 24px;
-    right: 24px;
-    z-index: 1000;
+    top: 20px;
+    right: 20px;
+    z-index: 9999;
 }
 
 .toast {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
     background: white;
     border-radius: 8px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    padding: 16px;
-    margin-top: 8px;
+    margin-bottom: 10px;
     min-width: 300px;
     max-width: 400px;
-    display: flex;
-    align-items: flex-start;
-    gap: 12px;
     animation: slideIn 0.3s ease;
 }
 
-.toast.info {
-    border-left: 4px solid var(--primary-color);
-}
-
 .toast.success {
-    border-left: 4px solid #43a047;
+    border-left: 4px solid #10b981;
 }
 
 .toast.error {
-    border-left: 4px solid #d32f2f;
+    border-left: 4px solid #ef4444;
 }
 
 .toast-content {
+    padding: 12px 16px;
     flex: 1;
 }
 
 .toast-title {
-    font-weight: 500;
+    font-weight: 600;
     margin-bottom: 4px;
-    color: #1d2129;
 }
 
 .toast-message {
-    color: #4e5969;
-    font-size: 13px;
+    color: #6b7280;
+    font-size: 0.875rem;
 }
 
 .toast-close {
@@ -270,49 +265,104 @@ body {
     }
 }
 
-/* 控制台页面样式 */
+/* 顶部栏样式 */
 .header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
+    background: white;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    padding: 0 24px;
+    height: 64px;
     margin-bottom: 24px;
 }
 
+.header-content {
+    height: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
 .welcome {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 1.25rem;
+    color: var(--primary-color);
+}
+
+.welcome i {
     font-size: 24px;
-    font-weight: 500;
-    color: #1d2129;
 }
 
 .user-menu {
-    display: flex;
-    align-items: center;
+    position: relative;
 }
 
 .user-info {
     display: flex;
     align-items: center;
     gap: 8px;
-    padding: 4px 8px;
-    border-radius: 4px;
     cursor: pointer;
-    transition: all 0.2s;
+    padding: 8px;
+    border-radius: 8px;
+    transition: background-color 0.2s;
 }
 
 .user-info:hover {
-    background: #f2f3f5;
+    background-color: #f5f5f5;
 }
 
 .user-avatar {
-    width: 32px;
-    height: 32px;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
     background: var(--primary-color);
     color: white;
-    border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
     font-weight: 500;
+}
+
+.dropdown-menu {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    padding: 8px 0;
+    min-width: 200px;
+    display: none;
+    z-index: 1000;
+}
+
+.dropdown-menu.show {
+    display: block;
+}
+
+.menu-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    color: #1f2937;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.menu-item:hover {
+    background-color: #f3f4f6;
+}
+
+.menu-item i {
+    font-size: 20px;
+    color: #6b7280;
+}
+
+.divider {
+    height: 1px;
+    background-color: #e5e7eb;
+    margin: 8px 0;
 }
 
 /* 卡片样式 */

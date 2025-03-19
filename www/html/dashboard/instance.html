@@ -372,12 +372,20 @@
             return statusTexts[status] || '未知';
         }
 
-        // 页面加载时执行
+    </script>
+    <script src="/dashboard/js/common.js"></script>
+    <script>
         document.addEventListener('DOMContentLoaded', async () => {
-            console.log('页面加载完成，开始初始化...');
-            await getMainDomain();  // 先获取域名配置
-            if (await checkLoginStatus()) {
-                loadInstances();
+            try {
+                console.log('实例页面加载完成，开始初始化...');
+                // 先获取域名配置
+                await getMainDomain();
+                // 加载实例列表
+                await loadInstances();
+                console.log('实例列表加载完成');
+            } catch (error) {
+                console.error('实例页面初始化失败:', error);
+                showToast('錯誤', '加載實例列表失敗', 'error');
             }
         });
     </script>

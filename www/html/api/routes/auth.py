@@ -281,3 +281,13 @@ def google_callback():
             window.location.href = "{DOMAIN}/auth/index.html?error=callback_failed";
             </script>
         ''' 
+
+@auth.route('/logout', methods=['POST'])
+def logout():
+    try:
+        # 清除 session
+        session.clear()
+        return jsonify({'message': '登出成功'}), 200
+    except Exception as e:
+        logger.error(f'登出失敗: {str(e)}')
+        return jsonify({'error': '登出失敗'}), 500 

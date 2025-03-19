@@ -41,24 +41,58 @@ async function loadUserInfo() {
 // 检查登录状态
 async function checkLoginStatus() {
     try {
-        const response = await fetch('/api/user/check-login');
+        const response = await fetch('/api/user/info', {
+            credentials: 'include'
+        });
         const data = await response.json();
         
-        if (!data.logged_in) {
-            window.location.href = '/auth';
-            return false;
+        console.log('登录检查结果:', {
+            path: window.location.pathname,
+            response: data
+        });
+        
+        // 如果返回用户信息，说明已登录
+        if (data.username) {
+            // 如果在登录页面且已登录，重定向到控制台
+            if (window.location.pathname.includes('/auth')) {
+                window.location.href = '/dashboard';
+            }
+            return true;
         }
-        return true;
+        
+        console.error('未登录或会话已过期');
+        // 如果不在登录页面，重定向到登录页
+        if (!window.location.pathname.includes('/auth')) {
+            window.location.href = '/auth';
+        }
+        return false;
+        
     } catch (error) {
         console.error('检查登录状态失败:', error);
-        window.location.href = '/auth';
+        console.log('错误详情:', {
+            error: error,
+            path: window.location.pathname
+        });
+        // 发生错误时，如果不在登录页面，重定向到登录页
+        if (!window.location.pathname.includes('/auth')) {
+            window.location.href = '/auth';
+        }
         return false;
     }
 }
 
 // Toast 通知函数
 function showToast(title, message, type = 'info') {
-    const toastContainer = document.getElementById('toastContainer');
+    let toastContainer = document.getElementById('toastContainer');
+    
+    // 如果容器不存在，创建一个
+    if (!toastContainer) {
+        toastContainer = document.createElement('div');
+        toastContainer.id = 'toastContainer';
+        toastContainer.className = 'toast-container';
+        document.body.appendChild(toastContainer);
+    }
+    
     const toast = document.createElement('div');
     toast.className = `toast ${type}`;
     
@@ -72,6 +106,9 @@ function showToast(title, message, type = 'info') {
     
     toastContainer.appendChild(toast);
     
+    // 确保 toast 显示
+    toast.style.display = 'flex';
+    
     setTimeout(() => {
         toast.remove();
     }, 3000);
@@ -80,37 +117,66 @@ function showToast(title, message, type = 'info') {
 // 登出功能
 async function logout() {
     try {
+        // 先显示确认对话框
+        if (!confirm('確定要退出登錄嗎？')) {
+            return;
+        }
+
+        // 调用登出 API
         const response = await fetch('/api/logout', {
             method: 'POST',
             credentials: 'include'
         });
-        if (response.ok) {
-            window.location.href = '/auth';
+
+        if (!response.ok) {
+            const data = await response.json();
+            throw new Error(data.error || '登出失敗');
         }
+
+        // 清除本地存储的任何用户相关数据
+        localStorage.clear();
+        sessionStorage.clear();
+
+        // 显示成功消息并确保它显示
+        showToast('成功', '已安全退出登錄', 'success');
+
+        // 延迟跳转时间加长，确保用户能看到提示
+        setTimeout(() => {
+            window.location.href = '/auth';
+        }, 2000);
+
     } catch (error) {
         console.error('登出失敗:', error);
-        showToast('錯誤', '登出失敗', 'error');
+        showToast('錯誤', error.message || '登出失敗', 'error');
     }
 }
 
 // 页面初始化
 async function initializePage() {
     try {
+        console.log('开始初始化页面');
+        console.log('当前路径:', window.location.pathname);
+        
         // 检查登录状态
         const isLoggedIn = await checkLoginStatus();
+        console.log('登录状态:', isLoggedIn);
+        
         if (!isLoggedIn) {
+            console.log('未登录，初始化终止');
             return;
         }
 
         // 设置活动菜单
         setActiveMenu();
+        console.log('菜单设置完成');
 
         // 加载用户信息
-        await loadUserInfo();
+        const userInfoResult = await loadUserInfo();
+        console.log('用户信息加载结果:', userInfoResult);
 
     } catch (error) {
         console.error('页面初始化失败:', error);
-        showToast('錯誤', '頁面初始化失敗', 'error');
+        console.log('初始化错误详情:', error);
     }
 }
 
