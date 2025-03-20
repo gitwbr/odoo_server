@@ -282,7 +282,7 @@
                         actionsCell.innerHTML = `
                             <div style="display: flex; gap: 8px;">
                                 <button class="action-btn ${instance.status === 1 ? '' : 'disabled'}" 
-                                        onclick="${instance.status === 1 ? `window.open('http://${mainDomain}:${instance.port}', '_blank')` : ''}" 
+                                        onclick="${instance.status === 1 ? `window.open('${mainDomain}:${instance.port}', '_blank')` : ''}" 
                                         title="${instance.status === 1 ? '訪問實例' : '實例未運行'}">
                                     <i class="material-icons">open_in_new</i>
                                 </button>
@@ -371,7 +371,7 @@
                             <td id="actions-${instance.id}">
                                 <div style="display: flex; gap: 8px;">
                                     <button class="action-btn ${instance.status === 1 ? '' : 'disabled'}" 
-                                            onclick="${instance.status === 1 ? `window.open('http://${mainDomain}:${instance.port}', '_blank')` : ''}" 
+                                            onclick="${instance.status === 1 ? `window.open('${mainDomain}:${instance.port}', '_blank')` : ''}" 
                                             title="${instance.status === 1 ? '訪問實例' : '實例未運行'}">
                                         <i class="material-icons">open_in_new</i>
                                     </button>

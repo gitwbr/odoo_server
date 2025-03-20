@@ -6,7 +6,7 @@ import subprocess
 import shutil
 import stat
 import pwd
-from config import DB_RESTORE
+from config import DB_RESTORE, ENABLE_DB_RESTORE
 import time
 
 logger = logging.getLogger(__name__)
@@ -106,13 +106,12 @@ class Instance:
             try:
                 # 创建容器
                 Instance.create_container(instance_id)
-                # 恢复数据库
-                Instance.restore_database(instance_id)
+                # 根據開關決定是否恢復數據庫
+                if ENABLE_DB_RESTORE:
+                    Instance.restore_database(instance_id)
             except Exception as e:
                 logger.error(f'实例创建任务失败: {str(e)}')
-                # 错误已在各个方法中更新了状态，这里不需要额外处理
 
-        # 启动后台线程
         thread = Thread(target=create_instance_task)
         thread.daemon = True
         thread.start()
@@ -132,14 +131,17 @@ class Instance:
             # 创建容器
             Instance._create_instance(instance_id, port)
             
-            # 更新状态为等待恢复数据库
+            # 根據開關決定狀態
+            new_status = 2 if ENABLE_DB_RESTORE else 1
+            
+            # 更新状态
             with get_db_connection() as conn:
                 with conn.cursor() as cur:
                     cur.execute("""
                         UPDATE instances 
-                        SET status = 2 
+                        SET status = %s 
                         WHERE id = %s
-                    """, (instance_id,))
+                    """, (new_status, instance_id))
                     conn.commit()
             
             return True

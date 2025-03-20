@@ -168,9 +168,9 @@
 		<field name="model">dtsc.checkout</field>
 		<field name="arch" type="xml">
 			<tree decoration-info="is_online == True"  default_order="create_date desc">				
-				<field name="name" string="單號" readonly="1" class="w100" />
+				<field name="name" string="單號1" readonly="1" class="w100" />
 				<field name="is_invisible" invisible="1"/>
-				<field name="custom_init_name" string="客戶" readonly="1"/>
+				<field name="custom_init_name" string="客戶2" readonly="1"/>
 				<field name="project_name" string="案件摘要" readonly="1"/>
 				<field name="delivery_carrier" string="交貨方式" />
 				<!-- <field name="delivery_carrier_char" string="送件"/> -->
