@@ -297,6 +297,13 @@
                     <option value="important">重要</option>
                     <option value="normal">普通</option>
                 </select>
+
+                <label style="margin-left: 20px;">完成狀態：</label>
+                <select id="statusFilter" class="filter-select" style="padding: 8px; border-radius: 4px; border: 1px solid #ddd;">
+                    <option value="all">全部</option>
+                    <option value="done">已完成</option>
+                    <option value="undone" selected>未完成</option>
+                </select>
             </div>
 
             <div class="message-list">
@@ -348,13 +355,25 @@
                 const response = await fetch('/api/message/list');
                 const data = await response.json();
                 
-                // 获取当前选择的优先级
+                // 获取筛选条件
                 const selectedPriority = document.getElementById('priorityFilter').value;
+                const selectedStatus = document.getElementById('statusFilter').value;
                 
                 // 筛选消息
-                const filteredMessages = data.messages.filter(message => 
-                    selectedPriority === 'all' || message.priority === selectedPriority
-                );
+                const filteredMessages = data.messages.filter(message => {
+                    // 优先级筛选
+                    const priorityMatch = selectedPriority === 'all' || message.priority === selectedPriority;
+                    
+                    // 完成状态筛选
+                    let statusMatch = true;
+                    if (selectedStatus === 'undone') {
+                        statusMatch = message.status !== 'done';
+                    } else if (selectedStatus === 'done') {
+                        statusMatch = message.status === 'done';
+                    }
+                    
+                    return priorityMatch && statusMatch;
+                });
                 
                 const container = document.querySelector('.message-list');
                 container.innerHTML = filteredMessages.map(message => {
@@ -551,6 +570,7 @@
 
         // 添加筛选器变化事件监听
         document.getElementById('priorityFilter').addEventListener('change', loadMessages);
+        document.getElementById('statusFilter').addEventListener('change', loadMessages);
 
         // 修改初始化部分
         document.addEventListener('DOMContentLoaded', () => {
