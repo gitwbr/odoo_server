@@ -82,7 +82,7 @@ async function checkLoginStatus() {
 }
 
 // Toast 通知函数
-function showToast(title, message, type = 'info') {
+function showToast(title, message, type = 'info', duration = 3000) {
     let toastContainer = document.getElementById('toastContainer');
     
     // 如果容器不存在，创建一个
@@ -111,7 +111,7 @@ function showToast(title, message, type = 'info') {
     
     setTimeout(() => {
         toast.remove();
-    }, 3000);
+    }, duration);
 }
 
 // 登出功能

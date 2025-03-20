@@ -8,7 +8,8 @@ function createLayout() {
     const navItems = {
         '/dashboard/index.html': 'nav-dashboard',
         '/dashboard/instance.html': 'nav-instance',
-        '/dashboard/profile.html': 'nav-profile'  // 添加个人资料页面
+        '/dashboard/profile.html': 'nav-profile',
+        '/dashboard/message.html': 'nav-message'  // 添加站內信頁面
     };
     
     const activeNavId = navItems[currentPath];
@@ -71,6 +72,12 @@ function insertLayout() {
                 <a href="/dashboard/instance.html" class="nav-item" id="nav-instance">
                     <i class="material-icons">dns</i>
                     實例管理
+                </a>
+            </li>
+            <li>
+                <a href="/dashboard/message.html" class="nav-item" id="nav-message">
+                    <i class="material-icons">mail</i>
+                    站內信
                 </a>
             </li>
             <li>
@@ -142,5 +149,79 @@ function insertLayout() {
         .catch(error => console.error('获取用户状态失败:', error));
 }
 
-// 页面加载时初始化布局
-document.addEventListener('DOMContentLoaded', createLayout); 
+// 全局消息通知系统
+const messageNotification = {
+    lastStatus: new Map(),
+    pollingInterval: null,
+
+    async checkUpdates() {
+        try {
+            const userResponse = await fetch('/api/user/info');
+            const userData = await userResponse.json();
+            
+            const response = await fetch('/api/message/list');
+            const data = await response.json();
+            
+            data.messages.forEach(message => {
+                const previousStatus = this.lastStatus.get(message.id);
+                if (previousStatus && previousStatus !== message.status) {
+                    showToast('通知', `消息 "${message.subject}" 狀態已更新為 ${this.getStatusText(message.status)}`, 'info', 5000);
+                    
+                    if (window.location.pathname === '/dashboard/message.html' && typeof loadMessages === 'function') {
+                        loadMessages();
+                    }
+                }
+                this.lastStatus.set(message.id, message.status);
+            });
+        } catch (error) {
+            console.error('檢查消息更新失敗:', error);
+        }
+    },
+
+    getStatusText(status) {
+        const statusTexts = {
+            'unread': '<span style="color: #ff4d4f">未讀</span>，請耐心等待',
+            'read': '<span style="color: #1890ff">已讀</span>，請耐心等待', 
+            'processing': '<span style=">處理中color: #722ed1"</span>，請耐心等待',
+            'done': '<span style="color: #52c41a">已處理</span>'
+        };
+        return statusTexts[status] || status;
+    },
+
+    start() {
+        if (!this.pollingInterval) {
+            this.checkUpdates();
+            this.pollingInterval = setInterval(() => this.checkUpdates(), 5000);
+        }
+    },
+
+    stop() {
+        if (this.pollingInterval) {
+            clearInterval(this.pollingInterval);
+            this.pollingInterval = null;
+        }
+    }
+};
+
+// 在页面加载完成后初始化消息通知
+document.addEventListener('DOMContentLoaded', () => {
+    // 现有的初始化代码
+    createLayout();
+    
+    // 启动消息通知
+    messageNotification.start();
+});
+
+// 页面可见性变化时控制轮询
+document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+        messageNotification.stop();
+    } else {
+        messageNotification.start();
+    }
+});
+
+// 页面关闭时停止轮询
+window.addEventListener('beforeunload', () => {
+    messageNotification.stop();
+}); 

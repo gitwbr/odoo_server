@@ -15,6 +15,7 @@ from routes.auth import auth
 from routes.user import user
 from routes.instance import instance
 from routes.config import config
+from routes.message import message_bp
 import redis
 from config import (
     DB_CONFIG, 
@@ -35,7 +36,7 @@ def create_app():
     app.config['GOOGLE_CONFIG'] = GOOGLE_CONFIG
     
     # 設置密鑰
-    app.secret_key = 'your-secret-key'  # 建議使用隨機生成的密鑰
+    app.secret_key = 'your-secret-key'
     
     # 初始化郵件
     app.mail = Mail(app)
@@ -71,5 +72,5 @@ def create_app():
     app.register_blueprint(user, url_prefix='/api/user')
     app.register_blueprint(instance, url_prefix='/api/instance')
     app.register_blueprint(config, url_prefix='/api')
-    
+    app.register_blueprint(message_bp, url_prefix='/api/message')
     return app 
