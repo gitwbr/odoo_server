@@ -17,16 +17,24 @@ def create():
 
         logger.info(f'开始创建实例，用户ID: {user_id}')
         
-        # 创建新实例
+        # 检查用户是否已有实例
+        existing_instances = Instance.get_user_instances(user_id)
+        if existing_instances:
+            return jsonify({
+                'error': '您已有正在使用的實例',
+                'instance_id': existing_instances[0]['id']
+            }), 400
+        
+        # 创建新实例记录
         try:
             instance_id = Instance.create(
                 user_id=user_id,
-                version_id=1  # 测试版
+                version_id=1
             )
             
-            logger.info(f'实例创建成功，ID: {instance_id}')
+            logger.info(f'实例记录创建成功，ID: {instance_id}')
             return jsonify({
-                'message': '實例創建成功',
+                'message': '實例創建中',
                 'instance_id': instance_id
             })
             

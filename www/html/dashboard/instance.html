@@ -6,6 +6,62 @@
     <title>實例管理 - Odoo SaaS</title>
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <link rel="stylesheet" href="/dashboard/css/dashboard.css">
+    <style>
+        /* 禁用按鈕的樣式 */
+        .create-btn[disabled] {
+            background: #e0e0e0;
+            color: #999;
+            cursor: not-allowed;
+            border: none;
+        }
+
+        .create-btn[disabled]:hover {
+            transform: none;
+            box-shadow: none;
+        }
+
+        .create-btn[disabled] i {
+            color: #999;
+        }
+
+        /* 操作按鈕樣式 */
+        .action-btn.disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            background: #f5f5f5;
+        }
+
+        .action-btn.disabled i {
+            color: #999;
+        }
+
+        /* 初始化狀態的動畫效果 */
+        @keyframes dotsAnimation {
+            0% { content: ''; }
+            33% { content: '· '; }
+            66% { content: '· · '; }
+            100% { content: '· · · '; }
+        }
+
+        .status-badge.initializing {
+            background: linear-gradient(45deg, #2196F3, #03A9F4);
+            color: white;
+            display: inline-flex;
+            align-items: center;
+            width: 100px;  /* 固定寬度 */
+            justify-content: center;  /* 文字居中 */
+        }
+
+        .status-badge.initializing::after {
+            content: '';
+            display: inline-block;
+            width: 30px;  /* 固定寬度 */
+            text-align: left;
+            margin-left: 4px;
+            animation: dotsAnimation 1.2s infinite;
+            font-weight: bold;
+        }
+    </style>
 </head>
 <body>
     <div class="dashboard">
@@ -103,53 +159,34 @@
         async function createInstance() {
             try {
                 const createBtn = document.getElementById('createBtn');
+                // 先禁用按鈕並顯示創建中
                 createBtn.disabled = true;
-                createBtn.innerHTML = '<i class="material-icons" style="font-size: 16px;">hourglass_empty</i> 創建中...';
+                //createBtn.style.background = '#e0e0e0';
+                //createBtn.innerHTML = '<i class="material-icons" style="font-size: 16px;">hourglass_empty</i> 創建中...';
 
                 // 显示创建进度的通知
                 showToast('創建實例', '正在準備創建新實例...', 'info');
 
-                // 创建一个不会自动消失的初始化提示 div
-                const initDiv = document.createElement('div');
-                initDiv.className = 'toast info';
-                initDiv.style.display = 'flex';
-                initDiv.innerHTML = `
-                    <div class="toast-content">
-                        <div class="toast-title">初始化中</div>
-                        <div class="toast-message">正在初始化，請耐心等待...</div>
-                    </div>
-                `;
-                document.getElementById('toastContainer').appendChild(initDiv);
-
                 const response = await fetch('/api/instance/create', {
                     method: 'POST'
                 });
-
                 const data = await response.json();
                 console.log('创建响应:', data);
 
                 if (response.ok) {
-                    showToast('成功', '實例創建成功', 'success');
+                    showToast('成功', '實例創建中，請稍候...', 'success');
                     // 重新加载实例列表
                     await loadInstances();
-                    // 移除初始化提示
-                    initDiv.remove();
                 } else {
-                    // 移除初始化提示
-                    initDiv.remove();
+                    // 如果失敗，恢復按鈕狀態
+                    createBtn.disabled = false;
+                    //createBtn.style.background = '';
+                    //createBtn.innerHTML = '<i class="material-icons" style="font-size: 16px;">add</i> 創建實例';
                     showToast('錯誤', data.error || '創建實例失敗', 'error');
                 }
             } catch (error) {
                 console.error('創建實例失敗:', error);
                 showToast('錯誤', '創建實例失敗', 'error');
-                // 确保移除初始化提示
-                const initDiv = document.querySelector('.toast.info');
-                if (initDiv) initDiv.remove();
-            } finally {
-                // 恢复按钮状态
-                const createBtn = document.getElementById('createBtn');
-                createBtn.disabled = false;
-                createBtn.innerHTML = '<i class="material-icons" style="font-size: 16px;">add</i> 創建實例';
             }
         }
 
@@ -238,6 +275,30 @@
                     }
                     
                     statusCell.innerHTML = statusHtml;
+
+                    // 更新操作按鈕
+                    const actionsCell = document.querySelector(`#actions-${instance.id}`);
+                    if (actionsCell) {
+                        actionsCell.innerHTML = `
+                            <div style="display: flex; gap: 8px;">
+                                <button class="action-btn ${instance.status === 1 ? '' : 'disabled'}" 
+                                        onclick="${instance.status === 1 ? `window.open('http://${mainDomain}:${instance.port}', '_blank')` : ''}" 
+                                        title="${instance.status === 1 ? '訪問實例' : '實例未運行'}">
+                                    <i class="material-icons">open_in_new</i>
+                                </button>
+                                <button class="action-btn ${instance.status === 1 ? '' : 'disabled'}" 
+                                        onclick="${instance.status === 1 ? `restartInstance(${instance.id})` : ''}" 
+                                        title="${instance.status === 1 ? '重啟實例' : '實例未運行'}">
+                                    <i class="material-icons">restart_alt</i>
+                                </button>
+                                <button class="action-btn" 
+                                        onclick="deleteInstance(${instance.id})" 
+                                        title="刪除實例">
+                                    <i class="material-icons">delete</i>
+                                </button>
+                            </div>
+                        `;
+                    }
                 }
             } catch (error) {
                 console.error('更新状态失败:', error);
@@ -264,11 +325,20 @@
                 const data = await response.json();
                 
                 const container = document.getElementById('instanceContainer');
+                const createBtn = document.getElementById('createBtn');
+
                 if (!data.instances || data.instances.length === 0) {
                     container.innerHTML = `<tr><td colspan="7">暫無實例</td></tr>`;
+                    createBtn.disabled = false;  // 無實例時啟用按鈕
+                    createBtn.title = '創建新實例';
                     return;
                 }
 
+                // 有實例時禁用按鈕
+                createBtn.disabled = true;
+                //createBtn.innerHTML = '<i class="material-icons" style="font-size: 16px;">add</i> 創建實例';
+                createBtn.title = '您已有實例，無法創建新實例';
+                
                 container.innerHTML = '';
                 for (const instance of data.instances) {
                     let statusHtml = '';
@@ -298,17 +368,21 @@
                             <td>${instance.version_id === 1 ? 'Odoo 試用版' : 'Odoo 正式版'}</td>
                             <td>${new Date(instance.created_at).toLocaleString()}</td>
                             <td>${new Date(instance.expires_at).toLocaleString()}</td>
-                            <td>
+                            <td id="actions-${instance.id}">
                                 <div style="display: flex; gap: 8px;">
-                                    <button class="action-btn" onclick="window.open('http://${mainDomain}:${instance.port}', '_blank')" title="訪問實例">
+                                    <button class="action-btn ${instance.status === 1 ? '' : 'disabled'}" 
+                                            onclick="${instance.status === 1 ? `window.open('http://${mainDomain}:${instance.port}', '_blank')` : ''}" 
+                                            title="${instance.status === 1 ? '訪問實例' : '實例未運行'}">
                                         <i class="material-icons">open_in_new</i>
                                     </button>
-                                    ${instance.status === 1 ? `
-                                        <button class="action-btn" onclick="restartInstance(${instance.id})" title="重啟實例">
-                                            <i class="material-icons">restart_alt</i>
-                                        </button>
-                                    ` : ''}
-                                    <button class="action-btn" onclick="deleteInstance(${instance.id})" title="刪除實例">
+                                    <button class="action-btn ${instance.status === 1 ? '' : 'disabled'}" 
+                                            onclick="${instance.status === 1 ? `restartInstance(${instance.id})` : ''}" 
+                                            title="${instance.status === 1 ? '重啟實例' : '實例未運行'}">
+                                        <i class="material-icons">restart_alt</i>
+                                    </button>
+                                    <button class="action-btn" 
+                                            onclick="deleteInstance(${instance.id})" 
+                                            title="刪除實例">
                                         <i class="material-icons">delete</i>
                                     </button>
                                 </div>
@@ -356,8 +430,8 @@
             const statusClasses = {
                 0: 'creating',
                 1: 'running',
-                2: 'stopped',
-                3: 'expired',
+                2: 'initializing',
+                3: 'expired', 
                 4: 'failed'
             };
             return statusClasses[status] || '';
@@ -368,7 +442,7 @@
             const statusTexts = {
                 0: '創建中',
                 1: '運行中',
-                2: '已停止',
+                2: '正在初始化',
                 3: '已過期',
                 4: '創建失敗'
             };

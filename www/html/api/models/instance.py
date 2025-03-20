@@ -23,64 +23,6 @@ class Instance:
         self.version_id = version_id
         self.ssl_status = ssl_status
 
-    def to_dict(self):
-        """将实例信息转换为字典,添加更多展示信息"""
-        status_map = {
-            0: {'text': '创建中', 'color': 'blue'},
-            1: {'text': '运行中', 'color': 'green'},
-            2: {'text': '已停止', 'color': 'orange'},
-            3: {'text': '已过期', 'color': 'red'},
-            4: {'text': '创建失败', 'color': 'red'}
-        }
-
-        ssl_status_map = {
-            0: {'text': '未启用', 'color': 'gray'},
-            1: {'text': '已启用', 'color': 'green'}
-        }
-
-        return {
-            'id': self.id,
-            'domain': self.domain or f'client{self.id}.localhost',
-            'port': self.port,
-            'web_url': f'http://localhost:{self.port}',
-            'created_at': self.created_at.strftime('%Y-%m-%d %H:%M:%S'),
-            'expires_at': self.expires_at.strftime('%Y-%m-%d %H:%M:%S'),
-            'days_remaining': (self.expires_at - datetime.now()).days,
-            'status': {
-                'code': self.status,
-                'text': status_map[self.status]['text'],
-                'color': status_map[self.status]['color']
-            },
-            'ssl_status': {
-                'code': self.ssl_status,
-                'text': ssl_status_map[self.ssl_status]['text'],
-                'color': ssl_status_map[self.ssl_status]['color']
-            },
-            'version': {
-                'id': self.version_id,
-                'name': 'Odoo 16.0'
-            }
-        }
-
-    @staticmethod
-    def get_all_by_user_id(user_id):
-        """获取用户的所有实例"""
-        try:
-            with get_db_connection() as conn:
-                with conn.cursor() as cur:
-                    cur.execute("""
-                        SELECT id, user_id, domain, port, created_at, 
-                               expires_at, status, version_id, ssl_status
-                        FROM instances 
-                        WHERE user_id = %s
-                        ORDER BY created_at DESC
-                    """, (user_id,))
-                    results = cur.fetchall()
-                    return [Instance(*row).to_dict() for row in results]
-        except Exception as e:
-            logger.error(f'获取实例列表失败: {str(e)}')
-            return []
-
     @staticmethod
     def get_next_available_port():
         """获取下一个可用端口"""
@@ -109,122 +51,176 @@ class Instance:
         try:
             with get_db_connection() as conn:
                 with conn.cursor() as cur:
-                    # 检查是否有失败的实例
-                    cur.execute("""
-                        SELECT id, port FROM instances 
-                        WHERE user_id = %s AND status = 4
-                    """, (user_id,))
-                    failed_instance = cur.fetchone()
+                    # 获取可用端口
+                    port = Instance.get_next_available_port()
                     
-                    if failed_instance:
-                        instance_id, port = failed_instance
-                    else:
-                        # 获取可用端口
-                        port = Instance.get_next_available_port()
-                        
-                        # 创建实例记录
-                        cur.execute("""
-                            INSERT INTO instances (
-                                user_id, 
-                                domain,
-                                port,
-                                expires_at,
-                                status,
-                                version_id,
-                                ssl_status
-                            ) VALUES (
-                                %s, %s, %s, %s, %s, %s, %s
-                            ) RETURNING id
-                        """, (
-                            user_id,
-                            '',
+                    # 创建实例记录
+                    cur.execute("""
+                        INSERT INTO instances (
+                            user_id, 
+                            domain,
                             port,
-                            datetime.now() + timedelta(days=30),
-                            0,  # 初始状态：创建中
+                            expires_at,
+                            status,
                             version_id,
-                            0   # SSL状态：未启用
-                        ))
-                        
-                        instance_id = cur.fetchone()[0]
-                        
-                        # 更新端口分配表
-                        cur.execute("""
-                            UPDATE port_allocations 
-                            SET is_used = true, 
-                                instance_id = %s 
-                            WHERE port = %s
-                        """, (instance_id, port))
+                            ssl_status
+                        ) VALUES (
+                            %s, %s, %s, %s, %s, %s, %s
+                        ) RETURNING id
+                    """, (
+                        user_id,
+                        '',
+                        port,
+                        datetime.now() + timedelta(days=30),
+                        0,  # 初始状态：创建中
+                        version_id,
+                        0   # SSL状态：未启用
+                    ))
+                    
+                    instance_id = cur.fetchone()[0]
+                    
+                    # 更新端口分配表
+                    cur.execute("""
+                        UPDATE port_allocations 
+                        SET is_used = true, 
+                            instance_id = %s 
+                        WHERE port = %s
+                    """, (instance_id, port))
                     
                     conn.commit()
+                    
+                    # 启动后台任务
+                    Instance.start_instance_creation(instance_id)
+                    return instance_id
 
-                    # 创建实例目录和容器
-                    try:
-                        Instance._create_instance(instance_id, port)
-                        
-                        # 更新实例状态为运行中
+        except Exception as e:
+            logger.error(f'创建实例记录失败: {str(e)}')
+            raise e
+
+    @staticmethod
+    def start_instance_creation(instance_id):
+        """启动后台任务创建实例"""
+        from threading import Thread
+        
+        def create_instance_task():
+            try:
+                # 创建容器
+                Instance.create_container(instance_id)
+                # 恢复数据库
+                Instance.restore_database(instance_id)
+            except Exception as e:
+                logger.error(f'实例创建任务失败: {str(e)}')
+                # 错误已在各个方法中更新了状态，这里不需要额外处理
+
+        # 启动后台线程
+        thread = Thread(target=create_instance_task)
+        thread.daemon = True
+        thread.start()
+
+    @staticmethod
+    def create_container(instance_id):
+        """创建容器"""
+        try:
+            # 获取实例信息
+            with get_db_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("""
+                        SELECT port FROM instances WHERE id = %s
+                    """, (instance_id,))
+                    port = cur.fetchone()[0]
+
+            # 创建容器
+            Instance._create_instance(instance_id, port)
+            
+            # 更新状态为等待恢复数据库
+            with get_db_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("""
+                        UPDATE instances 
+                        SET status = 2 
+                        WHERE id = %s
+                    """, (instance_id,))
+                    conn.commit()
+            
+            return True
+        except Exception as e:
+            # 如果创建失败，更新状态为失败
+            with get_db_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("""
+                        UPDATE instances 
+                        SET status = 4 
+                        WHERE id = %s
+                    """, (instance_id,))
+                    conn.commit()
+            logger.error(f'创建容器失败: {str(e)}')
+            raise e
+
+    @staticmethod
+    def restore_database(instance_id):
+        """恢复默认数据库"""
+        try:
+            logger.info('开始恢复默认数据库...')
+            
+            # 先停止 web 容器
+            web_name = f'client{instance_id}-web{instance_id}-1'
+            subprocess.run(['docker', 'stop', web_name], check=True)
+            
+            # 执行数据库恢复
+            result = subprocess.run(
+                [DB_RESTORE['script_path'], 
+                 str(instance_id), 
+                 DB_RESTORE['default_db_name'], 
+                 DB_RESTORE['backup_file']],
+                check=True,
+                capture_output=True,
+                text=True
+            )
+            
+            if result.returncode == 0:
+                # 等待几秒确保数据库恢复完成
+                time.sleep(5)  
+                
+                # 设置目录权限
+                logger.info('设置目录权限')
+                instance_dir = f'/home/odoo/odoo16/instances/client{instance_id}'
+                subprocess.run(
+                    ['sudo', 'chmod', '-R', '777', instance_dir],
+                    check=True,
+                    capture_output=True,
+                    text=True
+                )
+                
+                # 重启 web 容器
+                subprocess.run(['docker', 'restart', web_name], check=True)
+                # 等待几秒让服务完全启动
+                time.sleep(5)
+                
+                # 更新状态为运行中
+                with get_db_connection() as conn:
+                    with conn.cursor() as cur:
                         cur.execute("""
                             UPDATE instances 
                             SET status = 1 
                             WHERE id = %s
                         """, (instance_id,))
-                        
                         conn.commit()
-                    except Exception as e:
-                        # 如果创建失败，更新状态
-                        cur.execute("""
-                            UPDATE instances 
-                            SET status = 4 
-                            WHERE id = %s
-                        """, (instance_id,))
-                        conn.commit()
-                        raise e
-
-                    # 暫時返回
-                    return instance_id
-                    # 创建容器后，恢复默认数据库
-                    logger.info('开始恢复默认数据库...')
-                    
-                    # 先停止 web 容器
-                    web_name = f'client{instance_id}-web{instance_id}-1'
-                    subprocess.run(['docker', 'stop', web_name], check=True)
-                    
-                    # 执行数据库恢复
-                    result = subprocess.run(
-                        [DB_RESTORE['script_path'], 
-                         str(instance_id), 
-                         DB_RESTORE['default_db_name'], 
-                         DB_RESTORE['backup_file']],
-                        check=True,
-                        capture_output=True,
-                        text=True
-                    )
-                    
-                    if result.returncode == 0:
-                        # 等待几秒确保数据库恢复完成
-                        time.sleep(5)  
-                        
-                        # 设置目录权限
-                        logger.info('设置目录权限')
-                        instance_dir = f'/home/odoo/odoo16/instances/client{instance_id}'
-                        subprocess.run(
-                            ['sudo', 'chmod', '-R', '777', instance_dir],
-                            check=True,
-                            capture_output=True,
-                            text=True
-                        )
-                        
-                        # 重启 web 容器（不是简单的 start）
-                        subprocess.run(['docker', 'restart', web_name], check=True)
-                        # 等待几秒让服务完全启动
-                        time.sleep(5)
-                        
-                        return instance_id
-                    else:
-                        logger.error(f'数据库恢复失败: {result.stderr}')
-                        raise Exception('数据库恢复失败')
-
+                
+                return True
+            else:
+                raise Exception('数据库恢复失败')
+            
         except Exception as e:
-            logger.error(f'创建实例失败: {str(e)}')
+            # 如果恢复失败，更新状态为失败
+            with get_db_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("""
+                        UPDATE instances 
+                        SET status = 4 
+                        WHERE id = %s
+                    """, (instance_id,))
+                    conn.commit()
+            logger.error(f'恢复数据库失败: {str(e)}')
             raise e
 
     @staticmethod
