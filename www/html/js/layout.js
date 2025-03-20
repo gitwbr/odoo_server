@@ -18,6 +18,75 @@ function createLayout() {
     }
 }
 
+// 更新用户状态显示
+async function updateUserStatus(status) {
+    const statusText = status === 0 ? '超级用户' : '普通用户';
+    const statusEl = document.getElementById('user-status');
+    if (statusEl) {
+        if (status !== 0) {
+            try {
+                // 检查是否有未处理的权限申请
+                const response = await fetch('/api/message/list');
+                const data = await response.json();
+                const hasPendingRequest = data.messages.some(message => 
+                    message.subject === '用戶權限申請' && 
+                    message.status !== 'done'
+                );
+
+                if (hasPendingRequest) {
+                    statusEl.innerHTML = `
+                        ${statusText}
+                        <button disabled 
+                            style="margin-left: 8px; 
+                            padding: 4px 8px; 
+                            background: #d9d9d9; 
+                            color: rgba(0,0,0,0.45); 
+                            border: none; 
+                            border-radius: 4px; 
+                            font-size: 12px;">
+                            已申請提升權限，請耐心等待
+                        </button>
+                    `;
+                } else {
+                    statusEl.innerHTML = `
+                        ${statusText}
+                        <button onclick="requestUpgrade()" 
+                            style="margin-left: 8px; 
+                            padding: 4px 8px; 
+                            background: #1890ff; 
+                            color: white; 
+                            border: none; 
+                            border-radius: 4px; 
+                            cursor: pointer;
+                            font-size: 12px;">
+                            申請提升權限
+                        </button>
+                    `;
+                }
+            } catch (error) {
+                console.error('檢查權限申請狀態失敗:', error);
+                // 出错时显示正常按钮
+                statusEl.innerHTML = `
+                    ${statusText}
+                    <button onclick="requestUpgrade()" 
+                        style="margin-left: 8px; 
+                        padding: 4px 8px; 
+                        background: #1890ff; 
+                        color: white; 
+                        border: none; 
+                        border-radius: 4px; 
+                        cursor: pointer;
+                        font-size: 12px;">
+                        申請提升權限
+                    </button>
+                `;
+            }
+        } else {
+            statusEl.textContent = statusText;
+        }
+    }
+}
+
 // 插入侧边栏和顶部栏
 function insertLayout() {
     // 插入顶部栏
@@ -129,15 +198,6 @@ function insertLayout() {
         await logout();
     });
 
-    // 更新用户状态显示
-    function updateUserStatus(status) {
-        const statusText = status === 0 ? '超级用户' : '普通用户';
-        const statusEl = document.getElementById('user-status');
-        if (statusEl) {
-            statusEl.textContent = statusText;
-        }
-    }
-
     // 在获取用户信息后更新状态
     fetch('/api/user/info')
         .then(response => response.json())
@@ -154,14 +214,38 @@ const messageNotification = {
     lastStatus: new Map(),
     pollingInterval: null,
 
+    // 从 localStorage 获取已知消息
+    getKnownMessages() {
+        const stored = localStorage.getItem('knownMessages');
+        return stored ? new Set(JSON.parse(stored)) : new Set();
+    },
+
+    // 保存已知消息到 localStorage
+    saveKnownMessages(messages) {
+        localStorage.setItem('knownMessages', JSON.stringify([...messages]));
+    },
+
     async checkUpdates() {
         try {
-            const userResponse = await fetch('/api/user/info');
-            const userData = await userResponse.json();
-            
             const response = await fetch('/api/message/list');
             const data = await response.json();
             
+            // 获取已知消息
+            const knownMessages = this.getKnownMessages();
+            
+            // 检查新消息
+            data.messages.forEach(message => {
+                if (!knownMessages.has(message.id)) {
+                    // 这是一条新消息
+                    showToast('新消息', `收到來自 ${message.sender_name} 的新消息：${message.subject}`, 'info', 5000);
+                    knownMessages.add(message.id);
+                }
+            });
+            
+            // 保存更新后的已知消息
+            this.saveKnownMessages(knownMessages);
+            
+            // 现有的状态更新检查
             data.messages.forEach(message => {
                 const previousStatus = this.lastStatus.get(message.id);
                 if (previousStatus && previousStatus !== message.status) {
@@ -224,4 +308,54 @@ document.addEventListener('visibilitychange', () => {
 // 页面关闭时停止轮询
 window.addEventListener('beforeunload', () => {
     messageNotification.stop();
-}); 
+});
+
+// 修改申请升级函数
+window.requestUpgrade = async function() {
+    try {
+        // 获取用户信息
+        const userResponse = await fetch('/api/user/info');
+        const userData = await userResponse.json();
+        
+        // 构造邮件内容
+        const messageData = {
+            receiver_id: 1,
+            priority: 'urgent',
+            subject: '用戶權限申請',
+            content: `
+用戶權限提升申請：
+
+用戶信息：
+- 用戶名：${userData.username}
+- 郵箱：${userData.email}
+- 電話：${userData.phone || '未填寫'}
+
+
+- 註冊時間：${userData.created_at}
+- 當前狀態：${userData.status === 0 ? '超级用户' : '普通用户'}
+            `.trim()
+        };
+
+        // 发送消息
+        const response = await fetch('/api/message/create', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(messageData)
+        });
+
+        if (response.ok) {
+            showToast('成功', '權限申請已發送，請耐心等待管理員處理', 'success', 5000);
+            // 立即更新状态显示
+            const userResponse = await fetch('/api/user/info');
+            const userData = await userResponse.json();
+            await updateUserStatus(userData.status);
+        } else {
+            throw new Error('發送申請失敗');
+        }
+    } catch (error) {
+        console.error('申請提升權限失敗:', error);
+        showToast('錯誤', '申請提升權限失敗，請稍後重試', 'error');
+    }
+}; 
