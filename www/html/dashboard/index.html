@@ -41,6 +41,7 @@
                 <table class="instance-table">
                     <thead>
                         <tr>
+                            <th>用戶ID</th>
                             <th>用戶名</th>
                             <th>實例名稱</th>
                             <th>狀態</th>
@@ -139,6 +140,7 @@
                     
                     return `
                         <tr>
+                            <td>${instance.user_id}</td>
                             <td>${instance.username}</td>
                             <td>
                                 <a href="${mainDomain}:${instance.port}" 
@@ -295,15 +297,15 @@
             `;
         }
 
-        getMainDomain();
-        loadAllInstances();
+        /* getMainDomain();
+        loadAllInstances(); */
         // 页面加载完成后执行
-       /*  document.addEventListener('DOMContentLoaded', async () => {
+        document.addEventListener('DOMContentLoaded', async () => {
             await getMainDomain();
             await loadAllInstances();
             // 每60秒刷新一次
-            setInterval(loadAllInstances, 60000);
-        }); */
+            setInterval(loadAllInstances, 10000);
+        });
     </script>
     <script src="/dashboard/js/common.js"></script>
 </body>

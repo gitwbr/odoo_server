@@ -3,19 +3,25 @@ function createLayout() {
     // 插入布局
     insertLayout();
     
-    // 根据当前页面设置活动菜单项
-    const currentPath = window.location.pathname;
-    const navItems = {
-        '/dashboard/index.html': 'nav-dashboard',
-        '/dashboard/instance.html': 'nav-instance',
-        '/dashboard/profile.html': 'nav-profile',
-        '/dashboard/message.html': 'nav-message'  // 添加站內信頁面
-    };
-    
-    const activeNavId = navItems[currentPath];
-    if (activeNavId) {
-        document.getElementById(activeNavId).classList.add('active');
-    }
+    // 等待一小段时间确保DOM已更新
+    setTimeout(() => {
+        // 根据当前页面设置活动菜单项
+        const currentPath = window.location.pathname;
+        const navItems = {
+            '/dashboard/index.html': 'nav-dashboard',
+            '/dashboard/instance.html': 'nav-instance',
+            '/dashboard/profile.html': 'nav-profile',
+            '/dashboard/message.html': 'nav-message'  // 添加站內信頁面
+        };
+        
+        const activeNavId = navItems[currentPath];
+        if (activeNavId) {
+            const activeElement = document.getElementById(activeNavId);
+            if (activeElement) {
+                activeElement.classList.add('active');
+            }
+        }
+    }, 0);
 }
 
 // 更新用户状态显示

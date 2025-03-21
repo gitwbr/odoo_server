@@ -276,7 +276,7 @@
                     const actionsCell = document.querySelector(`#actions-${instance.id}`);
                     if (actionsCell) {
                         actionsCell.innerHTML = `
-                            <div style="display: flex; gap: 8px;">
+                            <div class="action-buttons">
                                 <button class="action-btn ${instance.status === 1 ? '' : 'disabled'}" 
                                         onclick="${instance.status === 1 ? `window.open('${mainDomain}:${instance.port}', '_blank')` : ''}" 
                                         title="${instance.status === 1 ? '訪問實例' : '實例未運行'}">
@@ -287,11 +287,12 @@
                                         title="${instance.status === 1 ? '重啟實例' : '實例未運行'}">
                                     <i class="material-icons">restart_alt</i>
                                 </button>
+                                 <!-- 刪除實例按鈕 
                                 <button class="action-btn" 
                                         onclick="deleteInstance(${instance.id})" 
                                         title="刪除實例">
                                     <i class="material-icons">delete</i>
-                                </button>
+                                </button>-->
                             </div>
                         `;
                     }
@@ -352,18 +353,18 @@
                     container.innerHTML += `
                         <tr>
                             <td>
-                                <div style="display: flex; align-items: center; gap: 8px;">
+                                <div style="display: flex; align-items: center; gap: 8px; justify-content: center;">
                                     <i class="material-icons" style="color: var(--primary-color);">dns</i>
-                                    client${instance.id}-web${instance.id}-1
+                                    client${instance.id}
                                 </div>
                             </td>
                             <td id="instance-${instance.id}-status">${statusHtml}</td>
                             <td>${instance.port}</td>
-                            <td>${instance.version_id === 1 ? 'Odoo 試用版' : 'Odoo 正式版'}</td>
+                            <td>${instance.version_id === 1 ? 'v1' : 'v2'}</td>
                             <td>${new Date(instance.created_at).toLocaleString()}</td>
                             <td>${new Date(instance.expires_at).toLocaleString()}</td>
                             <td id="actions-${instance.id}">
-                                <div style="display: flex; gap: 8px;">
+                                <div class="action-buttons">
                                     <button class="action-btn ${instance.status === 1 ? '' : 'disabled'}" 
                                             onclick="${instance.status === 1 ? `window.open('${mainDomain}:${instance.port}', '_blank')` : ''}" 
                                             title="${instance.status === 1 ? '訪問實例' : '實例未運行'}">
@@ -374,11 +375,12 @@
                                             title="${instance.status === 1 ? '重啟實例' : '實例未運行'}">
                                         <i class="material-icons">restart_alt</i>
                                     </button>
+                                    <!-- 刪除實例按鈕 
                                     <button class="action-btn" 
                                             onclick="deleteInstance(${instance.id})" 
                                             title="刪除實例">
                                         <i class="material-icons">delete</i>
-                                    </button>
+                                    </button>-->
                                 </div>
                             </td>
                         </tr>
