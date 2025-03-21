@@ -52,12 +52,12 @@ def create_app():
     formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     
     # 错误日志
-    error_handler = RotatingFileHandler('/var/log/saas-api.error.log', maxBytes=10000000, backupCount=5)
+    error_handler = RotatingFileHandler('/var/log/saas-api.error.log', maxBytes=5000000, backupCount=3)
     error_handler.setLevel(logging.ERROR)
     error_handler.setFormatter(formatter)
     
     # 普通日志
-    info_handler = RotatingFileHandler('/var/log/saas-api.log', maxBytes=10000000, backupCount=5)
+    info_handler = RotatingFileHandler('/var/log/saas-api.log', maxBytes=5000000, backupCount=3)
     info_handler.setLevel(logging.INFO)
     info_handler.setFormatter(formatter)
     

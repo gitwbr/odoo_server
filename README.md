@@ -905,9 +905,6 @@ sudo systemctl daemon-reload
 # 重启服务
 sudo systemctl restart saas-api
 
-# 查看状态
-sudo systemctl status saas-api
-
 # 设置开机启动
 sudo systemctl enable saas-api
 

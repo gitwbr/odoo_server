@@ -1,6 +1,5 @@
 from flask import Blueprint, request, jsonify, session
 from utils.database import get_db_connection
-from utils.websocket import broadcast_message_update
 from datetime import datetime
 import logging
 import json
@@ -61,7 +60,6 @@ def get_messages():
 @message_bp.route('/create', methods=['POST'])
 def create_message():
     try:
-        # 從 session 獲取用戶 ID
         user_id = session.get('user_id')
         if not user_id:
             return jsonify({'error': '未登錄'}), 401
@@ -77,7 +75,7 @@ def create_message():
                 """, (
                     data['subject'],
                     data['content'],
-                    user_id,  # 使用 session 中的 user_id
+                    user_id,
                     data['receiver_id'],
                     data['priority']
                 ))
@@ -112,9 +110,6 @@ def mark_as_read(message_id):
                     WHERE id = %s AND receiver_id = %s
                 """, (message_id, user_id))
                 conn.commit()
-                
-                # 广播状态更新
-                broadcast_message_update(message_id, 'read', message[0])
                 return jsonify({'success': True})
     except Exception as e:
         logger.error(f'標記已讀失敗: {str(e)}')
