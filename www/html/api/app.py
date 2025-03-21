@@ -16,6 +16,7 @@ from routes.user import user
 from routes.instance import instance
 from routes.config import config
 from routes.message import message_bp
+from routes.admin import admin_bp  # 导入管理员路由
 import redis
 from config import (
     DB_CONFIG, 
@@ -73,4 +74,5 @@ def create_app():
     app.register_blueprint(instance, url_prefix='/api/instance')
     app.register_blueprint(config, url_prefix='/api')
     app.register_blueprint(message_bp, url_prefix='/api/message')
+    app.register_blueprint(admin_bp, url_prefix='/api/admin')  # 注册管理员路由
     return app 

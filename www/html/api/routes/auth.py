@@ -43,9 +43,10 @@ def login():
             
         if is_valid:
             session['user_id'] = user[0]
+            redirect_url = '/dashboard/index.html' if user[0] == 1 else '/dashboard/instance.html'
             return jsonify({
                 'message': '登錄成功',
-                'redirect': '/dashboard'
+                'redirect': redirect_url
             }), 200
         else:
             logger.debug('Password incorrect')
@@ -64,7 +65,7 @@ def send_verify_code():
         if not email:
             return jsonify({'error': '請提供郵箱地址'}), 400
             
-        logger.debug(f'發送驗證碼到郵箱: {email}')
+        logger.info(f'發送驗證碼到郵箱: {email}')
         
         # 生成驗證碼
         code = generate_verify_code()
@@ -76,7 +77,7 @@ def send_verify_code():
 驗證碼5分鐘內有效。如果您沒有註冊賬號，請忽略此郵件。'''
         
         if send_email(current_app.mail, '註冊驗證碼', email, email_body):
-            logger.debug(f'驗證碼已發送: {code}')
+            logger.info(f'驗證碼已發送: {code}')
             return jsonify({'message': '驗證碼已發送'}), 200
         else:
             return jsonify({'error': '發送驗證碼失敗'}), 500
@@ -139,9 +140,10 @@ def register():
         )
         
         if user_id:
+            session['user_id'] = user_id
             return jsonify({
                 'message': '註冊成功！',
-                'redirect': '/dashboard',
+                'redirect': '/dashboard/instance.html',
                 'user_id': user_id,
                 'username': data['username'],
                 'email': email
@@ -263,7 +265,7 @@ def google_callback():
             # 修改重定向 URL
             return f'''
                 <script>
-                window.location.href = "{DOMAIN}/dashboard";
+                window.location.href = "{DOMAIN}/dashboard/instance.html";
                 </script>
             '''
             

@@ -914,8 +914,16 @@ systemctl status saas-api
 journalctl -u saas-api -n 50
 
 # 创建日志文件并设置权限
-sudo touch /var/log/saas-api.log /var/log/saas-api.error.log
-sudo chown odoo:odoo /var/log/saas-api.log /var/log/saas-api.error.log
+<!-- sudo touch /var/log/saas-api.log /var/log/saas-api.log/var/log/saas-api.error.log
+sudo chown odoo:odoo /var/log/saas-api.log /var/log/saas-api.error.log -->
+# 创建主日志文件和备份文件
+sudo touch /var/log/saas-api.log /var/log/saas-api.log.1 /var/log/saas-api.log.2 /var/log/saas-api.log.3
+sudo touch /var/log/saas-api.error.log /var/log/saas-api.error.log.1 /var/log/saas-api.error.log.2 /var/log/saas-api.error.log.3
+
+# 设置所有文件的所有者和权限
+<!-- sudo chown root:root /var/log/saas-api.log* /var/log/saas-api.error.log*
+sudo chmod 666 /var/log/saas-api.log* /var/log/saas-api.error.log* -->
+sudo chown odoo:odoo /var/log/saas-api.log* /var/log/saas-api.error.log*
 
 # 查看日志文件
 tail -f /var/log/saas-api.log

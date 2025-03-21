@@ -112,31 +112,103 @@ body {
 }
 
 /* 表格样式 */
-.instance-table {
-    width: 100%;
+.table-container {
     background: white;
     border-radius: 8px;
-    border-spacing: 0;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    overflow: auto;
+}
+
+.instance-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+}
+
+.instance-table th,
+.instance-table td {
+    padding: 12px 16px;
+    text-align: center;  /* 居中对齐 */
+    border-bottom: 1px solid #eee;
+    white-space: nowrap;
 }
 
 .instance-table th {
-    background: #fafafa;
-    padding: 16px;
-    text-align: center;
-    font-weight: 500;
-    color: #1d2129;
-    border-bottom: 1px solid var(--border-color);
-}
-
-.instance-table td {
-    padding: 16px;
-    border-bottom: 1px solid var(--border-color);
-    color: #4e5969;
-}
-
-.instance-table tr:hover td {
     background: #f8f9fa;
+    font-weight: 500;
+    color: #333;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.instance-table tr:hover {
+    background-color: #f5f7f9;
+}
+
+.instance-table td .action-buttons {
+    display: flex;
+    gap: 8px;
+    justify-content: center;  /* 操作按钮居中 */
+}
+
+/* 实例链接样式 */
+.instance-link {
+    color: #1890ff;
+    text-decoration: none;
+    transition: color 0.2s;
+}
+
+.instance-link:hover {
+    color: #40a9ff;
+    text-decoration: underline;
+}
+
+/* 状态标签样式 */
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 13px;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+/* 状态颜色 - 可以和容器状态共用 */
+.status-badge.running {
+    background: #e6f7e6;
+    color: #52c41a;
+}
+
+.status-badge.creating {
+    background: #e6f7ff;
+    color: #1890ff;
+}
+
+.status-badge.initializing {
+    background: #fff7e6;
+    color: #fa8c16;
+}
+
+.status-badge.expired {
+    background: #fff1f0;
+    color: #f5222d;
+}
+
+.status-badge.failed {
+    background: #fff1f0;
+    color: #ff4d4f;
+}
+
+.status-badge.stopped {
+    background: #fff1f0;
+    color: #ff4d4f;
+}
+
+.status-badge.unknown {
+    background: #f5f5f5;
+    color: #666;
 }
 
 /* 按钮样式 */
@@ -158,38 +230,6 @@ body {
     background: #1557b0;
 }
 
-/* 状态标签 */
-.status-badge {
-    padding: 4px 8px;
-    border-radius: 4px;
-    font-size: 12px;
-}
-
-.status-badge.creating {
-    background: #fff7e6;
-    color: #d46b08;
-}
-
-.status-badge.running {
-    background: #e8f5e9;
-    color: #43a047;
-}
-
-.status-badge.stopped {
-    background: #fbe9e7;
-    color: #d84315;
-}
-
-.status-badge.expired {
-    background: #f5f5f5;
-    color: #757575;
-}
-
-.status-badge.failed {
-    background: #ffebee;
-    color: #c62828;
-}
-
 /* 操作按钮 */
 .action-btn {
     padding: 4px;
@@ -202,6 +242,12 @@ body {
 
 .action-btn:hover {
     color: var(--primary-color);
+}
+
+.action-btn.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    pointer-events: none;
 }
 
 /* Toast 通知样式 */
@@ -457,4 +503,6 @@ body {
     font-weight: 500;
     white-space: nowrap;
 }
+
+
 

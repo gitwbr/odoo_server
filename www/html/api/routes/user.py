@@ -24,6 +24,7 @@ def get_user_info():
             return jsonify({'error': '用戶不存在'}), 404
             
         return jsonify({
+            'id': user_info.id,
             'username': user_info.username,
             'email': user_info.email,
             'phone': user_info.phone,

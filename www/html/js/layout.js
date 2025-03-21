@@ -132,12 +132,6 @@ function insertLayout() {
         </div>
         <ul class="nav-menu">
             <li>
-                <a href="/dashboard/index.html" class="nav-item" id="nav-dashboard">
-                    <i class="material-icons">dashboard</i>
-                    控制台
-                </a>
-            </li>
-            <li>
                 <a href="/dashboard/instance.html" class="nav-item" id="nav-instance">
                     <i class="material-icons">dns</i>
                     實例管理
@@ -163,6 +157,24 @@ function insertLayout() {
             </li>
         </ul>
     `;
+
+    // 获取用户信息并添加控制台菜单（如果是管理员）
+    fetch('/api/user/info')
+        .then(response => response.json())
+        .then(data => {
+            if (data.id === 1) {
+                const navMenu = sidebar.querySelector('.nav-menu');
+                const dashboardItem = document.createElement('li');
+                dashboardItem.innerHTML = `
+                    <a href="/dashboard/index.html" class="nav-item" id="nav-dashboard">
+                        <i class="material-icons">dashboard</i>
+                        控制台
+                    </a>
+                `;
+                navMenu.insertBefore(dashboardItem, navMenu.firstChild);
+            }
+        })
+        .catch(error => console.error('获取用户信息失败:', error));
 
     // 插入到页面
     const dashboard = document.querySelector('.dashboard');

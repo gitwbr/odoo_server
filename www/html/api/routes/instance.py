@@ -111,7 +111,7 @@ def delete_instance(instance_id):
             return jsonify({'error': '实例不存在'}), 404
             
         # 检查是否是该用户的实例
-        if instance.user_id != user_id:
+        if user_id != 1 and instance.user_id != user_id:
             return jsonify({'error': '无权限删除此实例'}), 403
             
         # 删除实例
@@ -151,7 +151,7 @@ def restart_instance(instance_id):
         current_user_id = session.get('user_id')
         logger.info(f'檢查用戶權限: user_id={current_user_id}, instance_owner={instance_info.user_id}')
         
-        if instance_info.user_id != current_user_id:
+        if current_user_id != 1 and instance_info.user_id != current_user_id:
             logger.error(f'無權限重啟實例: user_id={current_user_id}, instance_id={instance_id}')
             return jsonify({'error': '無權限操作此實例'}), 403
             

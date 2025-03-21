@@ -257,20 +257,16 @@
                     
                     if (instance.status === 1) {  // 运行中状态
                         statusHtml = `
-                            <div style="display: flex; flex-direction: column; gap: 4px;">
                                 ${getStatusBadge(containerStatus.web, 'Web')}
                                 ${getStatusBadge(containerStatus.db, 'DB')}
-                            </div>
                         `;
                     } else {  // 其他状态
                         // 显示实例状态，同时在tooltip中显示容器状态
                         statusHtml = `
-                            <div style="display: flex; flex-direction: column; gap: 4px;">
                                 <span class="status-badge ${getStatusClass(instance.status)}" 
                                       title="Web: ${containerStatus.web}, DB: ${containerStatus.db}">
                                     ${getStatusText(instance.status)}
                                 </span>
-                            </div>
                         `;
                     }
                     
@@ -346,10 +342,8 @@
                     if (instance.status === 1) {
                         const containerStatus = await getContainerStatus(instance.id);
                         statusHtml = `
-                            <div style="display: flex; flex-direction: column; gap: 4px;">
                                 ${getStatusBadge(containerStatus.web, 'Web')}
                                 ${getStatusBadge(containerStatus.db, 'DB')}
-                            </div>
                         `;
                     } else {
                         statusHtml = `<span class="status-badge ${getStatusClass(instance.status)}">${getStatusText(instance.status)}</span>`;

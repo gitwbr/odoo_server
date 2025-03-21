@@ -16,30 +16,295 @@
                         <i class="material-icons" style="margin-right: 8px;">dns</i>
                         實例總數
                     </div>
-                    <div class="card-value">0</div>
+                    <div class="card-value" id="total-instances">0</div>
                     <div class="card-description">所有創建的實例數量</div>
                 </div>
                 <div class="card">
                     <div class="card-title">
                         <i class="material-icons" style="margin-right: 8px;">play_circle</i>
-                        運行中
+                        正常運行
                     </div>
-                    <div class="card-value">0</div>
-                    <div class="card-description">當前正在運行的實例</div>
+                    <div class="card-value" id="running-instances">0</div>
+                    <div class="card-description">實例和容器都正常運行</div>
                 </div>
                 <div class="card">
                     <div class="card-title">
                         <i class="material-icons" style="margin-right: 8px;">stop_circle</i>
-                        已停止
+                        狀態異常
                     </div>
-                    <div class="card-value">0</div>
-                    <div class="card-description">當前停止的實例</div>
+                    <div class="card-value" id="stopped-instances">0</div>
+                    <div class="card-description">實例或容器狀態異常</div>
                 </div>
+            </div>
+
+            <div class="table-container" style="margin-top: 24px;">
+                <table class="instance-table">
+                    <thead>
+                        <tr>
+                            <th>用戶名</th>
+                            <th>實例名稱</th>
+                            <th>狀態</th>
+                            <th>端口</th>
+                            <th>版本</th>
+                            <th>創建時間</th>
+                            <th>到期時間</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="instanceContainer">
+                        <!-- 實例數據將通過 JS 動態添加 -->
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
 
     <script src="/js/layout.js"></script>
+    <script>
+        let mainDomain = '';
+
+        // 获取主域名
+        async function getMainDomain() {
+            try {
+                const response = await fetch('/api/config/domain');
+                const data = await response.json();
+                mainDomain = data.domain;
+            } catch (error) {
+                console.error('獲取域名配置失敗:', error);
+            }
+        }
+
+        // 加载所有实例列表
+        async function loadAllInstances() {
+            try {
+                const response = await fetch('/api/admin/instances/all');
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || '加載失敗');
+                }
+
+                // 更新统计数据
+                const stats = {
+                    total: data.instances.length,
+                    running: 0,
+                    abnormal: 0
+                };
+
+                // 统计正常运行和异常的实例
+                data.instances.forEach(instance => {
+                    if (instance.status === 1 && 
+                        instance.containers.web === 'running' && 
+                        instance.containers.db === 'running') {
+                        stats.running++;
+                    } else {
+                        stats.abnormal++;
+                    }
+                });
+
+                // 更新显示
+                document.getElementById('total-instances').textContent = stats.total;
+                document.getElementById('running-instances').textContent = stats.running;
+                document.getElementById('stopped-instances').textContent = stats.abnormal;
+
+                // 修改卡片标题
+                document.querySelector('.card:nth-child(2) .card-title').innerHTML = `
+                    <i class="material-icons" style="margin-right: 8px;">play_circle</i>
+                    正常運行
+                `;
+                document.querySelector('.card:nth-child(2) .card-description').textContent = 
+                    '實例和容器都正常運行';
+
+                document.querySelector('.card:nth-child(3) .card-title').innerHTML = `
+                    <i class="material-icons" style="margin-right: 8px;">stop_circle</i>
+                    狀態異常
+                `;
+                document.querySelector('.card:nth-child(3) .card-description').textContent = 
+                    '實例或容器狀態異常';
+
+                // 渲染实例列表
+                const container = document.getElementById('instanceContainer');
+                container.innerHTML = data.instances.map(instance => {
+                    const statusClass = getStatusClass(instance.status);
+                    let statusHtml;
+                    
+                    if (instance.status === 1) {  // 运行中状态显示容器状态
+                        statusHtml = `
+                                ${getStatusBadge(instance.containers.web, 'Web')}
+                                ${getStatusBadge(instance.containers.db, 'DB')}
+                        `;
+                    } else {  // 其他状态显示状态文本
+                        statusHtml = `<span class="status-badge ${getStatusClass(instance.status)}">${getStatusText(instance.status)}</span>`;
+                    }
+                    
+                    return `
+                        <tr>
+                            <td>${instance.username}</td>
+                            <td>
+                                <a href="${mainDomain}:${instance.port}" 
+                                   target="_blank" 
+                                   class="instance-link">
+                                    client${instance.id}
+                                </a>
+                            </td>
+                            <td>${statusHtml}</td>
+                            <td>${instance.port}</td>
+                            <td>v${instance.version_id}</td>
+                            <td>${new Date(instance.created_at).toLocaleString()}</td>
+                            <td>${new Date(instance.expires_at).toLocaleString()}</td>
+                            <td>
+                                <div class="action-buttons">
+                                    <button class="action-btn ${instance.status === 1 ? '' : 'disabled'}" 
+                                            onclick="${instance.status === 1 ? `window.open('${mainDomain}:${instance.port}', '_blank')` : ''}" 
+                                            title="${instance.status === 1 ? '訪問實例' : '實例未運行'}">
+                                        <i class="material-icons">open_in_new</i>
+                                    </button>
+                                    <button class="action-btn" 
+                                            onclick="restartInstance(${instance.id})"
+                                            title="重啟實例">
+                                        <i class="material-icons">refresh</i>
+                                    </button>
+                                    <button class="action-btn" 
+                                            onclick="deleteInstance(${instance.id})"
+                                            title="刪除實例">
+                                        <i class="material-icons">delete</i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+
+            } catch (error) {
+                console.error('加載實例列表失敗:', error);
+                showToast('錯誤', '無法加載實例列表', 'error');
+            }
+        }
+
+        // 获取状态样式类
+        function getStatusClass(status) {
+            const statusClasses = {
+                0: 'creating',
+                1: 'running',
+                2: 'initializing',
+                3: 'expired',
+                4: 'failed'
+            };
+            return statusClasses[status] || '';
+        }
+
+        // 获取状态文本
+        function getStatusText(status) {
+            const statusTexts = {
+                0: '創建中',
+                1: '運行中',
+                2: '正在初始化',
+                3: '已過期',
+                4: '創建失敗'
+            };
+            return statusTexts[status] || '未知';
+        }
+
+        // 获取容器状态样式类
+        function getContainerClass(status) {
+            const statusClasses = {
+                'running': 'running',
+                'stopped': 'stopped',
+                'exited': 'stopped',
+                'not found': 'failed',
+                'error': 'failed',
+                'created': 'creating',
+                'restarting': 'initializing'
+            };
+            return statusClasses[status] || 'unknown';
+        }
+
+        // 重启实例
+        async function restartInstance(instanceId) {
+            try {
+                showToast('提示', '正在重啟實例...', 'info');
+                const response = await fetch(`/api/instance/restart/${instanceId}`, {
+                    method: 'POST'
+                });
+                const data = await response.json();
+
+                if (response.ok) {
+                    showToast('成功', '實例重啟指令已發送', 'success');
+                    setTimeout(loadAllInstances, 5000);
+                } else {
+                    showToast('錯誤', data.error || '重啟失敗', 'error');
+                }
+            } catch (error) {
+                console.error('重啟實例失敗:', error);
+                showToast('錯誤', '重啟失敗', 'error');
+            }
+        }
+
+        // 删除实例
+        async function deleteInstance(instanceId) {
+            if (!confirm('確定要刪除此實例嗎？')) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/instance/delete/${instanceId}`, {
+                    method: 'DELETE'
+                });
+                const data = await response.json();
+
+                if (response.ok) {
+                    showToast('成功', '實例已刪除', 'success');
+                    loadAllInstances();
+                } else {
+                    showToast('錯誤', data.error || '刪除實例失敗', 'error');
+                }
+            } catch (error) {
+                console.error('刪除實例失敗:', error);
+                showToast('錯誤', '刪除實例失敗', 'error');
+            }
+        }
+
+        // 获取状态标签
+        function getStatusBadge(status, type) {
+            // 状态样式映射
+            const statusClass = {
+                'running': 'running',
+                'exited': 'stopped',
+                'created': 'creating',
+                'restarting': 'running',
+                'paused': 'stopped',
+                'not found': 'failed',
+                'error': 'failed'
+            }[status] || 'failed';
+
+            // 状态文本映射
+            const statusText = {
+                'running': '運行中',
+                'exited': '已停止',
+                'created': '已創建',
+                'restarting': '重啟中',
+                'paused': '已暫停',
+                'not found': '未找到',
+                'error': '錯誤'
+            }[status] || '未知';
+
+            return `
+                <span class="status-badge ${statusClass}" title="${status}">
+                    ${type}: ${statusText}
+                </span>
+            `;
+        }
+
+        getMainDomain();
+        loadAllInstances();
+        // 页面加载完成后执行
+       /*  document.addEventListener('DOMContentLoaded', async () => {
+            await getMainDomain();
+            await loadAllInstances();
+            // 每60秒刷新一次
+            setInterval(loadAllInstances, 60000);
+        }); */
+    </script>
     <script src="/dashboard/js/common.js"></script>
 </body>
 </html> 
