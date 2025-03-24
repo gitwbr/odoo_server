@@ -162,7 +162,7 @@ class Instance:
     def restore_database(instance_id):
         """恢复默认数据库"""
         try:
-            logger.info('开始恢复默认数据库...')
+            logger.debug('开始恢复默认数据库...')
             
             # 先停止 web 容器
             web_name = f'client{instance_id}-web{instance_id}-1'
@@ -184,7 +184,7 @@ class Instance:
                 time.sleep(5)  
                 
                 # 设置目录权限
-                logger.info('设置目录权限')
+                logger.debug('设置目录权限')
                 instance_dir = f'/home/odoo/odoo16/instances/client{instance_id}'
                 subprocess.run(
                     ['sudo', 'chmod', '-R', '777', instance_dir],
@@ -240,7 +240,7 @@ class Instance:
             db_user = f'odoo{instance_id}'
             db_password = f'odoo{instance_id}'
             
-            logger.info(f'正在创建实例目录: {instance_dir}')
+            logger.debug(f'正在创建实例目录: {instance_dir}')
             
             try:
                 # 先创建客户端主目录
@@ -248,7 +248,7 @@ class Instance:
                     # 直接使用 Python 的 os 模块创建目录
                     os.makedirs(instance_dir, exist_ok=True)
                     os.chmod(instance_dir, 0o777)
-                    logger.info(f'客户端目录创建成功: {instance_dir}')
+                    logger.debug(f'客户端目录创建成功: {instance_dir}')
             except Exception as e:
                 logger.error(f'创建客户端目录失败: {str(e)}')
                 # 添加更多错误信息
@@ -303,7 +303,7 @@ class Instance:
             subprocess.run(['sudo', 'chown', '-R', 'odoo:odoo', f'{instance_dir}/data'], check=True)
             
             # 从模板复制并修改配置文件
-            logger.info('正在创建配置文件')
+            logger.debug('正在创建配置文件')
             with open('/home/odoo/odoo16/odoo.conf.template', 'r') as f:
                 config_content = f.read()
             
@@ -317,7 +317,7 @@ class Instance:
                 f.write(config_content)
             
             # 创建 docker-compose.yml
-            logger.info('正在创建 docker-compose.yml')
+            logger.debug('正在创建 docker-compose.yml')
             docker_compose = f"""version: '3.1'
 services:
   web{instance_id}:
@@ -369,12 +369,12 @@ networks:
                 f.write(docker_compose)
             
             # 执行 docker-compose up
-            logger.info('正在启动容器')
+            logger.debug('正在启动容器')
             try:
                 # 先检查 docker-compose 文件
-                logger.info('检查 docker-compose 配置')
-                logger.info(f'当前目录: {os.getcwd()}')
-                logger.info(f'目标目录: {instance_dir}')
+                logger.debug('检查 docker-compose 配置')
+                logger.debug(f'当前目录: {os.getcwd()}')
+                logger.debug(f'目标目录: {instance_dir}')
                 
                 result = subprocess.run(
                     ['docker-compose', 'config'],
@@ -382,12 +382,12 @@ networks:
                     capture_output=True,
                     text=True
                 )
-                logger.info(f'配置检查结果: {result.stdout}')
+                logger.debug(f'配置检查结果: {result.stdout}')
                 if result.stderr:
                     logger.error(f'Docker-compose 配置错误: {result.stderr}')
                 
                 # 启动容器
-                logger.info('启动容器')
+                logger.debug('启动容器')
                 subprocess.run(
                     ['docker-compose', 'up', '-d'],
                     cwd=instance_dir,
@@ -397,7 +397,7 @@ networks:
                 )
                 
                 """ # 设置目录权限为777
-                logger.info('设置目录权限')
+                logger.debug('设置目录权限')
                 subprocess.run(
                     ['sudo','chmod', '-R', '777', instance_dir],
                     check=True,
@@ -470,31 +470,31 @@ networks:
             web_name = f'{client_name}-web{instance_id}-1'  # web容器名
             db_name = f'{client_name}-db{instance_id}-1'    # db容器名
             
-            logger.info(f"删除实例 {instance_id} 开始...")
+            logger.debug(f"删除实例 {instance_id} 开始...")
             
             success = True  # 标记是否所有操作都成功
             
             # 停止和删除 web 容器
-            logger.info(f"停止 web 容器: {web_name}")
+            logger.debug(f"停止 web 容器: {web_name}")
             result = subprocess.run(['docker', 'stop', web_name], check=False, capture_output=True, text=True)
             if result.returncode != 0:
                 logger.error(f"停止 web 容器失败: {result.stderr}")
                 success = False
             
-            logger.info(f"删除 web 容器: {web_name}")
+            logger.debug(f"删除 web 容器: {web_name}")
             result = subprocess.run(['docker', 'rm', web_name], check=False, capture_output=True, text=True)
             if result.returncode != 0:
                 logger.error(f"删除 web 容器失败: {result.stderr}")
                 success = False
             
             # 停止和删除 db 容器
-            logger.info(f"停止 db 容器: {db_name}")
+            logger.debug(f"停止 db 容器: {db_name}")
             result = subprocess.run(['docker', 'stop', db_name], check=False, capture_output=True, text=True)
             if result.returncode != 0:
                 logger.error(f"停止 db 容器失败: {result.stderr}")
                 success = False
             
-            logger.info(f"删除 db 容器: {db_name}")
+            logger.debug(f"删除 db 容器: {db_name}")
             result = subprocess.run(['docker', 'rm', db_name], check=False, capture_output=True, text=True)
             if result.returncode != 0:
                 logger.error(f"删除 db 容器失败: {result.stderr}")
@@ -503,13 +503,13 @@ networks:
             # 删除实例目录
             instance_dir = f'/home/odoo/odoo16/instances/{client_name}'
             if os.path.exists(instance_dir):
-                logger.info(f"删除实例目录: {instance_dir}")
+                logger.debug(f"删除实例目录: {instance_dir}")
                 try:
                     # 打印当前用户信息
                     current_user = pwd.getpwuid(os.getuid()).pw_name
                     current_group = pwd.getpwuid(os.getgid()).pw_name
-                    logger.info(f"当前用户: {current_user}, 用户组: {current_group}")
-                    logger.info(f"UID: {os.getuid()}, GID: {os.getgid()}")
+                    logger.debug(f"当前用户: {current_user}, 用户组: {current_group}")
+                    logger.debug(f"UID: {os.getuid()}, GID: {os.getgid()}")
                     
                     # 使用 sudo 删除目录
                     result = subprocess.run(['sudo', 'rm', '-rf', instance_dir], 
@@ -528,7 +528,7 @@ networks:
                 with get_db_connection() as conn:
                     with conn.cursor() as cur:
                         # 释放端口
-                        logger.info(f"释放端口: {port}")
+                        logger.debug(f"释放端口: {port}")
                         cur.execute("""
                             UPDATE port_allocations 
                             SET is_used = false 
@@ -536,13 +536,13 @@ networks:
                         """, (port,))
                         
                         # 删除实例记录
-                        logger.info(f"删除数据库记录: {instance_id}")
+                        logger.debug(f"删除数据库记录: {instance_id}")
                         cur.execute(
                             "DELETE FROM instances WHERE id = %s",
                             (instance_id,)
                         )
                         conn.commit()
-                        logger.info(f"删除实例 {instance_id} 完成")
+                        logger.debug(f"删除实例 {instance_id} 完成")
                         return True
             else:
                 raise Exception("删除实例资源失败")

@@ -23,8 +23,11 @@ from config import (
     MAIL_CONFIG, 
     REDIS_CONFIG, 
     GOOGLE_CONFIG,
-    DOMAIN
+    DOMAIN,
+    SCHEDULER_CONFIG,
+    logger
 )
+from utils.scheduler import scheduler, check_expired_instances
 
 def create_app():
     app = Flask(__name__)
@@ -49,25 +52,6 @@ def create_app():
         db=REDIS_CONFIG['db']
     )
     
-    # 配置日志
-    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-    
-    # 错误日志
-    error_handler = RotatingFileHandler('/var/log/saas-api.error.log', maxBytes=5000000, backupCount=3)
-    error_handler.setLevel(logging.ERROR)
-    error_handler.setFormatter(formatter)
-    
-    # 普通日志
-    info_handler = RotatingFileHandler('/var/log/saas-api.log', maxBytes=5000000, backupCount=3)
-    info_handler.setLevel(logging.INFO)
-    info_handler.setFormatter(formatter)
-    
-    # 设置根日志记录器
-    root_logger = logging.getLogger()
-    root_logger.setLevel(logging.INFO)
-    root_logger.addHandler(error_handler)
-    root_logger.addHandler(info_handler)
-    
     # 注冊藍圖
     app.register_blueprint(auth, url_prefix='/api')
     app.register_blueprint(user, url_prefix='/api/user')
@@ -75,4 +59,16 @@ def create_app():
     app.register_blueprint(config, url_prefix='/api')
     app.register_blueprint(message_bp, url_prefix='/api/message')
     app.register_blueprint(admin_bp, url_prefix='/api/admin')  # 注册管理员路由
-    return app 
+    
+    # 初始化调度器
+    if SCHEDULER_CONFIG['ENABLED']:
+        # 检查任务是否启用
+        if SCHEDULER_CONFIG['TASKS']['check_expired_instances']['enabled']:
+            scheduler.add_task(
+                'check_expired_instances',
+                check_expired_instances,
+                SCHEDULER_CONFIG['TASKS']['check_expired_instances']['interval']
+            )
+            scheduler.start()
+    
+    return app

@@ -65,7 +65,7 @@ def send_verify_code():
         if not email:
             return jsonify({'error': '請提供郵箱地址'}), 400
             
-        logger.info(f'發送驗證碼到郵箱: {email}')
+        logger.debug(f'發送驗證碼到郵箱: {email}')
         
         # 生成驗證碼
         code = generate_verify_code()
@@ -77,7 +77,7 @@ def send_verify_code():
 驗證碼5分鐘內有效。如果您沒有註冊賬號，請忽略此郵件。'''
         
         if send_email(current_app.mail, '註冊驗證碼', email, email_body):
-            logger.info(f'驗證碼已發送: {code}')
+            logger.debug(f'驗證碼已發送: {code}')
             return jsonify({'message': '驗證碼已發送'}), 200
         else:
             return jsonify({'error': '發送驗證碼失敗'}), 500
@@ -219,7 +219,7 @@ def google_callback():
         flow.redirect_uri = current_app.config['GOOGLE_CONFIG']['redirect_uri']
         
         try:
-            logger.info(f'DOMAIN: {DOMAIN}')
+            logger.debug(f'DOMAIN: {DOMAIN}')
             # 禁用 SSL 驗證
             os.environ['CURL_CA_BUNDLE'] = ''
             

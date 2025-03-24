@@ -15,7 +15,7 @@ def create():
             logger.error('创建实例失败：未登录')
             return jsonify({'error': '未登录'}), 401
 
-        logger.info(f'开始创建实例，用户ID: {user_id}')
+        logger.debug(f'开始创建实例，用户ID: {user_id}')
         
         # 检查用户是否已有实例
         existing_instances = Instance.get_user_instances(user_id)
@@ -32,7 +32,7 @@ def create():
                 version_id=1
             )
             
-            logger.info(f'实例记录创建成功，ID: {instance_id}')
+            logger.debug(f'实例记录创建成功，ID: {instance_id}')
             return jsonify({
                 'message': '實例創建中',
                 'instance_id': instance_id
@@ -139,7 +139,7 @@ def get_instance_status(instance_id):
 @instance.route('/restart/<int:instance_id>', methods=['POST'])
 def restart_instance(instance_id):
     try:
-        logger.info(f'收到重啟實例請求: instance_id={instance_id}')
+        logger.debug(f'收到重啟實例請求: instance_id={instance_id}')
         
         # 获取实例信息
         instance_info = Instance.get_by_id(instance_id)
@@ -149,7 +149,7 @@ def restart_instance(instance_id):
             
         # 检查用户权限
         current_user_id = session.get('user_id')
-        logger.info(f'檢查用戶權限: user_id={current_user_id}, instance_owner={instance_info.user_id}')
+        logger.debug(f'檢查用戶權限: user_id={current_user_id}, instance_owner={instance_info.user_id}')
         
         if current_user_id != 1 and instance_info.user_id != current_user_id:
             logger.error(f'無權限重啟實例: user_id={current_user_id}, instance_id={instance_id}')
@@ -157,7 +157,7 @@ def restart_instance(instance_id):
             
         # 重启 Web 容器
         web_container = f'client{instance_id}-web{instance_id}-1'
-        logger.info(f'開始重啟 Web 容器: container={web_container}')
+        logger.debug(f'開始重啟 Web 容器: container={web_container}')
         
         web_result = subprocess.run(['docker', 'restart', web_container], 
                                   capture_output=True, 
@@ -167,11 +167,11 @@ def restart_instance(instance_id):
             logger.error(f'Web容器重啟失敗: {web_result.stderr}')
             return jsonify({'error': f'Web容器重啟失敗: {web_result.stderr}'}), 500
             
-        logger.info(f'Web容器重啟成功: {web_result.stdout}')
+        logger.debug(f'Web容器重啟成功: {web_result.stdout}')
         
         # 重启 DB 容器
         db_container = f'client{instance_id}-db{instance_id}-1'
-        logger.info(f'開始重啟 DB 容器: container={db_container}')
+        logger.debug(f'開始重啟 DB 容器: container={db_container}')
         
         db_result = subprocess.run(['docker', 'restart', db_container], 
                                  capture_output=True, 
@@ -181,10 +181,10 @@ def restart_instance(instance_id):
             logger.error(f'DB容器重啟失敗: {db_result.stderr}')
             return jsonify({'error': f'DB容器重啟失敗: {db_result.stderr}'}), 500
             
-        logger.info(f'DB容器重啟成功: {db_result.stdout}')
+        logger.debug(f'DB容器重啟成功: {db_result.stdout}')
         
         # 记录成功信息
-        logger.info(f'實例重啟成功: instance_id={instance_id}')
+        logger.debug(f'實例重啟成功: instance_id={instance_id}')
         return jsonify({
             'message': '重啟指令已發送',
             'details': {
