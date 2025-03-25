@@ -38,7 +38,12 @@ async function updateUserStatus(status) {
                     message.subject === '用戶權限申請' && 
                     message.status !== 'done'
                 );
-
+                
+                // 检查用户实例版本
+                const instanceResponse = await fetch('/api/instance/list');
+                const instanceData = await instanceResponse.json();
+                const userInstance = instanceData.instances[0]; // 假设用户只有一个实例
+                
                 if (hasPendingRequest) {
                     statusEl.innerHTML = `
                         ${statusText}
@@ -53,9 +58,30 @@ async function updateUserStatus(status) {
                             已申請提升權限，請耐心等待
                         </button>
                     `;
+                } else if (userInstance && userInstance.version_id >= 3) {
+                    // 如果是v3版本，只显示状态文本
+                    statusEl.innerHTML = `
+                        ${statusText}
+                        <span style="margin-left: 8px; color: #fa8c16;">
+                            (高級版 v3)
+                        </span>
+                    `;
                 } else {
                     statusEl.innerHTML = `
                         ${statusText}
+                        <span style="margin-left: 8px; color: ${
+                            userInstance ? 
+                            userInstance.version_id === 1 ? '#666666' : 
+                            userInstance.version_id === 2 ? '#1890ff' : 
+                            '#fa8c16'
+                            : '#fa8c16'};">
+                            (${userInstance ? 
+                                userInstance.version_id === 1 ? '基礎版 v1' : 
+                                userInstance.version_id === 2 ? '進階版 v2' : 
+                                '高級版 v3' 
+                                : '基礎版 v1'})
+                        </span>
+                        <div class="upgrade-btn-wrapper">
                         <button onclick="requestUpgrade()" 
                             style="margin-left: 8px; 
                             padding: 4px 8px; 
@@ -64,28 +90,69 @@ async function updateUserStatus(status) {
                             border: none; 
                             border-radius: 4px; 
                             cursor: pointer;
+                            position: relative;
+                            transition: all 0.3s;
                             font-size: 12px;">
-                            申請提升權限
+                            <span style="display: flex; align-items: center;">
+                                申請提升權限
+                                <i class="material-icons" style="font-size: 14px; margin-left: 4px;">arrow_upward</i>
+                            </span>
                         </button>
+                        <style>
+                            .upgrade-btn-wrapper {
+                                position: relative;
+                                display: inline-block;
+                            }
+                            .version-info {
+                                display: none;
+                                position: absolute;
+                                top: 100%;
+                                left: 0;
+                                margin-top: 8px;
+                                background: white;
+                                border: 1px solid #e8e8e8;
+                                border-radius: 4px;
+                                padding: 12px;
+                                box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+                                z-index: 1000;
+                                width: 280px;
+                            }
+                            .upgrade-btn-wrapper:hover .version-info {
+                                display: block;
+                            }
+                        </style>
+                        <div class="upgrade-btn-wrapper">
+                            <div class="version-info">
+                                <div style="margin-bottom: 8px; font-weight: 500;">版本功能對照：</div>
+                                <div style="color: #666; font-size: 13px; line-height: 1.6;">
+                                    <div style="margin-bottom: 8px;">
+                                        <span style="color: #666666;">基礎版 v1：</span>
+                                        <div style="padding-left: 12px;">
+                                            • 基礎功能
+                                        </div>
+                                    </div> 
+                                    <div style="margin-bottom: 8px;">
+                                        <span style="color: #1890ff;">進階版 v2：</span>
+                                        <div style="padding-left: 12px;">
+                                            • CRM客戶管理<br>
+                                            • Line機器人整合
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <span style="color: #fa8c16;">高級版 v3：</span>
+                                        <div style="padding-left: 12px;">
+                                            • 完整訂單管理<br>
+                                            • 工單二維碼系統
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     `;
                 }
             } catch (error) {
                 console.error('檢查權限申請狀態失敗:', error);
-                // 出错时显示正常按钮
-                statusEl.innerHTML = `
-                    ${statusText}
-                    <button onclick="requestUpgrade()" 
-                        style="margin-left: 8px; 
-                        padding: 4px 8px; 
-                        background: #1890ff; 
-                        color: white; 
-                        border: none; 
-                        border-radius: 4px; 
-                        cursor: pointer;
-                        font-size: 12px;">
-                        申請提升權限
-                    </button>
-                `;
+                statusEl.textContent = statusText;
             }
         } else {
             statusEl.textContent = statusText;
