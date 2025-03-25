@@ -574,11 +574,11 @@ body {
 
 /* 使用属性选择器和内容匹配来设置不同版本的颜色 */
 
-[id^="version-"]:is([id$="2"]) {
+[id^="version-"][data-version="2"] {
     color: #1890ff;  
 }
 
-[id^="version-"]:is([id$="3"]) {
+[id^="version-"][data-version="3"] {
     color: #fa8c16; 
 }
 

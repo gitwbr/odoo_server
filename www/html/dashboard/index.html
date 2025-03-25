@@ -151,7 +151,7 @@
                             </td>
                             <td>${statusHtml}</td>
                             <td>${instance.port}</td>
-                            <td id="version-${instance.id}">v${instance.version_id}</td>
+                            <td id="version-${instance.id}" data-version="${instance.version_id}">v${instance.version_id}</td>
                             <td>${new Date(instance.created_at).toLocaleString()}</td>
                             <td>${new Date(instance.expires_at).toLocaleString()}</td>
                             <td>
@@ -312,8 +312,42 @@
 
         // 升级实例
         async function upgradeInstance(instanceId, targetVersion) {
-            showToast('提示', `準備將實例 ${instanceId} 升級到 v${targetVersion}`, 'info');
-            // TODO: 实际的升级逻辑
+            // 显示确认对话框
+            if (!confirm(`確定要將實例升級到 v${targetVersion} 版本嗎？\n\n升級後將：\n` + 
+                (targetVersion === 2 ? 
+                    '- 開啟 CRM 功能\n- 開啟 LineBot 功能' : 
+                    '- 開啟所有進階功能\n- 包括完整訂單和工單二維碼') +
+                '\n\n升級過程需要重啟實例，請確保沒有正在進行的操作。')) {
+                return;
+            }
+
+            // 显示进度提示
+            showToast('提示', `正在升級到 v${targetVersion}，請稍候...`, 'info');
+
+            try {
+                const response = await fetch(`/api/admin/instance/${instanceId}/upgrade`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ target_version: targetVersion })
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showToast('成功', data.message, 'success');
+                    // 更新版本显示
+                    document.getElementById(`version-${instanceId}`).textContent = `v${data.new_version}`;
+                    // 刷新实例列表以更新按钮状态
+                    await loadAllInstances();
+                } else {
+                    showToast('錯誤', data.error, 'error');
+                }
+            } catch (error) {
+                console.error('升級失敗:', error);
+                showToast('錯誤', '升級失敗，請稍後重試', 'error');
+            }
         }
 
         /* getMainDomain();
