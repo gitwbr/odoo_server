@@ -129,15 +129,21 @@ class UploadController(http.Controller):
                       width, height, unit, width_mm, height_mm)
 
             def check_dimensions(width_actual, height_actual, width_expected, height_expected):
-                """檢查尺寸是否符合要求，考慮誤差容忍度"""
-                # 檢查是否小於預期尺寸（考慮誤差）
-                if width_actual + self.TOLERANCE < width_expected or height_actual + self.TOLERANCE < height_expected:
-                    return False, "smaller"
-                # 檢查是否超過預期尺寸的允許範圍
-                if width_actual - width_expected > self.MAX_SIZE_DIFF or height_actual - height_expected > self.MAX_SIZE_DIFF:
-                    return False, "larger"
+                """檢查尺寸是否符合要求"""
+                # 先乘後除計算等比例高度，並四捨五入到小數點後1位
+                height_actual_scaled = round(height_actual * width_expected / width_actual, 1)
+                _logger.info('等比例縮放後的高度: %s', height_actual_scaled)
+                
+                # 將預期高度也四捨五入到小數點後1位
+                height_expected_rounded = round(height_expected, 1)
+                _logger.info('要求的的高度: %s', height_expected_rounded)
+                # 轉換為字符串比較，避免浮點數精度問題
+                if str(height_actual_scaled) != str(height_expected_rounded):
+                    if height_actual_scaled < height_expected_rounded:
+                        return False, "smaller"
+                    else:
+                        return False, "larger"
                 return True, "ok"
-
             # 創建一個字節流對象
             file_stream = io.BytesIO(file_content)
             _logger.info('開始檢查圖片檔案，檔案擴展名: %s', file_extension)
@@ -163,15 +169,19 @@ class UploadController(http.Controller):
                         # 檢查尺寸
                         is_valid, reason = check_dimensions(width_mm_actual, height_mm_actual, width_mm, height_mm)
                         if not is_valid:
-                            if reason == "smaller":
+                            """ if reason == "smaller":
                                 return {
                                     'success': False,
-                                    'error': f'檔案實際尺寸({width_mm_actual:.2f}x{height_mm_actual:.2f}mm)小於要求尺寸({width_mm:.2f}x{height_mm:.2f}mm)'
+                                    'error': f'等比例處理後檔案實際尺寸({width_mm_actual:.2f}x{height_mm_actual:.2f}mm)小於要求尺寸({width_mm:.2f}x{height_mm:.2f}mm)'
                                 }
                             else:
                                 return {
                                     'success': False,
-                                    'error': f'檔案實際尺寸({width_mm_actual:.2f}x{height_mm_actual:.2f}mm)超過要求尺寸({width_mm:.2f}x{height_mm:.2f}mm)5mm以上'
+                                    'error': f'等比例處理後檔案實際尺寸({width_mm_actual:.2f}x{height_mm_actual:.2f}mm)超過要求尺寸({width_mm:.2f}x{height_mm:.2f}mm)5mm以上'
+                                } """
+                            return {
+                                    'success': False,
+                                    'error': f'等比例處理後檔案實際尺寸({width_mm_actual:.2f}x{height_mm_actual:.2f}mm)不符合要求尺寸({width_mm:.2f}x{height_mm:.2f}mm)'
                                 }
                         
                         return {

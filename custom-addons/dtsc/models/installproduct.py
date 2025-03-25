@@ -10,7 +10,118 @@ from datetime import datetime, timedelta, date
 from urllib.parse import quote_plus
 from odoo.exceptions import UserError
 import pdfkit
+import io
+import xlsxwriter
 
+class ReportMounthInstall(models.TransientModel):
+    _name = "dtsc.reportmounthinstall"
+    
+    starttime = fields.Date('起始時間')
+    endtime = fields.Date('結束時間')
+    
+    def your_confirm_method(self):
+       
+    
+        start_date = self.starttime
+        end_date = self.endtime
+
+        start_year = start_date.strftime('%Y年%m月%d日')
+        start_month = start_date.strftime('%m')
+        end_year = end_date.strftime('%Y年%m月%d日')
+        end_month = end_date.strftime('%m')
+        
+        domain = [('in_date', '>=', start_date), ('in_date', '<=', end_date),("install_state","not in",["cancel"])]
+
+        company_id = self.env["res.company"].search([],limit=1)    
+        # 查找符合条件的记录
+        moves = self.env['dtsc.installproduct'].search(domain)
+        if not moves:
+            raise UserError("没有符合条件的记录")
+        
+        
+        
+        # moves = sorted(moves, key=lambda move: move.partner_id.custom_id or '')
+        
+        # 创建 Excel 文件
+        output = io.BytesIO()
+        workbook = xlsxwriter.Workbook(output)
+        worksheet = workbook.add_worksheet("施工單報表")
+
+        # 写入标题
+        title_format = workbook.add_format({'bold': True, 'align': 'center', 'valign': 'vcenter', 'font_size': 14})
+        worksheet.merge_range('A1:I1', company_id.name if company_id else "公司名稱", title_format)
+        worksheet.merge_range('A2:I2', f"{start_year} ~ {end_year} 施工單報表", title_format)
+        
+        # 写入表头
+        header_format = workbook.add_format({'bold': True, 'border': 1, 'align': 'center', 'valign': 'vcenter'})
+        headers = ["單號",  "客戶名稱", "承包商", "專案名稱", "施工人員", "施工才數", "成本", "施工收費","進場開始時間","進場結束時間"]
+        
+        for col_num, header in enumerate(headers):
+            worksheet.write(3, col_num, header, header_format)
+
+        worksheet.set_column(0, 0, 15)  
+        worksheet.set_column(1, 4, 40)  
+        worksheet.set_column(5, 7, 10)  
+        worksheet.set_column(8, 9, 20)  
+
+        # 设置边框样式
+        cell_format = workbook.add_format({'border': 1, 'align': 'left', 'valign': 'vcenter'})
+        date_format = workbook.add_format({'num_format': 'yyyy-mm-dd', 'border': 1, 'align': 'center', 'valign': 'vcenter'})
+
+        # 填充数据
+        row = 4
+        for move in moves:
+            # 單號
+            worksheet.write(row, 0, move.name, cell_format)           
+            # 客戶名稱
+            worksheet.write(row, 1, move.checkout_id.customer_id.name or "", cell_format)
+            # 承包商
+            worksheet.write(row, 2, move.email_id.name or "", cell_format)
+            # 專案名稱
+            worksheet.write(row, 3, move.project_name or "", cell_format)
+            # 施工人員
+            worksheet.write(row, 4, move.cbsllr or "", cell_format)
+            # 施工才數
+            worksheet.write(row, 5, move.zcs or "", cell_format)
+            # 成本
+            worksheet.write(row, 6, move.cb_total or "", cell_format)
+            # 施工收費
+            worksheet.write(row, 7, move.sjsf or "", cell_format)
+            # 進場開始時間
+            worksheet.write(row, 8, start_date.strftime('%Y年%m月%d日') or "", cell_format)
+            # 進場結束時間
+            worksheet.write(row, 9, end_date.strftime('%Y年%m月%d日') or "", cell_format)
+
+            
+     
+            row += 1
+        
+        workbook.close()
+        output.seek(0)
+        
+        # 创建 Excel 文件并返回
+        attachment = self.env['ir.attachment'].create({
+            'name': f"{start_year} ~ {end_year}_施工單報表.xlsx",
+            'datas': base64.b64encode(output.getvalue()),
+            'res_model': 'dtsc.installproduct',
+            'type': 'binary'
+        })
+
+        return {
+            'type': 'ir.actions.act_url',
+            'url': f'/web/content/{attachment.id}?download=true',
+            'target': 'new',
+        }
+        # 转换为 Base64 并返回下载链接
+        # excel_file = base64.b64encode(output.read())
+        # excel_file_name = start_date+"月_施工單報表.xlsx"
+
+        # return {
+            # 'type': 'ir.actions.act_url',
+            # 'url': f'/web/content?model={self._name}&id={self.id}&field=excel_file&filename_field=excel_file_name&download=true&filename={self.excel_file_name}',
+            # 'target': 'self',
+        # }
+    
 class Imagelist(models.Model):
     _name = 'dtsc.imagelist'
     
@@ -75,16 +186,16 @@ class Installproduct(models.Model):
     is_out_date = fields.Boolean(string="是否撤場", default=False)     
     out_date = fields.Datetime(string='撤場開始時間')
     out_date_end = fields.Datetime(string='撤場結束時間')
-    
+    car_num = fields.Char("進場車輛號碼")
     address = fields.Char(string='施工地址') 
     comment = fields.Char(string="備註")
     google_comment = fields.Char(string="行事曆備註")
     cb = fields.Float("成本" ,compute="_compupte_cb",store = True,inverse="_inverse_cb")
     cb_other = fields.Float(string = "其餘成本")
     cb_total = fields.Float("總成本" ,compute="_compupte_cb_total",store = True)
-    sjsf = fields.Float("實際收費")
+    sjsf = fields.Float("實際收費" ,store = True)
     
-    zcs = fields.Float(string="總才數", compute='_compute_totals')
+    zcs = fields.Float(string="總才數", compute='_compute_totals',store = True)
     fzyw = fields.Many2one("res.users" , string='負責業務' , domain=lambda self: [('groups_id', 'in', self.env.ref('dtsc.group_dtsc_yw').id)] )
     
     total_quantity = fields.Integer(string='本單總數量', compute='_compute_total_quantity')
@@ -194,21 +305,22 @@ class Installproduct(models.Model):
         
     @api.depends('install_product_ids.shuliang') 
     def _compute_total_quantity(self):
-        total = 0
         for record in self:
+            total = 0
             for line in record.install_product_ids:
                 total += line.shuliang
             
-        record.total_quantity = total 
+            record.total_quantity = total 
     
     @api.depends('install_product_ids.caishu')
     def _compute_totals(self):
-        total = 0
+        
         for record in self:
+            total = 0
             for line in record.install_product_ids:
                 total += line.caishu #* line.shuliang
             
-        record.zcs = total 
+            record.zcs = total 
     
     def send_google(self):
         # mail_template = self.env.ref('my_module.my_mail_template_id')

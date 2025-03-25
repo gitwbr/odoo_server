@@ -39,21 +39,37 @@ export class PartnerListControllerC extends ListController {
    }
 
 }
-
-// patch(ListController.prototype, 'res_partner_tree_supp', PartnerListController);
-
-// export class PartnerListRenderer extends ListRenderer {
-	// setup() {
-        // super.setup();
-        // alert("2222")
-    // }
+export class InstallProductListControllerS extends ListController {
+    setup() {
+        super.setup();
+    }
 	
-// }
-// patch(PartnerListRenderer.prototype, 'expense_list_renderer_qrcode', ExpenseMobileQRCode);
-// patch(PartnerListRenderer.prototype, 'expense_list_renderer_qrcode_dzone', ExpenseDocumentDropZone);
-// PartnerListRenderer.template = 'hr_expense.ListRenderer';
+	OnTestClick() {
+	   this.actionService.doAction({
+          type: 'ir.actions.act_window',
+          views: [[false, "form"]],
+		  view_mode: "form",
+          res_model: 'dtsc.reportmounthinstall',
+          target: 'new',
+      });
+	  
+	  // this.actionService.doAction({
+            // res_model: mainObject.model,
+            // res_id: mainObject.id,
+            // views: [[false, "form"]],
+            // type: "ir.actions.act_window",
+            // view_mode: "form",
+        // });
+	  
+   }
 
-// export class ExpenseDashboardListRenderer extends PartnerListRenderer {}
+}
+
+registry.category('views').add('InstallProductClass', {
+    ...listView,
+    buttonTemplate: 'InstallProduct.ListButtons',
+    Controller: InstallProductListControllerS,
+});
 registry.category('views').add('res_partner_tree_supp', {
     ...listView,
     buttonTemplate: 'DtscPartner.ListButtons',

@@ -5,7 +5,15 @@
         <field name="inherit_id" ref="purchase.purchase_order_form"/>
         <field name="arch" type="xml">
             <!-- 隐藏原有的状态栏 -->
-			
+	
+			<xpath expr="//button[@name='button_confirm']" position="before">
+				<button name="button_confirm_dtsc" type="object" string="確認訂單" states="draft" attrs="{'invisible': [('partner_id', '=', False)]}"/>
+			</xpath>
+			<xpath expr="//button[@name='button_confirm']" position="replace">
+			</xpath>
+			<xpath expr="//button[@name='button_confirm']" position="replace">
+			</xpath>
+			<!-- <xpath expr="//button[@name='button_confirm']"> -->
 			<field name="product_id" position="attributes">
                 <attribute name="options">{'no_create': True, 'no_create_edit': True}</attribute>
             </field>
@@ -54,10 +62,11 @@
             </field>
             <!-- 添加新的状态栏 -->
              <field name="partner_id" position="attributes">
-                 <attribute name="widget" delete="1"/>
+                <attribute name="widget" delete="1"/>
                 <!-- 添加域以限制只选择供应商 -->
 				<attribute name="options">{'no_create': True, 'no_create_edit': True}</attribute>
                 <attribute name="domain">[('supplier_rank', '>', 0)]</attribute>
+                <attribute name="required">0</attribute>
             </field>
             <!-- <field name="action_rfq_send" position="attributes"> -->
                  <!-- <attribute name="invisible">1</attribute> -->

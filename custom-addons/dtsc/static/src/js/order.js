@@ -948,24 +948,30 @@ odoo.define('dtsc.order', function (require) {
 								var headerTh = $('<th>').css('text-align','unset').attr('colspan', '6').text('後加工方式, 此區塊估價將由業務人員與您討論後提供');
 								headerTr.append(headerTh);
 								 $(this).closest('table').append(headerTr);
-								for (const postProcess of productMakeTypeRelResults) {
+								let currentRow;
+								for (let i = 0; i < productMakeTypeRelResults.length; i++) {
+									const postProcess = productMakeTypeRelResults[i];
 									debugLog("後加工",postProcess.make_type_id[1]);
-									var newCheckboxTr = $('<tr>').addClass('product_attribute_checkboxs tr_product_attribute_class');
-									var newTdCheckbox = $('<td>').attr('colspan', '6');
+									
+									if (i % 3 === 0) {
+										currentRow = $('<tr>').addClass('product_attribute_checkboxs tr_product_attribute_class');
+										$(this).closest('table').append(currentRow);
+									}
+									
+									var newTdCheckbox = $('<td>').attr('colspan', '2');
 									var newDivCheckbox = $('<div>').css('text-align', 'left').addClass('form-check');
 									var newLabelCheckbox = $('<label>').addClass('form-check-label');
 									var newInputCheckbox = $('<input>').css({'margin': '0 10px 0 0'}).attr({ type: 'checkbox', name: 'multiple[]', value: postProcess.make_type_id[0], id: postProcess.id });
 
 									var quantityLabel = $('<label>').css({ 'margin-left': '10px', 'margin-right': '5px' }).text('數量:');
 									var quantityInput = $('<input>')
-										.attr({ type: 'text', name: `quantity_${postProcess.make_type_id[0]}`, value: '1' }) // 默认值为1
-										.css({ width: '50px', 'margin-left': '5px' }); // 控制输入框大小和样式
+										.attr({ type: 'text', name: `quantity_${postProcess.make_type_id[0]}`, value: '1' })
+										.css({ width: '50px', 'margin-left': '5px' });
+									
 									newLabelCheckbox.append(newInputCheckbox).append(postProcess.make_type_id[1]);
 									newDivCheckbox.append(newLabelCheckbox).append(quantityLabel).append(quantityInput);
 									newTdCheckbox.append(newDivCheckbox);
-									newCheckboxTr.append(newTdCheckbox);
-
-									$(this).closest('table').append(newCheckboxTr);
+									currentRow.append(newTdCheckbox);
 								}
 							}
 						}catch (error) {

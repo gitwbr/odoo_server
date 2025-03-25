@@ -23,6 +23,7 @@ from odoo.exceptions import ValidationError
 from odoo.http import request
 from odoo.modules import get_module_resource
 from odoo.osv import expression
+from odoo.tools import config
 class UoMCategory(models.Model):
     _inherit = "uom.category"
     
@@ -244,7 +245,9 @@ class StockMoveLine(models.Model):
     def _compute_now_stock(self):
         for record in self:
             if record.picking_id.location_id:
-                if record.picking_id.location_id in [ 8 , 20 ]:#如果是調撥單 來源倉庫就是實際倉庫 ，否則 是收貨單 來源倉庫是虛擬倉庫 此時倉庫ID 用目的倉庫地址查詢庫存
+                internal_locations = self.env['stock.location'].search([('usage', '=', 'internal')])
+                internal_location_ids = internal_locations.ids
+                if record.picking_id.location_id in internal_location_ids:#如果是調撥單 來源倉庫就是實際倉庫 ，否則 是收貨單 來源倉庫是虛擬倉庫 此時倉庫ID 用目的倉庫地址查詢庫存
                     location_id = record.picking_id.location_id.id
                 else:
                     location_id = record.picking_id.location_dest_id.id
@@ -328,7 +331,9 @@ class PurchaseOrderLine(models.Model):
     def _compute_taxes_id(self):
         for record in self:
             if record.order_id.supp_invoice_form in [ "21" , "22"]:
-                record.taxes_id = [(6, 0, [3])] 
+                tax = self.env['account.tax'].search([('name', '=', '進項5%')], limit=1)
+                # tax_ids = [(6, 0, [tax.id])]
+                record.taxes_id = [(6, 0, [tax.id])]
             else:
                 record.taxes_id = []    
     
@@ -341,6 +346,8 @@ class PurchaseOrder(models.Model):
         ('4', '已轉應付'),
         ('5', '作廢'),
     ], string='狀態', default='1')
+    partner_id = fields.Many2one('res.partner', string='Vendor', required=False, change_default=True, tracking=True, domain="['|', ('company_id', '=', False), ('company_id', '=', company_id)]", help="You can find a vendor by its Name, TIN, Email or Internal Reference.")
+    
     partner_display_name = fields.Char(string='Partner Display Name', compute='_compute_partner_display_name' ,store=True)
     custom_id = fields.Char(related = "partner_id.custom_id",string="供應商編號")
     invoice_origin = fields.Many2one("account.move")
@@ -357,7 +364,7 @@ class PurchaseOrder(models.Model):
     no_vat_price = fields.Monetary("不含稅總價",store=True,compute="_compute_no_vat_price")
     
     
-    def button_confirm(self):
+    def button_confirm_dtsc(self):
         for order in self:
             if order.state not in ['draft', 'sent']:
                 continue
@@ -616,7 +623,64 @@ class AccountMove(models.Model):
         ('3', '匯款'),
         ('4', '其他'),
     ], string='付款方式')
-    comment_infu = fields.Text("備注")
+    comment_infu = fields.Text("備注")    
+    search_line_namee = fields.Char(compute="_compute_search_line_name", store=True)
+    
+    def _get_move_display_name(self, show_ref=False):
+        ''' Helper to get the display name of an invoice depending of its type.
+        :param show_ref:    A flag indicating of the display name must include or not the journal entry reference.
+        :return:            A string representing the invoice.
+        '''
+        self.ensure_one()
+        name = ''
+        # if self.state == 'draft':
+            # name += {
+                # 'out_invoice': _('Draft Invoice'),
+                # 'out_refund': _('Draft Credit Note'),
+                # 'in_invoice': _('Draft Bill'),
+                # 'in_refund': _('Draft Vendor Credit Note'),
+                # 'out_receipt': _('Draft Sales Receipt'),
+                # 'in_receipt': _('Draft Purchase Receipt'),
+                # 'entry': _('Draft Entry'),
+            # }[self.move_type]
+            # name += ' '
+        if not self.name or self.name == '/':
+            name += '(* %s)' % str(self.id)
+        else:
+            name += self.name
+            if self.env.context.get('input_full_display_name'):
+                if self.partner_id:
+                    name += f', {self.partner_id.name}'
+                if self.date:
+                    name += f', {format_date(self.env, self.date)}'
+        return name + (f" ({shorten(self.ref, width=50)})" if show_ref and self.ref else '')
+        
+        
+    @api.depends('invoice_line_ids.product_id','invoice_line_ids.product_id','partner_id','supp_invoice_form','vat_num','comment_infu','pay_mode','custom_invoice_form','name')
+    def _compute_search_line_name(self):
+        for record in self:
+            product_id_names = [line.product_id.name for line in record.invoice_line_ids if line.product_id.name]
+            ys_names = [line.ys_name for line in record.invoice_line_ids if line.ys_name]
+            names = [line.name for line in record.invoice_line_ids if line.name]
+            in_out_ids = [line.in_out_id for line in record.invoice_line_ids if line.in_out_id]
+            size_values = [line.size_value for line in record.invoice_line_ids if line.size_value]
+            comments = [line.comment for line in record.invoice_line_ids if line.comment]
+            
+            combined_product_id_names = ', '.join(product_id_names)
+            combined_ys_names = ', '.join(ys_names)
+            combined_names = ', '.join(names)
+            combined_in_out_ids = ', '.join(in_out_ids)
+            combined_size_values = ', '.join(size_values)
+            combined_comments = ', '.join(comments)
+            
+            result = ', '.join([
+                combined_product_id_names, combined_ys_names, combined_names or '',combined_in_out_ids or '', 
+                combined_size_values, combined_comments, 
+                record.partner_id.name or '',record.supp_invoice_form or '',record.vat_num or '', record.comment_infu or '',record.pay_mode or '',
+                record.custom_invoice_form or '',record.name or '',
+            ])
+            
+            record.search_line_namee = result    
     
 class DtscConfigSettings(models.TransientModel):
     _inherit = 'res.config.settings'
@@ -629,8 +693,10 @@ class DtscConfigSettings(models.TransientModel):
     ftp_target_folder = fields.Char("FTP目標文件夾")
     ftp_local_path = fields.Char("FTP本地路徑")
     open_page_with_scanqrcode = fields.Boolean("二維碼/掃碼槍",default=False)
-    is_open_makein_qrcode = fields.Boolean("是否開啓工單掃碼流程")
+    is_open_makein_qrcode = fields.Boolean("是否開啓工單掃碼流程",default=True)
     is_open_full_checkoutorder = fields.Boolean("是否打開高階訂單流程",default=False)
+    is_open_crm = fields.Boolean("是否打開CRM",default=False)
+    is_open_linebot = fields.Boolean("是否打開LINEBot",default=False)
     
     # ftp_server = self.env['ir.config_parameter'].sudo().get_param('dtsc.ftp_server')
     # ftp_user = self.env['ir.config_parameter'].sudo().get_param('dtsc.ftp_user')
@@ -657,8 +723,10 @@ class DtscConfigSettings(models.TransientModel):
         get_param = self.env['ir.config_parameter'].sudo().get_param
         res.update(
             invoice_due_date=get_param('dtsc.invoice_due_date', default='25'),
-            is_open_makein_qrcode=get_param('dtsc.is_open_makein_qrcode',default=False),
+            is_open_makein_qrcode=get_param('dtsc.is_open_makein_qrcode',default=True),
             is_open_full_checkoutorder=get_param('dtsc.is_open_full_checkoutorder',default=False),
+            is_open_crm=get_param('dtsc.is_open_crm',default=False),
+            is_open_linebot=get_param('dtsc.is_open_linebot',default=False),
             ftp_server=get_param('dtsc.ftp_server', default=''),
             ftp_user=get_param('dtsc.ftp_user', default=''),
             ftp_password=get_param('dtsc.ftp_password', default=''),
@@ -673,6 +741,8 @@ class DtscConfigSettings(models.TransientModel):
         set_param('dtsc.invoice_due_date', self.invoice_due_date)
         set_param('dtsc.is_open_makein_qrcode', self.is_open_makein_qrcode)
         set_param('dtsc.is_open_full_checkoutorder', self.is_open_full_checkoutorder)
+        set_param('dtsc.is_open_linebot', self.is_open_linebot)
+        set_param('dtsc.is_open_crm', self.is_open_crm)
         set_param('dtsc.ftp_server', self.ftp_server)
         set_param('dtsc.ftp_user', self.ftp_user)
         set_param('dtsc.ftp_password', self.ftp_password)
@@ -684,10 +754,13 @@ class IrUiMenu(models.Model):
 
     @api.model
     def _get_visibility_on_config_parameter(self, menu_xml_id, config_param):
-        param = self.env['ir.config_parameter'].sudo().get_param(config_param)
+        param = config.get(config_param)
         menu = self.env.ref(menu_xml_id, raise_if_not_found=False)
-
-        if menu:
+        _logger.info("=================")
+        _logger.info(menu_xml_id)
+        _logger.info(config.get('is_open_crm'))
+        _logger.info("=================")
+        if menu:            
             menu.active = bool(param)
 
     @api.model
@@ -695,7 +768,11 @@ class IrUiMenu(models.Model):
     def load_menus(self, debug):
         menus = super(IrUiMenu, self).load_menus(debug)
         # 添加自定义的可见性处理
-        self._get_visibility_on_config_parameter('dtsc.makein', 'dtsc.is_open_full_checkoutorder')
+        
+        self._get_visibility_on_config_parameter('dtsc.makein', 'is_open_full_checkoutorder')
+        self._get_visibility_on_config_parameter('crm.crm_menu_root', 'is_open_crm')
+        self._get_visibility_on_config_parameter('linebot', 'is_open_linebot')
+        self._get_visibility_on_config_parameter('menu_daka', 'is_open_linebot')
         # print("Custom logic applied")
         return menus
 

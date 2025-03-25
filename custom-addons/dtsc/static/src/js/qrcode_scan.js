@@ -160,44 +160,93 @@ patch(FormController.prototype, 'dtsc.FormController', {
 			alert("qrcode格式不正確，請檢查！")
 			return
 		}
-		// console.log("==================")
-		const isConfirmed = confirm(`是否確認此員工 ${qrCodeData}，在所勾選的 ${type} 中簽名？`); 
-		// const isConfirmed = confirm("123"); 
-		// console.log("==================")
-    
-		if (isConfirmed) {
-			if(page == "makein")
-			{
-				rpc.query({
-					model: 'dtsc.makein',  // 替换为你的模型
-					method: 'process_qr_code',  // 替换为你的方法名
-					args: [[],[qrCodeData,buttonType,makeinId]],  // 传递扫描到的二维码数据
-				}).then(result => {
-					window.location.reload();
-					console.log("Python 方法返回的结果:", result);
-					// 可选：根据需要处理返回结果
-				}).catch(error => {
-					window.location.reload();
-					console.error("调用 Python 方法出错:", error);
-				});
-			}
-			else if(page == "makeout")
-			{
-				rpc.query({
-					model: 'dtsc.makeout',  // 替换为你的模型
-					method: 'process_qr_code',  // 替换为你的方法名 
-					args: [[],[qrCodeData,buttonType,makeinId]],  // 传递扫描到的二维码数据
-				}).then(result => {
-					window.location.reload();
-					console.log("Python 方法返回的结果:", result);
-					// 可选：根据需要处理返回结果
-				}).catch(error => {
-					window.location.reload();
-					console.error("调用 Python 方法出错:", error);
-				});
-			}
+		
+		// const isConfirmed = confirm(`是否確認此員工 ${qrCodeData}，在所勾選的 ${type} 中簽名？`); 
+
+		// if (isConfirmed) {
+		if(page == "makein")
+		{
+			rpc.query({
+				model: 'dtsc.makein',  // 替换为你的模型
+				method: 'check_name',  // 替换为你的方法名
+				args: [[],[qrCodeData,buttonType,makeinId]],  // 传递扫描到的二维码数据
+			}).then(result => {
+				// alert(result.employeename)
+				if(result.success)
+				{
+					let workname = result.employeename
+					const isConfirmed_make_in = confirm(`是否確認此員工 ${workname}，在所勾選的 ${type} 中簽名？`); 
+					// const isConfirmed_make_in = confirm(`是否確認此員工 ${result.employeename}，在所勾選的 ${type} 中簽名？`); 
+					
+					if (isConfirmed_make_in) {
+						rpc.query({
+						model: 'dtsc.makein',  // 替换为你的模型
+						method: 'process_qr_code',  // 替换为你的方法名
+						args: [[],[result.employeename,buttonType,makeinId]],  // 传递扫描到的二维码数据
+						}).then(result => {
+							window.location.reload();
+							console.log("Python 方法返回的结果:", result);
+							// 可选：根据需要处理返回结果
+						}).catch(error => {
+							window.location.reload();
+							console.error("调用 Python 方法出错:", error);
+						});
+					}
+				}
+				else
+				{
+					alert("無法找到該員工！請確認Qrcode正確！")
+				}
+				console.log("Python 方法返回的结果:", result);
+			}).catch(error => {
+				alert("錯誤！")
+				console.error("调用 Python 方法出错:", error);
+			});
+			
 			
 		}
+		else if(page == "makeout")
+		{
+			rpc.query({
+				model: 'dtsc.makein',  // 替换为你的模型
+				method: 'check_name',  // 替换为你的方法名
+				args: [[],[qrCodeData,buttonType,makeinId]],  // 传递扫描到的二维码数据
+			}).then(result => {
+				// alert(result.employeename)
+				if(result.success)
+				{
+					let workname = result.employeename
+					const isConfirmed_make_out = confirm(`是否確認此員工 ${workname}，在所勾選的 ${type} 中簽名？`); 
+					
+					if (isConfirmed_make_out) {
+						rpc.query({
+							model: 'dtsc.makeout',  // 替换为你的模型
+							method: 'process_qr_code',  // 替换为你的方法名 
+							args: [[],[workname,buttonType,makeinId]],  // 传递扫描到的二维码数据
+						}).then(result => {
+							window.location.reload();
+							console.log("Python 方法返回的结果:", result);
+							// 可选：根据需要处理返回结果
+						}).catch(error => {
+							window.location.reload();
+							console.error("调用 Python 方法出错:", error);
+						});
+					}
+				}
+				else
+				{
+					alert("無法找到該員工！請確認Qrcode正確！")
+				}
+				console.log("Python 方法返回的结果:", result);
+			}).catch(error => {
+				alert("錯誤！")
+				console.error("调用 Python 方法出错:", error);
+			});
+			
+			
+		}
+			
+		// }
 		
     },
 });

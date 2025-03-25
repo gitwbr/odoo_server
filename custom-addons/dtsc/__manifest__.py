@@ -84,6 +84,7 @@
         'views/order_preview.xml',   
         'views/report_crm_checkout.xml',   
         'views/linebot.xml',   
+        'views/pettycash.xml',   
         'views/views.xml',
     ],
 	'assets': {

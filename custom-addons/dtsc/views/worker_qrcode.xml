@@ -19,15 +19,25 @@
 		<field name="name">dtsc.vatlogin.tree</field>
 		<field name="model">dtsc.vatlogin</field>
 		<field name="arch" type="xml">
-			<tree>				
+			<tree default_order="custom_id">				
 				<field name="partner_id"/>
+				<field name="custom_id" />
 				<field name="vat"/>
 				<field name="vat_password"/>
 
 			</tree>
 		</field>	
 	</record>
-	
+	<record id="search_vatlogin" model="ir.ui.view">
+		<field name="name">dtsc.vatlogin.search</field>
+		<field name="model">dtsc.vatlogin</field>
+		<field name="arch" type="xml">
+			<search>
+				<field name="search_line" string="所有訊息"/>	
+				
+			</search>
+		</field>		
+	</record>
 	<record id="report_worktime_treee" model="ir.ui.view">
 		<field name="name">dtsc.worktime.tree</field>
 		<field name="model">dtsc.worktime</field>

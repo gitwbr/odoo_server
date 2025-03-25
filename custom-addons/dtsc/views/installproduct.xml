@@ -22,7 +22,7 @@
 		<field name="name">dtsc.installproduct.tree</field>
 		<field name="model">dtsc.installproduct</field>
 		<field name="arch" type="xml">
-			<tree create="false"  decoration-danger="install_state == 'cancel'" decoration-warning="sjsf &gt; 0 and not is_invoice" decoration-info="is_invoice == True">
+			<tree js_class="InstallProductClass" create="false"  decoration-danger="install_state == 'cancel'" decoration-warning="sjsf &gt; 0 and not is_invoice" decoration-info="is_invoice == True">
                 <field name="name" readonly="1"/>
                 <field name="custom_init_name" readonly="1"/>
                 <field name="project_name" readonly="1"/>
@@ -74,10 +74,10 @@
 							<field name="cbsllr"/>
 							<field name="cbsllr_phone"/>
 							<field name="fzyw" options="{'no_create': True, 'no_create_edit': True}"/>
-							<field name="cb" attrs="{'readonly':[('checkout_order_state','in',['receivable_assigned'])]}"/>
-							<field name="cb_other"  attrs="{'readonly':[('checkout_order_state','in',['receivable_assigned'])]}"/>
-							<field name="cb_total"  attrs="{'readonly':[('checkout_order_state','in',['receivable_assigned'])]}"/>
-							<field name="sjsf"  attrs="{'readonly':[('checkout_order_state','in',['receivable_assigned'])]}"/>
+							<field name="cb" attrs="{'readonly':[('checkout_order_state','in',['receivable_assigned'])]}" groups="dtsc.group_dtsc_kj,dtsc.group_dtsc_yw"/>
+							<field name="cb_other"  attrs="{'readonly':[('checkout_order_state','in',['receivable_assigned'])]}" groups="dtsc.group_dtsc_kj,dtsc.group_dtsc_yw"/>
+							<field name="cb_total"  attrs="{'readonly':[('checkout_order_state','in',['receivable_assigned'])]}" groups="dtsc.group_dtsc_kj,dtsc.group_dtsc_yw"/>
+							<field name="sjsf"  attrs="{'readonly':[('checkout_order_state','in',['receivable_assigned'])]}" groups="dtsc.group_dtsc_kj,dtsc.group_dtsc_yw"/>
 							<field name="checkout_order_state"  invisible="1"/>
 						</group>
 						<group colspan="2">
@@ -86,6 +86,7 @@
 							<field name="is_out_date" />
 							<field name="out_date" attrs="{'invisible':[('is_out_date','=',False)]}"/>
 							<field name="out_date_end" attrs="{'invisible':[('is_out_date','=',False)]}"/>
+							<field name="car_num"/>
 						</group>	
 						<group colspan="6">
 								<field name="google_comment"/>

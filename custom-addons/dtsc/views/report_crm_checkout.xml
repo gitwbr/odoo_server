@@ -15,72 +15,123 @@
                                     <td><span t-field="company.street" /></td>
                                 </tr>
                                 <tr>
-                                    <td>Mail:<span t-field="company.email" /></td>
-                                    <td>Fax:<span t-field="company.fax" /></td>
+                                    <td>Mail：<span t-field="company.email" /></td>
+                                    <td>Fax：<span t-field="company.fax" /></td>
+                                </tr>
+								<tr>
+									<t t-if="doc.is_new_partner"><td>客戶名稱:<span t-field="doc.new_partner" /></td></t>
+									<t t-else="1"><td>客戶名稱:<span t-field="doc.customer_id.name" /></td></t>
+									<!-- <td>客戶名稱:<span t-field="doc.customer_id.name" /></td> -->
+									
+									<t t-if="doc.is_new_partner"><td>統一編號:<span t-field="doc.new_vat" /></td></t>
+									<t t-else="1"><td>統一編號:<span t-field="doc.customer_id.vat" /></td></t>
+									<!-- <td>統一編號:<span t-field="doc.customer_id.vat" /></td> -->
+									<t t-if="doc.is_new_partner"><td>付款條件:<span t-field="doc.new_property_payment_term_id" /></td></t>
+									<t t-else="1"><td>付款條件:<span t-field="doc.customer_id.property_payment_term_id" /></td></t>
+									<!-- <td>付款條件:<span t-field="doc.customer_id.property_payment_term_id" /></td> -->
                                 </tr>
                                 <tr>
-									<td>客戶名稱:<span t-field="doc.customer_id.name" /></td>
-									<td>統一編號:<span t-field="doc.customer_id.vat" /></td>
-									<td>付款條件:<span t-field="doc.customer_id.property_payment_term_id" /></td>
+									<t t-if="doc.is_new_partner"><td>聯絡人:<span t-field="doc.new_custom_contact_person" /></td></t>
+									<t t-else="1"><td>聯絡人:<span t-field="doc.customer_id.custom_contact_person" /></td></t>
+									<!-- <td>聯絡人:<span t-field="doc.customer_id.custom_contact_person" /></td> -->
+									<t t-if="doc.is_new_partner"><td>電話:<span t-field="doc.new_phone" /></td></t>
+									<t t-else="1"><td>電話:<span t-field="doc.customer_id.phone" /></td></t>
+									<!-- <td>電話:<span t-field="doc.customer_id.phone" /></td> -->
+									<t t-if="doc.is_new_partner"><td>收款方式:<span t-field="doc.new_custom_pay_mode" /></td></t>
+									<t t-else="1"><td>收款方式:<span t-field="doc.customer_id.custom_pay_mode" /></td></t>
+									<!-- <td>收款方式:<span t-field="doc.customer_id.custom_pay_mode" /></td> -->
                                 </tr>
                                 <tr>
-									<td>聯絡人:<span t-field="doc.customer_id.custom_contact_person" /></td>
-									<td>電話:<span t-field="doc.customer_id.phone" /></td>
-									<td>收款方式:<span t-field="doc.customer_id.custom_pay_mode" /></td>
+									<t t-if="doc.is_new_partner"><td>地址:<span t-field="doc.new_street" /></td></t>
+									<t t-else="1"><td>地址:<span t-field="doc.customer_id.street" /></td></t>
+									<!-- <td>地址:<span t-field="doc.customer_id.street" /></td> -->
+									<t t-if="doc.is_new_partner"><td>傳真:<span t-field="doc.new_custom_fax" /></td></t>
+									<t t-else="1"><td>傳真:<span t-field="doc.customer_id.custom_fax" /></td></t>
+									<!-- <td>傳真:<span t-field="doc.customer_id.custom_fax" /></td> -->
+									<td>報價日期:<span t-field="doc.crm_date" /></td>
                                 </tr>
                                 <tr>
-									<td>地址:<span t-field="doc.customer_id.street" /></td>
-									<td>傳真:<span t-field="doc.customer_id.custom_fax" /></td>
-									<td>報價日期:<span t-field="doc.create_date" /></td>
-                                </tr>
-                                <tr>
-									<td>E-mail:<span t-field="doc.customer_id.email" /></td>
-									<td>行動電話:<span t-field="doc.customer_id.mobile" /></td>
+									<t t-if="doc.is_new_partner"><td>E-mail:<span t-field="doc.new_email" /></td></t>
+									<t t-else="1"><td>E-mail:<span t-field="doc.customer_id.email" /></td></t>
+									<!-- <td>E-mail:<span t-field="doc.customer_id.email" /></td> -->
+									<t t-if="doc.is_new_partner"><td>行動電話:<span t-field="doc.new_mobile" /></td></t>
+									<t t-else="1"><td>行動電話:<span t-field="doc.customer_id.mobile" /></td></t>
+									<!-- <td>行動電話:<span t-field="doc.customer_id.mobile" /></td> -->
 									<td>有效期限:一個月</td>
                                 </tr>
                             </tbody>
                         </table>	
 						<div>
 							<div class="row" style="border-bottom: 2px solid black;  margin-bottom:10px;">
-								<div class="col text-center">項</div>
-								<div class="col text-center">製作内容</div>
-								<div class="col text-center">尺寸cm</div>
-								<div class="col text-center">才數</div>
-								<div class="col text-center">數量</div>
-								<div class="col text-center">單價</div>
-								<div class="col text-center">其它</div>
-								<div class="col text-center">小計</div>
+								<div class="col text-center" style="flex: 1;">項</div>
+								<div class="col text-center" style="flex: 4;">製作内容</div>
+								<div class="col text-center" style="flex: 1;">尺寸cm</div>
+								<div class="col text-center" style="flex: 1;">才數</div>
+								<div class="col text-center" style="flex: 1;">數量</div>
+								<div class="col text-center" style="flex: 1;">單價</div>
+								<div class="col text-center" style="flex: 1;">其它</div>
+								<div class="col text-center" style="flex: 1;">小計</div>
 							</div>	
 							<t t-foreach="doc.product_ids" t-as="order">
 								<div class="row" style="border-bottom: 1px solid lightgray; margin-bottom: 10px;">
 									<div class="col text-center" style="flex: 1;">
 										<span t-field="order.sequence" />	
 									</div>
-									<div class="col text-center" style="flex: 1;">
-										<span t-field="order.project_product_name" />	
+									<div class="col text-center" style="flex: 4;">
+										<t t-if="order.project_product_name">
+											<span t-field="order.project_product_name" />
+											<t t-set="last_value" t-value="True"/>
+										</t>
+										<t t-if="order.product_id.name">
+											<t t-if="last_value">
+												<t t-raw="'/'"/>
+											</t>
+											<span t-field="order.product_id.name" />
+											<t t-set="last_value" t-value="True"/>
+										</t>
+										<t t-foreach="order.product_atts" t-as="attr">
+											<t t-if="attr.attribute_id.name != '冷裱'">
+												<t t-if="last_value">
+													<t t-raw="'/'"/>
+												</t>
+												<span t-field="attr.name" />
+												<t t-set="last_value" t-value="True"/>
+											</t>
+										</t>
+										<t t-if="order.multi_chose_ids">
+											<t t-if="last_value">
+												<t t-raw="'/'"/>
+											</t>
+											<span t-field="order.multi_chose_ids" />
+										</t>
 									</div>
 									<div class="col text-center" style="flex: 1;">
 										<span t-field="order.product_width" />x<span t-field="order.product_height" />	
 									</div>
-									<div class="col text-center" style="flex: 1;">
-										<span t-field="order.total_units" />
+										<div class="col text-center" style="flex: 1;">
+										<!-- <span t-field="order.total_units" /> -->
+										<span t-esc="'{:,.0f}'.format(abs(order.total_units))" />
 									</div>
 									<div class="col text-center" style="flex: 1;">
-										<span t-field="order.quantity" />
+										<!-- <span t-field="order.quantity" /> -->
+										<span t-esc="'{:,.0f}'.format(abs(order.quantity))" />
 									</div>
 									<div class="col text-center" style="flex: 1;">
-										<span t-field="order.units_price" />
+										<!-- <span t-field="order.units_price" /> -->
+										<span t-esc="'{:,.0f}'.format(abs(order.units_price))" />
 									</div>
 									<div class="col text-center" style="flex: 1;">
-										<span t-esc="order.total_make_price + order.peijian_price"/>
+										<!-- <span t-esc="order.total_make_price + order.peijian_price"/> -->
+										<span t-esc="'{:,.0f}'.format(abs(order.total_make_price + order.peijian_price))" />
 									</div>
 									<div class="col text-center" style="flex: 1;">
-										<span t-field="order.price" />
+										<span t-esc="'{:,.0f}'.format(abs(order.price))" />
+										<!-- <span t-field="order.price" /> -->
 									</div>
 								</div>
 							</t>
 							<div class="row" style="border-bottom: 1px solid lightgray; margin-bottom: 10px;">
-									<div class="col text-center" style="flex: 1;"></div><div class="col text-center" style="flex: 1;"></div><div class="col text-center" style="flex: 1;"></div><div class="col text-center" style="flex: 1;"></div>
+									<div class="col text-center" style="flex: 1;"></div><div class="col text-center" style="flex: 4;"></div><div class="col text-center" style="flex: 1;"></div><div class="col text-center" style="flex: 1;"></div>
 									<div class="col text-center" style="flex: 1;"></div><div class="col text-center" style="flex: 1;"></div>
 									<div class="col text-center" style="flex: 1;">
 										小計
@@ -90,7 +141,7 @@
 									</div>
 							</div>
 							<div class="row" style="border-bottom: 1px solid lightgray; margin-bottom: 10px;">
-									<div class="col text-center" style="flex: 1;"></div><div class="col text-center" style="flex: 1;"></div><div class="col text-center" style="flex: 1;"></div><div class="col text-center" style="flex: 1;"></div>
+									<div class="col text-center" style="flex: 1;"></div><div class="col text-center" style="flex: 4;"></div><div class="col text-center" style="flex: 1;"></div><div class="col text-center" style="flex: 1;"></div>
 									<div class="col text-center" style="flex: 1;"></div><div class="col text-center" style="flex: 1;"></div>
 									<div class="col text-center" style="flex: 1;">
 										稅金
@@ -100,7 +151,7 @@
 									</div>
 							</div>
 							<div class="row" style="border-bottom: 1px solid lightgray; margin-bottom: 10px;">
-									<div class="col text-center" style="flex: 1;"></div><div class="col text-center" style="flex: 1;"></div><div class="col text-center" style="flex: 1;"></div><div class="col text-center" style="flex: 1;"></div>
+									<div class="col text-center" style="flex: 1;"></div><div class="col text-center" style="flex: 4;"></div><div class="col text-center" style="flex: 1;"></div><div class="col text-center" style="flex: 1;"></div>
 									<div class="col text-center" style="flex: 1;"></div><div class="col text-center" style="flex: 1;"></div>
 									<div class="col text-center" style="flex: 1;">
 										合計
@@ -112,24 +163,37 @@
 						</div>
 						<table class="table table-condensed">
                             <tbody>
-                                <tr>
-                                    <td rowspan="4" width="10%" >備註</td>
-                                    <td colspan="3">1.以上報價含稅。</td>
-                                </tr>
-                                <tr>
-                                    <td colspan="3">2.客戶自備印刷檔案</td>
-                                </tr>
-                                <tr>
-                                    <td colspan="3">3.確認訂單後製作時間21~30天,不含假日</td>
-                                </tr>
-                                <tr>
-                                    <td colspan="3">4.下單後請先支付款項</td>
-                                </tr>
+								<t t-set="count" t-value="1"/>
+								<t t-foreach="data['comments']" t-as="o">
+									<tr>
+										<t t-if="count == 1">
+										
+											<td t-att-rowspan="len(data['comments'])" width="10%" >備註</td>
+											<t t-set="count" t-value="2"/>
+										</t>
+										
+										<!-- <td rowspan="t-esc='len(data['comments'])'" width="10%">備註</td> -->
+										<td colspan="3"><t t-esc="o.sequence" />.<t t-esc="o.comment" /></td>
+									</tr>
+								</t>
+                                <!-- <tr> -->
+                                    <!-- <td rowspan="4" width="10%" >備註</td> -->
+                                    <!-- <td colspan="3">1.以上報價含稅。</td> -->
+                                <!-- </tr> -->
+                                <!-- <tr> -->
+                                    <!-- <td colspan="3">2.客戶自備印刷檔案</td> -->
+                                <!-- </tr> -->
+                                <!-- <tr> -->
+                                    <!-- <td colspan="3">3.確認訂單後製作時間21~30天,不含假日</td> -->
+                                <!-- </tr> -->
+                                <!-- <tr> -->
+                                    <!-- <td colspan="3">4.下單後請先支付款項</td> -->
+                                <!-- </tr> -->
                                 <!-- <tr> -->
                                     <!-- <td colspan="4" class="col text-center" style="background-color:gray">匯款銀行:合作金庫 南土城分行006 戶名:科影數位影像(股)公司. 帳號:3605717004868</td> -->
                                 <!-- </tr> -->
 								<tr>
-									<td width="10%">業務</td>
+									<td width="10%">業務	</td>
 									<td width="40%"></td>
 									<td width="10%">聯絡電話</td>
 									<td width="40%"></td>

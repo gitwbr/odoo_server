@@ -44,7 +44,7 @@
             <form>
                 <header>
 					<button name="send_install_list" type="object" class="oe_highlight" string="派單" attrs="{'invisible': [('install_state', 'not in', ['draft'])]}" groups="dtsc.group_dtsc_mg"/>
-					<button name="btn_send" type="object" class="oe_highlight" string="完成" attrs="{'invisible': [('install_state', 'not in', ['installing'])]}" groups="dtsc.group_dtsc_mg,dtsc.group_dtsc_sc"/>
+					<button name="btn_send" type="object" class="oe_highlight" string="完成" attrs="{'invisible': [('install_state', 'not in', ['installing'])]}" groups="dtsc.group_dtsc_sc"/>
 					<button name="del_install_list" type="object" class="oe_highlight" string="作廢"  confirm="是否確定作廢此工單？" attrs="{'invisible': [('install_state', 'in', ['cancel'])]}" groups="dtsc.group_dtsc_mg"/>
 					<field name="install_state" widget="statusbar" statusbar_visible="draft,installing,succ,cancel"/>
 				</header>
@@ -70,6 +70,9 @@
 							<field name="phone" />
 							<field name="is_recheck" invisible="1"/>
 							<field name="source_name" attrs="{'invisible': [('source_name', '=', False)]}" readonly="1"/>
+							<field name="scan_type" attrs="{'invisible': [('is_open_makeout_qrcode', '=', False)]}"/>
+							<field name="scan_modes" options="{'no_create': True, 'no_create_edit': True}" widget="many2many_tags" domain="[('name','in',['品管','完成包裝','已出貨'])]" attrs="{'invisible': ['|',('is_open_makeout_qrcode', '=', False),('scan_type', '!=', 'gun')]}"/>
+							<field name="scan_input" attrs="{'invisible': ['|',('is_open_makeout_qrcode', '=', False),('scan_type', '!=', 'gun')]}"/>
 						</group>
 						<group colspan="4">
 							<field name="order_date" readonly="1"/>
@@ -104,12 +107,13 @@
 								attrs="{'invisible': [('is_open_makeout_qrcode', '=', False)]}">
 								<button string="全選" type="object" name="set_boolean_field_true"  class="btn-primary" help="全選" groups="dtsc.group_dtsc_mg"/>
 								<button string="取消全選" type="object" name="set_boolean_field_false" class="btn-primary" style="margin-right:20px" help="取消全選" groups="dtsc.group_dtsc_mg"/>		
-								
-								<!-- 冷裱-過板-裁切-品管-待出貨-已出貨 -->
+								<button name="button_confirm_action" confirm="是否確認要將此員工簽名？" type="object" string="確認簽名" class="oe_highlight" attrs="{'invisible': ['|',('is_open_makeout_qrcode', '=', False),('scan_type', '!=', 'gun')]}"/>
+						
+								<!-- 冷裱-過板-裁切-品管-完成包裝-已出貨 -->
 
-								<button id="scan_qr_button_pg" name="scan_qr_button_pg" string="品管" style="margin-right:20px" type="object" class="btn-primary" />
-								<button id="scan_qr_button_dch" name="scan_qr_button_dch" string="待出貨" style="margin-right:20px" type="object" class="btn-primary" />
-								<button id="scan_qr_button_ych" name="scan_qr_button_ych" string="已出貨" style="margin-right:20px" type="object" class="btn-primary" />
+								<button id="scan_qr_button_pg" name="scan_qr_button_pg" string="品管" style="margin-right:20px" type="object" class="btn-primary" attrs="{'invisible': [('scan_type', '=', 'gun')]}"  />
+								<button id="scan_qr_button_dch" name="scan_qr_button_dch" string="完成包裝" style="margin-right:20px" type="object" class="btn-primary" attrs="{'invisible': [('scan_type', '=', 'gun')]}"  />
+								<button id="scan_qr_button_ych" name="scan_qr_button_ych" string="已出貨" style="margin-right:20px" type="object" class="btn-primary" attrs="{'invisible': [('scan_type', '=', 'gun')]}"  />
 								<!-- <button id="close_qr_button" name="close_qr_button" string="结束扫码"  type="object" class="btn-primary" /> --> 
 							</div>
 						

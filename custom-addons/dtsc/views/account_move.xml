@@ -55,6 +55,22 @@
 			</xpath>
 			
 			
+			<xpath expr="//button[@name='action_post']" position="replace">
+			</xpath>
+			<xpath expr="//button[@name='action_post']" position="replace">
+			</xpath>
+			
+			<xpath expr="//button[@name='preview_invoice']" position="attributes">
+				<attribute name="invisible">1</attribute>
+			</xpath>
+			<xpath expr="//button[@name='button_cancel']" position="replace">
+			</xpath>
+			<xpath expr="//button[@name='button_cancel']" position="replace">
+			</xpath>
+			<xpath expr="//field[@name='state']" position="attributes">
+				<attribute name="invisible">1</attribute>
+			</xpath>
+			
 			<xpath expr="//field[@name='partner_bank_id']" position="attributes">
 				<attribute name="invisible">1</attribute>
 			</xpath>
@@ -181,12 +197,31 @@
 			<xpath expr="//filter[@name='due_date']" position="attributes">
 				<attribute name="invisible">1</attribute>
 			</xpath>
+			<xpath expr="//field[@name='name']" position="attributes">
+				<attribute name="invisible">1</attribute>
+			</xpath>
+			<xpath expr="//field[@name='journal_id']" position="attributes">
+				<attribute name="invisible">1</attribute>
+			</xpath>
+			<xpath expr="//field[@name='partner_id']" position="attributes">
+				<attribute name="invisible">1</attribute>
+			</xpath>
+			<xpath expr="//field[@name='invoice_user_id']" position="attributes">
+				<attribute name="invisible">1</attribute>
+			</xpath>
+			<xpath expr="//field[@name='team_id']" position="attributes">
+				<attribute name="invisible">1</attribute>
+			</xpath>
+			<!-- <xpath expr="//field[@name='invoice_tab']" position="attributes"> -->
+				<!-- <attribute name="invisible">1</attribute> -->
+			<!-- </xpath> -->
 			<search>
 				<searchpanel>
                     <field name="report_year" string="年"  select="multi"/>
                     <field name="report_month" string="月" context="{'group_by': 'report_year'}" select="multi"/>
 
                 </searchpanel>
+				<field name="search_line_namee" string="所有訊息"/>	
 				<filter string="Date Range" name="date_range" date="invoice_date"/>
 			</search>
 		</field>
@@ -256,15 +291,24 @@
                                 <field name="ftp_local_path"/>
                             </div>
 							
-                            <div class="col-12 col-lg-6 o_setting_box">	
-								<label for="is_open_makein_qrcode" string="是否開啓工單掃碼流程："/>
-                                <field name="is_open_makein_qrcode"/>
-                            </div>
+                            <!-- <div class="col-12 col-lg-6 o_setting_box">	 -->
+								<!-- <label for="is_open_makein_qrcode" string="是否開啓工單掃碼流程："/> -->
+                                <!-- <field name="is_open_makein_qrcode"/> -->
+                            <!-- </div> -->
 							
-                            <div class="col-12 col-lg-6 o_setting_box">	
-								<label for="is_open_full_checkoutorder" string="是否打開高階訂單流程："/>
-                                <field name="is_open_full_checkoutorder"/>
-                            </div>
+                            <!-- <div class="col-12 col-lg-6 o_setting_box">	 -->
+								<!-- <label for="is_open_full_checkoutorder" string="是否打開高階訂單流程："/> -->
+                                <!-- <field name="is_open_full_checkoutorder"/> -->
+                            <!-- </div> -->
+							
+                            <!-- <div class="col-12 col-lg-6 o_setting_box">	 -->
+								<!-- <label for="is_open_crm" string="是否打開CRM："/> -->
+                                <!-- <field name="is_open_crm"/> -->
+                            <!-- </div> -->
+                            <!-- <div class="col-12 col-lg-6 o_setting_box">	 -->
+								<!-- <label for="is_open_linebot" string="是否打開LINEBOT："/> -->
+                                <!-- <field name="is_open_linebot"/> -->
+                            <!-- </div> -->
                         </div>
                     </div>
                 </xpath>

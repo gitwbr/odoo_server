@@ -22,19 +22,20 @@
    
 			</div>
 			<div id="qr-result" style="margin-top: 20px;">
-				<h3>掃描結果：</h3>
-				<p id="qr-code-info">等待二維碼掃描...</p>
+				<!-- <h3>人員：</h3> -->
+				<p id="qr-code-info">人員：</p>
 			</div>
 			
 			<div style="display: flex; justify-content: space-between;">
 			<!-- 按钮列 -->
 				<div style="width: 30%; padding-right: 20px; text-align: left;">
-					<input id="lb" type="text" placeholder="冷裱" style="width: 100%; margin-bottom: 15px;padding: 10px; border-radius: 5px; border: 2px solid #007bff; width: 80%; text-align: center;"/>
-					<input id="gb" type="text" placeholder="過板" style="width: 100%; margin-bottom: 15px;padding: 10px; border-radius: 5px; border: 2px solid #007bff; width: 80%; text-align: center;"/>
-					<input id="cq" type="text" placeholder="裁切" style="width: 100%; margin-bottom: 15px;padding: 10px; border-radius: 5px; border: 2px solid #007bff; width: 80%; text-align: center;"/>
-					<input id="pg" type="text" placeholder="品管" style="width: 100%; margin-bottom: 15px;padding: 10px; border-radius: 5px; border: 2px solid #007bff; width: 80%; text-align: center;"/>
-					<input id="dc" type="text" placeholder="待出貨" style="width: 100%; margin-bottom: 15px;padding: 10px; border-radius: 5px; border: 2px solid #007bff; width: 80%; text-align: center;"/>
-					<input id="yc" type="text" placeholder="已出貨" style="width: 100%; margin-bottom: 15px;padding: 10px; border-radius: 5px; border: 2px solid #007bff; width: 80%; text-align: center;"/>				
+					<label><input id="lb" value="lb" type="checkbox" name="scan_mode" placeholder="冷裱" style="margin:0px 30px 15px 70px;"/>冷裱</label>
+					<label><input id="gb" value="gb" type="checkbox" name="scan_mode" placeholder="過板" style="margin:0px 30px 15px 70px;"/>過板</label>
+					<label><input id="cq" value="cq" type="checkbox" name="scan_mode" placeholder="裁切" style="margin:0px 30px 15px 70px;"/>裁切</label>
+					<label><input id="pg" value="pg" type="checkbox" name="scan_mode" placeholder="品管" style="margin:0px 30px 15px 70px;"/>品管</label>
+					<label><input id="dc" value="dc" type="checkbox" name="scan_mode" placeholder="完成包裝" style="margin:0px 30px 15px 70px;"/>完成包裝</label>
+					<label><input id="yc" value="yc" type="checkbox" name="scan_mode" placeholder="已出貨" style="margin:0px 30px 15px 70px;"/>已出貨</label>
+					<input type="text" id="scan_input" placeholder="請掃描..." style="width: 100%; padding: 10px; border-radius: 5px; border: 2px solid #007bff; text-align: center;"/>					
 				</div>
 
 			<!-- 表格区域 -->
@@ -112,7 +113,7 @@
 								let tmp = '';
 								tmp += `
 							<div style="display: flex; justify-content: space-between; margin-bottom: -10px;">
-								<p style="font-size: 16px; color: #333; width: 45%;">員工姓名: <strong id="workname" style="color: #007bff;">${orderData.employeename}</strong></p>
+								<p style="font-size: 16px; color: #333; width: 45%;">人員: <strong id="workname" style="color: #007bff;">${orderData.employeename}</strong></p>
 							</div>
 							`;
 								document.getElementById("scan-yuangong-input").value = ""
@@ -130,7 +131,13 @@
 					}
 					else
 					{
-						startQRSign(inputId,data.toUpperCase())
+						var checkedValues = [];
+						var checkedBoxes = document.querySelectorAll('input[name="scan_mode"]:checked');
+						checkedBoxes.forEach(function(box) {
+							<!-- checkedValues.push(box.value); -->
+							startQRSign(box.value,data.toUpperCase())
+						});
+						
 					}
 						
 				}
@@ -286,7 +293,7 @@
 					else if(buttonType == 'pg')
 						step = '品管'
 					else if(buttonType == 'dc')
-						step = '待出貨'
+						step = '完成包裝'
 					else if(buttonType == 'yc')
 						step = '已出貨'
 					
@@ -319,7 +326,7 @@
 				
 				function validateQRCode(decodedText) {
 					// 正则表达式：以 B 或 C 开头，接着是 9 位数字，后跟一个横杠，再接一个整数
-					var regex = /^[BCbc]\d{9}-\d+$/;
+					var regex = /^[BCEbce]\d{9}-\d+$/;
 					
 					if (regex.test(decodedText)) {
 						console.log("格式正确");
@@ -371,8 +378,8 @@
 				</button>
 			</div>
 			<div id="qr-result" style="margin-top: 20px;">
-				<h3>掃描結果：</h3>
-				<p id="qr-code-info">等待二維碼掃描...</p>
+				<!-- <h3>掃描結果：</h3> -->
+				<p id="qr-code-info">人員：</p>
 			</div>
 			
 			<div style="display: flex; justify-content: space-between;">
@@ -382,7 +389,7 @@
 					<button id="gb" style="width: 100%; margin-bottom: 15px; padding: 10px; background-color: #007bff; color: white; border: none; border-radius: 5px;">過板</button>
 					<button id="cq" style="width: 100%; margin-bottom: 15px; padding: 10px; background-color: #007bff; color: white; border: none; border-radius: 5px;">裁切</button>
 					<button id="pg" style="width: 100%; margin-bottom: 15px; padding: 10px; background-color: #007bff; color: white; border: none; border-radius: 5px;">品管</button>
-					<button id="dc" style="width: 100%; margin-bottom: 15px; padding: 10px; background-color: #007bff; color: white; border: none; border-radius: 5px;">待出貨</button>
+					<button id="dc" style="width: 100%; margin-bottom: 15px; padding: 10px; background-color: #007bff; color: white; border: none; border-radius: 5px;">完成包裝</button>
 					<button id="yc" style="width: 100%; margin-bottom: 15px; padding: 10px; background-color: #007bff; color: white; border: none; border-radius: 5px;">已出貨</button>
 				</div>
 
@@ -487,7 +494,7 @@
 									let tmp = '';
 									tmp += `
 								<div style="display: flex; justify-content: space-between; margin-bottom: -10px;">
-									<p style="font-size: 16px; color: #333; width: 45%;">員工姓名: <strong id="workname" style="color: #007bff;">${orderData.employeename}</strong></p>
+									<p style="font-size: 16px; color: #333; width: 45%;">人員: <strong id="workname" style="color: #007bff;">${orderData.employeename}</strong></p>
 								</div>
 								`;
 									document.getElementById('qr-result').innerHTML = tmp;
@@ -706,7 +713,7 @@
 							else if(buttonType == 'pg')
 								step = '品管'
 							else if(buttonType == 'dc')
-								step = '待出貨'
+								step = '完成包裝'
 							else if(buttonType == 'yc')
 								step = '已出貨'
 							

@@ -1,4 +1,21 @@
 ﻿<odoo>
+	<record id="view_dtsc_reportmounthinstall_wizard_form" model="ir.ui.view">
+			<field name="name">dtsc.reportmounthinstall</field>
+			<field name="model">dtsc.reportmounthinstall</field>
+			<field name="arch" type="xml">
+				<form>
+					<group>
+						<field name="starttime"/>
+						<field name="endtime"/>
+
+					</group>																		
+					<footer>
+						<button string="確認列印" type="object" name="your_confirm_method"/>
+						<button string="取消" class="btn-secondary" special="cancel"/>
+					</footer>
+				</form>
+			</field>
+		</record>
     <template id="report_install_template">
         <t t-call="web.html_container">
             <t t-foreach="docs" t-as="doc">

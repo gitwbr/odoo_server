@@ -13,6 +13,8 @@ import datetime
 from collections import defaultdict
 import qrcode
 from io import BytesIO
+import logging
+_logger = logging.getLogger(__name__)
 class WorkTime(models.Model):
     _name = "dtsc.worktime"
     
@@ -32,7 +34,7 @@ class WorkTime(models.Model):
         ('gb', '過板'),
         ('cq', '裁切'),
         ('pg', '品管'),
-        ('dch', '待出貨'),
+        ('dch', '完成包裝'),
         ('ych', '已出貨'),
     ], string='工種類型')
     seqname = fields.Char("項次號",compute="_compute_seqname")
@@ -143,7 +145,7 @@ class CheckOut(models.Model):
     guoban_sign = fields.Char("過板")
     caiqie_sign = fields.Char("裁切")
     pinguan_sign = fields.Char("品管")
-    daichuhuo_sign = fields.Char("待出貨")
+    daichuhuo_sign = fields.Char("完成包裝")
     yichuhuo_sign = fields.Char("已出貨")
 
     outman_count = fields.Float("輸出",compute="_compute_count",store=True)
@@ -151,7 +153,7 @@ class CheckOut(models.Model):
     guoban_count = fields.Float("過板",compute="_compute_count",store=True)
     caiqie_count = fields.Float("裁切",compute="_compute_count",store=True)
     pinguan_count = fields.Float("品管",compute="_compute_count",store=True)
-    daichuhuo_count = fields.Float("待出貨",compute="_compute_count",store=True)
+    daichuhuo_count = fields.Float("完成包裝",compute="_compute_count",store=True)
     yichuhuo_count = fields.Float("已出貨",compute="_compute_count",store=True)
 
     def go_make(self):
@@ -225,7 +227,7 @@ class MakeInLine(models.Model):
     guoban_sign = fields.Char("過板")
     caiqie_sign = fields.Char("裁切")
     pinguan_sign = fields.Char("品管")
-    daichuhuo_sign = fields.Char("待出貨")
+    daichuhuo_sign = fields.Char("完成包裝")
     yichuhuo_sign = fields.Char("已出貨")
     is_disable = fields.Boolean("是否隱藏")    
     
@@ -441,7 +443,7 @@ class MakeOutLine(models.Model):
     # guoban_sign = fields.Char("過板")
     # caiqie_sign = fields.Char("裁切")
     pinguan_sign = fields.Char("品管")
-    daichuhuo_sign = fields.Char("待出貨")
+    daichuhuo_sign = fields.Char("完成包裝")
     yichuhuo_sign = fields.Char("已出貨")
     is_disable = fields.Boolean("是否隱藏")
     bar_image = fields.Binary("QRcode", compute='_generate_qrcode_image1')    
@@ -568,14 +570,25 @@ class MakeIn(models.Model):
     def close_qr_button(self):
         pass
     
- 
+    def check_name(self,qr_code):
+        
+        _logger.info(f"----{qr_code[0]}=----====")
+        employee = self.env['dtsc.workqrcode'].sudo().search([('bar_image_code', '=ilike', qr_code[0])], limit=1)
+        if not employee:
+            return {'success': False, 'message': '沒有該員工！','employeename': "無",}
+        return {
+                'success': True, 
+                'message': '有該員工！',
+                'employeename': employee.name,            
+               }
             
-    def process_qr_code(self, qr_code):
+    def process_qr_code(self, qr_code):        
         if not qr_code or len(qr_code) < 3:
             raise ValueError("参数不足")
         else:
             name = qr_code[0]
             button_type = qr_code[1]
+            _logger.info(f"----{name}=----{button_type}====")
             makein_obj = self.env['dtsc.makein'].browse(qr_code[2])
             for record in makein_obj.order_ids:
                 if record.is_select:
@@ -640,7 +653,18 @@ class MakeOut(models.Model):
         
     def close_qr_button(self):
         pass
-     
+        
+    def check_name(self,qr_code):
+        
+        employee = self.env['dtsc.workqrcode'].sudo().search([('bar_image_code', '=ilike', qr_code[0])], limit=1)
+        if not employee:
+            return {'success': False, 'message': '沒有該員工！','employeename': "無",}
+        return {
+                'success': True, 
+                'message': '有該員工！',
+                'employeename': employee.name,            
+               }
+               
     def process_qr_code(self, qr_code):
         if not qr_code or len(qr_code) < 3:
             raise ValueError("参数不足")
@@ -856,11 +880,23 @@ class UserList(models.Model):
         
 class vatLogin(models.Model):
     _name = "dtsc.vatlogin"
+    _order = "custom_id"
     
     vat = fields.Char("帳號")
     vat_password = fields.Char("密碼")
     partner_id = fields.Many2one("res.partner")
     coin_can_cust = fields.Boolean(related="partner_id.coin_can_cust")
+    custom_id = fields.Char(related="partner_id.custom_id" ,store=True)
+    search_line = fields.Char(compute= "_compute_search_line",store = True)
+    
+    @api.depends("partner_id","vat","vat_password")
+    def _compute_search_line(self):
+        for record in self:
+            result = ', '.join([
+                record.vat or '',record.vat_password or '',record.partner_id.name or '', record.partner_id.custom_id or '',
+            ])
+                        
+            record.search_line = result    
     
     _sql_constraints = [
         ('unique_vat', 'unique(vat)', 'VAT must be unique!')
@@ -920,24 +956,27 @@ class ResPartner(models.Model):
         vatlogin_obj = self.env['dtsc.vatlogin'].sudo()
         # 查找是否已有对应的 vatlogin
         existing_vatlogin = vatlogin_obj.search([('partner_id', '=', partner.id)], limit=1)
-
-        if partner.vat:  # 如果 VAT 有值
-            if existing_vatlogin:
-                # 更新现有的 vatlogin 记录
-                existing_vatlogin.write({
-                    'vat': partner.vat,
-                    'vat_password': existing_vatlogin.vat_password or partner.vat,
-                })
-            else:
-                # 创建新的 vatlogin 记录
-                vatlogin_obj.create({
-                    'vat': partner.vat,
-                    'vat_password': partner.vat,  # 默认密码设为 VAT
-                    'partner_id': partner.id,
-                })
-        elif existing_vatlogin:
-            # 如果 VAT 被清空，删除对应的 vatlogin
-            existing_vatlogin.unlink()
+        
+        if partner.customer_rank > 0:
+            if partner.vat:  # 如果 VAT 有值
+                if existing_vatlogin:
+                    # 更新现有的 vatlogin 记录
+                    existing_vatlogin.write({
+                        'vat': partner.vat,
+                        'vat_password': existing_vatlogin.vat_password or partner.vat,
+                    })
+                else:
+                    # 创建新的 vatlogin 记录
+                    vatlogin_obj.create({
+                        'vat': partner.vat,
+                        'vat_password': partner.vat,  # 默认密码设为 VAT
+                        'partner_id': partner.id,
+                    })
+            elif existing_vatlogin:
+                # 如果 VAT 被清空，删除对应的 vatlogin
+                existing_vatlogin.unlink()
+        else:
+            pass
 
     def _delete_vatlogin(self, partner):
         """Delete vatlogin record when partner is deleted"""

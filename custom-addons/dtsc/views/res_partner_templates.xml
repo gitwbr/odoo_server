@@ -165,6 +165,7 @@
 							<field name="purch_person"/>
 							<field name="invoice_person"/>
 							<field name="out_supp"/>
+							<field name="is_sign_mode"/>
 							<field name="comment" placeholder="輸入廠區備註..." string="備註" widget="html"/>
 						</group>
 					</group>

@@ -92,8 +92,10 @@
                                         <div style="flex: 2;"><span t-esc="line['product_id'].display_name"/></div>
                                         <div style="flex: 1; text-align: right;"><span t-esc="round(line['quantity'],2)"/></div>
                                         <div style="flex: 1; text-align: right;"><span t-esc="line['uom']"/></div>
-                                        <div style="flex: 1; text-align: right;"><span t-esc="round(line['average_price'],2)"/></div>
-                                        <div style="flex: 1; text-align: right;"><span t-esc="round(line['total_value'],2)"/></div>
+                                        <!-- <div style="flex: 1; text-align: right;"><span t-esc="round(line['average_price'],2)"/></div> -->
+                                        <!-- <div style="flex: 1; text-align: right;"><span t-esc="round(line['total_value'],2)"/></div> -->
+                                        <div style="flex: 1; text-align: right;"><span t-esc="'{:,.0f}'.format(round(line['average_price'],2))"/></div>
+                                        <div style="flex: 1; text-align: right;"><span t-esc="'{:,.0f}'.format(round(line['total_value'],2))"/></div>
                                     </div>
                                 </t>
                             </t>
@@ -147,8 +149,9 @@
                                         <div style="flex: 1;"><span t-esc="line['lot_id']"/></div>
                                         <div style="flex: 1; text-align: right;"><span t-esc="round(line['quantity'],2)"/></div>
                                         <div style="flex: 1; text-align: right;"><span t-esc="line['uom']"/></div>
-                                        <div style="flex: 1; text-align: right;"><span t-esc="round(line['average_price'],2)"/></div>
-                                        <div style="flex: 1; text-align: right;"><span t-esc="round(line['total_value'],2)"/></div>
+                                        <div style="flex: 1; text-align: right;"><span t-esc="'{:,.0f}'.format(round(line['average_price'],2))"/></div>
+                                        <div style="flex: 1; text-align: right;"><span t-esc="'{:,.0f}'.format(round(line['total_value'],2))"/></div>
+                                        <!-- <div style="flex: 1; text-align: right;"><span t-esc=""/></div> -->
                                     </div>
                                 </t>
                             </t>

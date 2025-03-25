@@ -14,4 +14,13 @@
 			<!-- 留空来移除元素或添加你的自定义按钮 -->
 		</xpath>
 	</t>
+	<t t-name="InstallProduct.ListButtons" t-inherit="web.ListView.Buttons">
+
+       <!-- hr.expense and hr.expense.sheet -->
+        <xpath expr="//button[hasclass('o_list_export_xlsx')]" position="after">
+            <button type="button" class="btn btn-secondary" style="margin-left: 10px;" t-on-click="OnTestClick">
+                下載月度報表
+            </button>
+        </xpath>
+	</t>
 </templates>

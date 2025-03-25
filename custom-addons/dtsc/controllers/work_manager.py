@@ -33,7 +33,7 @@ class WorkManage(http.Controller):
                         field_name = "caiqie_sign"
                     elif step == '品管':
                         field_name = "pinguan_sign"
-                    elif step == '待出貨':
+                    elif step == '完成包裝':
                         field_name = "daichuhuo_sign"
                     elif step == '已出貨':
                         field_name = "yichuhuo_sign"

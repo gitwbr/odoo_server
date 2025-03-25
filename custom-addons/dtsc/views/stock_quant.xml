@@ -18,7 +18,8 @@
 			<form>
 				<group>
 					<field name="endtime"/>
-					<field name="select_method"/>		
+					<field name="select_method"/>
+					<field name="is_print_zero"/>				
 				</group>																		
 				<footer>
 					<button string="確認列印" type="object" name="your_confirm_method"/>

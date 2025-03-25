@@ -11,6 +11,8 @@ import math
 from odoo.exceptions import UserError
 from odoo.tools.float_utils import float_compare, float_is_zero
 
+import pytz
+from pytz import timezone
 _logger = logging.getLogger(__name__)
 class StockQuantityHistory(models.TransientModel):
     _name = 'stock.quantity.history'
@@ -360,14 +362,197 @@ class StockQuant(models.Model):
                 'owner_id': self.owner_id.id,
                 'date': move_date,  # 在 stock.move.line 上设置日期
             })]
-        }    
+        }   
         
+    def confirm_btn(self,mpr_id):
+        quant = self.env["stock.quant"].search([('product_id' , "=" , mpr_id.product_id.id),("lot_id" ,"=" , mpr_id.product_lot.id),("location_id" ,"=" ,mpr_id.stock_location_id.id)],limit=1) #這裡出現的負數我用company_id隱藏，未來要修正
+        mpr_id.write({'final_stock_num': str(round(quant.quantity,3))})        
+        picking = self.env['stock.picking'].create({
+            'picking_type_id' : 1,
+            'location_id': mpr_id.stock_location_id.id,  #库存
+            'location_dest_id': 15, #Production 用于生产
+            'origin' : mpr_id.name, 
+        })
+        mpr_id.picking_id = picking.id
+        move = self.env['stock.move'].create({
+            'name' : mpr_id.name,
+            'reference' : "捲料完成", 
+            'product_id': mpr_id.product_id.id,
+            'product_uom_qty' : quant.quantity,
+            'product_uom' : mpr_id.uom_id.id,
+            "picking_id" : picking.id,
+            "quantity_done" : quant.quantity,
+            'origin' : mpr_id.name,
+            'location_id': mpr_id.stock_location_id.id,  #库存
+            'location_dest_id': 15, #Production 用于生产                
+        })
+        mpr_id.stock_move_id = move.id
+        
+        # stock_lot_obj = self.env['stock.lot'].search([('barcode', '=', self.name)],limit=1)
+        move_line = self.env['stock.move.line'].create({
+            'reference' : "捲料完成"+mpr_id.name, 
+            'origin' : mpr_id.name,
+            "move_id": move.id, 
+            "picking_id" : picking.id,
+            'product_id': mpr_id.product_id.id,
+            'qty_done': quant.quantity ,
+            'product_uom_id' : mpr_id.uom_id.id,                
+            'location_id': mpr_id.stock_location_id.id,  #库存
+            'location_dest_id': 15, #Production 用于生产 
+            'lot_name' : mpr_id.product_lot.name,
+            'lot_id': mpr_id.product_lot.id,
+            'state': "draft", 
+        })                
+        mpr_id.stock_move_line_id = [(4, move_line.id)]
+        move_line_objs = self.env['stock.move.line'].search(["|",("lot_id" ,"=" , False ),("lot_name" ,"=" , False ),("product_id" , "=" ,mpr_id.product_id.id ),('picking_id',"=", picking.id)])
+        move_line_objs.unlink()
+        
+        picking.action_confirm()
+        picking.action_assign()
+        picking.button_validate() 
+        mpr_id.write({'state': "succ"})
+        local_tz = pytz.timezone('Asia/Shanghai')  # 替換為你所在的時區
+        
+        today = datetime.now(local_tz).date()
+        mpr_id.succ_date = today
+    
+    def ok_btn(self,mpr_id,quant):
+        count = 0
+        for record in mpr_id.lotmprline_id:
+            if record.state == "succ":
+                continue
+            if record.shengyu == 0:
+                count = count + 1
+        
+        if count > 1:
+            raise ValidationError("扣料超過2個項次多于此料，請檢查，如需用備料請加入備料序號，保留一個多餘項次!")
+    
+    
+        uom_obj = self.env["uom.uom"]
+        
+        #當前庫存
+        
+        uomid = mpr_id.uom_id.id
+        uom_record = uom_obj.browse(mpr_id.uom_id.id)
+        now_category_id = uom_record.category_id.id
+        other_uom = uom_obj.search([( 'category_id' , "=" , now_category_id ) , ("id","!=",uom_record.id)],limit=1)
+        if other_uom:
+            uomid = other_uom.id
+        
+        # _logger.info("======")
+        # _logger.info(self.id)
+        # _logger.info(self.lot_stock_num)
+        # _logger.info("======")
+        if mpr_id.lot_stock_num.isdigit():  # 检查是否是数字
+            if int(mpr_id.lot_stock_num) < 0:
+                raise ValidationError("此料無庫存!")
+        elif mpr_id.lot_stock_num == "無":  # 检查是否为字符串 "無"
+            raise ValidationError("此料無庫存!")
+        
+        now_stock_p = float(mpr_id.lot_stock_num) * other_uom.factor
+        for record in mpr_id.lotmprline_id:
+            if record.state == "succ":
+                continue
+            
+            if record.sjkl == 0:
+                qty_done_cai = record.yujixiaohao
+            else: 
+                qty_done_cai = record.sjkl
+
+
+            # if (now_stock_p - record.yujixiaohao) < 0 :
+            if (now_stock_p - qty_done_cai) < 0 :
+                raise ValidationError("捲料:%s存在未能扣除的項次,請去捲料扣料表扣料!" % (quant.lot_id.barcode))  
+            
+
+            # _logger.info("===========================")
+            # _logger.info(record.name)
+            # _logger.info(qty_done_cai)
+            # _logger.info(mpr_id.name)
+            now_stock_p = now_stock_p - qty_done_cai
+            picking = self.env['stock.picking'].create({
+                'picking_type_id' : 1,
+                'location_id': mpr_id.stock_location_id.id,  #库存
+                'location_dest_id': 15, #Production 用于生产
+                'origin' : record.name, 
+            })
+            record.picking_id = picking.id
+            move = self.env['stock.move'].create({
+                'name' : record.name,
+                'reference' : "庫存盤點捲料扣料", 
+                'product_id': mpr_id.product_id.id,
+                'product_uom_qty' : qty_done_cai,
+                'product_uom' : uomid,
+                "picking_id" : picking.id,
+                "quantity_done" : qty_done_cai,
+                'origin' : record.name,
+                'location_id': mpr_id.stock_location_id.id,  #库存
+                'location_dest_id': 15, #Production 用于生产                
+            })
+            record.stock_move_id = move.id
+            
+            stock_lot_obj = self.env['stock.lot'].search([('barcode', '=', mpr_id.name)],limit=1)
+            # _logger.info(quant.lot_id.name)
+            # _logger.info(quant.lot_id.id)
+            # _logger.info("===========================")
+            move_line = self.env['stock.move.line'].create({
+                'reference' : "庫存盤點捲料扣料", 
+                'origin' : record.name,
+                "move_id": move.id, 
+                "picking_id" : picking.id,
+                'product_id': mpr_id.product_id.id,
+                'qty_done': qty_done_cai ,
+                'product_uom_id' : uomid,                
+                'location_id': mpr_id.stock_location_id.id,  #库存
+                'location_dest_id': 15, #Production 用于生产 
+                'lot_name' : quant.lot_id.name,
+                'lot_id': quant.lot_id.id,
+                'state': "draft",
+            })                
+            record.stock_move_line_id = [(4, move_line.id)]
+            # move_line_objs = self.env['stock.move.line'].search(["|",("lot_id" ,"=" , False ),("lot_name" ,"=" , False ),("product_id" , "=" ,mpr_id.product_id.id ),('picking_id',"=", picking.id)])
+            # move_line_objs.unlink()
+            
+            picking.action_confirm()
+            picking.action_assign()
+            picking.button_validate() 
+            _logger.info("====---------------======")
+            record.state = "succ" 
+            record.sjkl = qty_done_cai 
+    
     def action_apply_inventory(self):
         products_tracked_without_lot = []
         all_past_inventory = True
         move_vals = []
         past_date = ""
+        
         for quant in self:
+            if not self.env.context.get('default_is_set_date') is True: 
+                if quant.lot_id and quant.inventory_quantity == 0 and quant.inventory_diff_quantity != 0:
+                    obj = self.env['dtsc.lotmpr']
+                    is_has_mpr = obj.search([('product_lot',"=",quant.lot_id.id)],limit=1)
+                    if not is_has_mpr:
+                        mpr_id = obj.create({
+                           'name' : quant.lot_id.barcode, 
+                           'product_id' : quant.lot_id.product_id.id,
+                           'product_lot' : quant.lot_id.id,
+                           'lot_stock_num' : str(quant.quantity),
+                        })
+                        _logger.info(f"================{mpr_id.id}")
+                        self.env['dtsc.lotmprline'].create({
+                           'name' : "邊料損耗", 
+                           'yujixiaohao' : 25,
+                           'sjkl' : 25,
+                           "lotmpr_id" : mpr_id.id,
+                        })
+                        self.ok_btn(mpr_id,quant)
+                        self.confirm_btn(mpr_id)
+                    else:
+                        self.ok_btn(is_has_mpr,quant)
+                        self.confirm_btn(is_has_mpr)
+                    continue
+            
+            
             if self.env.context.get('default_is_set_date') is True:  
                 # quant.stock_date = fields.Date.today()
                 
@@ -939,7 +1124,12 @@ class ReportStockQuant(models.AbstractModel):
         end_date = data.get('endtime')
         select_method = data.get('select_method')
         internal_locations = self.env['stock.location'].search([('usage', '=', 'internal')])
-        quants = self.env['stock.quant'].search([('location_id', 'in', internal_locations.ids),("quantity",">",0)])
+        is_print_zero = data.get('is_print_zero')
+        # if not is_print_zero:
+        quants = self.env['stock.quant'].search([('location_id', 'in', internal_locations.ids)])
+        # else:
+            # quants = self.env['stock.quant'].search([('location_id', 'in', internal_locations.ids),("quantity",">=",0)])
+            
         product_quant_map = {}
         
         # key = 0
@@ -981,11 +1171,6 @@ class ReportStockQuant(models.AbstractModel):
                             average_price = lot_purchase_lines.price_unit
                         total_value = quant.quantity * average_price
                     else:#如果找不到相同序號的 ，則找最近一個相同產品的
-                        # lot_purchase_lines_other = self.env['purchase.order.line'].search([
-                        # ('product_id', '=', quant.product_id.id),
-                        # ('order_id.state', 'in', ['purchase', 'done'])
-                        # ], order='date_order desc', limit=1)
-                        # average_price = lot_purchase_lines_other.price_unit
                         average_price = quant.product_id.standard_price
                         total_value = quant.quantity * average_price
                         
@@ -1019,17 +1204,30 @@ class ReportStockQuant(models.AbstractModel):
 
                     average_price = total_value / qty_consumed if qty_consumed > 0 else 0.0
 
-                
-                report_data.append({
-                    'product_id': quant.product_id,
-                    'lot_id':quant.lot_id.name,
-                    'quantity': round(quant.quantity, 2),
-                    'uom': quant.product_uom_id.name,
-                    'is_lot':b,
-                    'location': quant.location_id.name,
-                    'average_price': round(average_price, 2),  # 加权平均价格
-                    'total_value': round(total_value, 2),  # 总价值
-                })
+                if not is_print_zero:
+                    if round(quant.quantity, 2) > 0:
+                        report_data.append({
+                            'product_id': quant.product_id,
+                            'lot_id':quant.lot_id.name,
+                            'quantity': round(quant.quantity, 2),
+                            'uom': quant.product_uom_id.name,
+                            'is_lot':b,
+                            'location': quant.location_id.name,
+                            'average_price': round(average_price, 2),  # 加权平均价格
+                            'total_value': round(total_value, 2),  # 总价值
+                        })
+                else:
+                    if round(quant.quantity, 2) >= 0:
+                        report_data.append({
+                            'product_id': quant.product_id,
+                            'lot_id':quant.lot_id.name,
+                            'quantity': abs(round(quant.quantity, 2)),
+                            'uom': quant.product_uom_id.name,
+                            'is_lot':b,
+                            'location': quant.location_id.name,
+                            'average_price': round(average_price, 2),  # 加权平均价格
+                            'total_value': abs(round(total_value, 2)),  # 总价值
+                        })
             
         # print(len(product_quant_map))    
         if end_date:
@@ -1153,18 +1351,30 @@ class ReportStockQuant(models.AbstractModel):
                             total_qty_needed -= purchase_qty
 
                     average_price = total_value / qty_consumed if qty_consumed > 0 else 0.0
-
-                if round(data['quantity'], 2) > 0:
-                    report_data.append({
-                        'product_id': self.env['product.product'].browse(product_id),
-                        'lot_id':  lot_name,
-                        'quantity': round(data['quantity'], 2),
-                        'uom': data['uom'],
-                        'is_lot':b,
-                        'location': loc,
-                        'average_price': round(average_price, 2),  # 加权平均价格
-                        'total_value': round(total_value, 2),  # 总价值
-                    })
+                if not is_print_zero:
+                    if round(data['quantity'], 2) > 0:
+                        report_data.append({
+                            'product_id': self.env['product.product'].browse(product_id),
+                            'lot_id':  lot_name,
+                            'quantity': round(data['quantity'], 2),
+                            'uom': data['uom'],
+                            'is_lot':b,
+                            'location': loc,
+                            'average_price': round(average_price, 2),  # 加权平均价格
+                            'total_value': round(total_value, 2),  # 总价值
+                        })
+                else:
+                    if round(data['quantity'], 2) >= 0:
+                        report_data.append({
+                            'product_id': self.env['product.product'].browse(product_id),
+                            'lot_id':  lot_name,
+                            'quantity': abs(round(data['quantity'], 2)),
+                            'uom': data['uom'],
+                            'is_lot':b,
+                            'location': loc,
+                            'average_price': round(average_price, 2),  # 加权平均价格
+                            'total_value': abs(round(total_value, 2)),  # 总价值
+                        })
                         
         merged_data = {}
         for data in report_data:
@@ -1319,7 +1529,11 @@ class ReportStockQuantAmount(models.AbstractModel):
         end_date = data.get('endtime')
         select_method = data.get('select_method')
         internal_locations = self.env['stock.location'].search([('usage', '=', 'internal')])
-        quants = self.env['stock.quant'].search([('location_id', 'in', internal_locations.ids),("quantity",">",0)])
+        is_print_zero = data.get('is_print_zero')
+        # if not is_print_zero:
+        quants = self.env['stock.quant'].search([('location_id', 'in', internal_locations.ids)])
+        # else:
+            # quants = self.env['stock.quant'].search([('location_id', 'in', internal_locations.ids),("quantity",">=",0)])
         product_quant_map = {}
         
         # key = 0
@@ -1359,15 +1573,10 @@ class ReportStockQuantAmount(models.AbstractModel):
                             average_price = quant.product_id.standard_price
                         else:
                             average_price = lot_purchase_lines.price_unit
-                        total_value = quant.quantity * average_price
+                        total_value = abs(round(quant.quantity, 2)) * average_price
                     else:#如果找不到相同序號的 ，則找最近一個相同產品的
-                        # lot_purchase_lines_other = self.env['purchase.order.line'].search([
-                        # ('product_id', '=', quant.product_id.id),
-                        # ('order_id.state', 'in', ['purchase', 'done'])
-                        # ], order='date_order desc', limit=1)
-                        # average_price = lot_purchase_lines_other.price_unit
                         average_price = quant.product_id.standard_price
-                        total_value = quant.quantity * average_price
+                        total_value = abs(round(quant.quantity, 2)) * average_price
                         
                 else:#否則計算加權平均價格
                     # 否则使用加权平均价格计算
@@ -1399,17 +1608,30 @@ class ReportStockQuantAmount(models.AbstractModel):
 
                     average_price = total_value / qty_consumed if qty_consumed > 0 else 0.0
 
-                
-                report_data.append({
-                    'product_id': quant.product_id,
-                    'lot_id':quant.lot_id.name,
-                    'quantity': round(quant.quantity, 2),
-                    'uom': quant.product_uom_id.name,
-                    'is_lot':b,
-                    'location': quant.location_id.name,
-                    'average_price': round(average_price, 2),  # 加权平均价格
-                    'total_value': round(total_value, 2),  # 总价值
-                })
+                if not is_print_zero:
+                    if round(quant.quantity, 2) > 0:
+                        report_data.append({
+                            'product_id': quant.product_id,
+                            'lot_id':quant.lot_id.name,
+                            'quantity': round(quant.quantity, 2),
+                            'uom': quant.product_uom_id.name,
+                            'is_lot':b,
+                            'location': quant.location_id.name,
+                            'average_price': round(average_price, 2),  # 加权平均价格
+                            'total_value': round(total_value, 2),  # 总价值
+                        })
+                else:
+                    if round(quant.quantity, 2) >= 0:
+                        report_data.append({
+                            'product_id': quant.product_id,
+                            'lot_id':quant.lot_id.name,
+                            'quantity': abs(round(quant.quantity, 2)),
+                            'uom': quant.product_uom_id.name,
+                            'is_lot':b,
+                            'location': quant.location_id.name,
+                            'average_price': round(average_price, 2),  # 加权平均价格
+                            'total_value': abs(round(total_value, 2)),  # 总价值
+                        })
             
         # print(len(product_quant_map))    
         if end_date:
@@ -1493,20 +1715,15 @@ class ReportStockQuantAmount(models.AbstractModel):
                             average_price = lot_purchase_lines.product_id.standard_price
                         else:
                             average_price = lot_purchase_lines.price_unit
-                        total_value = data['quantity'] * average_price
+                        total_value = abs(round(data['quantity'], 2)) * average_price
                     else:#如果找不到相同序號的 ，則找最近一個相同產品的
-                        # lot_purchase_lines_other = self.env['purchase.order.line'].search([
-                        # ('product_id', '=', product_id),
-                        # ('order_id.state', 'in', ['purchase', 'done'])
-                        # ], order='date_order desc', limit=1)
-                        # average_price = lot_purchase_lines_other.price_unit
                         average_price = self.env['product.product'].browse(product_id).standard_price
-                        total_value = data['quantity'] * average_price
+                        total_value = abs(round(data['quantity'], 2)) * average_price
                         
                 else:#否則計算加權平均價格
                     # continue
                     # 否则使用加权平均价格计算
-                    total_qty_needed = data['quantity']
+                    total_qty_needed = abs(round(data['quantity'], 2))
                     purchase_lines = self.env['purchase.order.line'].search([
                         ('product_id', '=', product_id),
                         ('order_id.state', 'in', ['purchase', 'done'])
@@ -1533,18 +1750,30 @@ class ReportStockQuantAmount(models.AbstractModel):
                             total_qty_needed -= purchase_qty
 
                     average_price = total_value / qty_consumed if qty_consumed > 0 else 0.0
-
-                if round(data['quantity'], 2) > 0:
-                    report_data.append({
-                        'product_id': self.env['product.product'].browse(product_id),
-                        'lot_id':  lot_name,
-                        'quantity': round(data['quantity'], 2),
-                        'uom': data['uom'],
-                        'is_lot':b,
-                        'location': loc,
-                        'average_price': round(average_price, 2),  # 加权平均价格
-                        'total_value': round(total_value, 2),  # 总价值
-                    })
+                if not is_print_zero:
+                    if round(data['quantity'], 2) > 0:
+                        report_data.append({
+                            'product_id': self.env['product.product'].browse(product_id),
+                            'lot_id':  lot_name,
+                            'quantity': round(data['quantity'], 2),
+                            'uom': data['uom'],
+                            'is_lot':b,
+                            'location': loc,
+                            'average_price': round(average_price, 2),  # 加权平均价格
+                            'total_value': round(total_value, 2),  # 总价值
+                        })
+                else:
+                    if round(data['quantity'], 2) >= 0:
+                        report_data.append({
+                            'product_id': self.env['product.product'].browse(product_id),
+                            'lot_id':  lot_name,
+                            'quantity': abs(round(data['quantity'], 2)),
+                            'uom': data['uom'],
+                            'is_lot':b,
+                            'location': loc,
+                            'average_price': round(average_price, 2),  # 加权平均价格
+                            'total_value': abs(round(total_value, 2)),  # 总价值
+                        })
                         
         merged_data = {}
         for data in report_data:
@@ -1887,8 +2116,12 @@ class ReportStockQuantBase(models.AbstractModel):
         # 获取所有特定位置的stock.quant
         end_date = data.get('endtime')
         select_method = data.get('select_method')
-        internal_locations = self.env['stock.location'].search([('usage', '=', 'internal')])
-        quants = self.env['stock.quant'].search([('location_id', 'in', internal_locations.ids),("quantity",">",0)])
+        internal_locations = self.env['stock.location'].search([('usage', '=', 'internal')])        
+        is_print_zero = data.get('is_print_zero')
+        # if not is_print_zero:
+        quants = self.env['stock.quant'].search([('location_id', 'in', internal_locations.ids)])
+        # else:
+            # quants = self.env['stock.quant'].search([('location_id', 'in', internal_locations.ids),("quantity",">=",0)])
         product_quant_map = {}
         
         # key = 0
@@ -1929,19 +2162,14 @@ class ReportStockQuantBase(models.AbstractModel):
                         else:
                             average_price = lot_purchase_lines.price_unit
                         # average_price = lot_purchase_lines.price_unit
-                        total_value = quant.quantity * average_price
+                        total_value = abs(round(quant.quantity, 2)) * average_price
                     else:#如果找不到相同序號的 ，則找最近一個相同產品的
-                        # lot_purchase_lines_other = self.env['purchase.order.line'].search([
-                        # ('product_id', '=', quant.product_id.id),
-                        # ('order_id.state', 'in', ['purchase', 'done'])
-                        # ], order='date_order desc', limit=1)
-                        # average_price = lot_purchase_lines_other.price_unit
                         average_price = quant.product_id.standard_price
-                        total_value = quant.quantity * average_price
+                        total_value = abs(round(quant.quantity, 2)) * average_price
                         
                 else:#否則計算加權平均價格
                     # 否则使用加权平均价格计算
-                    total_qty_needed = quant.quantity
+                    total_qty_needed = abs(round(quant.quantity, 2))
                     purchase_lines = self.env['purchase.order.line'].search([
                         ('product_id', '=', quant.product_id.id),
                         ('order_id.state', 'in', ['purchase', 'done'])
@@ -1969,19 +2197,31 @@ class ReportStockQuantBase(models.AbstractModel):
 
                     average_price = total_value / qty_consumed if qty_consumed > 0 else 0.0
 
-                
-                report_data.append({
-                    'product_id': quant.product_id,
-                    'lot_id':quant.lot_id.name,
-                    'quantity': round(quant.quantity, 2),
-                    'uom': quant.product_uom_id.name,
-                    'is_lot':b,
-                    'location': quant.location_id.name,
-                    'average_price': round(average_price, 2),  # 加权平均价格
-                    'total_value': round(total_value, 2),  # 总价值
-                })
-            
-        # print(len(product_quant_map))    
+                if not is_print_zero:
+                    if round(quant.quantity, 2) > 0:
+                        report_data.append({
+                            'product_id': quant.product_id,
+                            'lot_id':quant.lot_id.name,
+                            'quantity': round(quant.quantity, 2),
+                            'uom': quant.product_uom_id.name,
+                            'is_lot':b,
+                            'location': quant.location_id.name,
+                            'average_price': round(average_price, 2),  # 加权平均价格
+                            'total_value': round(total_value, 2),  # 总价值
+                        })
+                else:
+                    if round(quant.quantity, 2) >= 0:
+                        report_data.append({
+                            'product_id': quant.product_id,
+                            'lot_id':quant.lot_id.name,
+                            'quantity': abs(round(quant.quantity, 2)),
+                            'uom': quant.product_uom_id.name,
+                            'is_lot':b,
+                            'location': quant.location_id.name,
+                            'average_price': abs(round(average_price, 2)),  # 加权平均价格
+                            'total_value': abs(round(total_value, 2)),  # 总价值
+                        })
+               
         if end_date:
             for location in internal_locations:
                 move_lines_out = self.env['stock.move.line'].search([
@@ -2063,20 +2303,15 @@ class ReportStockQuantBase(models.AbstractModel):
                             average_price = lot_purchase_lines.product_id.standard_price
                         else:
                             average_price = lot_purchase_lines.price_unit
-                        total_value = data['quantity'] * average_price
-                    else:#如果找不到相同序號的 ，則找最近一個相同產品的
-                        # lot_purchase_lines_other = self.env['purchase.order.line'].search([
-                        # ('product_id', '=', product_id),
-                        # ('order_id.state', 'in', ['purchase', 'done'])
-                        # ], order='date_order desc', limit=1)
-                        # average_price = lot_purchase_lines_other.price_unit
+                        total_value = abs(round(data['quantity'], 2)) * average_price
+                    else:
                         average_price = self.env['product.product'].browse(product_id).standard_price
-                        total_value = data['quantity'] * average_price
+                        total_value = abs(round(data['quantity'], 2)) * average_price
                         
                 else:#否則計算加權平均價格
                     # continue
                     # 否则使用加权平均价格计算
-                    total_qty_needed = data['quantity']
+                    total_qty_needed = abs(round(data['quantity'], 2))
                     purchase_lines = self.env['purchase.order.line'].search([
                         ('product_id', '=', product_id),
                         ('order_id.state', 'in', ['purchase', 'done'])
@@ -2103,18 +2338,30 @@ class ReportStockQuantBase(models.AbstractModel):
                             total_qty_needed -= purchase_qty
 
                     average_price = total_value / qty_consumed if qty_consumed > 0 else 0.0
-
-                if round(data['quantity'], 2) > 0:
-                    report_data.append({
-                        'product_id': self.env['product.product'].browse(product_id),
-                        'lot_id':  lot_name,
-                        'quantity': round(data['quantity'], 2),
-                        'uom': data['uom'],
-                        'is_lot':b,
-                        'location': loc,
-                        'average_price': round(average_price, 2),  # 加权平均价格
-                        'total_value': round(total_value, 2),  # 总价值
-                    })
+                if not is_print_zero:
+                    if round(data['quantity'], 2) > 0:
+                        report_data.append({
+                            'product_id': self.env['product.product'].browse(product_id),
+                            'lot_id':  lot_name,
+                            'quantity': round(data['quantity'], 2),
+                            'uom': data['uom'],
+                            'is_lot':b,
+                            'location': loc,
+                            'average_price': round(average_price, 2),  # 加权平均价格
+                            'total_value': round(total_value, 2),  # 总价值
+                        })
+                else:
+                    if round(data['quantity'], 2) >= 0:
+                        report_data.append({
+                            'product_id': self.env['product.product'].browse(product_id),
+                            'lot_id':  lot_name,
+                            'quantity': abs(round(data['quantity'], 2)),
+                            'uom': data['uom'],
+                            'is_lot':b,
+                            'location': loc,
+                            'average_price': abs(round(average_price, 2)),  # 加权平均价格
+                            'total_value': abs(round(total_value, 2)),  # 总价值
+                        })
                         
         
         # 按照仓库名称排序
@@ -2162,7 +2409,7 @@ class Stockreportwizard(models.TransientModel):
 
     # 向导字段定义
     endtime = fields.Date('截止時間')
-    
+    is_print_zero = fields.Boolean('包含0庫存')
     select_method = fields.Selection([
         ("1","庫存表"),
         ("2","庫存表(金額)"),
@@ -2176,6 +2423,7 @@ class Stockreportwizard(models.TransientModel):
         docids=[]
         data = {
             'endtime': self.endtime,
+            'is_print_zero': self.is_print_zero,
             'select_method': self.select_method,
             'docids':docids,
         }

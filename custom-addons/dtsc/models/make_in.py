@@ -15,6 +15,15 @@ from dateutil.relativedelta import relativedelta
 from pytz import timezone
 from lxml import etree
 from datetime import datetime, timedelta, date
+from odoo.tools import config
+
+class ScanMode(models.Model):
+    _name = 'dtsc.scanmode'
+    _description = 'Scan Mode'
+
+    name = fields.Char("Name")
+    code = fields.Char("Code")
+
 class MakeIn(models.Model):
     _name = 'dtsc.makein'
     _order = "checkout_order_date desc"
@@ -62,7 +71,16 @@ class MakeIn(models.Model):
     create_id = fields.Many2one('res.users',string="")
     kaidan = fields.Many2one('dtsc.userlistbefore',string="開單人員") 
     no_mprlist = fields.Boolean(default=False)
-    
+    scan_type = fields.Selection([
+        ('gun', '掃碼槍'),
+        ('camera', '攝像頭')
+    ], string='簽名方式',default='gun')
+    scan_modes = fields.Many2many(
+        'dtsc.scanmode', 
+        string='簽名類型',
+        help="可多選類型"
+    )
+    scan_input = fields.Char("掃碼輸入員工")
     date_labels = fields.Many2many(
         'dtsc.datelabel', 
         'dtsc_makein_datelabel_rel', 
@@ -83,20 +101,64 @@ class MakeIn(models.Model):
         compute="_compute_is_open_makein_qrcode",
         store=False
     )
+    @api.onchange('scan_input')
+    def _onchange_scan_input(self):
+        if self.scan_input:
+            employee = self.env['dtsc.workqrcode'].sudo().search([('bar_image_code', '=ilike', self.scan_input)], limit=1)
+            if not employee:
+                self.scan_input = ""
+                raise UserError("未找到該員工，請確認QRcode正確！")
+            else:
+                self.scan_input = employee.name
+                
+    def button_confirm_action(self):
+        if not self.scan_input:
+            raise UserError("請錄入員工QRcode！")    
+        
+        select_flag = 0
+        for record in self.order_ids:
+            if record.is_select:
+                select_flag = 1
+                for mode in self.scan_modes:
+                    if mode.code == 'lb':
+                        field_name = "lengbiao_sign"
+                    elif mode.code == 'gb':
+                        field_name = "guoban_sign"
+                    elif mode.code == 'cq':
+                        field_name = "caiqie_sign"
+                    elif mode.code == 'pg':
+                        field_name = "pinguan_sign"
+                    elif mode.code == 'dch':
+                        field_name = "daichuhuo_sign"
+                    elif mode.code == 'ych':
+                        field_name = "yichuhuo_sign"
+                    
+                    if field_name:
+                        current_value = record[field_name] or ""
+                        if current_value:
+                            new_value = f"{current_value},{self.scan_input}"
+                        else:
+                            new_value = self.scan_input
+                        record.write({field_name: new_value})
+                        if record.checkout_line_id:
+                            checkout_current_value = record.checkout_line_id[field_name] or ""
+                            if checkout_current_value:
+                                checkout_new_value = f"{checkout_current_value},{self.scan_input}"
+                            else:
+                                checkout_new_value = self.scan_input
+                            record.checkout_line_id.write({field_name: checkout_new_value})
+        if select_flag == 0:
+            raise UserError("請選擇要簽名的項次！") 
+            
+        for record in self.order_ids:
+            record.is_select = False
+        self.write({"scan_input": ""})
 
-    # @api.depends_context
-    # def _compute_is_open_makein_qrcode(self):
-        # 从配置参数中获取值
-        # config_value = self.env['ir.config_parameter'].sudo().get_param('dtsc.is_open_makein_qrcode', default=False)
-        # for record in self:
-            # record.is_open_makein_qrcode = bool(config_value)
     
     @api.depends()
     def _compute_is_open_makein_qrcode(self):
         for record in self:
-            # print("===========")
-            # print(record.name)
-            record.is_open_makein_qrcode = self.env['ir.config_parameter'].sudo().get_param('dtsc.is_open_makein_qrcode')
+            record.is_open_makein_qrcode = config.get('is_open_makein_qrcode')
     
     
     
@@ -326,7 +388,7 @@ class MakeIn(models.Model):
             if not record.outman:
                 raise UserError("請設置每一條輸出員工！")
         
-        is_open_makein_qrcode = self.env['ir.config_parameter'].sudo().get_param('dtsc.is_open_makein_qrcode')
+        is_open_makein_qrcode = config.get('is_open_makein_qrcode')
         if is_open_makein_qrcode == False:
             if not self.houzhiman:
                 raise UserError("請錄入後置員工！")
@@ -364,9 +426,20 @@ class MakeIn(models.Model):
                  
     
     def del_install_list(self):
-        print("del_install_list")
-        self.write({"install_state":"cancel"})        
-        self.write({"name":self.name+"-D"})
+        del_name = self.name.replace("B","W")
+        mpr_obj = self.env["dtsc.mpr"].search([('name','=',del_name)],limit=1)
+        if not mpr_obj:
+            self.write({"install_state":"cancel"})        
+            self.write({"name":self.name+"-D"})
+        else:
+            if mpr_obj.state == "succ":
+                raise UserError("此單無法作廢，已經扣料")                
+            else:
+                for line in self.order_ids:
+                    if line.is_stock_off == True:
+                        raise UserError("此單無法作廢，已經扣料")
+                self.write({"install_state":"cancel"})        
+                self.write({"name":self.name+"-D"})
     
     #生成扣料单
     def kld_btn(self):

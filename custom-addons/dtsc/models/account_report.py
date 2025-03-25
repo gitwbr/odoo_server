@@ -87,8 +87,14 @@ class AccountReportWizard(models.TransientModel):
                         ('move_type', 'in', ['in_invoice']),  # 应收账单和应付账单
                     ])
             
-                    partner_ids = invoices.mapped('partner_id').filtered(lambda r: r.customer_rank > 0).ids
-                    partner_ids_supplier = invoices_supplier.mapped('partner_id').filtered(lambda r: r.supplier_rank > 0).ids
+                    partners = invoices.mapped('partner_id').filtered(lambda r: r.customer_rank > 0)
+                    sorted_partners = sorted(partners, key=lambda x: x.custom_id)
+                    partner_ids = [partner.id for partner in sorted_partners]
+                    
+                    # partner_ids_supplier = invoices_supplier.mapped('partner_id').filtered(lambda r: r.supplier_rank > 0).ids
+                    partners_supplier = invoices_supplier.mapped('partner_id').filtered(lambda r: r.supplier_rank > 0)
+                    sorted_suppliers = sorted(partners_supplier, key=lambda x: x.custom_id)
+                    partner_ids_supplier = [supplier.id for supplier in sorted_suppliers]
                     record.company_list_customer = [(6, 0, partner_ids)]
                     record.company_list_supplier = [(6, 0, partner_ids_supplier)]
     
@@ -113,8 +119,14 @@ class AccountReportWizard(models.TransientModel):
                         ('move_type', 'in', ['in_invoice']),  # 应收账单和应付账单
                     ])
             
-                    partner_ids = invoices.mapped('partner_id').filtered(lambda r: r.customer_rank > 0).ids
-                    partner_ids_supplier = invoices_supplier.mapped('partner_id').filtered(lambda r: r.supplier_rank > 0).ids
+                    partners = invoices.mapped('partner_id').filtered(lambda r: r.customer_rank > 0)
+                    sorted_partners = sorted(partners, key=lambda x: x.custom_id)
+                    partner_ids = [partner.id for partner in sorted_partners]
+                    
+                    # partner_ids_supplier = invoices_supplier.mapped('partner_id').filtered(lambda r: r.supplier_rank > 0).ids
+                    partners_supplier = invoices_supplier.mapped('partner_id').filtered(lambda r: r.supplier_rank > 0)
+                    sorted_suppliers = sorted(partners_supplier, key=lambda x: x.custom_id)
+                    partner_ids_supplier = [supplier.id for supplier in sorted_suppliers]
                     record.company_list_customer = [(6, 0, partner_ids)]
                     record.company_list_supplier = [(6, 0, partner_ids_supplier)]
     '''
