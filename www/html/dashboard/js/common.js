@@ -183,3 +183,64 @@ async function initializePage() {
 // 页面加载时执行初始化
 document.addEventListener('DOMContentLoaded', initializePage);
 
+// 获取版本功能对照的HTML
+function getVersionCompareHtml() {
+    return `
+        <div class="version-info">
+            <div style="margin-bottom: 8px; font-weight: 500;">版本功能對照：</div>
+            <div style="color: #666; font-size: 13px; line-height: 1.6;">
+                <div style="margin-bottom: 8px;">
+                    <span style="color: #666666;">基礎版 v1：</span>
+                    <div style="padding-left: 12px;">
+                        • 基礎功能
+                    </div>
+                </div>
+                <div style="margin-bottom: 8px;">
+                    <span style="color: #1890ff;">進階版 v2：</span>
+                    <div style="padding-left: 12px;">
+                        • CRM客戶管理<br>
+                        • Line機器人整合
+                    </div>
+                </div>
+                <div>
+                    <span style="color: #fa8c16;">高級版 v3：</span>
+                    <div style="padding-left: 12px;">
+                        • 完整訂單管理<br>
+                        • 工單二維碼系統
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+// 添加版本信息弹出框的样式
+const versionInfoStyle = `
+    <style>
+        .upgrade-btn-wrapper {
+            position: relative;
+            display: inline-block;
+        }
+        .version-info {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            margin-top: 8px;
+            background: white;
+            border: 1px solid #e8e8e8;
+            border-radius: 4px;
+            padding: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            z-index: 1000;
+            width: 280px;
+        }
+        .upgrade-btn-wrapper:hover .version-info {
+            display: block;
+        }
+    </style>
+`;
+
+// 将样式添加到页面
+document.head.insertAdjacentHTML('beforeend', versionInfoStyle);
+

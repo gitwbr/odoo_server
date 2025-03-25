@@ -6,6 +6,7 @@
     <title>控制台 - Odoo SaaS</title>
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <link rel="stylesheet" href="/dashboard/css/dashboard.css">
+    <script src="/dashboard/js/common.js"></script>
 </head>
 <body>
     <div class="dashboard">
@@ -173,16 +174,20 @@
                                         <i class="material-icons">delete</i>
                                     </button>
                                     <div class="upgrade-buttons">
+                                        <div class="upgrade-btn-wrapper">
                                         <button class="action-btn upgrade-btn ${instance.status === 1 && instance.version_id < 2 ? '' : 'disabled'}"
                                                 onclick="${instance.status === 1 && instance.version_id < 2 ? `upgradeInstance(${instance.id}, 2)` : ''}"
                                                 title="${instance.status !== 1 ? '實例未運行' : instance.version_id >= 2 ? '已是v2或更高版本' : '升級到v2版本'}">
                                             <i class="material-icons">upgrade</i>v2
                                         </button>
+                                        </div>
+                                        <div class="upgrade-btn-wrapper">
                                         <button class="action-btn upgrade-btn ${instance.status === 1 && instance.version_id < 3 ? '' : 'disabled'}"
                                                 onclick="${instance.status === 1 && instance.version_id < 3 ? `upgradeInstance(${instance.id}, 3)` : ''}"
                                                 title="${instance.status !== 1 ? '實例未運行' : instance.version_id >= 3 ? '已是v3或更高版本' : '升級到v3版本'}">
                                             <i class="material-icons">upgrade</i>v3
                                         </button>
+                                        </div>
                                     </div>
                                 </div>
                             </td>
@@ -313,11 +318,7 @@
         // 升级实例
         async function upgradeInstance(instanceId, targetVersion) {
             // 显示确认对话框
-            if (!confirm(`確定要將實例升級到 v${targetVersion} 版本嗎？\n\n升級後將：\n` + 
-                (targetVersion === 2 ? 
-                    '- 開啟 CRM 功能\n- 開啟 LineBot 功能' : 
-                    '- 開啟所有進階功能\n- 包括完整訂單和工單二維碼') +
-                '\n\n升級過程需要重啟實例，請確保沒有正在進行的操作。')) {
+            if (!confirm(`確定要將實例升級到 v${targetVersion} 版本嗎？\n\n升級過程需要重啟實例，請確保沒有正在進行的操作。`)) {
                 return;
             }
 
@@ -360,6 +361,5 @@
             setInterval(loadAllInstances, 10000);
         });
     </script>
-    <script src="/dashboard/js/common.js"></script>
 </body>
 </html> 
