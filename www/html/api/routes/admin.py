@@ -34,7 +34,7 @@ def get_all_instances():
         logger.error(f'獲取所有實例失敗: {str(e)}')
         return jsonify({'error': str(e)}), 500
 
-@admin_bp.route('/instances/<int:instance_id>/restart', methods=['POST'])
+""" @admin_bp.route('/instances/<int:instance_id>/restart', methods=['POST'])
 @require_admin
 def admin_restart_instance(instance_id):
     try:
@@ -56,4 +56,4 @@ def admin_delete_instance(instance_id):
         return jsonify({'error': '刪除失敗'}), 500
     except Exception as e:
         logger.error(f'管理員刪除實例失敗: {str(e)}')
-        return jsonify({'error': str(e)}), 500 
+        return jsonify({'error': str(e)}), 500  """
