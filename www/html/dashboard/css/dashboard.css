@@ -508,5 +508,79 @@ body {
     white-space: nowrap;
 }
 
+.action-buttons {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+}
+
+.upgrade-buttons {
+    display: flex;
+    gap: 4px;
+    background: #f5f7f9;
+    border-radius: 4px;
+    padding: 2px;
+}
+
+.upgrade-btn {
+    padding: 4px 6px;
+    font-size: 14px;
+    min-width: 48px;
+    border: none;
+    border-radius: 3px;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+}
+
+/* v2 升级按钮样式 */
+.upgrade-btn:nth-child(1) {
+    background: transparent;
+    color: #1890ff;
+}
+
+.upgrade-btn:nth-child(1):not(.disabled):hover {
+    background: #1890ff;
+    color: white;
+}
+
+/* v3 升级按钮样式 */
+.upgrade-btn:nth-child(2) {
+    background: transparent;
+    color: #fa8c16;
+}
+
+.upgrade-btn:nth-child(2):not(.disabled):hover {
+    background: #fa8c16;
+    color: white;
+}
+
+.upgrade-btn i {
+    font-size: 22px;
+}
+
+.upgrade-btn.disabled {
+    background: transparent;
+    color: #999;
+    cursor: not-allowed;
+}
+
+/* 版本号样式 */
+[id^="version-"] {
+    font-weight: 500;
+}
+
+/* 使用属性选择器和内容匹配来设置不同版本的颜色 */
+
+[id^="version-"]:is([id$="2"]) {
+    color: #1890ff;  
+}
+
+[id^="version-"]:is([id$="3"]) {
+    color: #fa8c16; 
+}
+
 
 

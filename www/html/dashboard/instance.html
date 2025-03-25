@@ -44,8 +44,6 @@
         }
 
         .status-badge.initializing {
-            background: linear-gradient(45deg, #2196F3, #03A9F4);
-            color: white;
             display: inline-flex;
             align-items: center;
             width: 100px;  /* 固定寬度 */
@@ -312,10 +310,10 @@
             }
 
             // 立即执行一次
-            updateInstanceStatus();
+            //updateInstanceStatus();
 
             // 每10秒更新一次状态
-            statusUpdateInterval = setInterval(updateInstanceStatus, 5000);
+            //statusUpdateInterval = setInterval(updateInstanceStatus, 5000);
         }
 
         // 修改实例列表加载函数，添加状态单元格的ID
@@ -327,22 +325,33 @@
                 const container = document.getElementById('instanceContainer');
                 const createBtn = document.getElementById('createBtn');
 
+                // 先检查按钮状态，避免闪烁
                 if (!data.instances || data.instances.length === 0) {
-                    container.innerHTML = `<tr><td colspan="7">暫無實例</td></tr>`;
-                    createBtn.disabled = false;  // 無實例時啟用按鈕
+                    createBtn.disabled = false;
                     createBtn.title = '創建新實例';
-                    return;
+                } else {
+                    createBtn.disabled = true;
+                    createBtn.title = '您已有實例，無法創建新實例';
                 }
 
-                // 有實例時禁用按鈕
-                createBtn.disabled = true;
-                //createBtn.innerHTML = '<i class="material-icons" style="font-size: 16px;">add</i> 創建實例';
-                createBtn.title = '您已有實例，無法創建新實例';
-                
-                container.innerHTML = '';
+                // 获取现有的行
+                const existingRows = new Set(Array.from(container.children).map(row => {
+                    const idMatch = row.querySelector('td')?.textContent.match(/client(\d+)/);
+                    return idMatch ? idMatch[1] : null;
+                }));
+
+                // 更新或添加实例
                 for (const instance of data.instances) {
-                    let statusHtml = '';
+                    let row = container.querySelector(`tr[data-instance-id="${instance.id}"]`);
+                    const isNewRow = !row;
                     
+                    if (isNewRow) {
+                        row = document.createElement('tr');
+                        row.setAttribute('data-instance-id', instance.id);
+                        container.appendChild(row);
+                    }
+
+                    let statusHtml = '';
                     if (instance.status === 1) {
                         const containerStatus = await getContainerStatus(instance.id);
                         statusHtml = `
@@ -353,45 +362,46 @@
                         statusHtml = `<span class="status-badge ${getStatusClass(instance.status)}">${getStatusText(instance.status)}</span>`;
                     }
 
-                    container.innerHTML += `
-                        <tr>
-                            <td>
-                                <div style="display: flex; align-items: center; gap: 8px; justify-content: center;">
-                                    <i class="material-icons" style="color: var(--primary-color);">dns</i>
-                                    client${instance.id}
-                                </div>
-                            </td>
-                            <td id="instance-${instance.id}-status">${statusHtml}</td>
-                            <td>${instance.port}</td>
-                            <td id="version-${instance.id}">v${instance.version_id}</td>
-                            <td>${new Date(instance.created_at).toLocaleString()}</td>
-                            <td>${new Date(instance.expires_at).toLocaleString()}</td>
-                            <td id="actions-${instance.id}">
-                                <div class="action-buttons">
-                                    <button class="action-btn ${instance.status === 1 ? '' : 'disabled'}" 
-                                            onclick="${instance.status === 1 ? `window.open('${mainDomain}:${instance.port}', '_blank')` : ''}" 
-                                            title="${instance.status === 1 ? '訪問實例' : '實例未運行'}">
-                                        <i class="material-icons">open_in_new</i>
-                                    </button>
-                                    <button class="action-btn ${instance.status === 1 ? '' : 'disabled'}" 
-                                            onclick="${instance.status === 1 ? `restartInstance(${instance.id})` : ''}" 
-                                            title="${instance.status === 1 ? '重啟實例' : '實例未運行'}">
-                                        <i class="material-icons">restart_alt</i>
-                                    </button>
-                                    <!-- 刪除實例按鈕 
-                                    <button class="action-btn" 
-                                            onclick="deleteInstance(${instance.id})" 
-                                            title="刪除實例">
-                                        <i class="material-icons">delete</i>
-                                    </button>-->
-                                </div>
-                            </td>
-                        </tr>
+                    row.innerHTML = `
+                        <td>
+                            <div style="display: flex; align-items: center; gap: 8px; justify-content: center;">
+                                <i class="material-icons" style="color: var(--primary-color);">dns</i>
+                                client${instance.id}
+                            </div>
+                        </td>
+                        <td id="instance-${instance.id}-status">${statusHtml}</td>
+                        <td>${instance.port}</td>
+                        <td id="version-${instance.id}">v${instance.version_id}</td>
+                        <td>${new Date(instance.created_at).toLocaleString()}</td>
+                        <td>${new Date(instance.expires_at).toLocaleString()}</td>
+                        <td id="actions-${instance.id}">
+                            <div class="action-buttons">
+                                <button class="action-btn ${instance.status === 1 ? '' : 'disabled'}" 
+                                        onclick="${instance.status === 1 ? `window.open('${mainDomain}:${instance.port}', '_blank')` : ''}" 
+                                        title="${instance.status === 1 ? '訪問實例' : '實例未運行'}">
+                                    <i class="material-icons">open_in_new</i>
+                                </button>
+                                <button class="action-btn ${instance.status === 1 ? '' : 'disabled'}" 
+                                        onclick="${instance.status === 1 ? `restartInstance(${instance.id})` : ''}" 
+                                        title="${instance.status === 1 ? '重啟實例' : '實例未運行'}">
+                                    <i class="material-icons">restart_alt</i>
+                                </button>
+                            </div>
+                        </td>
                     `;
+                    existingRows.delete(instance.id.toString());
                 }
 
-                // 启动状态更新
-                startStatusUpdateInterval();
+                // 移除不存在的实例行
+                existingRows.forEach(id => {
+                    const row = container.querySelector(`tr[data-instance-id="${id}"]`);
+                    if (row) row.remove();
+                });
+
+                // 如果没有实例，显示提示信息
+                /* if (!data.instances || data.instances.length === 0) {
+                    container.innerHTML = `<tr><td colspan="7">暫無實例</td></tr>`;
+                } */
 
             } catch (error) {
                 console.error('加載實例列表失敗:', error);
@@ -489,7 +499,7 @@
     </script>
     <script src="/dashboard/js/common.js"></script>
     <script>
-        document.addEventListener('DOMContentLoaded', async () => {
+        /* document.addEventListener('DOMContentLoaded', async () => {
             try {
                 console.log('实例页面加载完成，开始初始化...');
                 // 先获取域名配置
@@ -501,6 +511,12 @@
                 console.error('实例页面初始化失败:', error);
                 showToast('錯誤', '加載實例列表失敗', 'error');
             }
+        }); */
+        document.addEventListener('DOMContentLoaded', async () => {
+            await getMainDomain();
+            await loadInstances();
+            // 每60秒刷新一次
+            setInterval(loadInstances, 5000);
         });
     </script>
 </body>

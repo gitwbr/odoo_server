@@ -151,7 +151,7 @@
                             </td>
                             <td>${statusHtml}</td>
                             <td>${instance.port}</td>
-                            <td>v${instance.version_id}</td>
+                            <td id="version-${instance.id}">v${instance.version_id}</td>
                             <td>${new Date(instance.created_at).toLocaleString()}</td>
                             <td>${new Date(instance.expires_at).toLocaleString()}</td>
                             <td>
@@ -166,11 +166,24 @@
                                             title="重啟實例">
                                         <i class="material-icons">refresh</i>
                                     </button>
+                                    
                                     <button class="action-btn" 
                                             onclick="deleteInstance(${instance.id})"
                                             title="刪除實例">
                                         <i class="material-icons">delete</i>
                                     </button>
+                                    <div class="upgrade-buttons">
+                                        <button class="action-btn upgrade-btn ${instance.status === 1 && instance.version_id < 2 ? '' : 'disabled'}"
+                                                onclick="${instance.status === 1 && instance.version_id < 2 ? `upgradeInstance(${instance.id}, 2)` : ''}"
+                                                title="${instance.status !== 1 ? '實例未運行' : instance.version_id >= 2 ? '已是v2或更高版本' : '升級到v2版本'}">
+                                            <i class="material-icons">upgrade</i>v2
+                                        </button>
+                                        <button class="action-btn upgrade-btn ${instance.status === 1 && instance.version_id < 3 ? '' : 'disabled'}"
+                                                onclick="${instance.status === 1 && instance.version_id < 3 ? `upgradeInstance(${instance.id}, 3)` : ''}"
+                                                title="${instance.status !== 1 ? '實例未運行' : instance.version_id >= 3 ? '已是v3或更高版本' : '升級到v3版本'}">
+                                            <i class="material-icons">upgrade</i>v3
+                                        </button>
+                                    </div>
                                 </div>
                             </td>
                         </tr>
@@ -295,6 +308,12 @@
                     ${type}: ${statusText}
                 </span>
             `;
+        }
+
+        // 升级实例
+        async function upgradeInstance(instanceId, targetVersion) {
+            showToast('提示', `準備將實例 ${instanceId} 升級到 v${targetVersion}`, 'info');
+            // TODO: 实际的升级逻辑
         }
 
         /* getMainDomain();
