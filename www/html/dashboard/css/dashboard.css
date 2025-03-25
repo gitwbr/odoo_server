@@ -536,23 +536,23 @@ body {
 }
 
 /* v2 升级按钮样式 */
-.upgrade-btn:nth-child(1) {
+.upgrade-buttons > div:nth-child(1) .upgrade-btn {
     background: transparent;
     color: #1890ff;
 }
 
-.upgrade-btn:nth-child(1):not(.disabled):hover {
+.upgrade-buttons > div:nth-child(1) .upgrade-btn:not(.disabled):hover {
     background: #1890ff;
     color: white;
 }
 
 /* v3 升级按钮样式 */
-.upgrade-btn:nth-child(2) {
+.upgrade-buttons > div:nth-child(2) .upgrade-btn {
     background: transparent;
     color: #fa8c16;
 }
 
-.upgrade-btn:nth-child(2):not(.disabled):hover {
+.upgrade-buttons > div:nth-child(2) .upgrade-btn:not(.disabled):hover {
     background: #fa8c16;
     color: white;
 }
@@ -581,6 +581,8 @@ body {
 [id^="version-"][data-version="3"] {
     color: #fa8c16; 
 }
+
+
 
 
 

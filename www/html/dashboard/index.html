@@ -175,14 +175,14 @@
                                     </button>
                                     <div class="upgrade-buttons">
                                         <div class="upgrade-btn-wrapper">
-                                        <button class="action-btn upgrade-btn ${instance.status === 1 && instance.version_id < 2 ? '' : 'disabled'}"
+                                        <button class="action-btn upgrade-btn upgrade-v2 ${instance.status === 1 && instance.version_id < 2 ? '' : 'disabled'}"
                                                 onclick="${instance.status === 1 && instance.version_id < 2 ? `upgradeInstance(${instance.id}, 2)` : ''}"
                                                 title="${instance.status !== 1 ? '實例未運行' : instance.version_id >= 2 ? '已是v2或更高版本' : '升級到v2版本'}">
                                             <i class="material-icons">upgrade</i>v2
                                         </button>
                                         </div>
                                         <div class="upgrade-btn-wrapper">
-                                        <button class="action-btn upgrade-btn ${instance.status === 1 && instance.version_id < 3 ? '' : 'disabled'}"
+                                        <button class="action-btn upgrade-btn upgrade-v3 ${instance.status === 1 && instance.version_id < 3 ? '' : 'disabled'}"
                                                 onclick="${instance.status === 1 && instance.version_id < 3 ? `upgradeInstance(${instance.id}, 3)` : ''}"
                                                 title="${instance.status !== 1 ? '實例未運行' : instance.version_id >= 3 ? '已是v3或更高版本' : '升級到v3版本'}">
                                             <i class="material-icons">upgrade</i>v3
@@ -358,7 +358,7 @@
             await getMainDomain();
             await loadAllInstances();
             // 每60秒刷新一次
-            setInterval(loadAllInstances, 10000);
+            setInterval(loadAllInstances, 100000);
         });
     </script>
 </body>
