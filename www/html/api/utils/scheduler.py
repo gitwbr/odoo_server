@@ -1,16 +1,61 @@
 import threading
 import time
 from datetime import datetime
+import subprocess
 from config import logger
 from models.instance import Instance
 from utils.database import get_db_connection
 
 def check_expired_instances():
     """检查过期实例的任务"""
-    logger.debug('开始检查过期实例...')
+    #logger.debug('开始检查过期实例...')
     current_time = datetime.now()
     
-    
+    try:
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                # 查找已过期的实例
+                cur.execute("""
+                    SELECT id, expires_at, status 
+                    FROM instances 
+                    WHERE expires_at < %s
+                """, (current_time,))
+                
+                expired_instances = cur.fetchall()
+                if expired_instances:
+                    for instance in expired_instances:
+                        instance_id = instance[0]
+                        expires_at = instance[1]
+                        status = instance[2]
+                        
+                        # 计算过期天数
+                        days_expired = (current_time - expires_at).days
+                        
+                        if days_expired >= 30:
+                            # 超过30天，删除实例
+                            try:
+                                instance = Instance.get_by_id(instance_id)
+                                instance.delete()
+                                logger.info(f'已删除过期超过30天的实例: {instance_id}')
+                            except Exception as e:
+                                logger.error(f'删除过期实例失败: {str(e)}')
+                        elif status != 3:
+                            # 未超过30天且状态不是已过期，更新状态
+                            try:
+                                # 停止容器
+                                web_container = f'client{instance_id}-web{instance_id}-1'
+                                db_container = f'client{instance_id}-db{instance_id}-1'
+                                subprocess.run(['docker', 'stop', web_container], check=True)
+                                subprocess.run(['docker', 'stop', db_container], check=True)
+                                
+                                # 更新状态
+                                cur.execute("UPDATE instances SET status = 3 WHERE id = %s", (instance_id,))
+                                logger.info(f'实例已过期并更新状态: {instance_id}')
+                            except Exception as e:
+                                logger.error(f'停止过期实例失败: {str(e)}')
+                    conn.commit()
+    except Exception as e:
+        logger.error(f'检查过期实例时出错: {str(e)}')
 
 class TaskScheduler:
     def __init__(self):

@@ -243,6 +243,16 @@ const messageNotification = {
         localStorage.setItem('knownMessages', JSON.stringify([...messages]));
     },
 
+    getStatusText(status) {
+        const statusTexts = {
+            'unread': '<span style="color: #ff4d4f">未讀</span>，請耐心等待',
+            'read': '<span style="color: #1890ff">已讀</span>，請耐心等待', 
+            'processing': '<span style="color: #722ed1">處理中</span>，請耐心等待',
+            'done': '<span style="color: #52c41a">已處理</span>'
+        };
+        return statusTexts[status] || status;
+    },
+
     async checkUpdates() {
         try {
             const response = await fetch('/api/message/list');
@@ -280,16 +290,6 @@ const messageNotification = {
         }
     },
 
-    getStatusText(status) {
-        const statusTexts = {
-            'unread': '<span style="color: #ff4d4f">未讀</span>，請耐心等待',
-            'read': '<span style="color: #1890ff">已讀</span>，請耐心等待', 
-            'processing': '<span style=">處理中color: #722ed1"</span>，請耐心等待',
-            'done': '<span style="color: #52c41a">已處理</span>'
-        };
-        return statusTexts[status] || status;
-    },
-
     start() {
         if (!this.pollingInterval) {
             this.checkUpdates();
@@ -312,6 +312,8 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // 启动消息通知
     messageNotification.start();
+
+    setTimeout(checkExpiredInstances, 1000);
 });
 
 // 页面可见性变化时控制轮询
@@ -376,4 +378,58 @@ window.requestUpgrade = async function() {
         console.error('申請提升權限失敗:', error);
         showToast('錯誤', '申請提升權限失敗，請稍後重試', 'error');
     }
-}; 
+};
+
+// 添加检查实例过期的函数
+async function checkExpiredInstances() {
+    try {
+        // 先获取用户信息
+        const userResponse = await fetch('/api/user/info');
+        const userData = await userResponse.json();
+        
+        // 如果是管理员（ID=1），不显示提示
+        if (userData.id === 1) {
+            return;
+        }
+
+        const response = await fetch('/api/instance/list');
+        const data = await response.json();
+        
+        if (data.instances && data.instances.length > 0) {
+            // 检查过期实例
+            const expiredInstance = data.instances.find(instance => instance.status === 3);
+            if (expiredInstance) {
+                // 计算销毁日期
+                const expiresAt = new Date(expiredInstance.expires_at);
+                const destroyDate = new Date(expiresAt.getTime() + 30 * 24 * 60 * 60 * 1000);
+                const dateStr = `${destroyDate.getFullYear()}年${destroyDate.getMonth() + 1}月${destroyDate.getDate()}日`;
+                
+                showToast(
+                    '实例已过期', 
+                    `您的实例已停止运行。系统将在 ${dateStr} 自动销毁此实例。如需继续使用，请及时聯繫管理員。`,
+                    'error',
+                    10000
+                );
+            }
+            
+            // 检查即将过期的实例
+            const runningInstance = data.instances.find(instance => instance.status === 1);
+            if (runningInstance) {
+                const expiresAt = new Date(runningInstance.expires_at);
+                const now = new Date();
+                const daysToExpire = Math.ceil((expiresAt - now) / (1000 * 60 * 60 * 24));
+                
+                if (daysToExpire <= 7 && daysToExpire > 0) {
+                    showToast(
+                        '实例即将过期', 
+                        `您的实例将在 ${daysToExpire} 天后过期。为避免服务中断，请及时聯繫管理員。`,
+                        'warning',
+                        10000
+                    );
+                }
+            }
+        }
+    } catch (error) {
+        console.error('检查实例状态失败:', error);
+    }
+}

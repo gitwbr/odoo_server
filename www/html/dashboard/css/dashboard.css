@@ -272,11 +272,15 @@ body {
 }
 
 .toast.success {
-    border-left: 4px solid #10b981;
+    border-left: 8px solid #10b981;
+}
+
+.toast.warning {
+    border-left: 8px solid #e9ef44;
 }
 
 .toast.error {
-    border-left: 4px solid #ef4444;
+    border-left: 8px solid #ef4444;
 }
 
 .toast-content {

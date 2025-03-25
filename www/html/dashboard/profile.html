@@ -129,7 +129,7 @@
     <div class="dashboard">
         <div class="main-content">
             <div class="profile-container">
-                <div class="profile-header">
+                <!-- <div class="profile-header">
                     <div class="profile-avatar">
                         <i class="material-icons">person</i>
                     </div>
@@ -137,7 +137,7 @@
                         <h1 id="profile-name">加載中...</h1>
                         <p id="profile-email">加載中...</p>
                     </div>
-                </div>
+                </div> -->
 
                 <div class="profile-section">
                     <h2>基本資料</h2>
@@ -212,8 +212,8 @@
                 
                 if (response.ok) {
                     originalData = data;
-                    document.getElementById('profile-name').textContent = data.username;
-                    document.getElementById('profile-email').textContent = data.email;
+                    /* document.getElementById('profile-name').textContent = data.username;
+                    document.getElementById('profile-email').textContent = data.email; */
                     document.getElementById('username').value = data.username;
                     document.getElementById('email').value = data.email;
                     document.getElementById('phone').value = data.phone;
