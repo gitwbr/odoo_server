@@ -5,6 +5,9 @@ import subprocess
 from config import logger
 from models.instance import Instance
 from utils.database import get_db_connection
+import os
+from pathlib import Path
+from utils.backup_db import backup_database
 
 def check_expired_instances():
     """检查过期实例的任务"""
@@ -57,6 +60,57 @@ def check_expired_instances():
     except Exception as e:
         logger.error(f'检查过期实例时出错: {str(e)}')
 
+def backup_instance_databases():
+    """备份所有实例数据库的任务"""
+    logger.info('开始执行数据库备份任务...')
+    try:
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT id FROM instances 
+                    WHERE status = 1
+                """)
+                
+                instances = cur.fetchall()
+                
+                for instance in instances:
+                    instance_id = instance[0]
+                    instance_dir = f'/home/odoo/odoo16/instances/client{instance_id}'
+                    backup_dir = os.path.join(instance_dir, 'backup')
+                    
+                    try:
+                        # 确保备份目录存在
+                        Path(backup_dir).mkdir(parents=True, exist_ok=True)
+                        
+                        # 获取现有备份文件
+                        existing_backups = []
+                        if os.path.exists(backup_dir):
+                            existing_backups = sorted([f for f in os.listdir(backup_dir) if f.endswith('.dump.gz')])
+                        
+                        # 如果超过3个备份，删除最旧的
+                        while len(existing_backups) >= 3:
+                            oldest_backup = os.path.join(backup_dir, existing_backups.pop(0))
+                            os.remove(oldest_backup)
+                        
+                        # 使用 backup_database 函数执行备份
+                        success = backup_database(
+                            instance_id=instance_id,
+                            db_name='default',
+                            backup_dir=backup_dir
+                        )
+                        
+                        if success:
+                            logger.info(f'实例 {instance_id} 数据库备份成功')
+                        else:
+                            logger.error(f'实例 {instance_id} 数据库备份失败')
+                            
+                    except Exception as e:
+                        logger.error(f'备份实例 {instance_id} 时出错: {str(e)}')
+                        continue
+                        
+    except Exception as e:
+        logger.error(f'执行数据库备份任务时出错: {str(e)}')
+
 class TaskScheduler:
     def __init__(self):
         self.tasks = {}
@@ -65,15 +119,24 @@ class TaskScheduler:
         self._lock = threading.Lock()
         self.initialized = False
     
-    def add_task(self, task_name, func, interval):
-        """添加定时任务"""
+    def add_task(self, task_name, func, interval, initial_delay=0):
+        """添加定时任务
+        
+        Args:
+            task_name: 任务名称
+            func: 要执行的函数
+            interval: 执行间隔（秒）
+            initial_delay: 首次执行的延迟时间（秒），0表示立即执行
+        """
         with self._lock:
             self.tasks[task_name] = {
                 'func': func,
                 'interval': interval,
-                'last_run': None
+                'last_run': None,
+                'initial_delay': initial_delay,
+                'start_time': datetime.now()
             }
-            logger.info(f'添加任务: {task_name}, 间隔: {interval}秒')
+            logger.info(f'添加任务: {task_name}, 间隔: {interval}秒, 初始延迟: {initial_delay}秒')
     
     def start(self):
         """启动调度器"""
@@ -100,6 +163,11 @@ class TaskScheduler:
             with self._lock:
                 for task_name, task in self.tasks.items():
                     try:
+                        # 检查初始延迟
+                        if task['last_run'] is None:
+                            if (current_time - task['start_time']).total_seconds() < task['initial_delay']:
+                                continue
+                        
                         if (task['last_run'] is None or 
                             (current_time - task['last_run']).total_seconds() >= task['interval']):
                             task['last_run'] = current_time
@@ -117,5 +185,7 @@ class TaskScheduler:
             
             time.sleep(1)
 
-# 创建全局调度器实例
-scheduler = TaskScheduler() 
+# 创建全局调度器实例并添加任务
+scheduler = TaskScheduler()
+# scheduler.add_task('check_expired', check_expired_instances, 3600)  # 每小时检查一次过期实例
+# scheduler.add_task('backup_databases', backup_instance_databases, 86400)  # 每24小时备份一次数据库 

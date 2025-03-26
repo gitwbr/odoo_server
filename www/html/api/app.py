@@ -27,7 +27,7 @@ from config import (
     SCHEDULER_CONFIG,
     logger
 )
-from utils.scheduler import scheduler, check_expired_instances
+from utils.scheduler import scheduler, check_expired_instances, backup_instance_databases
 
 def create_app():
     app = Flask(__name__)
@@ -64,11 +64,34 @@ def create_app():
     if SCHEDULER_CONFIG['ENABLED']:
         # 检查任务是否启用
         if SCHEDULER_CONFIG['TASKS']['check_expired_instances']['enabled']:
-            scheduler.add_task(
-                'check_expired_instances',
-                check_expired_instances,
-                SCHEDULER_CONFIG['TASKS']['check_expired_instances']['interval']
-            )
-            scheduler.start()
+            task_config = SCHEDULER_CONFIG['TASKS']['check_expired_instances']
+            task_args = {
+                'task_name': 'check_expired_instances',
+                'func': check_expired_instances,
+                'interval': task_config['interval']
+            }
+            
+            # 如果配置中有 initial_delay，则添加到参数中
+            if 'initial_delay' in task_config:
+                task_args['initial_delay'] = task_config['initial_delay']
+            
+            scheduler.add_task(**task_args)
+        
+        # 数据库备份任务
+        if SCHEDULER_CONFIG['TASKS']['backup_databases']['enabled']:
+            task_config = SCHEDULER_CONFIG['TASKS']['backup_databases']
+            task_args = {
+                'task_name': 'backup_databases',
+                'func': backup_instance_databases,
+                'interval': task_config['interval']
+            }
+            
+            # 如果配置中有 initial_delay，则添加到参数中
+            if 'initial_delay' in task_config:
+                task_args['initial_delay'] = task_config['initial_delay']
+            
+            scheduler.add_task(**task_args)
+        
+        scheduler.start()
     
     return app
