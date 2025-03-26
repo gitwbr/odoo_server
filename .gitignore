@@ -81,10 +81,11 @@ postgresql_manager/
 *.sql
 *.backup
 
-config.py  
+www/html/api/config.py  
 
 docker-compose.yml
 
 addons/
 instances/
 client*/
+backup/

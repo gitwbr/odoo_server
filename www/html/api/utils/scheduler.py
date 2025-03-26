@@ -2,12 +2,13 @@ import threading
 import time
 from datetime import datetime
 import subprocess
-from config import logger
+from config import logger, SCHEDULER_CONFIG
 from models.instance import Instance
 from utils.database import get_db_connection
 import os
 from pathlib import Path
 from utils.backup_db import backup_database
+from utils.backup_manager_db import backup_manager_database
 
 def check_expired_instances():
     """检查过期实例的任务"""
@@ -110,6 +111,37 @@ def backup_instance_databases():
                         
     except Exception as e:
         logger.error(f'执行数据库备份任务时出错: {str(e)}')
+
+def backup_manager_db():
+    """备份主数据库的任务"""
+    logger.info('开始执行主数据库备份任务...')
+    
+    try:
+        backup_dir = SCHEDULER_CONFIG['TASKS']['backup_manager_db']['backup_dir']
+        
+        # 确保备份目录存在
+        Path(backup_dir).mkdir(parents=True, exist_ok=True)
+        
+        # 获取现有备份文件
+        existing_backups = []
+        if os.path.exists(backup_dir):
+            existing_backups = sorted([f for f in os.listdir(backup_dir) if f.endswith('.dump.gz')])
+        
+        # 如果超过3个备份，删除最旧的
+        while len(existing_backups) >= 3:
+            oldest_backup = os.path.join(backup_dir, existing_backups.pop(0))
+            os.remove(oldest_backup)
+        
+        # 执行备份
+        success = backup_manager_database(backup_dir)
+        
+        if success:
+            logger.info('主数据库备份成功')
+        else:
+            logger.error('主数据库备份失败')
+            
+    except Exception as e:
+        logger.error(f'执行主数据库备份任务时出错: {str(e)}')
 
 class TaskScheduler:
     def __init__(self):

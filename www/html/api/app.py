@@ -27,7 +27,7 @@ from config import (
     SCHEDULER_CONFIG,
     logger
 )
-from utils.scheduler import scheduler, check_expired_instances, backup_instance_databases
+from utils.scheduler import scheduler, check_expired_instances, backup_instance_databases, backup_manager_db
 
 def create_app():
     app = Flask(__name__)
@@ -87,6 +87,20 @@ def create_app():
             }
             
             # 如果配置中有 initial_delay，则添加到参数中
+            if 'initial_delay' in task_config:
+                task_args['initial_delay'] = task_config['initial_delay']
+            
+            scheduler.add_task(**task_args)
+        
+        # 主数据库备份任务
+        if SCHEDULER_CONFIG['TASKS']['backup_manager_db']['enabled']:
+            task_config = SCHEDULER_CONFIG['TASKS']['backup_manager_db']
+            task_args = {
+                'task_name': 'backup_manager_db',
+                'func': backup_manager_db,
+                'interval': task_config['interval']
+            }
+            
             if 'initial_delay' in task_config:
                 task_args['initial_delay'] = task_config['initial_delay']
             

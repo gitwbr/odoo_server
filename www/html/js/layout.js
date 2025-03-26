@@ -63,7 +63,7 @@ async function updateUserStatus(status) {
                     statusEl.innerHTML = `
                         ${statusText}
                         <span style="margin-left: 8px; color: #fa8c16;">
-                            (高級版 v3)
+                            高級版 v3
                         </span>
                     `;
                 } else {

@@ -41,7 +41,8 @@
             <div class="table-container" style="margin-top: 24px;">
                 <table class="instance-table">
                     <thead>
-                        <tr>
+                        <tr>                            
+                            <th>操作</th>
                             <th>用戶ID</th>
                             <th>用戶名</th>
                             <th>實例名稱</th>
@@ -50,7 +51,6 @@
                             <th>版本</th>
                             <th>創建時間</th>
                             <th>到期時間</th>
-                            <th>操作</th>
                         </tr>
                     </thead>
                     <tbody id="instanceContainer">
@@ -141,20 +141,6 @@
                     
                     return `
                         <tr>
-                            <td>${instance.user_id}</td>
-                            <td>${instance.username}</td>
-                            <td>
-                                <a href="${mainDomain}:${instance.port}" 
-                                   target="_blank" 
-                                   class="instance-link">
-                                    client${instance.id}
-                                </a>
-                            </td>
-                            <td>${statusHtml}</td>
-                            <td>${instance.port}</td>
-                            <td id="version-${instance.id}" data-version="${instance.version_id}">v${instance.version_id}</td>
-                            <td>${new Date(instance.created_at).toLocaleString()}</td>
-                            <td>${new Date(instance.expires_at).toLocaleString()}</td>
                             <td>
                                 <div class="action-buttons">
                                     <button class="action-btn ${instance.status === 1 ? '' : 'disabled'}" 
@@ -191,6 +177,21 @@
                                     </div>
                                 </div>
                             </td>
+                            <td>${instance.user_id}</td>
+                            <td>${instance.username}</td>
+                            <td>
+                                <a href="${mainDomain}:${instance.port}" 
+                                   target="_blank" 
+                                   class="instance-link">
+                                    client${instance.id}
+                                </a>
+                            </td>
+                            <td>${statusHtml}</td>
+                            <td>${instance.port}</td>
+                            <td id="version-${instance.id}" data-version="${instance.version_id}">v${instance.version_id}</td>
+                            <td>${new Date(instance.created_at).toLocaleString()}</td>
+                            <td>${new Date(instance.expires_at).toLocaleString()}</td>
+                            
                         </tr>
                     `;
                 }).join('');
