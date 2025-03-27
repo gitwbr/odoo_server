@@ -79,7 +79,7 @@ postgresql_manager/
 
 # 数据库备份文件
 *.sql
-*.backup
+*.backup 
 
 www/html/api/config.py  
 
