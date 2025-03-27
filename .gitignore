@@ -83,8 +83,6 @@ postgresql_manager/
 
 www/html/api/config.py  
 
-docker-compose.yml
-
 addons/
 instances/
 client*/
