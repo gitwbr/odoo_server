@@ -565,10 +565,25 @@ networks:
                     
                     instances = []
                     for row in cur.fetchall():
+                        instance_id = row[0]
+                        domain = row[1]
+                        port = row[2]
+                        
+                        # 如果 instances 表中的 domain 为空，则从 port_allocations 表获取
+                        if not domain:
+                            cur.execute("""
+                                SELECT domain 
+                                FROM port_allocations 
+                                WHERE port = %s
+                            """, (port,))
+                            pa_result = cur.fetchone()
+                            if pa_result and pa_result[0]:
+                                domain = pa_result[0]  # 只获取 domain 字段的值，不构造完整域名
+                        
                         instances.append({
-                            'id': row[0],
-                            'domain': row[1],
-                            'port': row[2],
+                            'id': instance_id,
+                            'domain': domain,  # 可能是从 port_allocations 获取的
+                            'port': port,
                             'status': row[3],
                             'version_id': row[4],
                             'created_at': row[5].isoformat() if row[5] else None,

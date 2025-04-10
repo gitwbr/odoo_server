@@ -20,6 +20,20 @@ class Admin:
                     instances = []
                     for row in cur.fetchall():
                         instance_id = row[0]
+                        domain = row[2]  # 从instances表获取domain
+                        port = row[3]    # 获取端口
+                        
+                        # 如果instances表中domain为空，尝试从port_allocations获取
+                        if not domain:
+                            cur.execute("""
+                                SELECT domain 
+                                FROM port_allocations 
+                                WHERE port = %s
+                            """, (port,))
+                            pa_result = cur.fetchone()
+                            if pa_result and pa_result[0]:
+                                domain = pa_result[0]  # 只获取domain字段的值
+                        
                         # 获取容器状态
                         containers_status = Admin.get_containers_status(instance_id)
                         
@@ -27,8 +41,8 @@ class Admin:
                             'id': instance_id,
                             'user_id': row[1],
                             'username': row[-1],
-                            'domain': row[2],
-                            'port': row[3],
+                            'domain': domain,  # 可能已从port_allocations更新
+                            'port': port,
                             'created_at': row[4].isoformat() if row[4] else None,
                             'expires_at': row[5].isoformat() if row[5] else None,
                             'status': row[6],

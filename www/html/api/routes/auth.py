@@ -158,6 +158,9 @@ def register():
 @auth.route('/google/login')
 def google_login():
     try:
+        # 打印当前使用的重定向URI，用于调试
+        logger.debug(f"重定向URI配置: {current_app.config['GOOGLE_CONFIG']['redirect_uri']}")
+        
         flow = Flow.from_client_config(
             {
                 "web": {
@@ -172,10 +175,16 @@ def google_login():
         
         flow.redirect_uri = current_app.config['GOOGLE_CONFIG']['redirect_uri']
         
+        # 打印最终使用的重定向URI，确认是否一致
+        logger.debug(f"流程中使用的重定向URI: {flow.redirect_uri}")
+        
         authorization_url, state = flow.authorization_url(
             access_type='offline',
             include_granted_scopes='true'
         )
+        
+        # 打印生成的授权URL，便于检查其中的redirect_uri参数
+        logger.debug(f"授权URL: {authorization_url}")
         
         session['state'] = state
         
@@ -192,7 +201,7 @@ def google_callback():
         if not state or state != session.get('state'):
             return f'''
                 <script>
-                window.location.href = "{DOMAIN}/auth/index.html?error=invalid_state";
+                window.location.href = "https://{DOMAIN}/auth/index.html?error=invalid_state";
                 </script>
             '''
             
@@ -265,7 +274,7 @@ def google_callback():
             # 修改重定向 URL
             return f'''
                 <script>
-                window.location.href = "{DOMAIN}/dashboard/instance.html";
+                window.location.href = "https://{DOMAIN}/dashboard/instance.html";
                 </script>
             '''
             
@@ -273,7 +282,7 @@ def google_callback():
             logger.error(f'Token 請求失敗: {str(e)}')
             return f'''
                 <script>
-                window.location.href = "{DOMAIN}/auth/index.html?error=token_failed";
+                window.location.href = "https://{DOMAIN}/auth/index.html?error=token_failed";
                 </script>
             '''
             
@@ -281,7 +290,7 @@ def google_callback():
         logger.error(f'Google回調處理失敗: {str(e)}')
         return f'''
             <script>
-            window.location.href = "{DOMAIN}/auth/index.html?error=callback_failed";
+            window.location.href = "https://{DOMAIN}/auth/index.html?error=callback_failed";
             </script>
         ''' 
 
