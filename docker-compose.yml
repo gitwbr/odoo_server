@@ -1,6 +1,23 @@
 version: '3'
 
 services:
+  # 添加ohoo-website服务
+  ohoo-website:
+    build: 
+      context: ./www/html/ohoo-website
+    container_name: ohoo-website
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+    volumes:
+      - ./www/html/ohoo-website:/app
+      - /app/node_modules
+      - /app/.next
+    networks:
+      - odoo_net
+    restart: unless-stopped
+
   pgadmin:
     image: dpage/pgadmin4
     environment:

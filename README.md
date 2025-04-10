@@ -971,3 +971,8 @@ odoo ALL=(ALL) NOPASSWD: /bin/chmod -R * /home/odoo/odoo16/instances/*, /bin/cho
 # 删除gitbub已经管理内容
 # 从 Git 缓存中删除 client* 文件夹，但保留本地文件
 git rm -r --cached client*/
+
+
+# 官网
+cd /home/odoo/odoo16
+docker-compose up -d --build ohoo-website
