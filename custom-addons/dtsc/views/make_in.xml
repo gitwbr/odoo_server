@@ -107,6 +107,7 @@
 								<button id="scan_qr_button_lb" name="scan_qr_button_lb" string="冷裱" style="margin-right:20px" type="object" class="btn-primary" attrs="{'invisible': [('scan_type', '=', 'gun')]}" />
 								<button id="scan_qr_button_gb" name="scan_qr_button_gb" string="過板" style="margin-right:20px" type="object" class="btn-primary" attrs="{'invisible': [('scan_type', '=', 'gun')]}" />
 								<button id="scan_qr_button_cq" name="scan_qr_button_cq" string="裁切" style="margin-right:20px" type="object" class="btn-primary" attrs="{'invisible': [('scan_type', '=', 'gun')]}" />
+								<button id="scan_qr_button_hz" name="scan_qr_button_hz" string="後製" style="margin-right:20px" type="object" class="btn-primary" attrs="{'invisible': [('scan_type', '=', 'gun')]}" />
 								<button id="scan_qr_button_pg" name="scan_qr_button_pg" string="品管" style="margin-right:20px" type="object" class="btn-primary" attrs="{'invisible': [('scan_type', '=', 'gun')]}" />
 								<button id="scan_qr_button_dch" name="scan_qr_button_dch" string="完成包裝" style="margin-right:20px" type="object" class="btn-primary" attrs="{'invisible': [('scan_type', '=', 'gun')]}" />
 								<button id="scan_qr_button_ych" name="scan_qr_button_ych" string="已出貨" style="margin-right:20px" type="object" class="btn-primary" attrs="{'invisible': [('scan_type', '=', 'gun')]}" />
@@ -140,6 +141,7 @@
 									<field name="lengbiao_sign" readonly="1" />
 									<field name="guoban_sign" readonly="1" />
 									<field name="caiqie_sign" readonly="1" />
+									<field name="houzhi_sign" readonly="1" />
 									<field name="pinguan_sign" readonly="1" />
 									<field name="daichuhuo_sign" readonly="1" />
 									<field name="yichuhuo_sign"  readonly="1"/>
@@ -283,26 +285,37 @@
 		<record id="scan_mode_lb" model="dtsc.scanmode">
 			<field name="name">冷裱</field>
 			<field name="code">lb</field>
+			<field name="sequence">1</field>
 		</record>
 		<record id="scan_mode_gb" model="dtsc.scanmode">
 			<field name="name">過板</field>
 			<field name="code">gb</field>
+			<field name="sequence">2</field>
 		</record>
 		<record id="scan_mode_cq" model="dtsc.scanmode">
 			<field name="name">裁切</field>
 			<field name="code">cq</field>
+			<field name="sequence">3</field>
+		</record>
+		<record id="scan_mode_hz" model="dtsc.scanmode">
+			<field name="name">後製</field>
+			<field name="code">hz</field>
+			<field name="sequence">4</field>
 		</record>
 		<record id="scan_mode_pg" model="dtsc.scanmode">
 			<field name="name">品管</field>
 			<field name="code">pg</field>
+			<field name="sequence">5</field>
 		</record>
 		<record id="scan_mode_dch" model="dtsc.scanmode">
 			<field name="name">完成包裝</field>
 			<field name="code">dch</field>
+			<field name="sequence">6</field>
 		</record>
 		<record id="scan_mode_ych" model="dtsc.scanmode">
 			<field name="name">已出貨</field>
 			<field name="code">ych</field>
+			<field name="sequence">7</field>
 		</record>
 		
     </data>

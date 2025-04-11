@@ -1,4 +1,16 @@
 <odoo>
+	<record id="action_printexcel_pettymanager_excel" model="ir.actions.server">
+		<field name="name">零用金轉Excel</field>
+		<field name="model_id" ref="model_dtsc_pettymanager"/>
+		<field name="state">code</field>
+		<field name="code">
+			action = env['dtsc.pettymanager'].with_context(env.context).action_printexcel_pettymanager()
+		</field>
+		<field name="binding_model_id" ref="model_dtsc_pettymanager"/>
+		<field name="binding_type">action</field>
+		<field name="binding_view_types">list</field>
+	</record>
+
 	<record id="view_petty_manager_tree" model="ir.ui.view">
 		<field name="name">petty.manager.tree</field>
 		<field name="model">dtsc.pettymanager</field>
@@ -31,7 +43,7 @@
 						<page string="零用金明细">
 					
 							<field name="pettycash_ids" >
-								<tree editable="bottom" default_order="date_c asc,id asc" >
+								<tree editable="bottom" default_order="id asc" limit="100" >
 									<field name="date_c"/>
 									<field name="project"/>
 									<field name="in_cash"/>

@@ -73,16 +73,11 @@
 		<field name="name">dtsc.workqrcode.report.tree</field>
 		<field name="model">dtsc.workqrcode</field>
 		<field name="arch" type="xml">
-			<tree>	 			
+			<tree editable="bottom">	 			
 				<field name="name"  readonly="1"  />
-				<!-- <field name="gonghao"  readonly="1"  /> -->
-				<!-- <field name="is_iq"  readonly="1"  /> -->
-				<!-- <field name="is_cx"  readonly="1"  /> -->
-				<!-- <field name="is_sc"  readonly="1"  /> -->
-				<!-- <field name="is_hz"  readonly="1"  /> -->
-				<!-- <field name="is_pg"  readonly="1"  /> -->
-				<!-- <field name="is_cz"  readonly="1"  /> -->
 				<field name="bar_image"  widget="image" readonly="1"  />
+				<field name="is_zg" />
+				<field name="is_qh" />
 				<field name="line_user_id" />
 
 			</tree>
@@ -141,7 +136,7 @@
 								<t t-esc="line.product_width" />x<t t-esc="line.product_height" />
 							</td>
 							<!-- 定义状态分组 -->
-							<t t-set="groups" t-value="{'生產中': ['outman', 'lengbiao_sign', 'guoban_sign', 'caiqie_sign'], '待出貨': ['pinguan_sign','daichuhuo_sign'], '已出貨': ['yichuhuo_sign']}"/>
+							<t t-set="groups" t-value="{'生產中': ['outman', 'lengbiao_sign', 'guoban_sign', 'caiqie_sign', 'houzhi_sign'], '待出貨': ['pinguan_sign','daichuhuo_sign'], '已出貨': ['yichuhuo_sign']}"/>
 							<t t-set="last_active_group" t-value="None"/>
 
 							<!-- 查找最后一个有值的状态分组 -->

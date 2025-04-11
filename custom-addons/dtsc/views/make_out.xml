@@ -71,7 +71,7 @@
 							<field name="is_recheck" invisible="1"/>
 							<field name="source_name" attrs="{'invisible': [('source_name', '=', False)]}" readonly="1"/>
 							<field name="scan_type" attrs="{'invisible': [('is_open_makeout_qrcode', '=', False)]}"/>
-							<field name="scan_modes" options="{'no_create': True, 'no_create_edit': True}" widget="many2many_tags" domain="[('name','in',['品管','完成包裝','已出貨'])]" attrs="{'invisible': ['|',('is_open_makeout_qrcode', '=', False),('scan_type', '!=', 'gun')]}"/>
+							<field name="scan_modes" options="{'no_create': True, 'no_create_edit': True}" widget="many2many_tags" domain="[('name','in',['後製','品管','完成包裝','已出貨'])]" attrs="{'invisible': ['|',('is_open_makeout_qrcode', '=', False),('scan_type', '!=', 'gun')]}"/>
 							<field name="scan_input" attrs="{'invisible': ['|',('is_open_makeout_qrcode', '=', False),('scan_type', '!=', 'gun')]}"/>
 						</group>
 						<group colspan="4">
@@ -105,12 +105,13 @@
 							<field name="is_open_makeout_qrcode" invisible="1"/>
 							<div style="display: flex; gap: 6px; align-items: center; margin-bottom: 5px;"
 								attrs="{'invisible': [('is_open_makeout_qrcode', '=', False)]}">
-								<button string="全選" type="object" name="set_boolean_field_true"  class="btn-primary" help="全選" groups="dtsc.group_dtsc_mg"/>
-								<button string="取消全選" type="object" name="set_boolean_field_false" class="btn-primary" style="margin-right:20px" help="取消全選" groups="dtsc.group_dtsc_mg"/>		
+								<button string="全選" type="object" name="set_boolean_field_true"  class="btn-primary" help="全選" />
+								<button string="取消全選" type="object" name="set_boolean_field_false" class="btn-primary" style="margin-right:20px" help="取消全選" />		
 								<button name="button_confirm_action" confirm="是否確認要將此員工簽名？" type="object" string="確認簽名" class="oe_highlight" attrs="{'invisible': ['|',('is_open_makeout_qrcode', '=', False),('scan_type', '!=', 'gun')]}"/>
 						
 								<!-- 冷裱-過板-裁切-品管-完成包裝-已出貨 -->
 
+								<button id="scan_qr_button_hz" name="scan_qr_button_hz" string="後製" style="margin-right:20px" type="object" class="btn-primary" attrs="{'invisible': [('scan_type', '=', 'gun')]}" />
 								<button id="scan_qr_button_pg" name="scan_qr_button_pg" string="品管" style="margin-right:20px" type="object" class="btn-primary" attrs="{'invisible': [('scan_type', '=', 'gun')]}"  />
 								<button id="scan_qr_button_dch" name="scan_qr_button_dch" string="完成包裝" style="margin-right:20px" type="object" class="btn-primary" attrs="{'invisible': [('scan_type', '=', 'gun')]}"  />
 								<button id="scan_qr_button_ych" name="scan_qr_button_ych" string="已出貨" style="margin-right:20px" type="object" class="btn-primary" attrs="{'invisible': [('scan_type', '=', 'gun')]}"  />
@@ -139,6 +140,7 @@
 									<field name="sequence" readonly="1"/>
 									<field name="file_name" readonly="1"/>
 									<field name="production_size" readonly="1"/>	
+									<field name="houzhi_sign" readonly="1" />
 									<field name="pinguan_sign"  readonly="1"/>
 									<field name="daichuhuo_sign"  readonly="1"/>
 									<field name="yichuhuo_sign"  readonly="1"/>

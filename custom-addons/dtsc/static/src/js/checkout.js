@@ -44,6 +44,7 @@ odoo.define('dtsc.checkout', function (require) {
 			this.customer_class_id = 0; 
 			this.custom_init_name = ''; 
 			this.nop = false; 
+			this.isSubmitting = false; // 添加订单提交状态标志位
 		},
         start: function () {
 			this.conversion_formula="";
@@ -352,7 +353,7 @@ odoo.define('dtsc.checkout', function (require) {
                     });
 
                     debugLog("vals:",vals);
-                    rpc.query({
+                    return rpc.query({
                         model: 'dtsc.checkout',
                         method: 'create',
                         args: [vals],
@@ -364,6 +365,7 @@ odoo.define('dtsc.checkout', function (require) {
                     })
                     .catch(function(error){
                         console.error("Error:", error);
+                        throw error; // 向上传递错误
                     });
                 } else {
                     console.error("One or more files failed to upload.");
@@ -1393,9 +1395,30 @@ odoo.define('dtsc.checkout', function (require) {
 
 			// 确认订购按钮事件
 			$(document).off('click', '#ModelOrderLine .btn_checkout').on('click', '#ModelOrderLine .btn_checkout', function() {
+				if (self.isSubmitting) {
+					return; // 如果正在提交中，直接返回
+				}
+				
+				// 禁用按钮并改变文字
+				var $submitBtn = $(this);
+				$submitBtn.prop('disabled', true).text('訂單提交中...');
+				
+				// 设置提交状态
+				self.isSubmitting = true;
+				
 				// 这里可以添加您的确认订购逻辑
 				$('#ModelOrderLine').modal('hide');
-				self.prepareCheckoutData();
+				self.prepareCheckoutData().then(() => {
+					// 提交完成后重置状态
+					self.isSubmitting = false;
+					$submitBtn.prop('disabled', false).text('確認訂購');
+				}).catch(error => {
+					// 发生错误时也要重置状态
+					console.error('訂單提交失敗:', error);
+					self.isSubmitting = false;
+					$submitBtn.prop('disabled', false).text('確認訂購');
+					alert('訂單提交失敗，請稍後重試');
+				});
 			});
 			
 

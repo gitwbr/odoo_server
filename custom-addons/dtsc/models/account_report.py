@@ -487,7 +487,7 @@ class AccountReport(models.AbstractModel):
                 )
                 data["company_details"].append(company_detail)
             else:
-                if select_company not in ["not_all"]:
+                if select_company not in ["not_all","not_all_zero"]:
                     company_id_list = self.env['res.partner'].search([('customer_rank', '>', 0)])
                     company_ids = company_id_list.mapped("id")
                 for company_id in company_ids:  # 外层循环处理每个 company_id
@@ -633,7 +633,7 @@ class AccountReport(models.AbstractModel):
                 company_detail["total_price"] = total_price
                 data["company_details"].append(company_detail)
             else:
-                if select_company not in ["not_all"]:
+                if select_company not in ["not_all","not_all_zero"]:
                     company_id_list = self.env['res.partner'].search([('supplier_rank', '>', 0)])
                     company_ids = company_id_list.mapped("id")
                     # print(company_ids)

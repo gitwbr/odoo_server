@@ -975,4 +975,6 @@ git rm -r --cached client*/
 
 # 官网
 cd /home/odoo/odoo16
-docker-compose up -d --build ohoo-website
+# docker-compose up -d --build ohoo-website
+docker-compose build ohoo-website
+docker-compose restart ohoo-website

@@ -11,7 +11,11 @@ import re
 # LINE_CHANNEL_SECRET = "ae33548b60e9b0bffb982c3a637885a5"
 # LINE_ACCESS_TOKEN = "RzpIwA5Pl4MUys7quVI8WSXr5BurNvmD+MrYgm8DJiqTEJwwkd8Y7QNJxuG3WwLoA6CrXYL8EbJMicicCS8j3lUvd8v4gmBF3QBx01ptV1LrVO54lijV5p8PSAdCDD8WQHb2iOy85ULe8b4S5lc/fQdB04t89/1O/w1cDnyilFU="
 
+import logging
+_logger = logging.getLogger(__name__)
 class LineBotController(http.Controller):
+
+
     @http.route('/incheck', auth='public', type='json', methods=['POST'])
     def receive_check_in(self):
         data = json.loads(request.httprequest.data.decode('utf-8'))
@@ -94,6 +98,25 @@ class LineBotController(http.Controller):
                     else:
                         reply_message = "請按格式輸入 綁定+員工姓名進行綁定！"
                     self.reply_to_line(user_id, reply_message)
+            elif event['type'] == 'postback':
+                _logger.info("in postback")
+                _logger.info(event)
+                user_id = event['source']['userId']
+                data_string = event['postback']['data']  # 例如：action=sign&order_id=123
+                params = dict(p.split('=') for p in data_string.split('&'))
+
+                if params.get("action") == "sign" and params.get("order_id"):
+                    order_id = int(params["order_id"])
+                    order = request.env["purchase.order"].sudo().browse(order_id)
+
+                    if order.exists():
+                        order.write({'is_sign': 'yes'})
+                        self.reply_to_line(user_id, f"單號 {order.name} 已成功簽核！")
+                        user_line_ids = request.env["dtsc.workqrcode"].search([("is_zg", "=", True)])
+                        for record in user_line_ids:
+                            self.reply_to_line(record.line_user_id, f"單號 {order.name} 已成功簽核！")
+                    else:
+                        self.reply_to_line(user_id, "找不到此單據，簽核失敗。")
 
         return json.dumps({"status": "ok"})
 

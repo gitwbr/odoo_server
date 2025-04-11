@@ -33,6 +33,7 @@ class WorkTime(models.Model):
         ('lb', '冷裱'),
         ('gb', '過板'),
         ('cq', '裁切'),
+        ('hz', '後製'),
         ('pg', '品管'),
         ('dch', '完成包裝'),
         ('ych', '已出貨'),
@@ -81,6 +82,10 @@ class WorkerQRcode(models.Model):
     bar_image = fields.Binary("QRcode", compute='_generate_qrcode_image1')
     bar_image_code = fields.Char("qrcode code", compute='_generate_bar_image_code',store=True)
     line_user_id = fields.Char("Line ID")
+    
+    is_zg = fields.Boolean("主管")
+    is_qh = fields.Boolean("簽核")
+    
     
     @api.depends("name")
     def _generate_bar_image_code(self):
@@ -144,6 +149,7 @@ class CheckOut(models.Model):
     lengbiao_sign = fields.Char("冷裱")
     guoban_sign = fields.Char("過板")
     caiqie_sign = fields.Char("裁切")
+    houzhi_sign = fields.Char("後製")
     pinguan_sign = fields.Char("品管")
     daichuhuo_sign = fields.Char("完成包裝")
     yichuhuo_sign = fields.Char("已出貨")
@@ -152,6 +158,7 @@ class CheckOut(models.Model):
     lengbiao_count = fields.Float("冷裱",compute="_compute_count",store=True)
     guoban_count = fields.Float("過板",compute="_compute_count",store=True)
     caiqie_count = fields.Float("裁切",compute="_compute_count",store=True)
+    houzhi_count = fields.Float("後製",compute="_compute_count",store=True)
     pinguan_count = fields.Float("品管",compute="_compute_count",store=True)
     daichuhuo_count = fields.Float("完成包裝",compute="_compute_count",store=True)
     yichuhuo_count = fields.Float("已出貨",compute="_compute_count",store=True)
@@ -201,6 +208,7 @@ class CheckOut(models.Model):
             record.lengbiao_count =  record.total_units if record.lengbiao_sign else 0
             record.guoban_count =  record.total_units if record.guoban_sign else 0
             record.caiqie_count =  record.total_units if record.caiqie_sign else 0
+            record.houzhi_count =  record.total_units if record.houzhi_sign else 0
             record.pinguan_count =  record.total_units if record.pinguan_sign else 0
             record.yichuhuo_count =  record.total_units if record.yichuhuo_sign else 0
             record.daichuhuo_count =  record.total_units - record.yichuhuo_count
@@ -226,6 +234,7 @@ class MakeInLine(models.Model):
     lengbiao_sign = fields.Char("冷裱")
     guoban_sign = fields.Char("過板")
     caiqie_sign = fields.Char("裁切")
+    houzhi_sign = fields.Char("後製")
     pinguan_sign = fields.Char("品管")
     daichuhuo_sign = fields.Char("完成包裝")
     yichuhuo_sign = fields.Char("已出貨")
@@ -358,6 +367,31 @@ class MakeInLine(models.Model):
                     'end_time': fields.Datetime.now(),  # 扫码时的开始时间
                 })
                 
+    @api.onchange("houzhi_sign")
+    def _onchange_houzhi_sign(self):
+        for record in self:
+            record.checkout_line_id.write({"houzhi_sign":record.houzhi_sign}) 
+            if not record.houzhi_sign:
+                worktimeObjs = self.env['dtsc.worktime'].sudo().search([("checkoutline_id", "=", record.checkout_line_id.id),('work_type', '='  ,"hz")])
+                if worktimeObjs:
+                    worktimeObjs.unlink()
+                    record.houzhi_sign = ""
+            else:
+                split_values = record.houzhi_sign.split(',')
+                last_name = split_values[-1]    
+                self.env['dtsc.worktime'].sudo().create({
+                    'name': last_name,
+                    'checkoutline_id': record.checkout_line_id.id,
+                    'checkout_id': record.checkout_line_id.checkout_product_id.id,
+                    'work_type': 'hz',  # 冷裱
+                    'in_out_type' : 'wn',
+                    'start_time': fields.Datetime.now(),  # 扫码时的开始时间
+                })
+                worktimeObjs = self.env['dtsc.worktime'].sudo().search([("checkoutline_id", "=", record.checkout_line_id.id),('end_time','=',False),('work_type', '!='  ,"hz")])
+                worktimeObjs.write({
+                    'end_time': fields.Datetime.now(),  # 扫码时的开始时间
+                })
+                
     @api.onchange("pinguan_sign")
     def _onchange_pinguan_sign(self):
         for record in self:
@@ -442,6 +476,7 @@ class MakeOutLine(models.Model):
     # lengbiao_sign = fields.Char("冷裱")
     # guoban_sign = fields.Char("過板")
     # caiqie_sign = fields.Char("裁切")
+    houzhi_sign = fields.Char("後製")
     pinguan_sign = fields.Char("品管")
     daichuhuo_sign = fields.Char("完成包裝")
     yichuhuo_sign = fields.Char("已出貨")
@@ -466,6 +501,31 @@ class MakeOutLine(models.Model):
                 bar_image = base64.b64encode(buffered.getvalue()).decode("utf-8")
                 # print("Generated bar_image (type=%s): %s", type(bar_image), bar_image)
                 record.bar_image = bar_image
+                
+    @api.onchange("houzhi_sign")
+    def _onchange_houzhi_sign(self):
+        for record in self:
+            record.checkout_line_id.houzhi_sign = record.houzhi_sign
+            if not record.houzhi_sign:
+                worktimeObjs = self.env['dtsc.worktime'].sudo().search([("checkoutline_id", "=", record.checkout_line_id.id),('work_type', '='  ,"hz")])
+                if worktimeObjs:
+                    worktimeObjs.unlink()
+                    record.houzhi_sign = ""
+            else:
+                split_values = record.houzhi_sign.split(',')
+                last_name = split_values[-1]    
+                self.env['dtsc.worktime'].sudo().create({
+                    'name': last_name,
+                    'checkoutline_id': record.checkout_line_id.id,
+                    'checkout_id': record.checkout_line_id.checkout_product_id.id,
+                    'work_type': 'hz',  # 冷裱
+                    'in_out_type' : 'ww',
+                    'start_time': fields.Datetime.now(),  # 扫码时的开始时间
+                })
+                worktimeObjs = self.env['dtsc.worktime'].sudo().search([("checkoutline_id", "=", record.checkout_line_id.id),('end_time','=',False),('work_type', '!='  ,"hz")])
+                worktimeObjs.write({
+                    'end_time': fields.Datetime.now(),  # 扫码时的开始时间
+                })   
                 
     @api.onchange("pinguan_sign")
     def _onchange_pinguan_sign(self):
@@ -560,6 +620,8 @@ class MakeIn(models.Model):
         pass
     def scan_qr_button_cq(self):
         pass
+    def scan_qr_button_hz(self):
+        pass
     def scan_qr_button_pg(self):
         pass
     def scan_qr_button_dch(self):
@@ -599,6 +661,8 @@ class MakeIn(models.Model):
                         field_name = "guoban_sign"
                     elif qr_code[1] == 'cq':
                         field_name = "caiqie_sign"
+                    elif qr_code[1] == 'hz':
+                        field_name = "houzhi_sign"
                     elif qr_code[1] == 'pg':
                         field_name = "pinguan_sign"
                     elif qr_code[1] == 'dch':
@@ -644,6 +708,8 @@ class MakeOut(models.Model):
         pass
     def scan_qr_button_cq(self):
         pass
+    def scan_qr_button_hz(self):
+        pass
     def scan_qr_button_pg(self):
         pass
     def scan_qr_button_dch(self):
@@ -681,6 +747,8 @@ class MakeOut(models.Model):
                         field_name = "guoban_sign"
                     elif qr_code[1] == 'cq':
                         field_name = "caiqie_sign"
+                    elif qr_code[1] == 'hz':
+                        field_name = "houzhi_sign"
                     elif qr_code[1] == 'pg':
                         field_name = "pinguan_sign"
                     elif qr_code[1] == 'dch':

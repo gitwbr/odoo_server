@@ -18,6 +18,24 @@ _logger = logging.getLogger(__name__)
 class Checkout(http.Controller):
     
     
+    @http.route('/stockcolor', type='http', auth='public', csrf=False)
+    def stock_color(self, **kwargs):
+        # _logger.info(f"==========={kwargs.get('name')}======")
+        name = kwargs.get('name')
+        product_template_obj = request.env['product.template'].search([("name" ,"=",name)],limit=1)
+        is_color = True
+        if product_template_obj:
+            product_product_obj = request.env['product.product'].search([("product_tmpl_id" ,"=", product_template_obj.id)],limit=1)
+            internal_locations = request.env['stock.location'].search([('usage', '=', 'internal')])
+            internal_location_ids = internal_locations.ids
+            stock_quant_objs = request.env['stock.quant'].search([("product_id" ,"=",product_product_obj.id),('location_id', 'in', internal_locations.ids)])
+            
+            for record in stock_quant_objs:
+                if not record.inventory_quantity:
+                    is_color = False
+                    break
+        return json.dumps({"is_color": is_color})
+    
     @http.route('/download_excel_custom', type='http', auth="user")
     def download_excel_custom(self, **kw):
         file_url = 'http://34.81.141.63/download/客戶-匯入模板.xlsx'

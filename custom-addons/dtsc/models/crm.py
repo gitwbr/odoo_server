@@ -9,6 +9,7 @@ _logger = logging.getLogger(__name__)
 from datetime import datetime, timedelta, date
 from odoo.http import request
 from odoo.exceptions import UserError
+import os
 class CrmUserComment(models.Model):
     _name = "dtsc.crmusercomment"
     _order = "sequence"
@@ -97,9 +98,11 @@ class CheckoutInherit(models.Model):
     ], ondelete={'waiting_confirmation': 'set default'})
     
     
+    is_show_price = fields.Boolean(string="價格顯示",default=True)
     is_new_partner = fields.Boolean("新客戶")
     crm_date = fields.Date("報價日期")
     new_partner = fields.Char("新客戶名")
+    new_init = fields.Char("新簡稱")
     new_street = fields.Char("新客戶地址")
     new_vat = fields.Char("新客戶統編")
     new_email = fields.Char("新客戶郵箱")
@@ -189,6 +192,8 @@ class CheckoutInherit(models.Model):
                     'property_payment_term_id' : record.new_property_payment_term_id,
                     'custom_pay_mode':record.new_custom_pay_mode,
                     'is_customer' : True,
+                    'sell_user' : self.env.user.id,
+                    'custom_init_name' : record.new_init,
                 }   
                 
                 new_partner = self.env['res.partner'].create(partner_vals)
@@ -257,15 +262,32 @@ class CheckoutInherit(models.Model):
         workbook = xlsxwriter.Workbook(output, {'in_memory': True})
         sheet = workbook.add_worksheet('報價單')
 
-        border_format = workbook.add_format({'border': 1, 'align': 'center', 'valign': 'vcenter'})
-        bold_format = workbook.add_format({'bold': True, 'align': 'center', 'valign': 'vcenter'})
-        merge_format = workbook.add_format({'align': 'center', 'valign': 'vcenter', 'bold': True, 'border': 1})
+        border_format = workbook.add_format({'font_size': 9,'border': 1, 'align': 'center', 'valign': 'vcenter'})
+        bold_format = workbook.add_format({'font_size': 9,'text_wrap': True,'align': 'center', 'valign': 'vcenter', 'border': 1})
+        merge_format = workbook.add_format({'font_size': 9,'align': 'center', 'valign': 'vcenter', 'bold': True, 'border': 1})
         
         for row in range(100):  # 让整个表格单元格稍大
             sheet.set_row(row, 28)  # 行高 30
-        for col in range(10):  # 列宽
-            sheet.set_column(col, col, 12)  # 列宽 25
         
+        sheet.set_column(0, 0, 8)
+        sheet.set_column(1, 1, 8)
+        sheet.set_column(2, 2, 8)
+        sheet.set_column(3, 3, 8)
+        sheet.set_column(4, 4, 8)
+        sheet.set_column(5, 5, 8)
+        sheet.set_column(6, 6, 8)
+        sheet.set_column(7, 7, 8)
+        sheet.set_column(8, 8, 8)
+        sheet.set_column(9, 9, 8)
+        sheet.set_column(9, 9, 8)
+        sheet.set_column(10, 10, 6)
+        sheet.set_column(11, 11, 4)
+        sheet.set_column(12, 12, 4)
+        sheet.set_column(13, 13, 4)
+       
+        sheet.set_paper(9)
+        sheet.fit_to_pages(1, 0)
+        sheet.set_margins(left=0.2, right=0.2, top=0.3, bottom=0.3)
         # 1. **合并前 5 列的前 2 行**
         sheet.merge_range(0, 0, 1, 4, company_id.name if company_id else "公司名稱", merge_format)
 
@@ -291,8 +313,8 @@ class CheckoutInherit(models.Model):
         sheet.merge_range(0, 5, 0, 8, "報價單", merge_format)
         sheet.merge_range(0, 9, 0, 13, company_id.street if company_id else "公司地址", merge_format)
 
-        sheet.merge_range(1, 5, 1, 8, "MAIL:"+"service@coinimaging.com.tw", merge_format)
-        sheet.merge_range(1, 9, 1, 13, "TEL:02-22218868 FAX22218861", merge_format)
+        sheet.merge_range(1, 5, 1, 8, "", merge_format)
+        sheet.merge_range(1, 9, 1, 13, "", merge_format)
         # 4. 继续填充其他数据
         if records[0].is_new_partner == True:
             sheet.write(2, 0, "客戶名稱", merge_format)
@@ -396,7 +418,7 @@ class CheckoutInherit(models.Model):
         row += 1
         for doc in records:
             for order in doc.product_ids:
-                sheet.write(row, 0, order.sequence, merge_format)
+                sheet.write(row, 0, order.sequence, bold_format)
                 make_name = ""
                 make_name = order.project_product_name if order.project_product_name else ""
                 if order.product_id.name:
@@ -414,14 +436,14 @@ class CheckoutInherit(models.Model):
                     if make_name:  # 如果make_name非空，添加分隔符
                         make_name += " / "
                     make_name += order.multi_chose_ids    
-                sheet.merge_range(row, 1,row, 4, make_name, merge_format)
-                sheet.merge_range(row, 5,row, 6, f"{order.product_width} x {order.product_height}", merge_format)
-                sheet.write(row, 7, order.total_units, merge_format)
-                sheet.write(row, 8, order.quantity, merge_format)
-                sheet.write(row, 9, order.units_price, merge_format)
+                sheet.merge_range(row, 1,row, 4, make_name, bold_format)
+                sheet.merge_range(row, 5,row, 6, f"{order.product_width} x {order.product_height}", bold_format)
+                sheet.write(row, 7, order.total_units, bold_format)
+                sheet.write(row, 8, order.quantity, bold_format)
+                sheet.write(row, 9, order.units_price, bold_format)
                 other_value = order.total_make_price + order.peijian_price
-                sheet.write(row, 10, other_value, merge_format)  # 其他字段
-                sheet.merge_range(row, 11,row, 13, order.price, merge_format)
+                sheet.write(row, 10, other_value, bold_format)  # 其他字段
+                sheet.merge_range(row, 11,row, 13, order.price, bold_format)
                 row += 1
 
         # 小計、稅金、合計
@@ -444,7 +466,7 @@ class CheckoutInherit(models.Model):
         sheet.merge_range(row, 0, row2, 0, "備註", border_format)        
         
         for line in commentObj:
-            sheet.merge_range(row, 1,row, 13, str(line.sequence)+"."+line.comment, border_format)
+            sheet.merge_range(row, 1,row, 13, str(line.sequence)+"."+(line.comment or ''), bold_format)
             row += 1        
         # sheet.merge_range(row, 1,row, 13, "2. 客戶自備印刷檔案。", border_format)
         # row += 1        
@@ -460,7 +482,7 @@ class CheckoutInherit(models.Model):
         sheet.merge_range(row, 0,row, 13, "匯款銀行: 合作金庫 南土城分行006 戶名: 科影數位影像(股)公司. 帳號: 3605717004868", border_format)
         row += 1
         sheet.write(row, 0, "業務:", border_format)
-        sheet.merge_range(row, 1,row, 4, "", border_format)
+        sheet.merge_range(row, 1,row, 4, records[0].user_id.name if records[0].user_id else "", border_format)
         sheet.merge_range(row, 5,row, 6, "聯絡電話:", border_format)
         sheet.merge_range(row, 7,row, 13, "", border_format)
         row += 1

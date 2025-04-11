@@ -3,7 +3,6 @@ from odoo.exceptions import AccessDenied, ValidationError
 from odoo import models, fields, api
 from odoo.fields import Command
 from odoo import _
-import logging
 import math
 import pytz
 from dateutil.relativedelta import relativedelta
@@ -13,6 +12,7 @@ from odoo.exceptions import UserError
 from pprint import pprint
 import json
 import hashlib
+import logging
 _logger = logging.getLogger(__name__)
 from odoo.http import request
 import base64

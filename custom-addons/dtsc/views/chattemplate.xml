@@ -1,5 +1,65 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
+		<!-- 壓克力統計表 -->
+	<record id="report_yklcomment_tree" model="ir.ui.view">
+		<field name="name">dtsc.yklcomment.report.tree</field>
+		<field name="model">dtsc.yklcomment</field>
+		<field name="arch" type="xml">
+			<tree editable="bottom">	 			
+				<field name="name" />
+				<field name="loc_id" />
+				<field name="partner_name" />
+				<field name="color" readonly="1"/>
+				<field name="hou" readonly="1"/>
+				<field name="width"  />
+				<field name="height"  />
+				<field name="quantity"  />
+				<field name="cai" sum="小計" />
+				<field name="comment_account"  />
+				<field name="comment"  />
+				<field name="dateend"  />			
+			</tree>
+		</field>	
+	</record>
+	
+		<record id="report_yklcomment_form" model="ir.ui.view">
+		<field name="name">dtsc.yklcomment.report.form</field>
+		<field name="model">dtsc.yklcomment</field>
+		<field name="arch" type="xml">
+			<form>		
+				<group>
+					<field name="name" invisible="1" />
+					<field name="loc_id" />
+					<field name="partner_name" />
+					<field name="color" />
+					<field name="hou" />
+					<field name="width"  />
+					<field name="height"  />
+					<field name="quantity"  />
+					<field name="cai" sum="小計" />
+					<field name="comment_account"  />
+					<field name="comment"  />
+					<field name="dateend"  />	
+				</group>				
+			</form>
+		</field>	
+	</record>
+	
+	<record id="search_yklcomment_report" model="ir.ui.view">
+		<field name="name">dtsc.yklcomment.search.report</field>
+		<field name="model">dtsc.yklcomment</field>
+		<field name="arch" type="xml">
+			<search>
+				<searchpanel>
+                    <field name="loc_id"  />
+                </searchpanel>
+				
+
+			</search> 
+		</field>		
+	</record>
+	
+	
 	<!-- 出货统计表 -->
 	<record id="report_checkout_treee" model="ir.ui.view">
 		<field name="name">dtsc.checkout.report.tree</field>
@@ -66,7 +126,7 @@
 		<field name="name">dtsc.makeout.product.report.tree</field>
 		<field name="model">dtsc.makeout</field>
 		<field name="arch" type="xml">
-			<tree default_order="display_name_reportt,name">		
+			<tree default_order="display_name_reportt,delivery_date desc">		
 				<!-- <group expand="1" string="分組結果">			 -->
 					<field name="display_name_reportt" readonly="1"  />
 					<field name="name" readonly="1"  />
@@ -146,6 +206,7 @@
 				<field name="lengbiao_count" width="140px"  readonly="1"  />
 				<field name="guoban_count" width="140px"  readonly="1"  />
 				<field name="caiqie_count" width="140px"  readonly="1"  />
+				<field name="houzhi_count" width="140px"  readonly="1"  />
 				<field name="pinguan_count" width="140px"  readonly="1"  />
 				<field name="daichuhuo_count" width="140px"  readonly="1"  />
 				<field name="yichuhuo_count" width="140px"  readonly="1"  />

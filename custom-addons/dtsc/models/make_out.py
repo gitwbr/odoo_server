@@ -12,6 +12,7 @@ import xlsxwriter
 from io import BytesIO
 from odoo.http import request
 from datetime import datetime, timedelta
+from odoo.tools import config
 class MakeOut(models.Model):
     _name = 'dtsc.makeout'
     _order = "checkout_order_date desc"
@@ -40,7 +41,7 @@ class MakeOut(models.Model):
     recheck_comment = fields.Char(related="checkout_id.recheck_comment",string="重製備註說明")
     recheck_groups = fields.Many2many(related="checkout_id.recheck_groups",string="重製相關部門") 
     
-    delivery_date = fields.Datetime(related="checkout_id.estimated_date" ,string='發貨日期' ,readonly=False,inverse='_inverse_delivery_date')
+    delivery_date = fields.Datetime(related="checkout_id.estimated_date" ,string='發貨日期' ,store=True,readonly=False,inverse='_inverse_delivery_date')
     delivery_date_show = fields.Datetime(string='發貨日期', compute="_compute_delivery_date_show",store=True)
     checkout_order_date = fields.Datetime(string='大圖訂單時間')
     speed_type = fields.Selection([
@@ -109,6 +110,8 @@ class MakeOut(models.Model):
                         field_name = "guoban_sign"
                     elif mode.code == 'cq':
                         field_name = "caiqie_sign"
+                    elif mode.code == 'hz':
+                        field_name = "houzhi_sign"
                     elif mode.code == 'pg':
                         field_name = "pinguan_sign"
                     elif mode.code == 'dch':

@@ -18,7 +18,7 @@
 				-
 			</div>
 			<div style="text-align: center; margin-top: 50px;">
-				<input id="scan-yuangong-input" type="text" placeholder="請掃描二維碼" style="font-size: 18px; padding: 10px 20px; border-radius: 5px; border: 2px solid #007bff; width: 80%; text-align: center;"/>
+				<input id="scan-yuangong-input" type="text" placeholder="掃碼輸入姓名" style="font-size: 18px; padding: 10px 20px; border-radius: 5px; border: 2px solid #007bff; width: 80%; text-align: center;"/>
    
 			</div>
 			<div id="qr-result" style="margin-top: 20px;">
@@ -32,6 +32,7 @@
 					<label><input id="lb" value="lb" type="checkbox" name="scan_mode" placeholder="冷裱" style="margin:0px 30px 15px 70px;"/>冷裱</label>
 					<label><input id="gb" value="gb" type="checkbox" name="scan_mode" placeholder="過板" style="margin:0px 30px 15px 70px;"/>過板</label>
 					<label><input id="cq" value="cq" type="checkbox" name="scan_mode" placeholder="裁切" style="margin:0px 30px 15px 70px;"/>裁切</label>
+					<label><input id="hz" value="hz" type="checkbox" name="scan_mode" placeholder="後製" style="margin:0px 30px 15px 70px;"/>後製</label>
 					<label><input id="pg" value="pg" type="checkbox" name="scan_mode" placeholder="品管" style="margin:0px 30px 15px 70px;"/>品管</label>
 					<label><input id="dc" value="dc" type="checkbox" name="scan_mode" placeholder="完成包裝" style="margin:0px 30px 15px 70px;"/>完成包裝</label>
 					<label><input id="yc" value="yc" type="checkbox" name="scan_mode" placeholder="已出貨" style="margin:0px 30px 15px 70px;"/>已出貨</label>
@@ -290,6 +291,8 @@
 						}
 						step = '裁切'
 					}
+					else if(buttonType == 'hz')
+						step = '後製'
 					else if(buttonType == 'pg')
 						step = '品管'
 					else if(buttonType == 'dc')
@@ -388,6 +391,7 @@
 					<button id="lb" style="width: 100%; margin-bottom: 15px; padding: 10px; background-color: #007bff; color: white; border: none; border-radius: 5px;">冷裱</button>
 					<button id="gb" style="width: 100%; margin-bottom: 15px; padding: 10px; background-color: #007bff; color: white; border: none; border-radius: 5px;">過板</button>
 					<button id="cq" style="width: 100%; margin-bottom: 15px; padding: 10px; background-color: #007bff; color: white; border: none; border-radius: 5px;">裁切</button>
+					<button id="hz" style="width: 100%; margin-bottom: 15px; padding: 10px; background-color: #007bff; color: white; border: none; border-radius: 5px;">後製</button>
 					<button id="pg" style="width: 100%; margin-bottom: 15px; padding: 10px; background-color: #007bff; color: white; border: none; border-radius: 5px;">品管</button>
 					<button id="dc" style="width: 100%; margin-bottom: 15px; padding: 10px; background-color: #007bff; color: white; border: none; border-radius: 5px;">完成包裝</button>
 					<button id="yc" style="width: 100%; margin-bottom: 15px; padding: 10px; background-color: #007bff; color: white; border: none; border-radius: 5px;">已出貨</button>
@@ -424,6 +428,7 @@
 				const scan_lb = document.getElementById('lb');
 				const scan_gb = document.getElementById('gb');
 				const scan_cq = document.getElementById('cq');
+				const scan_hz = document.getElementById('hz');
 				const scan_pg = document.getElementById('pg');
 				const scan_dc = document.getElementById('dc');
 				const scan_yc = document.getElementById('yc');
@@ -710,6 +715,8 @@
 								}
 								step = '裁切'
 							}
+							else if(buttonType == 'hz')
+								step = '後製'
 							else if(buttonType == 'pg')
 								step = '品管'
 							else if(buttonType == 'dc')
@@ -766,6 +773,7 @@
 				scan_lb.addEventListener('click', () => startQRSign('lb'));
 				scan_gb.addEventListener('click', () => startQRSign('gb'));
 				scan_cq.addEventListener('click', () => startQRSign('cq'));
+				scan_hz.addEventListener('click', () => startQRSign('hz'));
 				scan_pg.addEventListener('click', () => startQRSign('pg'));
 				scan_dc.addEventListener('click', () => startQRSign('dc'));
 				scan_yc.addEventListener('click', () => startQRSign('yc'));

@@ -18,6 +18,7 @@ patch(FormController.prototype, 'dtsc.FormController', {
 			const button_lb = document.getElementById('scan_qr_button_lb'); // 冷裱
 			const button_gb = document.getElementById('scan_qr_button_gb'); // 过板
 			const button_cq = document.getElementById('scan_qr_button_cq'); // 裁切
+			const button_hz = document.getElementById('scan_qr_button_hz'); // 後製
 			const button_pg = document.getElementById('scan_qr_button_pg'); // 品管
 			const button_dch = document.getElementById('scan_qr_button_dch'); // 待出货
 			const button_ych = document.getElementById('scan_qr_button_ych'); // 已出货
@@ -44,6 +45,8 @@ patch(FormController.prototype, 'dtsc.FormController', {
 					button_gb.addEventListener('click', () => this.startQRScanner('gb',recordId,page)); // 绑定点击事件
 				if(button_cq)
 					button_cq.addEventListener('click', () => this.startQRScanner('cq',recordId,page)); // 绑定点击事件
+				if(button_hz)
+					button_hz.addEventListener('click', () => this.startQRScanner('hz',recordId,page)); // 绑定点击事件
 				if(button_pg)
 					button_pg.addEventListener('click', () => this.startQRScanner('pg',recordId,page)); // 绑定点击事件
 				if(button_dch)
@@ -145,6 +148,8 @@ patch(FormController.prototype, 'dtsc.FormController', {
 			type = '過板';
 		else if(buttonType === "cq")
 			type = '裁切';
+		else if(buttonType === "hz")
+			type = '後製';
 		else if(buttonType === "pg")
 			type = '品管';
 		else if(buttonType === "dch")

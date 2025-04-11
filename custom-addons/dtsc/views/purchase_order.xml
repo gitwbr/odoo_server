@@ -6,19 +6,14 @@
         <field name="arch" type="xml">
             <!-- 隐藏原有的状态栏 -->
 	
-			<xpath expr="//button[@name='button_confirm']" position="before">
-				<button name="button_confirm_dtsc" type="object" string="確認訂單" states="draft" attrs="{'invisible': [('partner_id', '=', False)]}"/>
-			</xpath>
-			<xpath expr="//button[@name='button_confirm']" position="replace">
-			</xpath>
-			<xpath expr="//button[@name='button_confirm']" position="replace">
-			</xpath>
 			<!-- <xpath expr="//button[@name='button_confirm']"> -->
 			<field name="product_id" position="attributes">
                 <attribute name="options">{'no_create': True, 'no_create_edit': True}</attribute>
             </field>
 			<field name="state" position="before">
                 <field name="my_state" widget="statusbar" statusbar_visible="1,2,3,4,5"/>
+				<widget name="web_ribbon" title="未簽核" bg_color="bg-danger" attrs="{'invisible': [('is_sign', 'not in', ['no'])]}"/>
+				<widget name="web_ribbon" title="已簽核" bg_color="bg-success" attrs="{'invisible': [('is_sign', 'not in', ['yes'])]}"/>
             </field>
             <field name="state" position="attributes">
                 <attribute name="invisible">1</attribute>
@@ -59,6 +54,8 @@
             </field>
             <field name="effective_date" position="after">
                 <field name="supp_invoice_form"/>
+                <field name="is_sign" invisible="1"/>
+
             </field>
             <!-- 添加新的状态栏 -->
              <field name="partner_id" position="attributes">
@@ -73,9 +70,11 @@
             <!-- </field> -->
 			<button name="button_cancel" position="before">
 				<button name="go_to_zuofei" type="object" class="oe_highlight" confirm="確定要作廢此單嗎？" string="作廢" attrs="{'invisible':[('my_state','in',['5'])]}" />
-					
+				<button name="button_confirm_dtsc" type="object" class="oe_highlight" confirm="確定將此單抄送給主管確認？" string="抄送主管" attrs="{'invisible': [('my_state', 'not in', ['1'])]}"/>	
 			</button>
-			
+			<button name="action_create_invoice" position="attributes">
+				<attribute name="invisible">1</attribute>
+			</button>
 			<button name="action_rfq_send" states="draft" position="attributes">
 				<attribute name="invisible">1</attribute>
 			</button>

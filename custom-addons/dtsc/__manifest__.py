@@ -104,6 +104,9 @@
             'dtsc/static/src/xml/geolocation_widget.xml',
             'dtsc/static/src/js/tree_button.js', 
             'dtsc/static/src/xml/tree_button.xml',  
+            'dtsc/static/src/js/stock_color.js',  
+            'dtsc/static/src/js/inventory_report_list_controller.js',  
+            'dtsc/static/src/js/inventory_report_list_model.js',  
         ],
         'web.assets_frontend': [
             'dtsc/static/src/js/checkout.js',

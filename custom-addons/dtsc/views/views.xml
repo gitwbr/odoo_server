@@ -235,6 +235,7 @@
       <field name="view_id" ref="stock.view_stock_quant_tree_inventory_editable"/>
 	  <field name="domain">[('quantity', '!=', 0),('location_id.usage', 'in', ['internal'])]</field> <!--只顯示本地庫存商品-->
       <field name="context">{'group_by' : 'product_id', 'default_is_set_date': False}</field>
+      <field name="view_id" ref="dtsc.view_stock_quant_tree_inventory_editable_dtsc"/>
     </record>
 	
 	<record model="ir.actions.act_window" id="dtsc.stock_picking">
@@ -460,6 +461,12 @@
 		<field name="view_id" ref="view_petty_manager_tree"/>
 		<!-- <field name="res_id" ref="default_manager"/> -->
 	</record>
+	<record model="ir.actions.act_window" id="action_ykl">
+		<field name="name">壓克力統計表</field>
+		<field name="res_model">dtsc.yklcomment</field>
+		<field name="view_mode">tree,form</field>
+		<field name="context">{'group_by' : 'name'}</field>
+	</record>
 	<!-- <record id="action_scan_qrcode_search" model="ir.actions.server"> -->
 		<!-- <field name="name">查詢</field> -->
 		<!-- <field name="res_model">dtsc.makeout</field> -->
@@ -575,6 +582,7 @@
 	<menuitem id="menu_work_time" name="員工績效(工時)" parent="menu_chart_dashboard_root" action="action_work_time" sequence="8" groups="dtsc.group_dtsc_gly"/>
 	<menuitem id="menu_daka" name="考勤記錄" parent="menu_chart_dashboard_root" action="action_kaoqing" sequence="9" groups="dtsc.group_dtsc_gly"/>
 	<menuitem id="menu_pettycash" name="零用金" parent="menu_chart_dashboard_root" action="action_pettycash1" sequence="10" groups="dtsc.group_dtsc_gly"/>
+	<menuitem id="menu_ykl" name="壓克力統計表" parent="menu_chart_dashboard_root" action="action_ykl" sequence="11" groups="dtsc.group_dtsc_gly"/>
 	<!-- 
 	<menuitem id="submenu1" name="銷售產品" parent="dtsc.action_window_product" action="dtsc.action_window_product"/>
 

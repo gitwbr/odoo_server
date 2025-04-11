@@ -12,6 +12,19 @@
 		<!-- <field name="binding_view_types">list</field> -->
         <!-- <field name="groups_id" eval="[(4, ref('dtsc.group_dtsc_mg'))]"/> -->
 	<!-- </record> -->
+	<record id="action_hebing_checkout_to_menu" model="ir.actions.server">
+		<field name="name">合併</field>
+		<field name="model_id" ref="model_dtsc_checkout"/>
+		<field name="state">code</field>
+		<field name="code">
+			action = env['dtsc.checkout'].with_context(env.context).action_hebing()
+		</field>
+		<field name="binding_model_id" ref="model_dtsc_checkout"/>
+		<field name="binding_type">action</field>
+		<field name="binding_view_types">list</field>
+		<!-- <field name="binding_view_id" ref="dtsc.view_checkout_tree"/> -->
+        <field name="groups_id" eval="[(4, ref('dtsc.group_dtsc_mg')), (4, ref('dtsc.group_dtsc_yw'))]"/>
+	</record>
 	
 	<record id="action_add_custom_checkout_to_menu" model="ir.actions.server">
 		<field name="name">轉出貨單</field>
@@ -127,7 +140,7 @@
 		<field name="binding_model_id" ref="model_dtsc_checkout"/>
 		<field name="binding_type">action</field>
 		<field name="binding_view_types">list</field>
-        <field name="groups_id" eval="[(4, ref('dtsc.group_dtsc_mg'))]"/>
+        <field name="groups_id" eval="[(4, ref('dtsc.group_dtsc_mg')), (4, ref('dtsc.group_dtsc_yw'))]"/>
 	</record>	
 	
 	
@@ -168,7 +181,7 @@
 		<field name="model">dtsc.checkout</field>
 		<field name="arch" type="xml">
 			<tree decoration-info="is_online == True"  default_order="create_date desc">				
-				<field name="name" string="單號" readonly="1" class="w100" />
+				<field name="name" string="單號" readonly="1" width="120px" />
 				<field name="is_invisible" invisible="1"/>
 				<field name="custom_init_name" string="客戶" readonly="1"/>
 				<field name="project_name" string="案件摘要" readonly="1"/>
@@ -223,6 +236,7 @@
 					<button name="button_del" type="object" class="oe_highlight" string="作廢"  attrs="{'invisible': [('checkout_order_state', 'not in', ['draft','quoting','producing','finished'])]}" groups="dtsc.group_dtsc_mg"/>
 					<!-- <button name="p_check" type="object" class="oe_highlight" string="查物料"/> -->
 					<button name="set_recheck" string="重製" type="object" confirm="是否確定生成重製單？" class="oe_highlight" groups="dtsc.group_dtsc_mg" attrs="{'invisible': [('checkout_order_state', 'in', ['cancel', 'waiting_confirmation'])]}"/>
+					<button name="cancel_hebing" string="取消合併" type="object" confirm="是否確取消合併？" class="oe_highlight" groups="dtsc.group_dtsc_mg" attrs="{'invisible': ['|',('checkout_order_state', 'not in', ['finished']),('hebing_type','not in',['1'])]}"/>
 					<button name="button_back" type="object" class="oe_highlight" string="返回" groups="dtsc.group_dtsc_gly" attrs="{'invisible': [('checkout_order_state', 'in', ['waiting_confirmation'])]}"/>
 					<!-- <button name="button_back" type="object" class="oe_highlight" string="返回" attrs="{'invisible':[('checkout_order_state','not in',['receivable_assigned'])]}" groups="dtsc.group_dtsc_gly"/> -->
 					<field name="checkout_order_state" widget="statusbar" statusbar_visible="draft,quoting,producing,finished,price_review_done,receivable_assigned,closed,cancel"/>
@@ -230,6 +244,9 @@
 					<field name="is_delivery" readonly="1" invisible="1"/>
 				</header>
 				<sheet class="w3000">
+					
+					<widget name="web_ribbon" title="被合併" bg_color="bg-danger" attrs="{'invisible': [('hebing_type', 'not in', ['2'])]}"/>
+					<widget name="web_ribbon" title="合併單" bg_color="bg-success" attrs="{'invisible': [('hebing_type', 'not in', ['1'])]}"/>
 					<div class="oe_title">
 						<h2>大圖訂單編號</h2>
 						<h1>
@@ -238,8 +255,10 @@
 						</h1>
 						<h3>
 							<field name="project_name" readonly="0"/>
+							<field name="hebing_type" invisible="1"/>
 						</h3>
 					</div>
+					
 					<group col="6">
 						<group string="訂購人基本資訊" colspan="3">
 							<!-- <field name="work_first"/> -->
@@ -263,6 +282,7 @@
 							<field name="recheck_user" options="{'no_create': True, 'no_create_edit': True}" widget="many2many_tags"  attrs="{'invisible': [('is_recheck', '=', False)]}" />
 							<field name="recheck_groups" widget="many2many_tags"  attrs="{'invisible': [('is_recheck', '=', False)]}" />
 							<field name="del_reason" attrs="{'invisible': [('checkout_order_state', 'not in', 'cancel')]}" />
+							<field name="hebing_comment" readonly="1" attrs="{'invisible': [('hebing_type', 'not in', ['1','2'])]}"/>
 							<!-- <field name="account_payment_id" readonly="1" attrs="{'invisible':[('payment_first','=',False)]}"/> -->
 							<!-- <field name="prepaid" string="客戶應付訂金" attrs="{'invisible':[('payment_first','=',False)],'readonly':[('checkout_order_state','not in',['draft'])]}"/> -->
 						</group>
