@@ -167,7 +167,7 @@ function insertLayout() {
     sidebar.className = 'sidebar';
     sidebar.innerHTML = `
         <div class="logo">
-            Odoo SaaS
+            <a href="#" id="logo-link" style="text-decoration: none; color: inherit;">Ohoo ERP</a>
         </div>
         <ul class="nav-menu">
             <li>
@@ -339,9 +339,21 @@ const messageNotification = {
 };
 
 // 在页面加载完成后初始化消息通知
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
     // 现有的初始化代码
     createLayout();
+    
+    // 获取主域名并设置 logo 链接
+    try {
+        const response = await fetch('/api/config/domain');
+        const data = await response.json();
+        const logoLink = document.getElementById('logo-link');
+        if (logoLink) {
+            logoLink.href = `https://${data.domain}`;
+        }
+    } catch (error) {
+        console.error('獲取域名配置失敗:', error);
+    }
     
     // 启动消息通知
     messageNotification.start();
