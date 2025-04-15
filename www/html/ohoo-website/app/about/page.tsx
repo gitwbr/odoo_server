@@ -28,7 +28,7 @@ const milestones = [
   },
   {
     year: '2021',
-    title: 'Ohoo ERP 1.0 發布',
+    title: 'Euhon ERP 1.0 發布',
     description: '推出第一版系統，獲得多家企業採用，並持續根據使用者回饋進行優化。'
   },
   {
@@ -150,7 +150,7 @@ export default function About() {
               加入我們的行列
             </h2>
             <p className="mx-auto mt-6 max-w-xl text-lg leading-8 text-gray-600">
-              立即體驗 Ohoo ERP，開啟您的數位化轉型之旅
+              立即體驗 Euhon ERP，開啟您的數位化轉型之旅
             </p>
             <div className="mt-10 flex items-center justify-center gap-x-6">
               <a

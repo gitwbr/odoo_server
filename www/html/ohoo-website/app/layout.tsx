@@ -5,7 +5,7 @@ import "./globals.css";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Ohoo ERP - 大圖產業數位化轉型的最佳夥伴",
+  title: "Euhon ERP - 大圖產業數位化轉型的最佳夥伴",
   description: "專為大圖產業設計的ERP系統，提供計價報價、庫存管理、生產流程等全方位解決方案",
 };
 

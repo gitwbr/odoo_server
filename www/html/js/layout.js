@@ -264,6 +264,7 @@ function insertLayout() {
 const messageNotification = {
     lastStatus: new Map(),
     pollingInterval: null,
+    currentUserId: null,
 
     // 从 localStorage 获取已知消息
     getKnownMessages() {
@@ -288,36 +289,47 @@ const messageNotification = {
 
     async checkUpdates() {
         try {
+            // 如果还没有获取用户ID，先获取
+            if (!this.currentUserId) {
+                const userResponse = await fetch('/api/user/info');
+                const userData = await userResponse.json();
+                this.currentUserId = userData.id;
+            }
+
             const response = await fetch('/api/message/list');
             const data = await response.json();
             
             // 获取已知消息
             const knownMessages = this.getKnownMessages();
             
-            // 检查新消息
-            data.messages.forEach(message => {
-                if (!knownMessages.has(message.id)) {
-                    // 这是一条新消息
-                    showToast('新消息', `收到來自 ${message.sender_name} 的新消息：${message.subject}`, 'info', 5000);
+            // 检查新消息 - 只有管理员(ID=1)才显示新的未读消息
+            console.log(this.currentUserId);
+            if (this.currentUserId === 1) {
+                data.messages.forEach(message => {
+                    if (!knownMessages.has(message.id) && message.status === 'unread') {
+                        showToast('新消息', `收到來自 ${message.sender_name} 的新消息：${message.subject}`, 'info', 5000);
+                    }
                     knownMessages.add(message.id);
-                }
-            });
+                });
+            }
             
             // 保存更新后的已知消息
             this.saveKnownMessages(knownMessages);
             
-            // 现有的状态更新检查
-            data.messages.forEach(message => {
-                const previousStatus = this.lastStatus.get(message.id);
-                if (previousStatus && previousStatus !== message.status) {
-                    showToast('通知', `消息 "${message.subject}" 狀態已更新為 ${this.getStatusText(message.status)}`, 'info', 5000);
-                    
-                    if (window.location.pathname === '/dashboard/message.html' && typeof loadMessages === 'function') {
-                        loadMessages();
+            // 状态更新检查 - 只有普通用户(ID≠1)才显示状态更新
+            if (this.currentUserId !== 1) {
+                data.messages.forEach(message => {
+                    const previousStatus = this.lastStatus.get(message.id);
+                    if (previousStatus && previousStatus !== message.status) {
+                        showToast('通知', `消息 "${message.subject}" 狀態已更新為 ${this.getStatusText(message.status)}`, 'info', 5000);
+                        
+                        if (window.location.pathname === '/dashboard/message.html' && typeof loadMessages === 'function') {
+                            loadMessages();
+                        }
                     }
-                }
-                this.lastStatus.set(message.id, message.status);
-            });
+                    this.lastStatus.set(message.id, message.status);
+                });
+            }
         } catch (error) {
             console.error('檢查消息更新失敗:', error);
         }

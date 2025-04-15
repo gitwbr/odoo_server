@@ -7,7 +7,7 @@ const cases = [
   {
     title: '大型印刷廠數位轉型',
     company: '台灣印藝股份有限公司',
-    description: '通過導入 Ohoo ERP 系統，成功實現生產流程數位化管理，提升30%生產效率。',
+    description: '通過導入 euhon ERP 系統，成功實現生產流程數位化管理，提升30%生產效率。',
     results: [
       '訂單處理時間縮短50%',
       '生產排程優化，減少20%閒置時間',
@@ -54,7 +54,7 @@ export default function Cases() {
             客戶成功故事
           </p>
           <p className="mt-6 text-lg leading-8 text-gray-600">
-            了解其他企業如何通過 Ohoo ERP 實現數位轉型，提升營運效率
+            了解其他企業如何通過 Euhon ERP 實現數位轉型，提升營運效率
           </p>
         </div>
       </div>
@@ -153,7 +153,7 @@ export default function Cases() {
               準備好開始了嗎？
             </h2>
             <p className="mx-auto mt-6 max-w-xl text-lg leading-8 text-gray-600">
-              立即聯繫我們，了解 Ohoo ERP 如何幫助您的企業實現數位轉型
+              立即聯繫我們，了解 Euhon ERP 如何幫助您的企業實現數位轉型
             </p>
             <div className="mt-10 flex items-center justify-center gap-x-6">
               <a

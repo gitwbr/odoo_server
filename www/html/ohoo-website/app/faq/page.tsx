@@ -22,7 +22,7 @@ const faqs: FAQs = {
     title: '一般問題',
     questions: [
       {
-        question: 'Ohoo ERP 適合什麼規模的企業使用？',
+        question: 'Euhon ERP 適合什麼規模的企業使用？',
         answer: '我們的系統適合各種規模的大圖輸出企業使用，從小型工作室到大型印刷廠都能靈活配置。系統模組化設計允許您根據需求選擇合適的功能。'
       },
       {
@@ -40,7 +40,7 @@ const faqs: FAQs = {
     questions: [
       {
         question: '系統是否支援行動裝置？',
-        answer: '是的，Ohoo ERP 提供完整的行動支援，您可以通過手機或平板隨時查看訂單狀態、處理審批事項等。'
+        answer: '是的，Euhon ERP 提供完整的行動支援，您可以通過手機或平板隨時查看訂單狀態、處理審批事項等。'
       },
       {
         question: '系統如何確保數據安全？',

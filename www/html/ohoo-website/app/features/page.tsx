@@ -76,7 +76,7 @@ export default function Features() {
             專為大圖產業打造的完整解決方案
           </p>
           <p className="mt-6 text-lg leading-8 text-gray-600">
-            從訂單管理到生產追蹤，從庫存控制到數據分析，Ohoo ERP 提供您所需的一切功能
+            從訂單管理到生產追蹤，從庫存控制到數據分析，Euhon ERP 提供您所需的一切功能
           </p>
         </div>
       </div>

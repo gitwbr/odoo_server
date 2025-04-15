@@ -8,21 +8,21 @@ const contactMethods = [
     name: '客戶服務',
     description: '我們的客服團隊隨時為您服務',
     phone: '+886 2 2345 6789',
-    email: 'service@ohooerp.com',
+    email: 'service@euhonerp.com',
     hours: '週一至週五 9:00-18:00'
   },
   {
     name: '技術支援',
     description: '遇到技術問題？我們來幫您',
     phone: '+886 2 2345 6790',
-    email: 'support@ohooerp.com',
+    email: 'support@euhonerp.com',
     hours: '24/7 全天候服務'
   },
   {
     name: '業務諮詢',
     description: '了解更多關於我們的服務',
     phone: '+886 2 2345 6791',
-    email: 'sales@ohooerp.com',
+    email: 'sales@euhonerp.com',
     hours: '週一至週五 9:00-18:00'
   }
 ];
