@@ -59,6 +59,73 @@
             animation: dotsAnimation 1.2s infinite;
             font-weight: bold;
         }
+
+        .domain-input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #d9d9d9;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .domain-input:focus {
+            border-color: var(--primary-color);
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
+        }
+
+        .operation-buttons {
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+        }
+
+        .operation-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 6px 12px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        .operation-btn.check {
+            background-color: #52c41a;
+            color: white;
+        }
+
+        .operation-btn.apply {
+            background-color: #1890ff;
+            color: white;
+        }
+
+        .operation-btn:hover {
+            opacity: 0.8;
+        }
+
+        .operation-btn i {
+            font-size: 16px;
+            margin-right: 4px;
+        }
+
+        .operation-btn:disabled {
+            background-color: #f5f5f5;
+            color: rgba(0, 0, 0, 0.25);
+            cursor: not-allowed;
+            border: 1px solid #d9d9d9;
+        }
+
+        .operation-btn:disabled:hover {
+            opacity: 1;
+        }
+
+        .domain-input:disabled {
+            background-color: #f5f5f5;
+            cursor: not-allowed;
+        }
     </style>
 </head>
 <body>
@@ -71,8 +138,7 @@
             </div>
 
             <div id="instances" class="tab-content">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-                    <h2 style="margin: 0; font-size: 16px; color: #1d2129;">實例列表</h2>
+                <div style="display: flex; justify-content: flex-end; align-items: center; margin-bottom: 16px;">
                     <button id="createBtn" class="create-btn" onclick="createInstance()">
                         <i class="material-icons" style="font-size: 16px;">add</i>
                         創建實例
@@ -100,8 +166,21 @@
             </div>
 
             <div id="domains" class="tab-content" style="display: none;">
-                <h2 style="margin: 0; font-size: 16px; color: #1d2129;">域名管理</h2>
-                <!-- 域名管理的内容 -->
+                <div class="table-container" style="margin-top: 16px;">
+                    <table class="instance-table">
+                        <thead>
+                            <tr>
+                                <th>實例名稱</th>
+                                <th>當前域名</th>
+                                <th style="width: 300px;">新域名</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="domainContainer">
+                            <!-- 域名數據將通過 JS 動態添加 -->
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </div>
@@ -150,6 +229,11 @@
             
             event.target.classList.add('active');
             document.getElementById(tabId).style.display = 'block';
+            
+            // 如果切換到域名管理標籤，則加載域名列表
+            if (tabId === 'domains') {
+                loadDomains();
+            }
         }
 
         
@@ -515,6 +599,193 @@
             } catch (error) {
                 console.error('重啟實例時發生錯誤:', error);
                 showToast('錯誤', '重啟失敗', 'error');
+            }
+        }
+
+        // 添加域名管理相關函數
+        async function loadDomains() {
+            try {
+                const response = await fetch('/api/instance/domains');
+                const data = await response.json();
+                
+                // 获取消息列表，检查是否有未处理的域名申请
+                const messageResponse = await fetch('/api/message/list');
+                const messageData = await messageResponse.json();
+                
+                const container = document.getElementById('domainContainer');
+                container.innerHTML = '';
+                
+                data.instances.forEach(instance => {
+                    // 检查该实例是否有未处理的域名申请
+                    const hasPendingRequest = messageData.messages.some(message => 
+                        message.subject === '用戶域名申請' && 
+                        message.status !== 'done' &&
+                        message.content.includes(`容器ID：client${instance.id}`)
+                    );
+
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td><div style="display: flex; align-items: center; gap: 8px; justify-content: center;">
+                                <i class="material-icons" style="color: var(--primary-color);">dns</i>
+                                client${instance.id}
+                            </div></td>
+                        <td>${instance.domain || '-'}</td>
+                        <td>
+                            <input type="text" class="domain-input" 
+                                   id="domain-input-${instance.id}"
+                                   placeholder="輸入新域名"
+                                   ${hasPendingRequest ? 'disabled' : ''}>
+                        </td>
+                        <td>
+                            <div class="operation-buttons">
+                                <button class="operation-btn check" 
+                                        onclick="checkDomain(${instance.id})"
+                                        ${hasPendingRequest ? 'disabled' : ''}
+                                        title="${hasPendingRequest ? '有待處理的域名申請' : '檢查域名'}">
+                                    <i class="material-icons">check_circle</i>
+                                    檢查
+                                </button>
+                                <button class="operation-btn apply" 
+                                        onclick="applyDomain(${instance.id}, ${instance.port})"
+                                        ${hasPendingRequest ? 'disabled' : ''}
+                                        title="${hasPendingRequest ? '有待處理的域名申請' : '提交申請'}">
+                                    <i class="material-icons">send</i>
+                                    申請
+                                </button>
+                                ${hasPendingRequest ? `
+                                <span style="color: #1890ff; font-size: 12px; margin-left: 8px;">
+                                    <i class="material-icons" style="font-size: 14px; vertical-align: middle;">info</i>
+                                    域名申請處理中
+                                </span>
+                                ` : ''}
+                            </div>
+                        </td>
+                    `;
+                    container.appendChild(row);
+                });
+            } catch (error) {
+                console.error('加載域名列表失敗:', error);
+                showToast('錯誤', '加載域名列表失敗', 'error');
+            }
+        }
+
+        async function checkDomain(instanceId) {
+            try {
+                const input = document.getElementById(`domain-input-${instanceId}`);
+                const domain = input.value.trim();
+                
+                if (!domain) {
+                    showToast('錯誤', '請輸入要檢查的域名', 'error');
+                    return;
+                }
+                
+                const response = await fetch('/api/instance/check-domain', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ domain })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showToast('成功', '域名可用', 'success');
+                } else {
+                    showToast('錯誤', data.error || '域名檢查失敗', 'error');
+                }
+            } catch (error) {
+                console.error('域名檢查失敗:', error);
+                showToast('錯誤', '域名檢查失敗', 'error');
+            }
+        }
+
+        async function applyDomain(instanceId, port) {
+            try {
+                const input = document.getElementById(`domain-input-${instanceId}`);
+                const domain = input.value.trim();
+                
+                if (!domain) {
+                    showToast('錯誤', '請輸入要申請的域名', 'error');
+                    return;
+                }
+
+                // 先检查域名是否可用
+                const checkResponse = await fetch('/api/instance/check-domain', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ domain })
+                });
+                
+                const checkData = await checkResponse.json();
+                if (!checkResponse.ok) {
+                    showToast('錯誤', checkData.error || '域名不可用', 'error');
+                    return;
+                }
+
+                // 构造消息内容
+                const messageData = {
+                    receiver_id: 1,  // 发送给管理员
+                    priority: 'urgent',
+                    subject: '用戶域名申請',
+                    content: `
+域名申請信息：
+
+實例信息：
+- 容器ID：client${instanceId}
+- 當前端口：${port}
+- 申請域名：${domain}
+
+請管理員協助處理域名設置。
+                    `.trim()
+                };
+
+                // 发送消息
+                const response = await fetch('/api/message/create', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(messageData)
+                });
+
+                if (response.ok) {
+                    showToast('成功', '域名申請已發送，請耐心等待管理員處理', 'success', 5000);
+                    
+                    // 立即更新界面状态
+                    const row = input.closest('tr');
+                    if (row) {
+                        // 禁用输入框
+                        input.disabled = true;
+                        input.value = '';
+                        
+                        // 禁用按钮并更新提示
+                        const buttons = row.querySelectorAll('.operation-btn');
+                        buttons.forEach(button => {
+                            button.disabled = true;
+                            button.title = '有待處理的域名申請';
+                        });
+                        
+                        // 添加处理中提示
+                        const operationDiv = row.querySelector('.operation-buttons');
+                        const statusSpan = document.createElement('span');
+                        statusSpan.style.color = '#1890ff';
+                        statusSpan.style.fontSize = '12px';
+                        statusSpan.style.marginLeft = '8px';
+                        statusSpan.innerHTML = `
+                            <i class="material-icons" style="font-size: 14px; vertical-align: middle;">info</i>
+                            域名申請處理中
+                        `;
+                        operationDiv.appendChild(statusSpan);
+                    }
+                } else {
+                    throw new Error('發送申請失敗');
+                }
+            } catch (error) {
+                console.error('申請域名失敗:', error);
+                showToast('錯誤', '申請域名失敗，請稍後重試', 'error');
             }
         }
 

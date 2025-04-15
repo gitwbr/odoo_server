@@ -202,3 +202,43 @@ def restart_instance(instance_id):
         error_msg = f'重啟實例時發生錯誤: {str(e)}'
         logger.error(error_msg)
         return jsonify({'error': error_msg}), 500
+
+@instance.route('/domains', methods=['GET'])
+def get_domains():
+    try:
+        # 获取当前用户ID
+        user_id = session.get('user_id')
+        if not user_id:
+            return jsonify({'error': '未登录'}), 401
+
+        # 调用模型层方法获取域名列表
+        instances = Instance.get_domains_by_user(user_id)
+        return jsonify({
+            'instances': instances
+        })
+                
+    except Exception as e:
+        logger.error(f'获取域名列表失败: {str(e)}')
+        return jsonify({
+            'error': str(e)
+        }), 500
+
+@instance.route('/check-domain', methods=['POST'])
+def check_domain():
+    try:
+        # 获取请求数据
+        data = request.get_json()
+        domain = data.get('domain')
+        
+        # 调用模型层方法检查域名
+        result = Instance.check_domain_availability(domain)
+        if result.get('error'):
+            return jsonify({'error': result['error']}), 400
+            
+        return jsonify({'message': '域名可用'})
+        
+    except Exception as e:
+        logger.error(f'检查域名失败: {str(e)}')
+        return jsonify({
+            'error': str(e)
+        }), 500

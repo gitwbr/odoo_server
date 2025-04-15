@@ -625,4 +625,88 @@ networks:
             return {
                 'web': 'error',
                 'db': 'error'
-            } 
+            }
+
+    @staticmethod
+    def get_domains_by_user(user_id):
+        """获取用户的实例域名列表"""
+        try:
+            with get_db_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("""
+                        SELECT i.id, i.domain, i.port
+                        FROM instances i
+                        WHERE i.user_id = %s
+                        ORDER BY i.created_at DESC
+                    """, (user_id,))
+                    
+                    instances = []
+                    for row in cur.fetchall():
+                        instance_id, domain, port = row
+                        source = 'instances'  # 默认来源
+                        
+                        # 如果 instances 表中没有域名，则从 port_allocations 获取
+                        if not domain:
+                            cur.execute("""
+                                SELECT domain 
+                                FROM port_allocations 
+                                WHERE port = %s
+                            """, (port,))
+                            pa_result = cur.fetchone()
+                            if pa_result and pa_result[0]:
+                                domain = pa_result[0]
+                                source = 'port_allocations'
+                            else:
+                                source = '未設置'
+                        
+                        instances.append({
+                            'id': instance_id,
+                            'domain': domain or '',
+                            'port': port,
+                            'source': source
+                        })
+                    return instances
+                    
+        except Exception as e:
+            logger.error(f'获取用户域名列表失败: {str(e)}')
+            raise Exception('获取域名列表失败')
+
+    @staticmethod
+    def check_domain_availability(domain):
+        """检查新域名是否可用（在两个表中都检查）"""
+        try:
+            if not domain:
+                return {'error': '域名不能為空'}
+                
+            # 检查域名格式
+            """ if not domain.isalnum():
+                return {'error': '域名只能包含字母和數字'} """
+                
+            # 在两个表中检查域名是否已被使用
+            with get_db_connection() as conn:
+                with conn.cursor() as cur:
+                    # 检查 instances 表
+                    cur.execute("""
+                        SELECT id FROM instances 
+                        WHERE domain = %s
+                    """, (domain,))
+                    
+                    if cur.fetchone():
+                        return {'error': '域名已被使用'}
+                        
+                    # 检查 port_allocations 表
+                    cur.execute("""
+                        SELECT port FROM port_allocations 
+                        WHERE domain = %s
+                    """, (domain,))
+                    
+                    if cur.fetchone():
+                        return {'error': '域名已被使用'}
+                        
+            return {'message': '域名可用'}
+            
+        except Exception as e:
+            logger.error(f'检查域名失败: {str(e)}')
+            raise Exception('检查域名失败')
+
+    
