@@ -388,12 +388,13 @@
                                         title="${instance.status === 1 ? '訪問實例' : '實例未運行'}">
                                     <i class="material-icons">open_in_new</i>
                                 </button>
+                                <!-- 刪除實例按鈕 
                                 <button class="action-btn ${instance.status === 1 ? '' : 'disabled'}" 
                                         onclick="${instance.status === 1 ? `restartInstance(${instance.id})` : ''}" 
                                         title="${instance.status === 1 ? '重啟實例' : '實例未運行'}">
                                     <i class="material-icons">restart_alt</i>
                                 </button>
-                                 <!-- 刪除實例按鈕 
+                                 
                                 <button class="action-btn" 
                                         onclick="deleteInstance(${instance.id})" 
                                         title="刪除實例">
@@ -492,11 +493,12 @@
                                         title="${instance.status === 1 ? '訪問實例' : '實例未運行'}">
                                     <i class="material-icons">open_in_new</i>
                                 </button>
+                                 <!-- 刪除實例按鈕 
                                 <button class="action-btn ${instance.status === 1 ? '' : 'disabled'}" 
                                         onclick="${instance.status === 1 ? `restartInstance(${instance.id})` : ''}" 
                                         title="${instance.status === 1 ? '重啟實例' : '實例未運行'}">
                                     <i class="material-icons">restart_alt</i>
-                                </button>
+                                </button>-->
                             </div>
                         </td>
                     `;

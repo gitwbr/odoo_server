@@ -205,13 +205,7 @@
                             </td>
                             <td>${instance.user_id}</td>
                             <td>${instance.username}</td>
-                            <td>
-                                <a href="${accessUrl}" 
-                                   target="_blank" 
-                                   class="instance-link">
-                                    ${displayName}
-                                </a>
-                            </td>
+                            <td>client${instance.id}</td>
                             <td>${statusHtml}</td>
                             <td>${domainDisplay}</td>
                             <td>${instance.port}</td>
@@ -384,7 +378,7 @@
             await getMainDomain();
             await loadAllInstances();
             // 每60秒刷新一次
-            setInterval(loadAllInstances, 100000);
+            setInterval(loadAllInstances, 60000);
         });
     </script>
 </body>

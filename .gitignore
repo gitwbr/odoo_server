@@ -84,6 +84,12 @@ postgresql_manager/
 www/html/api/config.py  
 
 addons/
+addons_backup/
 instances/
 client*/
+backup/
+
+# 忽略日志和备份
+logs/
+addons_backup/
 backup/

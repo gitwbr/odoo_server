@@ -973,8 +973,14 @@ odoo ALL=(ALL) NOPASSWD: /bin/chmod -R * /home/odoo/odoo16/instances/*, /bin/cho
 git rm -r --cached client*/
 
 
-# 官网
+## 官网
 cd /home/odoo/odoo16
 # docker-compose up -d --build ohoo-website
 docker-compose build ohoo-website
 docker-compose restart ohoo-website
+
+
+## 重启全部运行中的客户容器
+docker restart $(docker ps  --filter "name=^client" --format "{{.Names}}")
+# 查询
+docker ps  --filter "name=^client" --format "{{.Names}}"
