@@ -12,7 +12,7 @@ from odoo.addons.website.controllers.main import Website
 from urllib.parse import quote
 import werkzeug
 
-class WebsiteForceHttps(Website):
+#class WebsiteForceHttps(Website):
 
 
     # @http.route('/website/force/<int:website_id>', type='http', auth="user", website=True, sitemap=False, multilang=False,override=True)

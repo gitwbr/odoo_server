@@ -203,7 +203,7 @@ def restart_instance(instance_id):
         logger.error(error_msg)
         return jsonify({'error': error_msg}), 500
 
-@instance.route('/domains', methods=['GET'])
+@instance.route('/domains', methods=['GET']) #弃用
 def get_domains():
     try:
         # 获取当前用户ID

@@ -88,7 +88,7 @@
             
             // 如果实例有domain，则使用domain构建完整域名
             if (instance.domain) {
-                return `https://client_${instance.domain}.${baseDomain}`;
+                return `https://${instance.domain}.${baseDomain}`;
             }
             
             // 否则回退到使用端口访问
@@ -162,8 +162,8 @@
                     const accessUrl = buildAccessUrl(instance);
                     
                     // 显示域名或端口
-                    const displayName = instance.domain ? `client_${instance.domain}` : `client${instance.id}`;
-                    const domainDisplay = instance.domain ? `client_${instance.domain}` : '-';
+                    const displayName = instance.domain || `client${instance.id}`;
+                    const domainDisplay = instance.domain || '-';
                     
                     return `
                         <tr>

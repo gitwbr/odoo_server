@@ -364,6 +364,7 @@ services:
 networks:
   odoo_net:
     external: true
+    name: odoo16_odoo_net
 """
             with open(f'{instance_dir}/docker-compose.yml', 'w') as f:
                 f.write(docker_compose)
@@ -578,11 +579,11 @@ networks:
                             """, (port,))
                             pa_result = cur.fetchone()
                             if pa_result and pa_result[0]:
-                                domain = pa_result[0]  # 只获取 domain 字段的值，不构造完整域名
+                                domain = f"client_{pa_result[0]}"  # 添加 client_ 前缀
                         
                         instances.append({
                             'id': instance_id,
-                            'domain': domain,  # 可能是从 port_allocations 获取的
+                            'domain': domain,  # 可能是从 port_allocations 获取的带前缀域名
                             'port': port,
                             'status': row[3],
                             'version_id': row[4],
@@ -628,7 +629,7 @@ networks:
             }
 
     @staticmethod
-    def get_domains_by_user(user_id):
+    def get_domains_by_user(user_id): #弃用
         """获取用户的实例域名列表"""
         try:
             with get_db_connection() as conn:
@@ -644,27 +645,41 @@ networks:
                     for row in cur.fetchall():
                         instance_id, domain, port = row
                         source = 'instances'  # 默认来源
+                        logger.debug(f'处理实例 ID: {instance_id}, 原始域名: {domain}, 端口: {port}')
                         
-                        # 如果 instances 表中没有域名，则从 port_allocations 获取
-                        if not domain:
+                        # 如果 instances 表中有域名，直接使用
+                        if domain:
+                            final_domain = domain
+                            logger.debug(f'使用 instances 表域名: {final_domain}')
+                        else:
+                            # 从 port_allocations 获取域名
                             cur.execute("""
                                 SELECT domain 
                                 FROM port_allocations 
                                 WHERE port = %s
                             """, (port,))
                             pa_result = cur.fetchone()
+                            logger.debug(f'port_allocations 查询结果: {pa_result}')
+                            
                             if pa_result and pa_result[0]:
-                                domain = pa_result[0]
+                                # 组成 client_xxx 格式的域名
+                                final_domain = f"client_{pa_result[0]}"
                                 source = 'port_allocations'
+                                logger.debug(f'使用 port_allocations 表域名，转换后: {final_domain}')
                             else:
+                                final_domain = ''
                                 source = '未設置'
+                                logger.debug('未找到域名，设置为空')
                         
                         instances.append({
                             'id': instance_id,
-                            'domain': domain or '',
+                            'domain': final_domain,
                             'port': port,
                             'source': source
                         })
+                        logger.debug(f'添加到结果列表: {instances[-1]}')
+                    
+                    logger.debug(f'最终返回结果: {instances}')
                     return instances
                     
         except Exception as e:
@@ -673,19 +688,15 @@ networks:
 
     @staticmethod
     def check_domain_availability(domain):
-        """检查新域名是否可用（在两个表中都检查）"""
+        """检查新域名是否可用"""
         try:
             if not domain:
                 return {'error': '域名不能為空'}
-                
-            # 检查域名格式
-            """ if not domain.isalnum():
-                return {'error': '域名只能包含字母和數字'} """
-                
-            # 在两个表中检查域名是否已被使用
+            
+            # 在 instances 表中检查完整域名
             with get_db_connection() as conn:
                 with conn.cursor() as cur:
-                    # 检查 instances 表
+                    # 先检查 instances 表
                     cur.execute("""
                         SELECT id FROM instances 
                         WHERE domain = %s
@@ -693,16 +704,18 @@ networks:
                     
                     if cur.fetchone():
                         return {'error': '域名已被使用'}
-                        
-                    # 检查 port_allocations 表
-                    cur.execute("""
-                        SELECT port FROM port_allocations 
-                        WHERE domain = %s
-                    """, (domain,))
                     
-                    if cur.fetchone():
-                        return {'error': '域名已被使用'}
+                    # 如果域名以 client_ 开头，去掉前缀后在 port_allocations 表中检查
+                    if domain.startswith('client_'):
+                        stripped_domain = domain[7:]  # 去掉 'client_' 前缀
+                        cur.execute("""
+                            SELECT port FROM port_allocations 
+                            WHERE domain = %s
+                        """, (stripped_domain,))
                         
+                        if cur.fetchone():
+                            return {'error': '域名已被使用'}
+                    
             return {'message': '域名可用'}
             
         except Exception as e:

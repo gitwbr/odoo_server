@@ -215,7 +215,7 @@
             
             // 如果实例有domain，则使用domain构建完整域名
             if (instance.domain) {
-                return `https://client_${instance.domain}.${baseDomain}`;
+                return `https://${instance.domain}.${baseDomain}`;
             }
             
             // 否则回退到使用端口访问
@@ -472,7 +472,7 @@
                     const accessUrl = buildAccessUrl(instance);
                     
                     // 在表格中显示信息
-                    const domainDisplay = instance.domain ? `client_${instance.domain}` : '-';
+                    const domainDisplay = instance.domain || '-';
 
                     row.innerHTML = `
                         <td>

@@ -32,7 +32,7 @@ class Admin:
                             """, (port,))
                             pa_result = cur.fetchone()
                             if pa_result and pa_result[0]:
-                                domain = pa_result[0]  # 只获取domain字段的值
+                                domain = f"client_{pa_result[0]}"  # 添加 client_ 前缀
                         
                         # 获取容器状态
                         containers_status = Admin.get_containers_status(instance_id)
@@ -41,7 +41,7 @@ class Admin:
                             'id': instance_id,
                             'user_id': row[1],
                             'username': row[-1],
-                            'domain': domain,  # 可能已从port_allocations更新
+                            'domain': domain,  # 可能是从 port_allocations 获取的带前缀域名
                             'port': port,
                             'created_at': row[4].isoformat() if row[4] else None,
                             'expires_at': row[5].isoformat() if row[5] else None,
