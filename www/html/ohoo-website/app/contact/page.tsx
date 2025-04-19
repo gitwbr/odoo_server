@@ -67,7 +67,7 @@ export default function Contact() {
       <Navbar />
       
       {/* Header */}
-      <div className="bg-white px-6 py-24 sm:py-32 lg:px-8">
+      {/* <div className="bg-white px-6 py-24 sm:py-32 lg:px-8">
         <div className="mx-auto max-w-2xl text-center">
           <h2 className="text-base font-semibold leading-7 text-blue-600">聯絡我們</h2>
           <p className="mt-2 text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
@@ -77,10 +77,10 @@ export default function Contact() {
             填寫以下表單，我們會盡快與您聯繫，為您提供最適合的解決方案
           </p>
         </div>
-      </div>
+      </div> */}
 
       {/* Contact Form */}
-      <div className="bg-gray-50 px-6 py-24 sm:py-32 lg:px-8">
+      {/* <div className="bg-gray-50 px-6 py-24 sm:py-32 lg:px-8">
         <div className="mx-auto max-w-2xl">
           <form onSubmit={handleSubmit} className="space-y-8">
             <div className="grid grid-cols-1 gap-x-8 gap-y-6 sm:grid-cols-2">
@@ -196,13 +196,13 @@ export default function Contact() {
             )}
           </form>
         </div>
-      </div>
+      </div> */}
 
       {/* Contact Methods */}
       <div className="bg-white">
         <div className="mx-auto max-w-7xl px-6 py-24 sm:py-32 lg:px-8">
           <div className="mx-auto max-w-2xl lg:max-w-4xl">
-            <h2 className="text-2xl font-bold tracking-tight text-gray-900">其他聯絡方式</h2>
+            <h2 className="text-2xl font-bold tracking-tight text-gray-900">聯絡方式</h2>
             <p className="mt-6 text-lg leading-8 text-gray-600">
               選擇最適合您的聯絡方式，我們將竭誠為您服務
             </p>

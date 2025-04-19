@@ -338,7 +338,7 @@ const messageNotification = {
     start() {
         if (!this.pollingInterval) {
             this.checkUpdates();
-            this.pollingInterval = setInterval(() => this.checkUpdates(), 5000);
+            this.pollingInterval = setInterval(() => this.checkUpdates(), 10000);
         }
     },
 

@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 @message_bp.route('/list', methods=['GET'])
 def get_messages():
     try:
-        logger.debug('開始獲取消息列表')
+        #logger.debug('開始獲取消息列表')
         user_id = session.get('user_id')
         if not user_id:
             return jsonify({
@@ -31,7 +31,7 @@ def get_messages():
                     ORDER BY m.created_at DESC
                 """, (user_id, user_id))
                 messages = cur.fetchall()
-                logger.debug(f'查詢到 {len(messages) if messages else 0} 條消息')
+                #logger.debug(f'查詢到 {len(messages) if messages else 0} 條消息')
                 
                 return jsonify({
                     'messages': [{
