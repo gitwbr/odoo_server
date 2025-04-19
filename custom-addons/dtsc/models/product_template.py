@@ -1,5 +1,35 @@
 from odoo import models, fields, api
 from odoo.tools.float_utils import float_round
+import logging
+from odoo.http import request
+_logger = logging.getLogger(__name__)
+# from odoo.addons.website.models.mixin import WebsitePublishedMixin
+# from odoo.addons.website.models.mixins import WebsitePublishedMixin
+from odoo.http import request
+from odoo import api
+# class Website(models.Model):
+
+    # _inherit = "website"
+    # def get_client_action(self, url, mode_edit=False, website_id=False):
+        # self.ensure_one()
+
+        # if url.startswith('/'):
+            # base_url = request.httprequest.url_root.replace("http://", "https://")
+            # url = url_join(base_url, url)
+        # elif url.startswith('http://'):
+            # url = url.replace("http://", "https://")
+
+        # _logger.info(f"🔐 重寫 get_client_action：網址 = {url}")
+
+        # action = self.env["ir.actions.actions"]._for_xml_id("website.website_preview")
+        # action['context'] = {
+            # 'params': {
+                # 'path': url,
+                # 'enable_editor': mode_edit,
+                # 'website_id': website_id,
+            # }
+        # }
+        # return action
 
 class WizardMakeTypeSelection(models.TransientModel):
     _name = 'dtsc.maketypeselection'
@@ -63,6 +93,16 @@ class ResPartner(models.Model):
     # multiple_choice_ids = fields.One2many("dtsc.maketypeRel" , "product_id" ,string="後加工明細")
     make_type_ids = fields.One2many("product.maketype.rel" , "product_id" ,string="後加工明細")
     
+    # def open_website_url(self):
+        # self.ensure_one()
+        # base_url = request.httprequest.url_root.replace("http://", "https://")
+        # full_url = base_url.rstrip('/') + self.website_url
+
+        # _logger.info(f"================{full_url}========")
+        # website = self.env['website'].get_current_website()
+        # return website.get_client_action(full_url)
+
+    
     def action_open_make_type_selection(self):
         return {
             'name': '選擇後加工屬性',
@@ -95,10 +135,23 @@ class ProductAttribute(models.Model):
     _inherit = "product.template.attribute.line"
     
     sequence = fields.Integer(string="Sequence", default=1)
+
+# class Website(models.Model):
+
+    # _inherit = "website"
+
     
 class ProductProduct(models.Model):
     _inherit = "product.product"
     
+    # def open_website_url(self):
+        # self.ensure_one()
+        # res = self.product_tmpl_id.open_website_url()
+        # res['url'] = self.website_url.replace("http:","https:")
+        # _logger.info(f"---------{self.website_url}========")
+        # _logger.info(f"---------{res['url']}========")
+        # return res
+        
     def _compute_quantities_dict(self, lot_id, owner_id, package_id, from_date=False, to_date=False):
         domain_quant_loc, domain_move_in_loc, domain_move_out_loc = self._get_domain_locations()
         #bryant add 新增查找数据范围 为物理位置

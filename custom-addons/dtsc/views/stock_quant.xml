@@ -200,9 +200,9 @@
 		<field name="inherit_id" ref="stock.view_stock_quant_tree_inventory_editable"/>
 		<field name="arch" type="xml">
 			
-			<xpath expr="//tree" position="attributes">
-				<attribute name="decoration-info">"inventory_quantity != False"</attribute>
-			</xpath>
+			<!-- <xpath expr="//tree" position="attributes"> -->
+				<!-- <attribute name="decoration-info">"inventory_quantity != False"</attribute> -->
+			<!-- </xpath> -->
 
 			<xpath expr="//field[@name='user_id']" position="before">
 				<field name="is_set_date" invisible="1"/>					

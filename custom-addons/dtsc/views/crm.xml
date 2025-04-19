@@ -83,6 +83,7 @@
 				</xpath>
 				<xpath expr="//field[@name='customer_id']" position="before">					
 					<field name="new_partner" attrs="{'invisible': [('is_new_partner', '!=', True)]}"/>
+					<field name="new_customer_class_id" attrs="{'invisible': [('is_new_partner', '!=', True)]}"/>
 					<field name="new_init" attrs="{'invisible': [('is_new_partner', '!=', True)]}"/>
 					<field name="new_street" attrs="{'invisible': [('is_new_partner', '!=', True)]}"/>
 					<field name="new_vat" attrs="{'invisible': [('is_new_partner', '!=', True)]}"/>
@@ -90,9 +91,10 @@
 					<field name="new_mobile" attrs="{'invisible': [('is_new_partner', '!=', True)]}"/>
 					<field name="new_custom_contact_person" attrs="{'invisible': [('is_new_partner', '!=', True)]}"/>
 					<field name="new_custom_fax" attrs="{'invisible': [('is_new_partner', '!=', True)]}"/>
-					<field name="new_property_payment_term_id" attrs="{'invisible': [('is_new_partner', '!=', True)]}"/>
+					<field name="new_property_payment_term_id" options="{'no_create': True, 'no_create_edit': True}" attrs="{'invisible': [('is_new_partner', '!=', True)]}"/>
 					<field name="new_custom_pay_mode" attrs="{'invisible': [('is_new_partner', '!=', True)]}"/>
 					<field name="new_email" attrs="{'invisible': [('is_new_partner', '!=', True)]}"/>
+					<field name="new_custom_invoice_form" attrs="{'invisible': [('is_new_partner', '!=', True)]}"/>
 				</xpath>
 				
 
@@ -187,7 +189,8 @@
 			<field name="name">dtsc.crmusercomment.tree</field>
 			<field name="model">dtsc.crmusercomment</field>
 			<field name="arch" type="xml">
-				<tree editable="bottom" default_order="sequence">				
+				<tree editable="bottom" default_order="sequence">					
+					<field name="is_enable"/>		
 					<field name="sequence" width="20px"/>
 					<field name="comment"/>
 

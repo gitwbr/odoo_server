@@ -447,70 +447,74 @@ class MakeIn(models.Model):
     
     #生成扣料单
     def kld_btn(self):
-        install_name = self.name.replace("B","W")
-        is_install_id = self.env['dtsc.mpr'].search([('name', '=',install_name)],limit=1)
-        if is_install_id:
-            pass
-        else:  
-            product_values_dict = {}
-            product_values_list = []
-            product_product_obj = self.env['product.product']
-            product_attribute_value_obj = self.env['product.attribute.value']
-            
-            if self.project_name and "代施工" in self.project_name:
-                self.no_mprlist = True
-                return
-            
-            
-            for record in self.order_ids:
-                if record.file_name and "代施工" in record.file_name:
-                    continue
-                if record.product_id.make_ori_product_id:                    
-                    if record.product_id.make_ori_product_id.tracking != "serial":
-                        product_product_id = product_product_obj.search([('product_tmpl_id',"=",record.product_id.make_ori_product_id.id)],limit=1)
+        is_open_full_checkoutorder = self.env['ir.config_parameter'].sudo().get_param('dtsc.is_open_full_checkoutorder')
+        if is_open_full_checkoutorder:#简易流程
+            self.no_mprlist = True
+        else:        
+            install_name = self.name.replace("B","W")
+            is_install_id = self.env['dtsc.mpr'].search([('name', '=',install_name)],limit=1)
+            if is_install_id:
+                pass
+            else:  
+                product_values_dict = {}
+                product_values_list = []
+                product_product_obj = self.env['product.product']
+                product_attribute_value_obj = self.env['product.attribute.value']
+                
+                if self.project_name and "代施工" in self.project_name:
+                    self.no_mprlist = True
+                    return
+                
+                
+                for record in self.order_ids:
+                    if record.file_name and "代施工" in record.file_name:
+                        continue
+                    if record.product_id.make_ori_product_id:                    
+                        if record.product_id.make_ori_product_id.tracking != "serial":
+                            product_product_id = product_product_obj.search([('product_tmpl_id',"=",record.product_id.make_ori_product_id.id)],limit=1)
 
-                        
-                        key = record.product_id.id
-                        if key in product_values_dict:
-                            product_values_dict[key]['now_use'] += record.total_size
-                        else:
-                            product_values_dict[key] = {
-                                'product_id':record.product_id.id,
-                                'product_id_formake':record.product_id.make_ori_product_id.id,
-                                'product_product_id':product_product_id.id,
-                                'attr_name':"基础原料",
-                                'uom_id':record.product_id.make_ori_product_id.uom_id.id,
-                                'now_use': record.total_size,
-                            }
-                for attr_val in record.product_atts:
-                    total_units_for_attr = record.total_size
-                    if attr_val.make_ori_product_id.uom_id.name in ["件" , "個" , "支"]:
-                        total_units_for_attr = record.quantity_peijian
-                        
-                    if attr_val.make_ori_product_id and attr_val.make_ori_product_id.tracking != "serial":
-                        product_product_id = product_product_obj.search([('product_tmpl_id',"=",attr_val.make_ori_product_id.id)],limit=1)
-                        key = product_product_id.id
-                        if key in product_values_dict:
-                            product_values_dict[key]['now_use'] += total_units_for_attr
-                        else:
-                            product_values_dict[key] = {
-                                'product_product_id':product_product_id.id,
-                                'product_id':record.product_id.id,
-                                'product_id_formake':record.product_id.make_ori_product_id.id, 
-                                'attr_name':attr_val.attribute_id.name+":"+attr_val.name,
-                                'uom_id':attr_val.make_ori_product_id.uom_id.id,
-                                'now_use':total_units_for_attr,
-                            }
-            product_values_list = [(0, 0, value) for value in product_values_dict.values()]
-            # print(product_values_list)
-            if product_values_list:
-                self.env['dtsc.mpr'].create({
-                    'name' : install_name,             
-                    'from_name' : install_name.replace("W","A"), 
-                    'mprline_ids' : product_values_list,
-                }) 
-            else:
-                self.no_mprlist = True
+                            
+                            key = record.product_id.id
+                            if key in product_values_dict:
+                                product_values_dict[key]['now_use'] += record.total_size
+                            else:
+                                product_values_dict[key] = {
+                                    'product_id':record.product_id.id,
+                                    'product_id_formake':record.product_id.make_ori_product_id.id,
+                                    'product_product_id':product_product_id.id,
+                                    'attr_name':"基础原料",
+                                    'uom_id':record.product_id.make_ori_product_id.uom_id.id,
+                                    'now_use': record.total_size,
+                                }
+                    for attr_val in record.product_atts:
+                        total_units_for_attr = record.total_size
+                        if attr_val.make_ori_product_id.uom_id.name in ["件" , "個" , "支"]:
+                            total_units_for_attr = record.quantity_peijian
+                            
+                        if attr_val.make_ori_product_id and attr_val.make_ori_product_id.tracking != "serial":
+                            product_product_id = product_product_obj.search([('product_tmpl_id',"=",attr_val.make_ori_product_id.id)],limit=1)
+                            key = product_product_id.id
+                            if key in product_values_dict:
+                                product_values_dict[key]['now_use'] += total_units_for_attr
+                            else:
+                                product_values_dict[key] = {
+                                    'product_product_id':product_product_id.id,
+                                    'product_id':record.product_id.id,
+                                    'product_id_formake':record.product_id.make_ori_product_id.id, 
+                                    'attr_name':attr_val.attribute_id.name+":"+attr_val.name,
+                                    'uom_id':attr_val.make_ori_product_id.uom_id.id,
+                                    'now_use':total_units_for_attr,
+                                }
+                product_values_list = [(0, 0, value) for value in product_values_dict.values()]
+                # print(product_values_list)
+                if product_values_list:
+                    self.env['dtsc.mpr'].create({
+                        'name' : install_name,             
+                        'from_name' : install_name.replace("W","A"), 
+                        'mprline_ids' : product_values_list,
+                    }) 
+                else:
+                    self.no_mprlist = True
         
         
     def set_boolean_field_true(self):

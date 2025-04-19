@@ -1108,10 +1108,10 @@ class Checkout(models.Model):
                     make_out_flag = 1
             
             #簡易流程無委内工單
-            is_open_full_checkoutorder = self.env['ir.config_parameter'].sudo().get_param('dtsc.is_open_full_checkoutorder')
-            if not is_open_full_checkoutorder:
-                make_in_flag = 0 
-                make_out_flag = 1
+            # is_open_full_checkoutorder = self.env['ir.config_parameter'].sudo().get_param('dtsc.is_open_full_checkoutorder')
+            # if not is_open_full_checkoutorder:
+                # make_in_flag = 0 
+                # make_out_flag = 1
                 
             if make_in_flag == 1:
                 if only_expensed == False:#含有非服务项次才会检查工单
@@ -1189,10 +1189,10 @@ class Checkout(models.Model):
             elif line.is_purchse == "make_out":
                 make_out_flag = 1
         ##簡易流程無委内工單
-        is_open_full_checkoutorder = self.env['ir.config_parameter'].sudo().get_param('dtsc.is_open_full_checkoutorder')
-        if not is_open_full_checkoutorder:
-            make_in_flag = 0 
-            make_out_flag = 1
+        # is_open_full_checkoutorder = self.env['ir.config_parameter'].sudo().get_param('dtsc.is_open_full_checkoutorder')
+        # if not is_open_full_checkoutorder:
+            # make_in_flag = 0 
+            # make_out_flag = 1
             
         if make_in_flag == 1:
             if only_expensed == False:#含有非服务项次才会检查工单
@@ -1645,7 +1645,7 @@ class Checkout(models.Model):
         sequence_number = 1
         is_open_full_checkoutorder = self.env['ir.config_parameter'].sudo().get_param('dtsc.is_open_full_checkoutorder')
         for record in self.product_ids:
-            if not is_open_full_checkoutorder or (record.is_purchse == 'make_out'):#簡易流程全部走外部工單邏輯
+            if True: #not is_open_full_checkoutorder or (record.is_purchse == 'make_out'):#簡易流程全部走外部工單邏輯
                 if record.product_id.can_be_expensed == True:
                     continue                
                 product_value = {
@@ -1796,10 +1796,10 @@ class Checkout(models.Model):
             elif record.is_purchse == "make_out":
                 make_out_flag = 1
         #簡易流程無委内工單
-        is_open_full_checkoutorder = self.env['ir.config_parameter'].sudo().get_param('dtsc.is_open_full_checkoutorder')
-        if not is_open_full_checkoutorder:
-            make_in_flag = 0 
-            make_out_flag = 1
+        # is_open_full_checkoutorder = self.env['ir.config_parameter'].sudo().get_param('dtsc.is_open_full_checkoutorder')
+        # if not is_open_full_checkoutorder:
+            # make_in_flag = 0 
+            # make_out_flag = 1
         
         if make_in_flag == 1:
             if only_expensed == False:#含有非服务项次才会检查工单
@@ -2054,8 +2054,8 @@ class Checkout(models.Model):
         # _logger.info("222")
         self.out_check()
         # _logger.info("333")
-        if is_open_full_checkoutorder:
-            self.in_check()
+        # if is_open_full_checkoutorder:
+        self.in_check()
             
         # _logger.info("444")
         self.create_sale_order()
@@ -2700,12 +2700,53 @@ class CheckOutLine(models.Model):
         # print("end_compute_price")
     #配件以外的加工金额
     
-    @api.depends('aftermakepricelist_lines',"aftermakepricelist_lines.qty",'product_id','total_units','product_atts',"product_height","product_width","jijiamoshi","mergecai")#,'checkout_product_id.customer_class_id')
+    @api.depends('aftermakepricelist_lines',"aftermakepricelist_lines.qty",'product_id','total_units','product_atts',"product_height","product_width","jijiamoshi","mergecai","checkout_product_id.new_customer_class_id")#,'checkout_product_id.customer_class_id')
     def _compute_total_make_price(self):   
         print("_compute_total_make_price")
         for record in self:
-            if record.checkout_product_id.checkout_order_state in ["receivable_assigned"] or record.checkout_product_id.is_new_partner == True:
+            if record.checkout_product_id.checkout_order_state in ["receivable_assigned"]:# or record.checkout_product_id.is_new_partner == True:
                 continue
+            elif record.checkout_product_id.checkout_order_state in ["waiting_confirmation"]:#儅在CRM中且有設客戶分類則有預設價格
+                if record.checkout_product_id.new_customer_class_id:
+                    total_after_price = 0
+                    for after_record in record.aftermakepricelist_lines:
+                        total_after_price += after_record.total_price * after_record.qty
+                    if record.jijiamoshi in ["forcai", "merge"]:#以才計價
+                        customer_class_id = record.checkout_product_id.new_customer_class_id.id 
+                        b = 0
+                        d = 1 #是否是雙面標版
+                        for attr_value in record.product_atts:  
+                            if isinstance(attr_value.id,int):
+                                if attr_value.attribute_id.name != "配件" and attr_value.attribute_id.name != "施工":
+                                    obj = self.env["dtsc.pricelist"].search([("customer_class_id","=" ,customer_class_id),("attribute_value_id","=" ,attr_value.id)],limit=1)
+                                    price_extra = obj.attr_price
+                                    a = obj.price_cai
+                                    formula = self.env["dtsc.unit_conversion"].search([("name" , "=" ,"單位轉換計算(才數)")]).conversion_formula
+                                    param1 = float(record.product_width)
+                                    param2 = float(record.product_height)
+                                    unit = 0.0
+                                    if record.total_units > 0:
+                                        unit = record.total_units
+                                    else:
+                                        if formula:
+                                            result = eval(formula,{
+                                                'param1' :param1,
+                                                'param2' :param2,
+                                            })
+                                            if record.mergecai == True:
+                                                unit = math.ceil(result * record.quantity)
+                                            else:
+                                                unit = math.ceil(result) * record.quantity
+                                        else:
+                                            unit = 0.0
+                
+                                    b += (a + price_extra) * unit
+                    else:
+                        b = 0
+                        
+                    record.total_make_price = b + total_after_price
+                else:
+                    continue
             else:   
                 total_after_price = 0
                 for after_record in record.aftermakepricelist_lines:
@@ -2767,16 +2808,32 @@ class CheckOutLine(models.Model):
                 else:
                     b = 0
                     
-                print(b)
                 record.total_make_price = b + total_after_price
         # print("end_compute_total_make_price")
     #配件加价
-    @api.depends('product_atts',"jijiamoshi","quantity_peijian")
+    @api.depends('product_atts',"jijiamoshi","quantity_peijian","checkout_product_id.new_customer_class_id")
     def _compute_peijian_price(self):
         # print("_compute_peijian_price")
         for record in self:
-            if record.checkout_product_id.checkout_order_state in ["receivable_assigned"] or record.checkout_product_id.is_new_partner == True:
+            if record.checkout_product_id.checkout_order_state in ["receivable_assigned"]:# or record.checkout_product_id.is_new_partner == True:
                 continue
+            elif record.checkout_product_id.checkout_order_state in ["waiting_confirmation"]:#儅在CRM中且有設客戶分類則有預設價格
+                if record.checkout_product_id.new_customer_class_id:
+                    if record.jijiamoshi in ["forcai", "merge"]: #以才計價
+                        customer_class_id = record.checkout_product_id.new_customer_class_id.id 
+                        b = 0
+                        for attr_value in record.product_atts:
+                            if isinstance(attr_value.id,int):
+                                if attr_value.attribute_id.name == "配件":
+                                    obj = self.env["dtsc.pricelist"].search([("customer_class_id","=" ,customer_class_id),("attribute_value_id","=" ,attr_value.id)],limit=1)
+                                    a = obj.price_jian
+                                    price_extra = obj.attr_price
+                                    b += (a + price_extra) * record.quantity_peijian 
+                    else:
+                        b=0
+                    record.peijian_price = b
+                else:
+                    continue
             else:   
                 if record.jijiamoshi in ["forcai", "merge"]: #以才計價
                     customer_class_id = record.checkout_product_id.customer_class_id.id 
@@ -2833,12 +2890,18 @@ class CheckOutLine(models.Model):
 
     
     #产品ID改变读取 每才价格
-    @api.depends('product_id')#,'checkout_product_id.customer_class_id')
+    @api.depends('product_id',"checkout_product_id.new_customer_class_id")#,'checkout_product_id.customer_class_id')
     def _compute_units_price(self):
         print("_compute_units_price")
         for record in self:
-            if record.checkout_product_id.checkout_order_state in ["receivable_assigned"] or record.checkout_product_id.is_new_partner == True:
+            if record.checkout_product_id.checkout_order_state in ["receivable_assigned"]:# or record.checkout_product_id.is_new_partner == True:
                 continue
+            elif record.checkout_product_id.checkout_order_state in ["waiting_confirmation"]:
+                if record.checkout_product_id.new_customer_class_id:#儅在CRM中且有設客戶分類則有預設價格
+                    customer_class_id = record.checkout_product_id.new_customer_class_id.id
+                    record.units_price = self.env["dtsc.quotation"].search([("product_id","=" ,record.product_id.id),("customer_class_id","=" ,customer_class_id)],limit=1).base_price
+                else:
+                    continue
             else:            
                 customer_class_id = record.checkout_product_id.customer_class_id.id
                 record.units_price = self.env["dtsc.quotation"].search([("product_id","=" ,record.product_id.id),("customer_class_id","=" ,customer_class_id)],limit=1).base_price

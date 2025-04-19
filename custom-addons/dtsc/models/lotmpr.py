@@ -494,7 +494,7 @@ class LotMprLine(models.Model):
     sccz = fields.Char("輸出材質", compute="_compute_sccz")
     make_ori_product_id = fields.Many2one("product.template",string="基礎扣料物")
     yujixiaohao = fields.Float("預計消耗" , compute="_compute_sccz" ,store = True)
-    shengyu = fields.Float("剩餘才數" , compute="_compute_shengyu" ) 
+    shengyu = fields.Float("剩餘才數" , compute="_compute_shengyu",store = True ) 
     is_other_stock = fields.Boolean(default=False)
     other_qty_done = fields.Float()
     state = fields.Selection([
@@ -646,6 +646,23 @@ class LotMprLine(models.Model):
             
     @api.depends("yujixiaohao")    
     def _compute_shengyu(self):
+        for record in self:
+            lotmpr = record.lotmpr_id
+            if lotmpr:
+                lot_stock_num = float(lotmpr.lot_stock_num) if lotmpr.lot_stock_num not in ['無', ''] else 0.0
+                tmp = lotmpr.total_size * lot_stock_num
+
+                for line in lotmpr.lotmprline_id:
+                    if line.state == "succ":
+                        line.shengyu = False
+                    else:
+                        if (tmp - line.yujixiaohao) < 0:
+                            line.shengyu = 0
+                            tmp = 0
+                        else:
+                            line.shengyu = tmp - line.yujixiaohao
+                            tmp = tmp - line.yujixiaohao
+        '''
         lot_stock_num = float(self.lotmpr_id.lot_stock_num) if self.lotmpr_id.lot_stock_num not in ['無', ''] else 0.0
         tmp = self.lotmpr_id.total_size * float(lot_stock_num)
        
@@ -660,7 +677,7 @@ class LotMprLine(models.Model):
                 else:
                     record.shengyu = tmp - record.yujixiaohao
                     tmp = tmp - record.yujixiaohao
-            
+        '''    
                 
             
     @api.depends("name")

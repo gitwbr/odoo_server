@@ -180,22 +180,41 @@
 										<span t-field="doc.total_price_added_tax" />
 									</div>
 							</div>
+							<div class="row" style="margin-bottom: 10px;">
+								<div class="col text-center" style="flex: 1; font-weight: bold;">
+									備註
+								</div>
+								<div class="col text-center" style="flex: 20;"></div>
+							</div>
+							<t t-set="index" t-value="0"/>
+							<t t-foreach="data['comments']" t-as="o">
+								<t t-if="o.is_enable">
+									<t t-set="index" t-value="index + 1"/>
+									<div class="row" style="margin-bottom: 10px;">
+										<div class="col text-center" style="flex: 1;">
+											<t t-esc="index"/>.
+										</div>
+										<div class="col text-start" style="flex: 20; ">
+											<t t-esc="o.comment"/>
+										</div>
+									</div>
+								</t>
+							</t>
 						</div>
 						<table class="table table-condensed">
                             <tbody>
-								<t t-set="count" t-value="1"/>
-								<t t-foreach="data['comments']" t-as="o">
-									<tr>
-										<t t-if="count == 1">
+								<!-- <t t-set="count" t-value="1"/> -->
+								<!-- <t t-foreach="data['comments']" t-as="o"> -->
+									<!-- <tr> -->
+										<!-- <t t-if="count == 1"> -->
 										
-											<td t-att-rowspan="len(data['comments'])" width="10%" >備註</td>
-											<t t-set="count" t-value="2"/>
-										</t>
+											<!-- <td t-att-rowspan="len(data['comments'])" width="10%" >備註</td> -->
+											<!-- <t t-set="count" t-value="2"/> -->
+										<!-- </t> -->
 										
-										<!-- <td rowspan="t-esc='len(data['comments'])'" width="10%">備註</td> -->
-										<td colspan="3"><t t-esc="o.sequence" />.<t t-esc="o.comment" /></td>
-									</tr>
-								</t>
+										<!-- <td colspan="3"><t t-esc="o.sequence" />.<t t-esc="o.comment" /></td> -->
+									<!-- </tr> -->
+								<!-- </t> -->
                                 <!-- <tr> -->
                                     <!-- <td rowspan="4" width="10%" >備註</td> -->
                                     <!-- <td colspan="3">1.以上報價含稅。</td> -->

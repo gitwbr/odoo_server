@@ -8,7 +8,31 @@ from collections import defaultdict
 import logging
 
 _logger = logging.getLogger(__name__)
+from odoo.addons.website.controllers.main import Website
+from urllib.parse import quote
+import werkzeug
 
+class WebsiteForceHttps(Website):
+
+
+    # @http.route('/website/force/<int:website_id>', type='http', auth="user", website=True, sitemap=False, multilang=False,override=True)
+    # def website_force(self, website_id, path='/', isredir=False, **kw):
+        # _logger.info("==================================")
+        # website = request.env['website'].browse(website_id)
+        # _logger.info(f"----------------{website}--------------------")
+        # if not isredir and website.domain:
+            # _logger.info(f"------===={website.domain}=====--------")
+            # domain_from = request.httprequest.environ.get('HTTP_HOST', '')
+            # domain_to = website.domain.replace("http://", "").replace("https://", "")
+            # domain_to_https = f"https://{domain_to}"
+            # force_url = f'/website/force/{website.id}?isredir=1&path={quote(path)}'
+            # url_to = werkzeug.urls.url_join(domain_to_https, force_url)
+            # _logger.info(f"------===={url_to}=====--------")
+            # return request.redirect(url_to)
+        # _logger.info(f"++++++++++++++++")
+        # website._force()
+        # return request.redirect(path)
+        
 class CustomWebsiteSale(WebsiteSale):
 
     # @http.route(['/shop/cart'], type='http', auth="public", website=True, sitemap=False)

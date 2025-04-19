@@ -49,6 +49,7 @@
 
 				</searchpanel>   
 				<filter string="已完成" name="succ_search" domain="[('state', '=', 'succ')]"/>
+				<field name="name" string="條碼名稱"/>
 			</search>
 		</field>		
 	</record>

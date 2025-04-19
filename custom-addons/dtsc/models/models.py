@@ -1108,7 +1108,7 @@ class IrUiMenu(models.Model):
         menus = super(IrUiMenu, self).load_menus(debug)
         # 添加自定义的可见性处理
         
-        self._get_visibility_on_config_parameter('dtsc.makein', 'is_open_full_checkoutorder')
+        # self._get_visibility_on_config_parameter('dtsc.makein', 'is_open_full_checkoutorder')
         self._get_visibility_on_config_parameter('crm.crm_menu_root', 'is_open_crm')
         self._get_visibility_on_config_parameter('linebot', 'is_open_linebot')
         self._get_visibility_on_config_parameter('menu_daka', 'is_open_linebot')

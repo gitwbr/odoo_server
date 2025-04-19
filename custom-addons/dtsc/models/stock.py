@@ -838,6 +838,8 @@ class Mpr(models.Model):
         uom_obj = self.env["uom.uom"]
         
         for record in self.mprline_ids:
+            if not record.product_product_id:
+                continue
             uomid = record.uom_id.id
             
             if "卷" in record.uom_id.name:

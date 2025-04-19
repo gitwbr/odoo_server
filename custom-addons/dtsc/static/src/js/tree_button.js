@@ -8,6 +8,21 @@ import { ListRenderer } from "@web/views/list/list_renderer";
 import { ListController } from "@web/views/list/list_controller";
 import { patch } from '@web/core/utils/patch';
 
+// import { patch } from "@web/core/utils/patch";
+import { WebsitePreview } from "@website/client_actions/website_preview/website_preview";
+
+// patch(WebsitePreview.prototype, "dtsc.debugPreview", {
+    // async willStart() {
+        // await this._super(...arguments);
+
+        // console.log("🌐 websites:", this.websiteService.websites);
+        // console.log("🌐 websiteId:", this.websiteId);
+        // const currentWebsite = this.websiteService.websites.find(w => w.id === this.websiteId);
+        // console.log("🌐 currentWebsite:", currentWebsite);
+        // console.log("🌐 currentWebsite.domain:", currentWebsite?.domain);
+    // }
+// });
+
 const { onWillStart } = owl;
 export class PartnerListControllerS extends ListController {
     setup() {

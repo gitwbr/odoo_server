@@ -21,27 +21,50 @@ class YklCommentLocation(models.Model):
      
 class YklComment(models.Model):
     _name = 'dtsc.yklcomment'
-    
+    _order = "color,sort_num asc"
     name = fields.Char("名稱",compute="_compute_name",store=True)
     location_id = fields.Many2one('stock.location',domain=[('usage', '=', 'internal')],string="位置")
     loc_id = fields.Many2one('dtsc.yklcommentlocation',string="位置")
     partner_id = fields.Many2one("res.partner",string="廠商",domain=[('supplier_rank', '>', 0)])
     partner_name = fields.Char(string="廠商")
-    color = fields.Char("顔色")
-    hou = fields.Char("厚度mm",default="0")
-    width = fields.Char("長度")
-    height = fields.Char("寬度")
+    color = fields.Char("顔色/品名")
+    hou = fields.Float("厚度mm",default="0")
+    # hou_num = fields.Float(store=True,compute="_compute_hou_num")
+    width = fields.Char("寬度")
+    # width_num = fields.Float(store=True,compute="_compute_width_num")
+    sort_num = fields.Float(store=True,compute="_compute_sort_num")
+    height = fields.Char("長度")
     quantity = fields.Integer("數量")
     cai = fields.Integer(string="才數",compute="_compute_single_units",store=True)
-    comment_account = fields.Char("備註使用工單+片數")
-    comment = fields.Char("備註")
+    comment_account = fields.Text("備註使用工單+片數")
+    comment = fields.Text("備註")
     dateend = fields.Date("統計截止日")
+    
+    @api.depends("hou","width")
+    def _compute_sort_num(self):
+        for record in self:
+            record.sort_num = float(str(int(float(record.hou) * 10)) + '.' + str(int(float(record.width)) * 100))
+    
+    def copy_action(self):
+        self.ensure_one()  # 確保只處理一條
+        new_record = self.copy()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': '複製記錄',
+            'res_model': 'dtsc.yklcomment',
+            'view_mode': 'form',
+            'res_id': new_record.id,
+            'target': 'current',
+        }
     
     @api.depends("color","hou")
     def _compute_name(self):
         for record in self:
             if record.color and record.hou:
-                record.name = record.color+record.hou+"mm"
+                if record.hou == "0":
+                    record.name = record.color
+                else:
+                    record.name = record.color+record.hou+"mm"
             else:
                 record.name = ""
                 

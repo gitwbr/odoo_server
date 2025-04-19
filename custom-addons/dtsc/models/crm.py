@@ -15,6 +15,7 @@ class CrmUserComment(models.Model):
     _order = "sequence"
     
     sequence = fields.Integer(string="項")
+    is_enable = fields.Boolean("勾選備註")
     comment = fields.Char("内容")
     create_id = fields.Many2one('res.users',string="創建者", default=lambda self: self.env.user)
     
@@ -102,6 +103,8 @@ class CheckoutInherit(models.Model):
     is_new_partner = fields.Boolean("新客戶")
     crm_date = fields.Date("報價日期")
     new_partner = fields.Char("新客戶名")
+    
+    new_customer_class_id = fields.Many2one('dtsc.customclass',string="新客戶分類")
     new_init = fields.Char("新簡稱")
     new_street = fields.Char("新客戶地址")
     new_vat = fields.Char("新客戶統編")
@@ -118,6 +121,11 @@ class CheckoutInherit(models.Model):
         ('4', '其他'),
         # ('5', '其他選項'),
     ], string='新客戶付款方式' ,default="1") 
+    new_custom_invoice_form = fields.Selection([
+        ('21', '三聯式'),
+        ('22', '二聯式'),
+        ('other', '其他'),
+    ], string='稅別') 
     @api.model
     def create(self, vals):
         """
@@ -185,12 +193,14 @@ class CheckoutInherit(models.Model):
                     'street': record.new_street,
                     'vat': record.new_vat,
                     'phone': record.new_phone,
+                    'customclass_id':record.new_customer_class_id,
                     'mobile': record.new_mobile,
                     'email': record.new_email,
                     'custom_contact_person': record.new_custom_contact_person,
                     'custom_fax':record.new_custom_fax,
                     'property_payment_term_id' : record.new_property_payment_term_id,
                     'custom_pay_mode':record.new_custom_pay_mode,
+                    'custom_invoice_form':record.new_custom_invoice_form,
                     'is_customer' : True,
                     'sell_user' : self.env.user.id,
                     'custom_init_name' : record.new_init,

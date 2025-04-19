@@ -5,19 +5,22 @@
 		<field name="name">dtsc.yklcomment.report.tree</field>
 		<field name="model">dtsc.yklcomment</field>
 		<field name="arch" type="xml">
-			<tree editable="bottom">	 			
+			<tree editable="bottom">			
 				<field name="name" />
 				<field name="loc_id" />
 				<field name="partner_name" />
 				<field name="color" readonly="1"/>
-				<field name="hou" readonly="1"/>
+				<field name="hou"  readonly="1"/>
+				<!-- <field name="sort_num" /> -->
+				<!-- <field name="hou_num" invisible="1"/> -->
 				<field name="width"  />
+				<!-- <field name="width_num" invisible="1"  /> -->
 				<field name="height"  />
 				<field name="quantity"  />
 				<field name="cai" sum="小計" />
+				<field name="dateend"  />		
 				<field name="comment_account"  />
-				<field name="comment"  />
-				<field name="dateend"  />			
+				<field name="comment"  />	
 			</tree>
 		</field>	
 	</record>
@@ -27,12 +30,16 @@
 		<field name="model">dtsc.yklcomment</field>
 		<field name="arch" type="xml">
 			<form>		
+				<header>
+					<button name="copy_action" type="object" class="oe_highlight" string="複製"/>
+				</header>
+				<sheet class="w3000">
 				<group>
 					<field name="name" invisible="1" />
 					<field name="loc_id" />
 					<field name="partner_name" />
-					<field name="color" />
-					<field name="hou" />
+					<field name="color" required="1" />
+					<field name="hou" required="1" />
 					<field name="width"  />
 					<field name="height"  />
 					<field name="quantity"  />
@@ -40,7 +47,8 @@
 					<field name="comment_account"  />
 					<field name="comment"  />
 					<field name="dateend"  />	
-				</group>				
+				</group>
+				</sheet>				
 			</form>
 		</field>	
 	</record>
@@ -54,6 +62,8 @@
                     <field name="loc_id"  />
                 </searchpanel>
 				
+				<filter string="顔色/品名分組" name="group_by_color_id" domain="[]" context="{'group_by': 'color'}"/>	
+				<filter string="厚度" name="group_by_hou_id" domain="[]" context="{'group_by': 'hou'}"/>	
 
 			</search> 
 		</field>		
