@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, FormEvent } from 'react';
+// import { useState, FormEvent } from 'react';
 import Navbar from '@/components/Navbar';
 
 const contactMethods = [
@@ -27,6 +27,7 @@ const contactMethods = [
   }
 ];
 
+/* 暂时注释掉未使用的接口
 interface FormData {
   name: string;
   company: string;
@@ -34,8 +35,10 @@ interface FormData {
   phone: string;
   message: string;
 }
+*/
 
 export default function Contact() {
+  /* 暂时注释掉未使用的状态和函数
   const [formData, setFormData] = useState<FormData>({
     name: '',
     company: '',
@@ -61,6 +64,7 @@ export default function Contact() {
       setIsSubmitting(false);
     }
   };
+  */
 
   return (
     <main className="flex min-h-screen flex-col">

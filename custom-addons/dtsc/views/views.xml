@@ -462,7 +462,7 @@
 		<!-- <field name="res_id" ref="default_manager"/> -->
 	</record>
 
-	<record model="ir.actions.act_window" id="action_ykl1">
+	<record model="ir.actions.act_window" id="action_ykl">
 		<field name="name">壓克力統計表</field>
 		<field name="res_model">dtsc.yklcomment</field>
 		<field name="view_mode">tree,form</field>
