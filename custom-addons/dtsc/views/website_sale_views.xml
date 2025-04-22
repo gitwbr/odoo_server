@@ -81,18 +81,17 @@
 			</t>
         </xpath> -->
 		<xpath expr="//span[@t-esc='order.partner_id']" position="replace">
-			<span t-esc="order.partner_id.contact_address_complete" class="address-inline"/>
+			<span t-field="order.partner_id" t-options='{"widget": "contact", "fields": ["address", "name", "phone"], "no_marker": True}' class="address-inline"/>
 		</xpath>
 		<xpath expr="//span[@t-esc='order.partner_shipping_id']" position="replace">
-			<span t-esc="order.partner_shipping_id.contact_address_complete" class="address-inline"/>
+			<span t-field="order.partner_shipping_id" t-options='{"widget": "contact", "fields": ["address", "name", "phone"], "no_marker": True}' class="address-inline"/>
 		</xpath>
     </template>
 	
 	<template id="dtsc_custom_template_kanban" inherit_id="website_sale.address_kanban">
 		<xpath expr="//t[@t-esc='contact']" position="replace">
 			<t t-esc="contact.name"/> <br/>
-			<t t-esc="contact.contact_address_complete" class="address-inline"/>
-			<!-- <t t-esc="contact.state_id" class="address-inline"/> -->
+			<span t-field="contact" t-options='{"widget": "contact", "fields": ["address"], "no_marker": True}' class="address-inline"/>
 		</xpath>
 	</template>
 	
@@ -114,7 +113,7 @@
                 如果您發現此異常事項，請聯繫網站管理員。
             </div>
         </div>
-        <!-- 如果在限制地区，显示“该地区需要专人服务” -->
+        <!-- 如果在限制地区，显示"该地区需要专人服务" -->
         <div t-else="" class="alert alert-warning">
             <strong>該地區需要專人服務</strong><br/>
         </div>

@@ -126,6 +126,34 @@ class CheckoutInherit(models.Model):
         ('22', '二聯式'),
         ('other', '其他'),
     ], string='稅別') 
+    
+    def action_copy_checkout(self):
+        for record in self:
+            # 1. 先複製主體資料
+            new_checkout = record.with_context(from_crm=True).copy(default={})
+
+            # 2. 逐筆複製 checkoutline
+            for line in record.product_ids:
+                line_data = line.copy_data()[0]
+                line_data.pop('id', None)
+                line_data['checkout_product_id'] = new_checkout.id
+                product_atts_ids = line.product_atts.ids  # 如果是 One2many 就改成 line.product_atts.copy_data()
+                line_data.pop('product_atts', None)
+                # 建立新的 checkoutline
+                new_line = self.env['dtsc.checkoutline'].create(line_data)
+
+                if product_atts_ids:
+                    new_line.write({'product_atts': [(6, 0, product_atts_ids)]}) 
+                    
+            return {
+                'type': 'ir.actions.act_window',
+                'name': '複製報價單',
+                'res_model': 'dtsc.checkout',
+                'view_mode': 'form',
+                'res_id': new_checkout.id,
+                'target': 'current',
+            }
+    
     @api.model
     def create(self, vals):
         """
@@ -426,6 +454,7 @@ class CheckoutInherit(models.Model):
         
         # 订单明细数据
         row += 1
+        all_price = 0
         for doc in records:
             for order in doc.product_ids:
                 sheet.write(row, 0, order.sequence, bold_format)
@@ -453,21 +482,27 @@ class CheckoutInherit(models.Model):
                 sheet.write(row, 9, order.units_price, bold_format)
                 other_value = order.total_make_price + order.peijian_price
                 sheet.write(row, 10, other_value, bold_format)  # 其他字段
-                sheet.merge_range(row, 11,row, 13, order.price, bold_format)
+                
+                record_price = order.price + order.install_price
+                all_price = all_price + record_price
+                sheet.merge_range(row, 11,row, 13, record_price, bold_format)
                 row += 1
 
         # 小計、稅金、合計
         sheet.merge_range(row, 0,row, 9, "", border_format)
         sheet.write(row, 10, "小計", bold_format)
-        sheet.merge_range(row, 11,row, 13, records[0].record_price_and_construction_charge if records else "", border_format)
+        # sheet.merge_range(row, 11,row, 13, records[0].record_price_and_construction_charge if records else "", border_format)
+        sheet.merge_range(row, 11,row, 13, all_price if all_price else 0, border_format)
         row += 1
         sheet.merge_range(row, 0,row, 9, "", border_format)
         sheet.write(row, 10, "稅金", bold_format)
-        sheet.merge_range(row, 11,row, 13, records[0].tax_of_price if records else "", border_format)
+        # sheet.merge_range(row, 11,row, 13, records[0].tax_of_price if records else "", border_format)
+        sheet.merge_range(row, 11,row, 13, int(all_price * 0.05 + 0.5) if all_price else 0, border_format)
         row += 1
         sheet.merge_range(row, 0,row, 9, "", border_format)
         sheet.write(row, 10, "合計", bold_format)
-        sheet.merge_range(row, 11,row, 13, records[0].total_price_added_tax if records else "", border_format)
+        # sheet.merge_range(row, 11,row, 13, records[0].total_price_added_tax if records else "", border_format)
+        sheet.merge_range(row, 11,row, 13, all_price + int(all_price * 0.05 + 0.5) if all_price else 0, border_format)
         row += 1
         # 备注信息
         commentObj = self.env["dtsc.crmusercomment"].search([("create_id","=",self.env.user.id)], order='sequence')

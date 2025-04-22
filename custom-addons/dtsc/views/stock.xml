@@ -68,6 +68,9 @@
 			<xpath expr="//field[@name='virtual_available']" position="attributes">
 				<attribute name="invisible">1</attribute>	
 			</xpath>
+			<xpath expr="//field[@name='qty_available']" position="before">
+				<field name="average_price" />
+			</xpath>
 			
 		</field>
 		
@@ -178,7 +181,7 @@
 		<field name="arch" type="xml">
 			<xpath expr="//search" position="inside">
 				
-				<filter string="正數庫存" name="zskc" domain="[('quantity', '&gt;', 0.0)]"/> 
+				<filter string="非零庫存" name="zskc" domain="[('quantity', '!=', 0.0)]"/> 
 			</xpath> 
 		</field>
 	</record>

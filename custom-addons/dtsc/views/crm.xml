@@ -69,6 +69,11 @@
 							type="object"
 							class="oe_highlight"
 							attrs="{'invisible': [('checkout_order_state', '!=', 'waiting_confirmation')]}"/>
+					<button name="action_copy_checkout"
+							string="複製"
+							type="object"
+							class="oe_highlight"
+							attrs="{'invisible': [('checkout_order_state', '!=', 'waiting_confirmation')]}" />
 				</xpath>
 				
 				<xpath expr="//div[@class='oe_title']" position="after">
@@ -80,6 +85,7 @@
 				
 				<xpath expr="//field[@name='user_id']" position="after">
 					<field name="crm_date" attrs="{'invisible': [('checkout_order_state', '!=', 'waiting_confirmation')]}"/>
+					<field name="is_show_price" attrs="{'invisible': [('checkout_order_state', '!=', 'waiting_confirmation')]}"/>
 				</xpath>
 				<xpath expr="//field[@name='customer_id']" position="before">					
 					<field name="new_partner" attrs="{'invisible': [('is_new_partner', '!=', True)]}"/>

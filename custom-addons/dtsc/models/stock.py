@@ -258,25 +258,29 @@ class StockQuant(models.Model):
                 ], order='date_order desc')
 
                 qty_consumed = 0
-                for line in purchase_lines:
-                    if total_qty_needed <= 0:
-                        break
-                    purchase_qty = line.product_qty
-                    purchase_price = 0
-                    if line.price_unit != 0:
-                        purchase_price = line.price_unit
-                    else:
-                        purchase_price = line.product_id.standard_price
-                    if purchase_qty >= total_qty_needed:
-                        total_value += total_qty_needed * purchase_price
-                        qty_consumed += total_qty_needed
-                        total_qty_needed = 0
-                    else:
-                        total_value += purchase_qty * purchase_price
-                        qty_consumed += purchase_qty
-                        total_qty_needed -= purchase_qty
+                if not purchase_lines:
+                    average_price = record.product_id.standard_price
+                    total_value = average_price * total_qty_needed
+                else:
+                    for line in purchase_lines:
+                        if total_qty_needed <= 0:
+                            break
+                        purchase_qty = line.product_qty
+                        purchase_price = 0
+                        if line.price_unit != 0:
+                            purchase_price = line.price_unit
+                        else:
+                            purchase_price = line.product_id.standard_price
+                        if purchase_qty >= total_qty_needed:
+                            total_value += total_qty_needed * purchase_price
+                            qty_consumed += total_qty_needed
+                            total_qty_needed = 0
+                        else:
+                            total_value += purchase_qty * purchase_price
+                            qty_consumed += purchase_qty
+                            total_qty_needed -= purchase_qty
 
-                average_price = total_value / qty_consumed if qty_consumed > 0 else 0.0
+                    average_price = total_value / qty_consumed if qty_consumed > 0 else 0.0
             
                 record.average_price = average_price
                 record.total_value = total_value
@@ -713,6 +717,51 @@ class Productproduct(models.Model):
     _inherit = "product.product"
     
     sec_uom_id = fields.Many2one("uom.uom")
+    average_price = fields.Float("平均采購價格" , compute="_compute_average_price")
+    # total_value = fields.Float("成本" , compute="_compute_average_price")
+    
+    @api.depends('qty_available','standard_price')
+    def _compute_average_price(self):
+        for record in self:
+            total_value = 0.0
+            average_price = 0.0
+            total_qty_needed = record.qty_available
+            purchase_lines = self.env['purchase.order.line'].search([
+                ('product_id', '=', record.id),
+                ('order_id.state', 'in', ['purchase', 'done'])
+            ], order='date_order desc')
+
+            qty_consumed = 0
+            if not purchase_lines:
+                average_price = record.standard_price
+            else:
+                for line in purchase_lines:
+                    if total_qty_needed <= 0:
+                        break
+                    purchase_qty = line.product_qty
+                    purchase_price = 0
+                    if line.price_unit != 0:
+                        purchase_price = line.price_unit
+                    else:
+                        purchase_price = line.product_id.standard_price
+                    if purchase_qty >= total_qty_needed:
+                        total_value += total_qty_needed * purchase_price
+                        qty_consumed += total_qty_needed
+                        total_qty_needed = 0
+                    else:
+                        total_value += purchase_qty * purchase_price
+                        qty_consumed += purchase_qty
+                        total_qty_needed -= purchase_qty
+
+                average_price = total_value / qty_consumed if qty_consumed > 0 else 0.0
+        
+            record.average_price = average_price
+                # record.total_value = total_value
+    
+    
+    
+    
+    
     
 class StockMove(models.Model):
     _inherit = "stock.move"

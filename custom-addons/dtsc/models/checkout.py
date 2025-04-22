@@ -252,9 +252,13 @@ class Checkout(models.Model):
     record_install_price = fields.Integer(string="施工價格" , default=0 )
     # wbr
     construction_charge_price = fields.Integer(string="施工收費", compute="_compute_construction_charge_price",store=True)
+    construction_charge_price_crm = fields.Integer(string="施工收費", compute="_compute_construction_charge_price_crm",store=True)
     record_price_and_construction_charge = fields.Integer(string="稅前總額",store=True,compute="_compute_record_price_and_construction_charge")
+    record_price_and_construction_charge_crm = fields.Integer(string="稅前總額",store=True,compute="_compute_record_price_and_construction_charge_crm")
     tax_of_price = fields.Integer(string="預估稅額" , compute="_compute_tax_of_price"  ,store=True)
+    tax_of_price_crm = fields.Integer(string="預估稅額" , compute="_compute_tax_of_price_crm"  ,store=True) 
     total_price_added_tax = fields.Integer(string="稅後總價" , compute="_compute_total_price_added_tax" ,store=True) 
+    total_price_added_tax_crm = fields.Integer(string="稅後總價" , compute="_compute_total_price_added_tax_crm" ,store=True) 
     
     is_delivery = fields.Boolean(string="是否已生成出貨單" , default=False ) 
     delivery_order = fields.Char(string="出貨單號" , default=False ) 
@@ -574,10 +578,7 @@ class Checkout(models.Model):
         #self.is_in_by_mg = (group_dtsc_mg and user in group_dtsc_mg.users) or (group_dtsc_gly and user in group_dtsc_gly.users)
         self.is_in_by_sc = group_dtsc_sc and user in group_dtsc_sc.users    
     
-    ####权限 
-
-
-
+    ####权限  
     def _default_estimated_date(self):
         """计算默认的 estimated_date"""
         if not self.checkout_order_state:
@@ -591,9 +592,7 @@ class Checkout(models.Model):
             days_to_add = 7 - weekday
             next_day = base_datetime + timedelta(days=days_to_add)
         return next_day
-
-    
-    '''     
+    '''    
     @api.depends('create_date')
     def _compute_estimated_date(self):
         for record in self:
@@ -624,7 +623,7 @@ class Checkout(models.Model):
         
     @api.depends("customer_id","customer_id.customclass_id")
     def _compute_customer_class_id(self):
-        print(self.customer_id.customclass_id.id)
+        # print(self.customer_id.customclass_id.id)
         self.customer_class_id = self.customer_id.customclass_id.id
         
     """ @api.depends("customer_id", "checkout_order_state", "crm_lead_id")
@@ -659,7 +658,7 @@ class Checkout(models.Model):
     
     
         records = self.env['dtsc.checkout'].search([('name', 'like', 'E'+next_year_str+next_month_str+'%')], order='name desc', limit=1)
-        print("查找數據庫中最後一條",records.name)
+        # print("查找數據庫中最後一條",records.name)
         if records:
             last_name = records.name
             # 从最后一条记录的name中提取序列号并转换成整数
@@ -1394,6 +1393,12 @@ class Checkout(models.Model):
             print(f"記錄 {record.id}: 總 SJSF = {total_sjsf}")
             record.construction_charge_price = total_sjsf
 
+    @api.depends('product_ids.install_price')
+    def _compute_construction_charge_price_crm(self):
+        for record in self:
+            total_sjsf = sum(line.install_price or 0 for line in record.product_ids)
+            record.construction_charge_price_crm = total_sjsf
+
     #稅後總價
     # @api.depends("record_price")
     # def _compute_total_price_added_tax(self):
@@ -1411,6 +1416,14 @@ class Checkout(models.Model):
                 record.total_price_added_tax = record.record_price + record.construction_charge_price + record.tax_of_price
             else:
                 record.total_price_added_tax = 0
+                
+    @api.depends("record_price", "tax_of_price_crm", "construction_charge_price_crm")
+    def _compute_total_price_added_tax_crm(self):
+        for record in self:
+            if record:
+                record.total_price_added_tax_crm = record.record_price + record.construction_charge_price_crm + record.tax_of_price_crm
+            else:
+                record.total_price_added_tax_crm = 0
 
     
     #預估稅額
@@ -1426,24 +1439,43 @@ class Checkout(models.Model):
                 # else:
                     # record.tax_of_price = 0 
     # wbr
-    @api.depends("record_price", "construction_charge_price","customer_id")
+    @api.depends("record_price", "construction_charge_price","customer_id","new_custom_invoice_form")
     def _compute_tax_of_price(self):
         for record in self:
             if record:
                 total_price = record.record_price + record.construction_charge_price
-                if record.customer_id.custom_invoice_form in ["21", "22"] or record.is_online:
-                    # record.tax_of_price = round(total_price * 0.05 + 0.1,1)
+                if record.customer_id.custom_invoice_form in ["21", "22"] or record.new_custom_invoice_form in ["21", "22"] or record.is_online:
+                    # record.tax_of_price = round(total_price * 0.05 + 0.1 , 1)
                     record.tax_of_price = int(total_price * 0.05 + 0.5) #四舍五入
                 else:
                     record.tax_of_price = 0
             else:
-                record.tax_of_price = 0    
+                record.tax_of_price = 0 
+                
+    @api.depends("record_price", "construction_charge_price_crm","customer_id","new_custom_invoice_form")
+    def _compute_tax_of_price_crm(self):
+        for record in self:
+            if record:
+                total_price = record.record_price + record.construction_charge_price_crm
+                if record.customer_id.custom_invoice_form in ["21", "22"] or record.new_custom_invoice_form in ["21", "22"] or record.is_online:
+                    # record.tax_of_price = round(total_price * 0.05 + 0.1 , 1)
+                    record.tax_of_price_crm = int(total_price * 0.05 + 0.5) #四舍五入
+                else:
+                    record.tax_of_price_crm = 0
+            else:
+                record.tax_of_price_crm = 0    
     
     @api.depends("record_price", "construction_charge_price")
     def _compute_record_price_and_construction_charge(self):
         for record in self:
             if record:
                 record.record_price_and_construction_charge = record.record_price + record.construction_charge_price
+                
+    @api.depends("record_price", "construction_charge_price_crm")
+    def _compute_record_price_and_construction_charge_crm(self):
+        for record in self:
+            if record:
+                record.record_price_and_construction_charge_crm = record.record_price + record.construction_charge_price_crm
                
 
 
@@ -1740,9 +1772,11 @@ class Checkout(models.Model):
         # install_name = self.name.replace("A","T").replace("E","T")
         product_values_list = []
         sequence_number = 1
+        sjsf = 0
         for record in self.product_ids:
             if record.is_install: 
-                # print(record.product_id.name)               
+                # print(record.product_id.name)
+                sjsf = sjsf + record.install_price
                 product_value = {
                     'name' : record.product_id.id,
                     'size' : record.product_width + "x" + record.product_height,
@@ -1761,6 +1795,7 @@ class Checkout(models.Model):
         if sequence_number > 1:
             self.env['dtsc.installproduct'].create({
                 'name' : install_name,
+                'sjsf' : sjsf,
                 'install_product_ids' : product_values_list,   
                 'checkout_id' : self.id,         
             })
@@ -1795,11 +1830,6 @@ class Checkout(models.Model):
                 make_in_flag = 1
             elif record.is_purchse == "make_out":
                 make_out_flag = 1
-        #簡易流程無委内工單
-        # is_open_full_checkoutorder = self.env['ir.config_parameter'].sudo().get_param('dtsc.is_open_full_checkoutorder')
-        # if not is_open_full_checkoutorder:
-            # make_in_flag = 0 
-            # make_out_flag = 1
         
         if make_in_flag == 1:
             if only_expensed == False:#含有非服务项次才会检查工单
@@ -2298,7 +2328,7 @@ class CheckOutLine(models.Model):
         string='後加工方式'
     )
     same_material = fields.Boolean(string="同材質")
-    
+    install_price = fields.Float("施工費用")
     def update_price(self):
         # 如果勾选了“同材質”，则更新同一 checkout 中所有相同 product_id 的行
         if self.same_material:
@@ -2325,7 +2355,7 @@ class CheckOutLine(models.Model):
     
     @api.depends("aftermakepricelist_lines", "aftermakepricelist_lines.qty")
     def _compute_multi_chose_ids(self):
-        print("_compute_multi_chose_ids")
+        # print("_compute_multi_chose_ids")
         for record in self:
             # 使用列表来收集结果
             chosen_list = []
@@ -2440,7 +2470,7 @@ class CheckOutLine(models.Model):
             
         if user not in group_dtsc_gly.users and user in group_dtsc_mg.users:
             if self.checkout_product_id.is_delivery:
-                allowed_fields = {'price', 'product_total_price', 'units_price', 'total_make_price', 'peijian_price'}
+                allowed_fields = {'price', 'product_total_price', 'units_price', 'total_make_price', 'peijian_price',"is_selected","sale_order_line_id","project_product_name"}
                 disallowed = set(vals.keys()) - allowed_fields
                 if disallowed:
                     raise UserError("此訂單已出貨，僅允許修改價格相關欄位。")

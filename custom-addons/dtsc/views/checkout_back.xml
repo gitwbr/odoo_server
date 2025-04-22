@@ -348,6 +348,7 @@
 										<field name="product_atts"  options="{'no_create': True, 'no_create_edit': True}" widget="many2many_tags" domain="[('id' , 'in' , allowed_product_atts )]"/> 
 										<button name="new_aftermake" string="後"  type="object" class="btn-primary"/>
 										<field name="multi_chose_ids" style="width:100px;white-space: normal;" />
+										<field name="install_price" attrs="{'invisible': [('parent.checkout_order_state', 'not in', ['waiting_confirmation'])]}" />
 										<field name="quantity" sum="數量" />
 										<field name="quantity_peijian" />
 										<field name="single_units" />
@@ -384,25 +385,29 @@
                                         <!-- <field name="stock_valuation_value" string="成本"/> -->
                                         <!-- <field name="gross_profit" string="毛利"/> -->
                                     </group>
-                                    <group colspan="3" string="訂單價格" attrs="{'invisible': [('is_recheck', '=', True)]}">
+                                    <group colspan="3" string="訂單價格" attrs="{'invisible': ['|',('is_recheck', '=', True),('checkout_order_state', 'in', ['waiting_confirmation'])]}">
                                         <field name="is_in_by_mg" invisible="1"/>
                                         <field name="is_in_by_yw" invisible="1"/>
                                         <field name="is_in_by_kj" invisible="1"/>
                                         <field name="record_price" readonly="1" attrs="{'invisible': [ ('is_in_by_yw', '=', False), ('is_in_by_kj', '=', False)]}" />
                                         <field name="construction_charge_price" readonly="1" attrs="{'invisible': [ ('is_in_by_yw', '=', False), ('is_in_by_kj', '=', False)]}" />
                                         <field name="record_price_and_construction_charge" readonly="1" string="小計" attrs="{'invisible': [ ('is_in_by_yw', '=', False), ('is_in_by_kj', '=', False)]}" />
-                                        <!-- <field name="delivery_price" /> -->
-                                        <!-- <field name="another_price"/> -->
-                                        <!-- <field name="record_install_price"/> -->
-                                        <!-- <div class="oe_subtotal_footer_separator oe_inline o_td_label"> -->
-                                            <!-- <label for="total_price" widget="integer"/> -->
-                                        <!-- </div> -->
-                                        <!-- <field name="total_price" nolabel="1" class="oe_subtotal_footer_separator" widget="integer"/> -->
                                         <field name="tax_of_price" widget="integer" attrs="{'invisible': [ ('is_in_by_yw', '=', False), ('is_in_by_kj', '=', False)]}" />
                                         <div class="oe_subtotal_footer_separator oe_inline o_td_label">
                                             <label for="total_price_added_tax"/>
                                         </div>
                                         <field name="total_price_added_tax" nolabel="1" class="oe_subtotal_footer_separator" widget="integer" attrs="{'invisible': [ ('is_in_by_yw', '=', False), ('is_in_by_kj', '=', False)]}" />
+                                    </group>
+									
+                                    <group colspan="3" string="訂單價格" attrs="{'invisible': [('checkout_order_state', 'not in', ['waiting_confirmation'])]}">
+                                        <field name="record_price" readonly="1" attrs="{'invisible': [ ('is_in_by_yw', '=', False), ('is_in_by_kj', '=', False)]}" />
+                                        <field name="construction_charge_price_crm" readonly="1" attrs="{'invisible': [ ('is_in_by_yw', '=', False), ('is_in_by_kj', '=', False)]}" />
+                                        <field name="record_price_and_construction_charge_crm" readonly="1" string="小計" attrs="{'invisible': [ ('is_in_by_yw', '=', False), ('is_in_by_kj', '=', False)]}" />
+                                        <field name="tax_of_price_crm" widget="integer" attrs="{'invisible': [ ('is_in_by_yw', '=', False), ('is_in_by_kj', '=', False)]}" />
+                                        <div class="oe_subtotal_footer_separator oe_inline o_td_label">
+                                            <label for="total_price_added_tax"/>
+                                        </div>
+                                        <field name="total_price_added_tax_crm" nolabel="1" class="oe_subtotal_footer_separator" widget="integer" attrs="{'invisible': [ ('is_in_by_yw', '=', False), ('is_in_by_kj', '=', False)]}" />
                                     </group>
                                 </group>
 								
