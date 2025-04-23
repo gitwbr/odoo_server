@@ -144,6 +144,16 @@ class CheckoutInherit(models.Model):
 
                 if product_atts_ids:
                     new_line.write({'product_atts': [(6, 0, product_atts_ids)]}) 
+                related_records = self.env['dtsc.checkoutlineaftermakepricelist'].search([
+                    ('checkoutline_id', '=', line.id)
+                ])
+                for sub in related_records:
+                    self.env['dtsc.checkoutlineaftermakepricelist'].create({
+                        'checkoutline_id': new_line.id,
+                        'aftermakepricelist_id': sub.aftermakepricelist_id.id,
+                        'customer_class_id': sub.customer_class_id.id,
+                        'qty': sub.qty,
+                    })    
                     
             return {
                 'type': 'ir.actions.act_window',

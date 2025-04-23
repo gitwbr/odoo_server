@@ -821,18 +821,15 @@ class PurchaseOrder(models.Model):
                 'origin': '退回 ' + self.name,
             }
             reverse_picking = self.env['stock.picking'].create(reverse_picking_vals)
-            
-            
             for move in picking_id.move_ids:
-            
-                print(move.quantity_done)
+                _logger.warning(f"========={move.product_uom_qty}==={move.quantity_done}=====")
                 reverse_move_vals = {
                     'name': move.name,
                     'reference': "退回" + self.name,
                     'origin' : self.name,
                     'product_id': move.product_id.id,
-                    'product_uom_qty': move.product_uom_qty,
-                    'quantity_done': move.quantity_done,
+                    'product_uom_qty': move.quantity_done,
+                    # 'quantity_done': move.quantity_done,
                     'product_uom': move.product_uom.id,
                     'picking_id': reverse_picking.id,
                     'location_id': move.location_dest_id.id,
@@ -843,7 +840,8 @@ class PurchaseOrder(models.Model):
                 # 处理序列号
                 for move_line in move.move_line_ids:
                     if move_line.lot_id:
-                        print(move_line.qty_done)
+                        _logger.warning(f"-------{move_line.qty_done}-----")
+                        # print(move_line.qty_done)
                         reverse_move_line_vals = {
                             'reference' : "退回"+self.name, 
                             'origin' : self.name,

@@ -27,8 +27,22 @@ class PettyCash(models.Model):
     invoice_id = fields.Char("發票號碼")
     pettymanager_id = fields.Many2one("dtsc.pettymanager")
     
+    # @api.onchange('in_cash','out_cash')
+    # def onchange_in_out(self):
+        # if self.pettymanager_id:
+            # obj = self.env["dtsc.pettycash"].search([("pettymanager_id","=",self.pettymanager_id.id)],order = "id asc")
+            # last_num = obj.pettymanager_id.last_num
+            # for record in obj:
+                # if record.in_cash:
+                    # last_num = last_num + record.in_cash
+                # if record.out_cash:
+                    # last_num = last_num - record.out_cash
+                # record.last_num = last_num 
+    
     @api.model
-    def create(self, vals):           
+    def create(self, vals): 
+        if self.pettymanager_id.state in ["succ"]:
+            raise UserError("此單已鎖定，無法修改任何内容。")          
         res = super(PettyCash, self).create(vals)
         
         obj = self.env["dtsc.pettycash"].search([("pettymanager_id","=",res.pettymanager_id.id)],order = "id asc")
@@ -42,6 +56,17 @@ class PettyCash(models.Model):
         
         return res
     
+    def write(self, vals):
+        if self.pettymanager_id.state in ["succ"]:
+            raise UserError("此單已鎖定，無法修改任何内容。")
+        return super().write(vals)
+        
+    def unlink(self):
+        if self.pettymanager_id.state in ["succ"]:
+            raise UserError("此單已鎖定，無法修改任何内容。")
+        return super().unlink()
+        
+        
 class PettyManager(models.Model):
     _name = 'dtsc.pettymanager'
     
@@ -64,11 +89,31 @@ class PettyManager(models.Model):
     ], store=True,string='月份',required=True)  
     last_num = fields.Integer("前期餘額")
     pettycash_ids = fields.One2many("dtsc.pettycash","pettymanager_id")
-    
+    state = fields.Selection([
+        ("editable","未完成"), 
+        ("succ","完成"),
+   
+    ],default='editable' ,string="狀態")
     _sql_constraints = [
         ('unique_vat', 'unique(name)', '該月零用金表已經生成，無法再次保存')
     ]
     
+    def write(self, vals):
+        if self.state in ["succ"]:
+            allowed_fields = {'state'}
+            disallowed = set(vals.keys()) - allowed_fields
+            if disallowed:
+                raise UserError("此單已鎖定，無法修改任何内容。")
+        return super().write(vals)
+
+        
+    def succ_button(self):
+        print("succ_button")
+        self.write({"state":"succ"})
+    
+    def back_button(self):
+        self.write({"state":"editable"})
+        
     @api.depends("report_year","month")
     def _compute_name(self):
         for record in self:

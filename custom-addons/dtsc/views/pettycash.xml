@@ -27,6 +27,11 @@
 		<field name="model">dtsc.pettymanager</field>
 		<field name="arch" type="xml">
 			<form>
+				<header>
+					<button name="succ_button" type="object" class="oe_highlight" string="完成" attrs="{'invisible':[('state','not in',['editable'])]}" />
+					<button name="back_button" type="object" class="oe_highlight" string="返回" attrs="{'invisible':[('state','not in',['succ'])]}" />
+					<field name="state" widget="statusbar" statusbar_visible="editable,succ" />
+				</header>
 				<sheet class="w3000">
 					<div class="oe_title">
 						<h1>

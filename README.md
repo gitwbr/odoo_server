@@ -108,7 +108,7 @@
 ## 使用说明
 
 ## 手动更新
-docker-compose exec web1 odoo -d ceshi -u dtsc --no-http --stop-after-init
+docker-compose exec web108 odoo -d default -u dtsc --no-http --stop-after-init
 docker-compose exec web107 /usr/bin/odoo -d default -u dtsc --no-http --stop-after-init
 ## 环境进入
 docker-compose exec db3 psql -U odoo3 -d odoo3
