@@ -7,6 +7,7 @@ COPY package*.json ./
 
 # 安装依赖
 RUN npm install
+RUN npm install @mui/material @emotion/react @emotion/styled
 
 # 复制所有文件
 COPY . .

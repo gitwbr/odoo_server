@@ -10,7 +10,7 @@
 				<field name="loc_id" />
 				<field name="partner_name" />
 				<field name="color" readonly="1"/>
-				<field name="hou"  readonly="1"/>
+				<field name="hou"  readonly="1" />
 				<!-- <field name="sort_num" /> -->
 				<!-- <field name="hou_num" invisible="1"/> -->
 				<field name="width"  />

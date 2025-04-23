@@ -2736,7 +2736,7 @@ class CheckOutLine(models.Model):
         for record in self:
             if record.checkout_product_id.checkout_order_state in ["receivable_assigned"]:# or record.checkout_product_id.is_new_partner == True:
                 continue
-            elif record.checkout_product_id.checkout_order_state in ["waiting_confirmation"]:#儅在CRM中且有設客戶分類則有預設價格
+            elif record.checkout_product_id.checkout_order_state in ["waiting_confirmation"] and record.checkout_product_id.is_new_partner == True:#儅在CRM中且有設客戶分類則有預設價格
                 if record.checkout_product_id.new_customer_class_id:
                     total_after_price = 0
                     for after_record in record.aftermakepricelist_lines:
@@ -2847,7 +2847,7 @@ class CheckOutLine(models.Model):
         for record in self:
             if record.checkout_product_id.checkout_order_state in ["receivable_assigned"]:# or record.checkout_product_id.is_new_partner == True:
                 continue
-            elif record.checkout_product_id.checkout_order_state in ["waiting_confirmation"]:#儅在CRM中且有設客戶分類則有預設價格
+            elif record.checkout_product_id.checkout_order_state in ["waiting_confirmation"] and record.checkout_product_id.is_new_partner == True:#儅在CRM中且有設客戶分類則有預設價格
                 if record.checkout_product_id.new_customer_class_id:
                     if record.jijiamoshi in ["forcai", "merge"]: #以才計價
                         customer_class_id = record.checkout_product_id.new_customer_class_id.id 
@@ -2926,12 +2926,16 @@ class CheckOutLine(models.Model):
         for record in self:
             if record.checkout_product_id.checkout_order_state in ["receivable_assigned"]:# or record.checkout_product_id.is_new_partner == True:
                 continue
-            elif record.checkout_product_id.checkout_order_state in ["waiting_confirmation"]:
-                if record.checkout_product_id.new_customer_class_id:#儅在CRM中且有設客戶分類則有預設價格
-                    customer_class_id = record.checkout_product_id.new_customer_class_id.id
-                    record.units_price = self.env["dtsc.quotation"].search([("product_id","=" ,record.product_id.id),("customer_class_id","=" ,customer_class_id)],limit=1).base_price
+            elif record.checkout_product_id.checkout_order_state in ["waiting_confirmation"]: #CRM訂單由此進入
+                if record.checkout_product_id.is_new_partner == True:
+                    if record.checkout_product_id.new_customer_class_id:#儅在CRM中且有設客戶分類則有預設價格
+                        customer_class_id = record.checkout_product_id.new_customer_class_id.id
+                        record.units_price = self.env["dtsc.quotation"].search([("product_id","=" ,record.product_id.id),("customer_class_id","=" ,customer_class_id)],limit=1).base_price
+                    else:#新用戶且沒有客戶分類，就自己填價格
+                        continue
                 else:
-                    continue
+                    customer_class_id = record.checkout_product_id.customer_class_id.id
+                    record.units_price = self.env["dtsc.quotation"].search([("product_id","=" ,record.product_id.id),("customer_class_id","=" ,customer_class_id)],limit=1).base_price
             else:            
                 customer_class_id = record.checkout_product_id.customer_class_id.id
                 record.units_price = self.env["dtsc.quotation"].search([("product_id","=" ,record.product_id.id),("customer_class_id","=" ,customer_class_id)],limit=1).base_price

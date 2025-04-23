@@ -114,6 +114,13 @@ docker-compose exec web107 /usr/bin/odoo -d default -u dtsc --no-http --stop-aft
 docker-compose exec db3 psql -U odoo3 -d odoo3
 ## shell环境
 docker-compose exec web3  odoo shell --database=odoo3 --no-http
+## 重新初始化
+# 修改 docker-compose.yml 的命令为：
+command:
+  - -i
+  - base,web,dtsc,dtsc_custom
+  - --dev=reload
+  - --without-demo=all
 
 
 ### 1. 客户端管理

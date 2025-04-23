@@ -169,6 +169,8 @@ class MakeOut(models.Model):
         for record in self:
             if record.checkout_id.customer_bianhao:
                 record.customer_name = record.checkout_id.customer_id.name + "("+record.checkout_id.customer_bianhao+")"
+            else:
+                record.customer_name = record.checkout_id.customer_id.name
     
     def everyday_set(self):
         # 設置時區
