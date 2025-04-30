@@ -85,3 +85,5 @@ access_dtsc_pettycash,dtsc.pettycash,model_dtsc_pettycash,dtsc.group_dtsc_bs,1,1
 access_dtsc_pettymanager,dtsc.pettymanager,model_dtsc_pettymanager,dtsc.group_dtsc_bs,1,1,1,1
 access_dtsc_yklcomment,dtsc.yklcomment,model_dtsc_yklcomment,dtsc.group_dtsc_bs,1,1,1,1
 access_dtsc_yklcommentlocation,dtsc.yklcommentlocation,model_dtsc_yklcommentlocation,dtsc.group_dtsc_bs,1,1,1,1
+access_dtsc_calendar,dtsc.calendar,model_dtsc_calendar,dtsc.group_dtsc_bs,1,1,1,1
+access_dtsc_leave,dtsc.leave,model_dtsc_leave,dtsc.group_dtsc_bs,1,1,1,1

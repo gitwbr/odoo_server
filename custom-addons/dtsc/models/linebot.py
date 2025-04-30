@@ -18,7 +18,17 @@ from odoo.http import request
 import base64
 import requests
 from haversine import haversine, Unit
-
+class Attendance(models.Model):
+    _name = 'dtsc.leave'
+    _description = '請假記錄'
+    start_time = fields.Datetime('開始時間')
+    end_time = fields.Datetime('結束時間')
+    leave_type = fields.Selection([
+        ('sj', '事假'),
+        ('bj', '病假'),
+        ('nj', '年假'),
+    ], string='事件類型')
+    
 class Attendance(models.Model):
     _name = 'dtsc.attendance'
     _description = '打卡記錄'

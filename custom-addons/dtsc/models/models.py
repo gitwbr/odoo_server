@@ -823,18 +823,33 @@ class PurchaseOrder(models.Model):
             reverse_picking = self.env['stock.picking'].create(reverse_picking_vals)
             for move in picking_id.move_ids:
                 _logger.warning(f"========={move.product_uom_qty}==={move.quantity_done}=====")
-                reverse_move_vals = {
-                    'name': move.name,
-                    'reference': "退回" + self.name,
-                    'origin' : self.name,
-                    'product_id': move.product_id.id,
-                    'product_uom_qty': move.quantity_done,
-                    # 'quantity_done': move.quantity_done,
-                    'product_uom': move.product_uom.id,
-                    'picking_id': reverse_picking.id,
-                    'location_id': move.location_dest_id.id,
-                    'location_dest_id': move.location_id.id,
-                }
+                if move.product_id.product_tmpl_id.tracking == "serial":
+                    reverse_move_vals = {
+                        'name': move.name,
+                        'reference': "退回" + self.name,
+                        'origin' : self.name,
+                        'product_id': move.product_id.id,
+                        'product_uom_qty': move.quantity_done,
+                        # 'quantity_done': move.quantity_done,
+                        'product_uom': move.product_uom.id,
+                        'picking_id': reverse_picking.id,
+                        'location_id': move.location_dest_id.id,
+                        'location_dest_id': move.location_id.id,
+                    }
+                    
+                else:
+                    reverse_move_vals = {
+                        'name': move.name,
+                        'reference': "退回" + self.name,
+                        'origin' : self.name,
+                        'product_id': move.product_id.id,
+                        'product_uom_qty': move.quantity_done,
+                        'quantity_done': move.quantity_done,
+                        'product_uom': move.product_uom.id,
+                        'picking_id': reverse_picking.id,
+                        'location_id': move.location_dest_id.id,
+                        'location_dest_id': move.location_id.id,
+                    }
                 reverse_move = self.env['stock.move'].create(reverse_move_vals)
                 # print(line.id)  
                 # 处理序列号

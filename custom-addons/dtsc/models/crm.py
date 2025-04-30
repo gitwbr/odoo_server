@@ -231,7 +231,7 @@ class CheckoutInherit(models.Model):
                     'street': record.new_street,
                     'vat': record.new_vat,
                     'phone': record.new_phone,
-                    'customclass_id':record.new_customer_class_id,
+                    'customclass_id':record.new_customer_class_id.id,
                     'mobile': record.new_mobile,
                     'email': record.new_email,
                     'custom_contact_person': record.new_custom_contact_person,

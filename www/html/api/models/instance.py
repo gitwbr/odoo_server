@@ -231,7 +231,8 @@ class Instance:
         try:
             # 设置端口
             longpolling_port = web_port + 2000
-            db_port = 5500 + instance_id
+            #db_port = 5500 + instance_id
+            db_port = web_port - 1500
             
             # 设置实例名称
             client_name = f'client{instance_id}'

@@ -990,5 +990,7 @@ docker-compose restart ohoo-website
 
 ## 重启全部运行中的客户容器
 docker restart $(docker ps  --filter "name=^client" --format "{{.Names}}")
+docker stop $(docker ps  --filter "name=^client" --format "{{.Names}}")
+
 # 查询
 docker ps  --filter "name=^client" --format "{{.Names}}"

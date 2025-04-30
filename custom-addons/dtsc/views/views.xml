@@ -469,6 +469,13 @@
 		<field name="context">{'search_default_group_by_color_id': 1,'search_default_group_by_hou_id': 1}</field>
 		<!-- <field name="context">{'group_by' : 'name'}</field> -->
 	</record>
+	
+	<record model="ir.actions.act_window" id="action_calendar_dtsc" >
+		<field name="name">日曆</field>
+		<field name="res_model">dtsc.calendar</field>
+		<field name="view_mode">calendar,tree,form</field>
+	</record>
+	
 	<!-- <record id="action_scan_qrcode_search" model="ir.actions.server"> -->
 		<!-- <field name="name">查詢</field> -->
 		<!-- <field name="res_model">dtsc.makeout</field> -->
@@ -585,7 +592,8 @@
 	<menuitem id="menu_work_time" name="員工績效(工時)" parent="menu_chart_dashboard_root" action="action_work_time" sequence="8" groups="dtsc.group_dtsc_gly"/>
 	<menuitem id="menu_daka" name="考勤記錄" parent="menu_chart_dashboard_root" action="action_kaoqing" sequence="9" groups="dtsc.group_dtsc_gly"/>
 	<menuitem id="menu_pettycash" name="零用金" parent="menu_chart_dashboard_root" action="action_pettycash1" sequence="10" groups="dtsc.group_dtsc_gly"/>
-	<!-- <menuitem id="menu_ykl" name="壓克力統計表" parent="menu_chart_dashboard_root" action="action_ykl" sequence="11" groups="dtsc.group_dtsc_gly"/> -->
+	<menuitem id="menu_calendar" name="日曆" parent="menu_chart_dashboard_root" action="action_calendar_dtsc" sequence="11" groups="dtsc.group_dtsc_gly"/>
+	<!-- <menuitem id="menu_calendar" name="日曆" parent="menu_chart_dashboard_root" action="action_calendar" sequence="12" groups="dtsc.group_dtsc_gly"/> -->
 	<!-- 
 	<menuitem id="submenu1" name="銷售產品" parent="dtsc.action_window_product" action="dtsc.action_window_product"/>
 

@@ -198,7 +198,8 @@ class Checkout(models.Model):
     _description = "大圖訂單"
     _order = "create_date desc"
     name = fields.Char(string='單號')
-    customer_id = fields.Many2one("res.partner" , string="客戶" ,domain=[('customer_rank',">",0), ('coin_can_cust', '=', True)]) 
+    # customer_id = fields.Many2one("res.partner" , string="客戶" ,domain=[('customer_rank',">",0), ('coin_can_cust', '=', True)]) 
+    customer_id = fields.Many2one("res.partner" , string="客戶" ,domain=lambda self: self._get_customer_domain()) 
     customer_bianhao = fields.Char(related="customer_id.custom_id" ,string="客戶編號")
     customer_class_id = fields.Many2one('dtsc.customclass',compute="_compute_customer_class_id" ,store=True )
     custom_init_name = fields.Char(related='customer_id.custom_init_name', string="客戶" )
@@ -297,6 +298,16 @@ class Checkout(models.Model):
     
     is_open_full_checkoutorder = fields.Boolean(string="簡易流程",compute="_compute_is_open_full_checkoutorder")
     
+    @api.model
+    def _get_customer_domain(self):
+        """根據權限決定可選客戶"""
+        # print("_get_customer_domain")
+        user = self.env.user
+        domain = [('customer_rank', '>', 0), ('coin_can_cust', '=', True)]
+        if not (user.has_group('dtsc.group_dtsc_gly') or user.has_group('dtsc.group_dtsc_mg')):
+            domain.append(('sell_user', '=', user.id))
+        return domain
+        
     @api.depends()
     def _compute_is_open_full_checkoutorder(self):
         for record in self:
@@ -1234,7 +1245,7 @@ class Checkout(models.Model):
             "total_price":self.record_price,
             "total_price_tax":self.total_price_added_tax,
         })   
-        self.update_sale_order() 
+        # self.update_sale_order() 
         self.write({"checkout_order_state":"price_review_done"})
         
     def go_inshou(self):

@@ -17,25 +17,43 @@ odoo.define('dtsc.website_custom', function (require) {
             this._super.apply(this, arguments);
         },
 		
-		/* _onChangeCartQuantity: function (ev) {
-			var $input = $(ev.currentTarget);
-			if ($input.data('update_change')) {
+		_onChangeCartQuantity: function (ev) {
+            ev.preventDefault(); // 阻止默认行为
+
+            var $input = $(ev.currentTarget); // 当前触发事件的输入框
+            var $row = $input.closest('tr'); // 获取当前行
+            var $decreaseButton = $row.find('a.js_add_cart_json:has(.fa-minus)'); // 找到减数量按钮
+            //var minQuantity = parseFloat($decreaseButton.data('min-quantity')); // 从按钮获取最小数量
+            var minQuantity = parseFloat($input.data('min-quantity'));
+            var currentQuantity = parseFloat($input.val()); // 当前数量
+			
+			if (currentQuantity === 0) {
+				this._super.apply(this, arguments);
 				return;
 			}
 
-			var value = parseInt($input.val() || 0, 10);
-			if (isNaN(value)) {
-				value = 1;
+            console.log("当前数量:", currentQuantity, "最小数量:", minQuantity);
+
+			if (isNaN(currentQuantity) || currentQuantity < minQuantity) {
+				console.warn("输入的数量无效或小于最小数量，重置为最小数量");
+				//alert(`The minimum quantity for this product is ${minQuantity}.`);
+				$input.val(minQuantity); // 将输入框的值重置为最小数量
+				currentQuantity = minQuantity; // 更新当前数量变量
 			}
 
-			var $dom = $input.closest('tr');
-			var $dom_optional = $dom.nextUntil(':not(.optional_product.info)');
-			var line_id = parseInt($input.data('line-id'), 10);
-			var productIDs = [parseInt($input.data('product-id'), 10)];
 
-			// 调用原有逻辑，Odoo 后端会根据扩展的模型自动计算
-			this._changeCartQuantity($input, value, $dom_optional, line_id, productIDs);
-		}, */
+            // 根据数量动态禁用或启用按钮
+            if (currentQuantity <= minQuantity) {
+                console.warn("禁用减数量按钮，因为当前数量 <= 最小数量");
+                $decreaseButton.prop('disabled', true); // 禁用按钮
+            } else {
+                console.log("启用减数量按钮，因为当前数量 > 最小数量");
+                $decreaseButton.prop('disabled', false); // 启用按钮
+            }
+
+            // 调用原始逻辑
+            this._super.apply(this, arguments);
+        },
 		
 		async _onChangeCombination(ev, $parent, combination) {
             // 调用父类逻辑
