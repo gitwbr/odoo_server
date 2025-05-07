@@ -64,11 +64,14 @@
 				</xpath>
 				<xpath expr="//header" position="inside">
 					<!-- 添加确认按钮，仅在"待確認"状态下显示 -->
+					<field name="related_checkout_id" invisible="1" />
 					<button name="action_confirm_to_draft"
 							string="訂單成立"
 							type="object"
 							class="oe_highlight"
-							attrs="{'invisible': [('checkout_order_state', '!=', 'waiting_confirmation')]}"/>
+							attrs="{'invisible': ['|',('related_checkout_id', '!=', False),('checkout_order_state', '!=', 'waiting_confirmation')]}"/>
+					
+					<button name="go_datu" type="object" class="oe_highlight" string="查看關聯大圖訂單" attrs="{'invisible': [('related_checkout_id', '=', False)]}" />		
 					<button name="action_copy_checkout"
 							string="複製"
 							type="object"
@@ -89,7 +92,7 @@
 				</xpath>
 				<xpath expr="//field[@name='customer_id']" position="before">					
 					<field name="new_partner" attrs="{'invisible': [('is_new_partner', '!=', True)]}"/>
-					<field name="new_customer_class_id" attrs="{'invisible': [('is_new_partner', '!=', True)]}"/>
+					<field name="new_customer_class_id" options="{'no_create': True, 'no_create_edit': True}" attrs="{'invisible': [('is_new_partner', '!=', True)]}"/>
 					<field name="new_init" attrs="{'invisible': [('is_new_partner', '!=', True)]}"/>
 					<field name="new_street" attrs="{'invisible': [('is_new_partner', '!=', True)]}"/>
 					<field name="new_vat" attrs="{'invisible': [('is_new_partner', '!=', True)]}"/>
@@ -112,6 +115,8 @@
 			<field name="arch" type="xml">
 				<tree  create="0" decoration-info="is_online == True"  default_order="create_date desc">				
 					<field name="name" string="單號" readonly="1" class="w100" />
+					<field name="related_checkout_id" invisible="1" />
+					<button name="go_datu" type="object" string="查看關聯大圖訂單" attrs="{'invisible': [('related_checkout_id', '=', False)]}" />
 					<field name="is_invisible" invisible="1"/>
 					<field name="custom_init_name" string="客戶" readonly="1"/>
 					<field name="project_name" string="案件摘要" readonly="1"/>
@@ -195,9 +200,9 @@
 			<field name="name">dtsc.crmusercomment.tree</field>
 			<field name="model">dtsc.crmusercomment</field>
 			<field name="arch" type="xml">
-				<tree editable="bottom" default_order="sequence">					
-					<field name="is_enable"/>		
-					<field name="sequence" width="20px"/>
+				<tree editable="bottom" default_order="sequence">				
+					<field name="is_enable"/>
+					<field name="sequence" width="120px"/>
 					<field name="comment"/>
 
 				</tree>

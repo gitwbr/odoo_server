@@ -72,6 +72,8 @@ class yingShouDate(models.TransientModel):
         for record in records:
             if record.name and record.name[0] == "E":#如果是重製單則不轉應收
                 continue
+            if record.name and record.name[0] == "F":#如果是打樣單則不轉應收
+                continue
             # if record.invoice_origin:
                 # raise UserError('大圖訂單%s已生成應收帳單！' % record.name)
             customer_id = record.customer_id.id
@@ -297,7 +299,28 @@ class Checkout(models.Model):
     sequence_count = fields.Integer(string="項數",compute="_compute_sequence_count",store=True)
     
     is_open_full_checkoutorder = fields.Boolean(string="簡易流程",compute="_compute_is_open_full_checkoutorder")
+    is_dayang = fields.Boolean('打樣')
     
+    def write(self, vals):
+        for rec in self:
+            # 如果 is_dayang 改變了，才檢查 name 開頭
+            if "is_dayang" in vals:
+                is_dayang = vals["is_dayang"]
+                name = vals.get("name", rec.name)
+                if is_dayang and name.startswith("A"):
+                    vals["name"] = "F" + name[1:]
+                elif not is_dayang and name.startswith("F"):
+                    vals["name"] = "A" + name[1:]
+        return super().write(vals)
+    
+    @api.onchange('is_dayang')
+    def onchange_dayang(self):
+        if self.is_dayang:
+            if self.name and self.name[0] == "A":
+                self.name = self.name.replace("A","F")
+        else: 
+            if self.name and self.name[0] == "F":
+                self.name = self.name.replace("F","A")
     @api.model
     def _get_customer_domain(self):
         """根據權限決定可選客戶"""
@@ -1125,7 +1148,7 @@ class Checkout(models.Model):
                 
             if make_in_flag == 1:
                 if only_expensed == False:#含有非服务项次才会检查工单
-                    if record.name.startswith('E'):
+                    if record.name.startswith('E') or record.name.startswith('F'):
                         obj = self.env["dtsc.makein"].search([('name' , "=" ,record.name)],limit=1)
                     else:
                         obj = self.env["dtsc.makein"].search([('name' , "=" ,record.name.replace("A","B"))],limit=1)
@@ -1136,7 +1159,7 @@ class Checkout(models.Model):
                         raise UserError('内部工單還未生成！')
             
             if make_out_flag == 1:
-                if record.name.startswith('E'):
+                if record.name.startswith('E') or record.name.startswith('F'):
                     obj = self.env["dtsc.makeout"].search([('name' , "=" ,record.name)],limit=1)
                 else:
                     obj = self.env["dtsc.makeout"].search([('name' , "=" ,record.name.replace("A","C"))],limit=1)
@@ -1206,7 +1229,7 @@ class Checkout(models.Model):
             
         if make_in_flag == 1:
             if only_expensed == False:#含有非服务项次才会检查工单
-                if self.name.startswith('E'):
+                if self.name.startswith('E') or self.name.startswith('F'):
                     obj = self.env["dtsc.makein"].search([('name' , "=" ,self.name)],limit=1)
                 else:
                     obj = self.env["dtsc.makein"].search([('name' , "=" ,self.name.replace("A","B"))],limit=1)
@@ -1217,7 +1240,7 @@ class Checkout(models.Model):
                     raise UserError('内部工單還未生成！')
         
         if make_out_flag == 1:
-            if self.name.startswith('E'):
+            if self.name.startswith('E') or self.name.startswith('F'):
                 obj = self.env["dtsc.makeout"].search([('name' , "=" ,self.name)],limit=1)
             else:
                 obj = self.env["dtsc.makeout"].search([('name' , "=" ,self.name.replace("A","C"))],limit=1)
@@ -1450,7 +1473,7 @@ class Checkout(models.Model):
                 # else:
                     # record.tax_of_price = 0 
     # wbr
-    @api.depends("record_price", "construction_charge_price","customer_id","new_custom_invoice_form")
+    @api.depends("record_price", "construction_charge_price","customer_id","new_custom_invoice_form","record_price_and_construction_charge")
     def _compute_tax_of_price(self):
         for record in self:
             if record:
@@ -1463,7 +1486,7 @@ class Checkout(models.Model):
             else:
                 record.tax_of_price = 0 
                 
-    @api.depends("record_price", "construction_charge_price_crm","customer_id","new_custom_invoice_form")
+    @api.depends("record_price", "construction_charge_price_crm","customer_id","new_custom_invoice_form","record_price_and_construction_charge_crm")
     def _compute_tax_of_price_crm(self):
         for record in self:
             if record:
@@ -1526,7 +1549,7 @@ class Checkout(models.Model):
         for record in self:
             if record:
                 if record.product_ids:
-                    record.record_price = sum(record.product_ids.mapped('price')) 
+                    record.record_price = int(sum(record.product_ids.mapped('price')) + 0.5) 
                 else:
                     record.record_price = 0 
                 
@@ -1604,6 +1627,11 @@ class Checkout(models.Model):
             is_install_id = self.env['dtsc.makein'].search([('name', '=',install_name)],limit=1)
             if is_install_id:
                 return
+        if self.name and self.name[0] == 'F':
+            install_name = self.name#.replace("A","B")
+            is_install_id = self.env['dtsc.makein'].search([('name', '=',install_name)],limit=1)
+            if is_install_id:
+                return
         # install_name = self.name.replace("A","B").replace("E","B")
         # if self.name and self.name[0] == 'E':
             # install_name = install_name + "-E"
@@ -1660,6 +1688,8 @@ class Checkout(models.Model):
             install_name = self.name.replace("A","B")#.replace("E","B")
         elif self.name and self.name[0] == 'E':
             install_name = self.name#.replace("A","B").replace("E","B")+"-E"
+        elif self.name and self.name[0] == 'F':
+            install_name = self.name#.replace("A","B").replace("E","B")+"-E"
         is_install_id = self.env['dtsc.makein'].search([('name', '=',install_name)],limit=1)
         if is_install_id:
             raise UserError("請先作廢當前已經存在的%s工單，再點擊按鈕重新生成！" %install_name)
@@ -1678,12 +1708,11 @@ class Checkout(models.Model):
             install_name = self.name.replace("A","C")#.replace("E","C")
         elif self.name and self.name[0] == 'E':
             install_name = self.name#.replace("A","C").replace("E","C")+"-E"
+        elif self.name and self.name[0] == 'F':
+            install_name = self.name
         is_install_id = self.env['dtsc.makeout'].search([('name', '=',install_name)],limit=1)
         if is_install_id:
             return
-                
-        # if self.name and self.name[0] == 'E':
-            # install_name = install_name + "-E"
         product_values_list = []
         sequence_number = 1
         is_open_full_checkoutorder = self.env['ir.config_parameter'].sudo().get_param('dtsc.is_open_full_checkoutorder')
@@ -1735,6 +1764,8 @@ class Checkout(models.Model):
             install_name = self.name.replace("A","C")#.replace("E","C")
         elif self.name and self.name[0] == 'E':
             install_name = self.name#.replace("A","C").replace("E","C")+"-E"
+        elif self.name and self.name[0] == 'F':
+            install_name = self.name
         is_install_id = self.env['dtsc.makeout'].search([('name', '=',install_name)],limit=1)
         if is_install_id:
             raise UserError("請先作廢當前已經存在的%s工單，再點擊按鈕重新生成！" %install_name)
@@ -1753,7 +1784,7 @@ class Checkout(models.Model):
 
     def install_check(self):
         # 替换 name 中的 A 或 E 为 T，生成基础的 install_name
-        install_name_base = self.name.replace("A", "T").replace("E", "T")
+        install_name_base = self.name.replace("A", "T").replace("E", "T").replace("F","T")
         # 查找是否已经存在与 install_name_base 相同的表名
         existing_records = self.env['dtsc.installproduct'].search([('name', 'like', f'{install_name_base}%'),('install_state', '!=', 'cancel')])
         existing_base_record = self.env['dtsc.installproduct'].search([('name', '=', install_name_base)])
@@ -1830,7 +1861,7 @@ class Checkout(models.Model):
     
     #出貨單
     def deliveryorder(self):
-        install_name = self.name.replace("A","S").replace("E","S")
+        install_name = self.name.replace("A","S").replace("E","S").replace("F","S")
         make_in_flag = 0
         make_out_flag = 0
         only_expensed = True #仅仅只有委内服物
@@ -1844,7 +1875,7 @@ class Checkout(models.Model):
         
         if make_in_flag == 1:
             if only_expensed == False:#含有非服务项次才会检查工单
-                if self.name.startswith('E'):
+                if self.name.startswith('E') or self.name.startswith('F'):
                     obj = self.env["dtsc.makein"].search([('name' , "=" ,self.name)],limit=1)
                 else:
                     obj = self.env["dtsc.makein"].search([('name' , "=" ,self.name.replace("A","B"))],limit=1)
@@ -1856,7 +1887,7 @@ class Checkout(models.Model):
                     raise UserError('内部工單還未生成！')
         
         if make_out_flag == 1:
-            if self.name.startswith('E'):
+            if self.name.startswith('E') or self.name.startswith('F'):
                 obj = self.env["dtsc.makeout"].search([('name' , "=" ,self.name)],limit=1)
             else:
                 obj = self.env["dtsc.makeout"].search([('name' , "=" ,self.name.replace("A","C"))],limit=1)

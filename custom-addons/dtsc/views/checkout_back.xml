@@ -222,7 +222,13 @@
 					<button name="in_out_check" type="object" class="oe_highlight" string="訂單確認" attrs="{'invisible':[('checkout_order_state','not in',['quoting'])]}"  groups="dtsc.group_dtsc_mg"/>
 					<button name="finish_enable" type="object" class="oe_highlight" string="訂單完成" attrs="{'invisible':[('checkout_order_state','not in',['producing'])]}" groups="dtsc.group_dtsc_mg,dtsc.group_dtsc_sc" />
 					<button name="jiage_queren" type="object" class="oe_highlight" string="價格確認" attrs="{
-						'invisible': ['|',('checkout_order_state', 'not in', ['finished']),('is_current_user', '=', False)]
+						'invisible': [
+							'|','|','|', 
+							('checkout_order_state', 'not in', ['finished']), 
+							('is_current_user', '=', False),
+							('is_recheck','=',True),
+							('is_dayang','=',True),
+						]
 					}"  groups="dtsc.group_dtsc_yw" />
 					<!-- <button name="go_inshou" type="object" class="oe_highlight" string="生成應收賬單" attrs="{'invisible':[('checkout_order_state','not in',['price_review_done'])]}" groups="dtsc.group_dtsc_kj" /> -->
 					<!-- <button name="go_over" type="object" class="oe_highlight" string="結案" attrs="{'invisible':[('checkout_order_state','not in',['receivable_assigned'])]}"  /> -->
@@ -291,6 +297,7 @@
                             <field name="is_in_by_yw" invisible="1"/>
                             <field name="is_in_by_kj" invisible="1"/>
                             <field name="is_in_by_sc" invisible="1"/>
+							<field name="is_dayang" attrs="{'invisible': [('name', '=', False)]}" />
 							<field name="create_date" readonly="1" string="建立日期"/>
 							<!-- <field name="check_product_state" invisible="1"/> -->
 							<field name="quantity" invisible="1"/>
@@ -300,7 +307,7 @@
 							<!-- <field name="estimated_date" attrs="{'readonly': ['|', ('checkout_order_state', 'not in', ['draft', 'quoting', 'producing', 'finished']), ('is_in_by_mg', '=', False)]}"/> -->
 							<!-- <field name="estimated_date" attrs="{'readonly': ['|', ('checkout_order_state', 'not in', ['draft', 'quoting', 'producing', 'finished']), '&amp;', ('is_in_by_mg', '=', False), ('is_in_by_sc', '=', False)]}"/> -->
 							<field name="estimated_date" attrs="{'readonly': [('checkout_order_state', 'in', ['price_review_done'])]}"/>
-							<!-- <field name="estimated_date" /> -->
+							
 							<!-- <field name="delivery_time" attrs="{'readonly':[('checkout_order_state','not in',['draft', 'quoting', 'receivable', 'producing', 'shipping', 'partial_shipping'])]}"/> -->
 							
 							<!-- <field name="delivery_carrier" string="運送方式" attrs="{'readonly': [('is_in_by_mg', '=', False)]}"/> -->
@@ -364,15 +371,15 @@
 										<field name="allowed_product_atts" invisible="1" />
 										<!-- <field name="product_atts" widget="many2many_tags"/>  -->
 										<!-- <field name="output_mark" /> -->
-										<field name="peijian_price" attrs="{'readonly': [('parent.is_in_by_yw', '=', False)] ,'column_invisible':['|',('parent.is_current_user', '=', False),('parent.is_recheck','=',True)]}" groups="dtsc.group_dtsc_yw,dtsc.group_dtsc_kj"/> 										
-										<field name="units_price" attrs="{'readonly': ['|',('parent.is_in_by_yw', '=', False),('parent.checkout_order_state','in',['receivable_assigned'])] ,'column_invisible':['|',('parent.is_current_user', '=', False),('parent.is_recheck','=',True)]}" groups="dtsc.group_dtsc_yw,dtsc.group_dtsc_kj"/> 
-										<button name="open_price_popup" string="選擇" attrs="{'invisible':['|',('parent.is_current_user', '=', False),('parent.is_recheck','=',True)]}" type="object" class="btn-primary" /> 
+										<field name="peijian_price" attrs="{'readonly': [('parent.is_in_by_yw', '=', False)] ,'column_invisible':['|','|',('parent.is_current_user', '=', False),('parent.is_recheck','=',True),('parent.is_dayang','=',True)]}" groups="dtsc.group_dtsc_yw,dtsc.group_dtsc_kj"/> 										
+										<field name="units_price" attrs="{'readonly': ['|',('parent.is_in_by_yw', '=', False),('parent.checkout_order_state','in',['receivable_assigned'])] ,'column_invisible':['|','|',('parent.is_current_user', '=', False),('parent.is_recheck','=',True),('parent.is_dayang','=',True)]}" groups="dtsc.group_dtsc_yw,dtsc.group_dtsc_kj"/> 
+										<button name="open_price_popup" string="選擇" attrs="{'invisible':['|','|',('parent.is_current_user', '=', False),('parent.is_recheck','=',True),('parent.is_dayang','=',True)]}" type="object" class="btn-primary" /> 
 										<field name="recheck_id_name" attrs="{'column_invisible':[('parent.is_recheck','!=',True)]}"/>
 										
-										<field name="product_total_price" sum="輸出金額" attrs="{'readonly': ['|',('parent.is_in_by_yw', '=', False),('parent.checkout_order_state','in',['receivable_assigned'])] ,'column_invisible':['|',('parent.is_current_user', '=', False),('parent.is_recheck','=',True)]}" groups="dtsc.group_dtsc_yw,dtsc.group_dtsc_kj"/> 
+										<field name="product_total_price" sum="輸出金額" attrs="{'readonly': ['|',('parent.is_in_by_yw', '=', False),('parent.checkout_order_state','in',['receivable_assigned'])] ,'column_invisible':['|','|',('parent.is_current_user', '=', False),('parent.is_recheck','=',True),('parent.is_dayang','=',True)]}" groups="dtsc.group_dtsc_yw,dtsc.group_dtsc_kj"/> 
 										
-										<field name="total_make_price" sum="加工總價" attrs="{'readonly': ['|',('parent.is_in_by_yw', '=', False),('parent.checkout_order_state','in',['receivable_assigned'])] ,'column_invisible':['|',('parent.is_current_user', '=', False),('parent.is_recheck','=',True)]}" groups="dtsc.group_dtsc_yw,dtsc.group_dtsc_kj"/> 
-										<field name="price" sum="價錢" attrs="{'readonly': ['|',('parent.is_in_by_yw', '=', False),('parent.checkout_order_state','in',['receivable_assigned'])] ,'column_invisible':['|',('parent.is_current_user', '=', False),('parent.is_recheck','=',True)]}" groups="dtsc.group_dtsc_yw,dtsc.group_dtsc_kj"/> 
+										<field name="total_make_price" sum="加工總價" attrs="{'readonly': ['|',('parent.is_in_by_yw', '=', False),('parent.checkout_order_state','in',['receivable_assigned'])] ,'column_invisible':['|','|',('parent.is_current_user', '=', False),('parent.is_recheck','=',True),('parent.is_dayang','=',True)]}" groups="dtsc.group_dtsc_yw,dtsc.group_dtsc_kj"/> 
+										<field name="price" sum="價錢" attrs="{'readonly': ['|',('parent.is_in_by_yw', '=', False),('parent.checkout_order_state','in',['receivable_assigned'])] ,'column_invisible':['|','|',('parent.is_current_user', '=', False),('parent.is_recheck','=',True),('parent.is_dayang','=',True)]}" groups="dtsc.group_dtsc_yw,dtsc.group_dtsc_kj"/> 
 									</tree>
 								</field>
 								<group col="6">

@@ -14,6 +14,7 @@ from pprint import pprint
 import json
 import xlsxwriter
 from io import BytesIO
+import calendar
 class YklCommentLocation(models.Model):
     _name = 'dtsc.yklcommentlocation'
     
@@ -112,10 +113,14 @@ class MakeOut(models.Model):
 
         # 获取 invoice_due_date 配置参数，并将其转换为整数
         invoice_due_date = int(self.env['ir.config_parameter'].sudo().get_param('dtsc.invoice_due_date', default=25))
-        
+        def safe_date(y, m, d):
+            """确保日期不会超出该月最大天数"""
+            last_day = calendar.monthrange(y, m)[1]
+            return date(y, m, min(d, last_day))
+            
         if today.day > invoice_due_date:
             # 本月指定日到下个月的指定日
-            start_date = today.replace(day=invoice_due_date + 1)
+            start_date = safe_date(year, month, invoice_due_date + 1)
             if month == 12:
                 next_month = 1
                 next_year = year + 1
@@ -123,7 +128,7 @@ class MakeOut(models.Model):
                 next_month = month + 1
                 next_year = year
             
-            end_date = date(next_year, next_month, invoice_due_date)
+            end_date = safe_date(next_year, next_month, invoice_due_date)
         else:
             # 上个月的指定日到本月的指定日
             if month == 1:
@@ -133,8 +138,8 @@ class MakeOut(models.Model):
                 last_month = month - 1
                 last_year = year
 
-            start_date = date(last_year, last_month, invoice_due_date + 1)
-            end_date = today.replace(day=invoice_due_date)
+            start_date = safe_date(last_year, last_month, invoice_due_date + 1)
+            end_date = safe_date(year, month, invoice_due_date)
 
         return {
             'start_date': start_date.strftime('%Y-%m-%d'),
@@ -212,10 +217,13 @@ class CheckOutLine(models.Model):
 
         # 获取 invoice_due_date 配置参数，并将其转换为整数
         invoice_due_date = int(self.env['ir.config_parameter'].sudo().get_param('dtsc.invoice_due_date', default=25))
-        
+        def safe_date(y, m, d):
+            """确保日期不会超出该月最大天数"""
+            last_day = calendar.monthrange(y, m)[1]
+            return date(y, m, min(d, last_day))
         if today.day > invoice_due_date:
             # 本月指定日到下个月的指定日
-            start_date = today.replace(day=invoice_due_date + 1)
+            start_date = safe_date(year, month, invoice_due_date + 1)
             if month == 12:
                 next_month = 1
                 next_year = year + 1
@@ -223,7 +231,7 @@ class CheckOutLine(models.Model):
                 next_month = month + 1
                 next_year = year
             
-            end_date = date(next_year, next_month, invoice_due_date)
+            end_date = safe_date(next_year, next_month, invoice_due_date)
         else:
             # 上个月的指定日到本月的指定日
             if month == 1:
@@ -233,8 +241,8 @@ class CheckOutLine(models.Model):
                 last_month = month - 1
                 last_year = year
 
-            start_date = date(last_year, last_month, invoice_due_date + 1)
-            end_date = today.replace(day=invoice_due_date)
+            start_date = safe_date(last_year, last_month, invoice_due_date + 1)
+            end_date = safe_date(year, month, invoice_due_date)
 
         return {
             'start_date': start_date.strftime('%Y-%m-%d'),
@@ -398,10 +406,13 @@ class CheckOut(models.Model):
 
         # 获取 invoice_due_date 配置参数，并将其转换为整数
         invoice_due_date = int(self.env['ir.config_parameter'].sudo().get_param('dtsc.invoice_due_date', default=25))
-        
+        def safe_date(y, m, d):
+            """确保日期不会超出该月最大天数"""
+            last_day = calendar.monthrange(y, m)[1]
+            return date(y, m, min(d, last_day))
         if today.day > invoice_due_date:
             # 本月指定日到下个月的指定日
-            start_date = today.replace(day=invoice_due_date + 1)
+            start_date = safe_date(year, month, invoice_due_date + 1)
             if month == 12:
                 next_month = 1
                 next_year = year + 1
@@ -409,7 +420,7 @@ class CheckOut(models.Model):
                 next_month = month + 1
                 next_year = year
             
-            end_date = date(next_year, next_month, invoice_due_date)
+            end_date = safe_date(next_year, next_month, invoice_due_date)
         else:
             # 上个月的指定日到本月的指定日
             if month == 1:
@@ -419,8 +430,8 @@ class CheckOut(models.Model):
                 last_month = month - 1
                 last_year = year
 
-            start_date = date(last_year, last_month, invoice_due_date + 1)
-            end_date = today.replace(day=invoice_due_date)
+            start_date = safe_date(last_year, last_month, invoice_due_date + 1)
+            end_date = safe_date(year, month, invoice_due_date)
 
         return {
             'start_date': start_date.strftime('%Y-%m-%d'),

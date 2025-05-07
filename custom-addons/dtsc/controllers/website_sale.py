@@ -145,6 +145,25 @@ class CustomWebsiteSale(WebsiteSale):
             _logger.info(f"Billing Address: {billing_address}")
             _logger.info(f"Shipping Address: {shipping_address}")
 
+            # 检查订单中是否包含特定产品
+            has_special_product = False
+            if order and result.qcontext.get('deliveries', False):
+                special_products = ['PET全透片0.02cm', 'test']
+                for line in order.order_line:
+                    if any(product_name in line.product_id.name for product_name in special_products):
+                        has_special_product = True
+                        _logger.info(f"找到特定产品: {line.product_id.name}")
+                        break
+
+                # 如果包含特定产品，只显示指定配送方式
+                if has_special_product:
+                    target_carrier = request.env['delivery.carrier'].sudo().search([('name', '=', '免費運輸費用')], limit=1)
+                    if target_carrier:
+                        _logger.info(f"找到指定配送方式: {target_carrier.name}")
+                        deliveries = result.qcontext['deliveries']
+                        filtered_deliveries = deliveries.filtered(lambda d: d.id == target_carrier.id)
+                        result.qcontext['deliveries'] = filtered_deliveries
+
         result.qcontext.update({
             'order': order,
             'debug_order': order.partner_id.name if order else 'No Order'

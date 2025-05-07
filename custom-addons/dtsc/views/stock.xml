@@ -33,7 +33,6 @@
 			<button name="do_print_picking" position="attributes">
 				<attribute name="invisible">1</attribute>
 			</button>
-			<!-- <button name="287" position="replace"/> -->
 			<button name="action_open_label_type" position="attributes">
 				<attribute name="invisible">1</attribute>
 			</button>

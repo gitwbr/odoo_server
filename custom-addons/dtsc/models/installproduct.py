@@ -212,6 +212,13 @@ class Installproduct(models.Model):
     is_invoice = fields.Boolean(default=False)
     search_line_name = fields.Char(compute="_compute_search_line_name", store=True)
     
+    
+    def write(self, vals):
+        if self.checkout_order_state in ["receivable_assigned"]:
+            raise UserError("該大圖訂單已轉應收，不能修改！")
+
+        return super(Installproduct, self).write(vals)
+            
     @api.depends("install_product_ids.name","install_product_ids.size","install_product_ids.caizhi","install_product_ids.install_note","install_product_ids.gongdan","name","custom_init_name","project_name")
     def _compute_search_line_name(self):
         for record in self:
@@ -722,6 +729,16 @@ class InstallproductLine(models.Model):
     install_note = fields.Text(string="施工説明")
     #make_order_id = fields.Many2one("dtsc.makein")
     images = fields.One2many('dtsc.imagelist', 'install_line_id', string="Images")
+    
+    
+    
+    def write(self, vals):
+        for record in self:
+            if record.install_product_id.checkout_order_state in ["receivable_assigned"]:
+                raise UserError("該大圖訂單已轉應收，不能修改！")
+
+        return super(InstallproductLine, self).write(vals)
+
     
     def _inverse_image_yt(self):
         """当修改 image_yt 时，更新关联的 checkoutline_id.small_image"""

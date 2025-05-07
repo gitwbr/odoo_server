@@ -14,7 +14,7 @@ class DeliveryOrder(models.Model):
     name = fields.Char(string='單號')
     company_id = fields.Many2one('res.company', string='公司', default=lambda self: self.env.company)
     customer = fields.Many2one('res.partner',string='客戶名稱',readonly=True)
-    customer_name = fields.Char(string='客戶名稱' ,compute="_compute_customer_name")
+    customer_name = fields.Char(string='客戶名稱' ,compute="_compute_customer_name",store=True)
     contact_person = fields.Char(related="customer.custom_contact_person",string='聯絡人')
     delivery_method = fields.Char(string='交貨方式')
     phone = fields.Char(related="customer.phone",string='電話')
@@ -144,7 +144,7 @@ class DeliveryOrder(models.Model):
     @api.depends("checkout_ids")
     def _compute_customer_name(self):
         for record in self:
-            if record.checkout_ids:
+            if record.checkout_ids and record.checkout_ids[0].customer_id.name and record.checkout_ids[0].customer_bianhao:
                 record.customer_name = record.checkout_ids[0].customer_id.name + "("+record.checkout_ids[0].customer_bianhao+")"
     
     @api.depends('order_ids.quantity','order_ids.total_size')

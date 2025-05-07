@@ -100,11 +100,12 @@ class CheckoutInherit(models.Model):
     
     
     is_show_price = fields.Boolean(string="價格顯示",default=True)
+    related_checkout_id = fields.Many2one('dtsc.checkout', string="關聯大圖訂單")
     is_new_partner = fields.Boolean("新客戶")
-    crm_date = fields.Date("報價日期")
+    crm_date = fields.Date("報價日期")    
     new_partner = fields.Char("新客戶名")
     
-    new_customer_class_id = fields.Many2one('dtsc.customclass',string="新客戶分類")
+    new_customer_class_id = fields.Many2one('dtsc.customclass',string="新客戶分類",domain=lambda self: [('sell_user', 'in', [self.env.uid])])
     new_init = fields.Char("新簡稱")
     new_street = fields.Char("新客戶地址")
     new_vat = fields.Char("新客戶統編")
@@ -126,6 +127,18 @@ class CheckoutInherit(models.Model):
         ('22', '二聯式'),
         ('other', '其他'),
     ], string='稅別') 
+    
+    
+    def go_datu(self):
+        if self.related_checkout_id:
+            return {
+                'name': '大圖訂單',
+                'type': 'ir.actions.act_window',
+                'view_mode': 'form',
+                'res_model': 'dtsc.checkout',
+                'res_id': self.related_checkout_id.id,
+                # 'target': 'new',
+            } 
     
     def action_copy_checkout(self):
         for record in self:
@@ -153,8 +166,16 @@ class CheckoutInherit(models.Model):
                         'aftermakepricelist_id': sub.aftermakepricelist_id.id,
                         'customer_class_id': sub.customer_class_id.id,
                         'qty': sub.qty,
-                    })    
-                    
+                    })
+                new_line.write({'units_price':line.units_price})
+                new_line.write({'total_units':line.total_units})
+                new_line.write({'multi_chose_ids':line.multi_chose_ids})
+                new_line.write({'peijian_price':line.peijian_price})
+                new_line.write({'total_make_price':line.total_make_price})
+                new_line.write({'single_units':line.single_units})
+                new_line.write({'product_total_price':line.product_total_price})
+                new_line.write({'price':line.price})
+                new_line.write({'machine_cai_cai':line.machine_cai_cai})
             return {
                 'type': 'ir.actions.act_window',
                 'name': '複製報價單',
@@ -220,43 +241,82 @@ class CheckoutInherit(models.Model):
         - 将客户的分类更新到订单上
         - 将状态改为草稿
         """
+        
         current_date = datetime.now()
         for record in self:
-            if record.is_new_partner:
-                if not record.new_partner:
+            # record.action_copy_checkout()
+            new_checkout = record.with_context(from_crm=True).copy(default={})
+
+            # 2. 逐筆複製 checkoutline
+            for line in record.product_ids:
+                line_data = line.copy_data()[0]
+                line_data.pop('id', None)
+                line_data['checkout_product_id'] = new_checkout.id
+                product_atts_ids = line.product_atts.ids  # 如果是 One2many 就改成 line.product_atts.copy_data()
+                line_data.pop('product_atts', None)
+                # 建立新的 checkoutline
+                new_line = self.env['dtsc.checkoutline'].create(line_data)
+
+                if product_atts_ids:
+                    new_line.write({'product_atts': [(6, 0, product_atts_ids)]}) 
+                related_records = self.env['dtsc.checkoutlineaftermakepricelist'].search([
+                    ('checkoutline_id', '=', line.id)
+                ])
+                for sub in related_records:
+                    self.env['dtsc.checkoutlineaftermakepricelist'].create({
+                        'checkoutline_id': new_line.id,
+                        'aftermakepricelist_id': sub.aftermakepricelist_id.id,
+                        'customer_class_id': sub.customer_class_id.id,
+                        'qty': sub.qty,
+                    })    
+            
+                new_line.write({'units_price':line.units_price})
+                new_line.write({'total_units':line.total_units})
+                new_line.write({'multi_chose_ids':line.multi_chose_ids})
+                new_line.write({'peijian_price':line.peijian_price})
+                new_line.write({'total_make_price':line.total_make_price})
+                new_line.write({'single_units':line.single_units})
+                new_line.write({'product_total_price':line.product_total_price})
+                new_line.write({'price':line.price})
+                new_line.write({'machine_cai_cai':line.machine_cai_cai})
+            
+            if new_checkout.is_new_partner:
+                if not new_checkout.new_partner:
                     raise ValueError("請輸入新用戶名") 
                 
                 partner_vals = {
-                    'name': record.new_partner,
-                    'street': record.new_street,
-                    'vat': record.new_vat,
-                    'phone': record.new_phone,
-                    'customclass_id':record.new_customer_class_id.id,
-                    'mobile': record.new_mobile,
-                    'email': record.new_email,
-                    'custom_contact_person': record.new_custom_contact_person,
-                    'custom_fax':record.new_custom_fax,
-                    'property_payment_term_id' : record.new_property_payment_term_id,
-                    'custom_pay_mode':record.new_custom_pay_mode,
-                    'custom_invoice_form':record.new_custom_invoice_form,
+                    'name': new_checkout.new_partner,
+                    'street': new_checkout.new_street,
+                    'vat': new_checkout.new_vat,
+                    'phone': new_checkout.new_phone,
+                    'customclass_id':new_checkout.new_customer_class_id.id,
+                    'mobile': new_checkout.new_mobile,
+                    'email': new_checkout.new_email,
+                    'custom_contact_person': new_checkout.new_custom_contact_person,
+                    'custom_fax':new_checkout.new_custom_fax,
+                    'property_payment_term_id' : new_checkout.new_property_payment_term_id,
+                    'custom_pay_mode':new_checkout.new_custom_pay_mode,
+                    'custom_invoice_form':new_checkout.new_custom_invoice_form,
                     'is_customer' : True,
                     'sell_user' : self.env.user.id,
-                    'custom_init_name' : record.new_init,
+                    'custom_init_name' : new_checkout.new_init,
                 }   
                 
                 new_partner = self.env['res.partner'].create(partner_vals)
                 record.customer_id = new_partner.id
                 record.is_new_partner = False
+                new_checkout.customer_id = new_partner.id
+                new_checkout.is_new_partner = False
                 
             if not record.customer_id:
                 raise ValueError("請選擇客戶") 
             
             # 更新订单上的客户分类
-            if record.customer_id.customclass_id:
-                record.customer_class_id = record.customer_id.customclass_id.id
+            if new_checkout.customer_id.customclass_id:
+                new_checkout.customer_class_id = new_checkout.customer_id.customclass_id.id
             
             # 修改状态为草稿
-            record.checkout_order_state = 'draft'
+            new_checkout.checkout_order_state = 'draft'
             
             invoice_due_date = self.env['ir.config_parameter'].sudo().get_param('dtsc.invoice_due_date')
         
@@ -286,16 +346,25 @@ class CheckoutInherit(models.Model):
                 # 如果没有找到记录，就从A23100001开始
                 new_name = "A"+next_year_str+next_month_str+"00001" 
                 
-            record.name = new_name
+            new_checkout.name = new_name
             # record.create_date = datetime.now()
-            query = """
-            UPDATE dtsc_checkout
-            SET create_date = %s
-            WHERE id = %s;
-            """
-            self.env.cr.execute(query, (datetime.now(), record.id))
+            # query = """
+            # UPDATE dtsc_checkout
+            # SET create_date = %s
+            # WHERE id = %s;
+            # """
+            # self.env.cr.execute(query, (datetime.now(), new_checkout.id))
             # self.env.cr.commit()
-            
+            record.related_checkout_id = new_checkout.id
+            new_checkout.crm_lead_id = False
+            return {
+                'type': 'ir.actions.act_window',
+                'name': '大圖訂單',
+                'res_model': 'dtsc.checkout',
+                'view_mode': 'form',
+                'res_id': new_checkout.id,
+                'target': 'current',
+            }
             
     @api.model
     def action_printexcel_crm(self):

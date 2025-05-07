@@ -1197,6 +1197,7 @@ class StockMoveLine(models.Model):
             if record.state == "done":
                 #decoration-danger="(location_usage in ('internal','transit')) and (location_dest_usage not in ('internal','transit'))"   扣料
                 #decoration-success="(location_usage not in ('internal','transit')) and (location_dest_usage in ('internal','transit'))"  入库
+                obj = False 
                 if record.location_usage in ["internal","transit"] and record.location_dest_usage not in ['internal','transit']:   
                     if record.lot_id:
                         obj = self.env["stock.quant"].search([('product_id','=',record.product_id.id),('location_id','=',record.location_id.id),("lot_id","=",record.lot_id.id)],limit=1)
@@ -1207,7 +1208,20 @@ class StockMoveLine(models.Model):
                         obj = self.env["stock.quant"].search([('product_id','=',record.product_id.id),('location_id','=',record.location_dest_id.id),("lot_id","=",record.lot_id.id)],limit=1)
                     else:
                         obj = self.env["stock.quant"].search([('product_id','=',record.product_id.id),('location_id','=',record.location_dest_id.id)],limit=1)
-                    
+                elif record.location_usage in ["internal", "transit"] and record.location_dest_usage in ["internal", "transit"]:
+                    # 調撥情境：看來源倉庫剩餘量 
+                    if record.lot_id:
+                        obj = self.env["stock.quant"].search([
+                            ('product_id', '=', record.product_id.id),
+                            ('location_id', '=', record.location_id.id),
+                            ("lot_id", "=", record.lot_id.id)
+                        ], limit=1)
+                    else:
+                        obj = self.env["stock.quant"].search([
+                            ('product_id', '=', record.product_id.id),
+                            ('location_id', '=', record.location_id.id)
+                        ], limit=1)  
+                        
                 if obj:
                     record.move_after_quantity = obj.quantity
                 else:
@@ -1222,6 +1236,8 @@ class StockMoveLine(models.Model):
             location_id = vals['location_id']
         elif location.usage not in ["internal","transit"] and location_dest.usage in ['internal','transit']:
             location_id = vals['location_dest_id']
+        else:
+            location_id = vals['location_id']
         
         lot_id = vals.get('lot_id', None)
         if lot_id:

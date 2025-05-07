@@ -234,8 +234,8 @@ class Billdate(models.TransientModel):
             order.invoice_origin = move.id
 
         # 3) Convert to refund if total amount is negative
-        if move.currency_id.round(move.amount_total) < 0:
-            move.action_switch_invoice_into_refund_credit_note()
+        # if move.currency_id.round(move.amount_total) < 0:
+            # move.action_switch_invoice_into_refund_credit_note() 
 
         return self.env["purchase.order"].action_view_invoice(move)
 
@@ -243,19 +243,49 @@ class Billdate(models.TransientModel):
 class StockMoveLine(models.Model):
     _inherit = "stock.move"
     now_stock = fields.Char(string='庫存',compute = '_compute_now_stock' ,readonly=True)
+    lot_id = fields.Many2one('stock.lot',string="產品序號", store=True)
     
-    @api.depends('product_id','picking_id.location_id')
+
+    '''    
+    @api.onchange('product_id', 'picking_id.location_id')
+    def _onchange_product_id_or_location(self):
+        for line in self:
+            if not line.product_id or not line.picking_id.location_id:
+                return {'domain': {'lot_id': []}}
+
+            # 如果產品不追蹤序號，清空 lot_id 並禁止選擇任何序號
+            if line.product_id.tracking != 'serial':
+                line.lot_id = False
+                return {'domain': {'lot_id': [('id', '=', False)]}}
+
+            # 追蹤產品的情況，限制序號選項
+            quants = self.env['stock.quant'].search([
+                ('product_id', '=', line.product_id.id),
+                ('location_id', '=', line.picking_id.location_id.id),
+                ('quantity', '>', 0),
+                ('lot_id', '!=', False)
+            ])
+            lot_ids = quants.mapped('lot_id').ids
+            domain = [('id', 'in', lot_ids)]
+            return {'domain': {'lot_id': domain}}
+    '''
+    
+    @api.depends('product_id','picking_id.location_id','lot_id')
     def _compute_now_stock(self):
         for record in self:
             if record.picking_id.location_id:
                 internal_locations = self.env['stock.location'].search([('usage', '=', 'internal')])
                 internal_location_ids = internal_locations.ids
-                if record.picking_id.location_id in internal_location_ids:#如果是調撥單 來源倉庫就是實際倉庫 ，否則 是收貨單 來源倉庫是虛擬倉庫 此時倉庫ID 用目的倉庫地址查詢庫存
+                if record.picking_id.location_id.id in internal_location_ids:#如果是調撥單 來源倉庫就是實際倉庫 ，否則 是收貨單 來源倉庫是虛擬倉庫 此時倉庫ID 用目的倉庫地址查詢庫存
                     location_id = record.picking_id.location_id.id
                 else:
                     location_id = record.picking_id.location_dest_id.id
-
-                quant = self.env["stock.quant"].search([('product_id' , "=" , record.product_id.id),("location_id" ,"=" ,location_id)],limit=1) #這裡出現的負數我用company_id隱藏，未來要修正
+                
+                if record.product_id.tracking == 'serial':
+                    quant = self.env["stock.quant"].search([('product_id' , "=" , record.product_id.id),("location_id" ,"=" ,location_id),('lot_id',"=",record.lot_id.id)],limit=1) 
+                
+                else:                
+                    quant = self.env["stock.quant"].search([('product_id' , "=" , record.product_id.id),("location_id" ,"=" ,location_id)],limit=1) 
                 if quant:
                     record.now_stock = quant.quantity
                 else:
@@ -282,10 +312,61 @@ class StockPicking(models.Model):
         self.action_assign()
         for picking in self:
             for move in picking.move_ids:
-                move.quantity_done = move.product_uom_qty  # 设置为调拨数量或自定义的数量
-                for move_line in move.move_line_ids:
-                    move.quantity_done: move.product_uom_qty
+                # _logger.warning(f"--------{move.product_uom_qty}-----------")
+                
+                move.move_line_ids.unlink()
 
+                if move.product_id.tracking == 'serial':
+                    if not move.lot_id:
+                        raise UserError(f"{move.product_id.display_name} 是序號產品，請先選擇序號。")
+
+                    quant = self.env['stock.quant'].search([
+                        ('product_id', '=', move.product_id.id),
+                        ('location_id', '=', picking.location_id.id),
+                        ('lot_id', '=', move.lot_id.id),
+                        ('quantity', '>', 0)
+                    ], limit=1)
+                    
+                    if move.quantity_done != quant.quantity:
+                        raise UserError(f"{move.product_id.display_name} 的序號 {move.lot_id.name} 調撥必須整料全部調撥，不可以分開")
+                    if not quant:
+                        raise UserError(f"{move.product_id.display_name} 的序號 {move.lot_id.name} 在來源倉庫中沒有可用庫存")
+                    # _logger.warning(f"========{quant.quantity}=========")
+                    move.quantity_done = quant.quantity  # 设置为调拨数量或自定义的数量
+                    # 建立 move_line，使用選中的 lot_id
+                    self.env['stock.move.line'].create({
+                        'reference' : "調撥", 
+                        'move_id': move.id,
+                        "picking_id" : picking.id,
+                        'product_uom_id' : move.product_uom.id,   
+                        'location_id': picking.location_id.id,
+                        'location_dest_id': picking.location_dest_id.id,
+                        'product_id': move.product_id.id,
+                        'lot_id': move.lot_id.id,
+                        'qty_done': quant.quantity,  # 實際剩餘數量
+                        # 'product_uom_qty': quant.quantity, 
+                        'reserved_uom_qty': quant.quantity,  
+                    })
+
+                else:
+                    # 一般產品直接完成
+                    move.quantity_done = move.product_uom_qty  # 设置为调拨数量或自定义的数量
+                    self.env['stock.move.line'].create({
+                        'reference' : "調撥", 
+                        'move_id': move.id,
+                        "picking_id" : picking.id,
+                        'product_uom_id' : move.product_uom.id, 
+                        'location_id': picking.location_id.id,
+                        'location_dest_id': picking.location_dest_id.id,
+                        'product_id': move.product_id.id,
+                        'qty_done': move.product_uom_qty,
+                        # 'product_uom_qty': move.product_uom_qty, 
+                        # 'reserved_qty': move.product_uom_qty,  
+                    })
+                
+            for move in picking.move_ids:
+                if not move.move_line_ids:                    
+                    raise UserError(f"{move.product_id.display_name} 缺少庫存行，請檢查序號或數量是否正確。")
             # 跳过验证，直接完成调拨
             picking.button_validate()                
    
