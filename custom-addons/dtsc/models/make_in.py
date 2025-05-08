@@ -70,7 +70,7 @@ class MakeIn(models.Model):
     total_quantity = fields.Integer(string='本單總數量', compute='_compute_totals')
     total_size = fields.Integer(string='本單總才數', compute='_compute_totals')
     create_id = fields.Many2one('res.users',string="")
-    kaidan = fields.Many2one('dtsc.userlistbefore',string="開單人員") 
+    kaidan = fields.Many2one('dtsc.userlistbefore',string="開單人員",domain=[("is_disabled","=",False)]) 
     no_mprlist = fields.Boolean(default=False)
     scan_type = fields.Selection([
         ('gun', '掃碼槍'),
@@ -90,9 +90,9 @@ class MakeIn(models.Model):
         string='日期範圍'
     )
     #1輸出 2後置 3品管 4其他
-    houzhiman = fields.Many2many('dtsc.userlist','dtsc_makein_dtsc_userlist_rel1', 'dtsc_makein_id','dtsc_userlist_id',string="後製" , domain=[('worktype_ids.name', '=', '後製')])
-    pinguanman = fields.Many2many('dtsc.userlist','dtsc_makein_dtsc_userlist_rel2', 'dtsc_makein_id','dtsc_userlist_id',string="品管" , domain=[('worktype_ids.name', '=', '品管')])
-    outmanall = fields.Many2one('dtsc.userlist',string="所有輸出" , domain=[('worktype_ids.name', '=', '輸出')])
+    houzhiman = fields.Many2many('dtsc.userlist','dtsc_makein_dtsc_userlist_rel1', 'dtsc_makein_id','dtsc_userlist_id',string="後製" , domain=[('worktype_ids.name', '=', '後製'),("is_disabled","=",False)])
+    pinguanman = fields.Many2many('dtsc.userlist','dtsc_makein_dtsc_userlist_rel2', 'dtsc_makein_id','dtsc_userlist_id',string="品管" , domain=[('worktype_ids.name', '=', '品管'),("is_disabled","=",False)])
+    outmanall = fields.Many2one('dtsc.userlist',string="所有輸出" , domain=[('worktype_ids.name', '=', '輸出'),("is_disabled","=",False)])
     search_line_name = fields.Char(compute="_compute_search_line_name", store=True)
     signature = fields.Binary(string='簽名')
     # is_open_makein_qrcode = fields.Boolean(compute="_compute_is_open_makein_qrcode")
@@ -205,7 +205,14 @@ class MakeIn(models.Model):
     ####权限
     
     is_in_by_sc = fields.Boolean(compute='_compute_is_in_by_sc')
+    is_in_by_gly = fields.Boolean(compute='_compute_is_in_by_gly')
     
+    @api.depends()
+    def _compute_is_in_by_gly(self):
+        group_dtsc_gly = self.env.ref('dtsc.group_dtsc_gly', raise_if_not_found=False)
+        user = self.env.user
+        self.is_in_by_gly = group_dtsc_gly and user in group_dtsc_gly.users
+        
     def everyday_set(self):
         # 設置時區
         print("###make in cron###")
@@ -552,12 +559,39 @@ class MakeLine(models.Model):
     output_material = fields.Char(string='輸出材質', compute='_compute_output_material')
     production_size = fields.Char(string='製作尺寸', compute='_compute_production_size')
     lengbiao = fields.Char(string='裱', compute='_compute_lengbiao')
-    outman = fields.Many2one('dtsc.userlist',string="輸出" , domain=[('worktype_ids.name', '=', '輸出')])
+    outman = fields.Many2one('dtsc.userlist',string="輸出" , domain=[('worktype_ids.name', '=', '輸出'),("is_disabled","=",False)])
     is_modified = fields.Boolean(string="is modified",default = False)
     is_stock_off = fields.Boolean(default = False,compute="_compute_is_stock_off") 
 
     is_select = fields.Boolean("簽名")
+    
+    
+    
+    
+    def clean_lengbiao(self):
+        self.lengbiao_sign = ""
+        self.checkout_line_id.lengbiao_sign = ""
+    
+    def clean_guoban(self):
+        self.guoban_sign = ""
+        self.checkout_line_id.guoban_sign = ""
+    def clean_caiqie(self):
+        self.caiqie_sign = ""
+        self.checkout_line_id.caiqie_sign = ""
         
+    def clean_houzhi(self):
+        self.houzhi_sign = ""
+        self.checkout_line_id.houzhi_sign = ""
+        
+    def clean_pinguan(self):
+        self.pinguan_sign = ""
+        self.checkout_line_id.pinguan_sign = ""
+    def clean_daichuhuo(self):
+        self.daichuhuo_sign = ""
+        self.checkout_line_id.daichuhuo_sign = ""
+    def clean_yichuhuo(self):
+        self.yichuhuo_sign = ""
+        self.checkout_line_id.yichuhuo_sign = ""    
     ####权限
     
     # is_in_by_sc = fields.Boolean(compute='_compute_is_in_by_sc')

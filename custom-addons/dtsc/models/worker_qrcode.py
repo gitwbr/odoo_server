@@ -145,7 +145,7 @@ class WorkerQRcode(models.Model):
 class CheckOut(models.Model):
     _inherit = "dtsc.checkoutline"     
     
-    outman = fields.Many2one('dtsc.userlist',string="輸出" , domain=[('worktype_ids.name', '=', '輸出')],store=True)    
+    outman = fields.Many2one('dtsc.userlist',string="輸出" , domain=[('worktype_ids.name', '=', '輸出'),("is_disabled","=",False)],store=True)    
     lengbiao_sign = fields.Char("冷裱")
     guoban_sign = fields.Char("過板")
     caiqie_sign = fields.Char("裁切")
@@ -229,7 +229,7 @@ class CheckOut(models.Model):
 class MakeInLine(models.Model):
     _inherit = "dtsc.makeinline"  
     
-    meigong = fields.Many2one('dtsc.userlistbefore',string="美工")
+    meigong = fields.Many2one('dtsc.userlistbefore',string="美工",domain=[("is_disabled","=",False)])
     
     lengbiao_sign = fields.Char("冷裱")
     guoban_sign = fields.Char("過板")

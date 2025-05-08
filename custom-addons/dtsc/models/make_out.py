@@ -59,7 +59,7 @@ class MakeOut(models.Model):
     supplier_init_name = fields.Char(string="為外商",related="supplier_id.custom_init_name")
     pinguanman = fields.Many2many('dtsc.userlist',string="品管" , domain=[('worktype_ids.name', '=', '品管')])
     create_id = fields.Many2one('res.users',string="")
-    kaidan = fields.Many2one('dtsc.userlistbefore',string="開單人員") 
+    kaidan = fields.Many2one('dtsc.userlistbefore',string="開單人員",domain=[("is_disabled","=",False)]) 
     date_labels = fields.Many2many(
         'dtsc.datelabel', 
         'dtsc_makeout_datelabel_rel', 
@@ -84,7 +84,14 @@ class MakeOut(models.Model):
         help="可多選類型"
     )
     scan_input = fields.Char("掃碼輸入員工")
+    is_in_by_gly = fields.Boolean(compute='_compute_is_in_by_gly')
     
+    @api.depends()
+    def _compute_is_in_by_gly(self):
+        group_dtsc_gly = self.env.ref('dtsc.group_dtsc_gly', raise_if_not_found=False)
+        user = self.env.user
+        self.is_in_by_gly = group_dtsc_gly and user in group_dtsc_gly.users
+        
     @api.onchange('scan_input')
     def _onchange_scan_input(self):
         if self.scan_input:
@@ -492,7 +499,18 @@ class MakeLine(models.Model):
         readonly=True,
         copy=False
     )
-    
+    def clean_houzhi(self):
+        self.houzhi_sign = ""
+        self.checkout_line_id.houzhi_sign = ""
+    def clean_pinguan(self):
+        self.pinguan_sign = ""
+        self.checkout_line_id.pinguan_sign = ""
+    def clean_daichuhuo(self):
+        self.daichuhuo_sign = ""
+        self.checkout_line_id.daichuhuo_sign = ""
+    def clean_yichuhuo(self):
+        self.yichuhuo_sign = ""
+        self.checkout_line_id.yichuhuo_sign = ""
     @api.depends('make_order_id.name', 'sequence')
     def _compute_barcode(self):
         for record in self:

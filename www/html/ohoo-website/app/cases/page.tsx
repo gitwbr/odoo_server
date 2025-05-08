@@ -6,7 +6,7 @@ import Navbar from '@/components/Navbar';
 const cases = [
   {
     title: '大型印刷廠數位轉型',
-    company: '台灣印藝股份有限公司',
+    company: '',
     description: '通過導入 euhon ERP 系統，成功實現生產流程數位化管理，提升30%生產效率。',
     results: [
       '訂單處理時間縮短50%',
@@ -17,7 +17,7 @@ const cases = [
   },
   {
     title: '中型廣告公司營運優化',
-    company: '創意廣告有限公司',
+    company: '',
     description: '採用我們的解決方案後，顯著改善了專案管理效率，提高了報價準確性。',
     results: [
       '專案完成時間縮短35%',
@@ -28,7 +28,7 @@ const cases = [
   },
   {
     title: '小型設計工作室效率提升',
-    company: '玩美設計工作室',
+    company: '',
     description: '透過系統整合訂單和設計流程，大幅提升工作效率和客戶溝通品質。',
     results: [
       '行政作業時間減少60%',

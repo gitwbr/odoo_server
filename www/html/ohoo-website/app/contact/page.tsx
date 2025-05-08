@@ -271,10 +271,10 @@ export default function Contact() {
             </p>
             <div className="mt-10 space-y-4">
               <p className="text-base leading-7 text-gray-600">
-                台北市信義區信義路五段7號
+              台北市和平東路一段177號
               </p>
               <p className="text-base leading-7 text-gray-600">
-                台北101大樓 89樓
+                5F-1
               </p>
             </div>
           </div>

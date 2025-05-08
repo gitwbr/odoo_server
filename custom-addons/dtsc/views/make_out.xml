@@ -83,6 +83,7 @@
 						</group><group colspan="4">
 							<field name="speed_type" />
 							<field name="delivery_date" />
+                            <field name="is_in_by_gly" invisible="1"/>
 							<field name="delivery_method" readonly="1"/>
 							<field name="recheck_user" attrs="{'invisible': [('is_recheck', '=', False)]}" widget="many2many_tags"  readonly="1"/>
 						</group>						
@@ -141,9 +142,13 @@
 									<field name="file_name" readonly="1"/>
 									<field name="production_size" readonly="1"/>	
 									<field name="houzhi_sign" readonly="1" />
-									<field name="pinguan_sign"  readonly="1"/>
-									<field name="daichuhuo_sign"  readonly="1"/>
-									<field name="yichuhuo_sign"  readonly="1"/>
+									<button name="clean_houzhi" string="刪後製" confirm="確定要清空此項内容嗎？" type="object" class="btn-primary" groups="dtsc.group_dtsc_gly" /> 										
+									<field name="pinguan_sign" readonly="1"/>
+									<button name="clean_pinguan" string="刪品管" confirm="確定要清空此項内容嗎？" type="object" class="btn-primary" groups="dtsc.group_dtsc_gly" /> 
+									<field name="daichuhuo_sign" readonly="1"/>
+									<button name="clean_daichuhuo" string="刪完成包裝" confirm="確定要清空此項内容嗎？" type="object" class="btn-primary" groups="dtsc.group_dtsc_gly" /> 
+									<field name="yichuhuo_sign" readonly="1"/>
+									<button name="clean_yichuhuo" string="刪已出貨" confirm="確定要清空此項内容嗎？" type="object" class="btn-primary" groups="dtsc.group_dtsc_gly" /> 
 									<!-- <field name="is_disable" /> -->
 
 								</tree>

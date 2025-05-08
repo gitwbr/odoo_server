@@ -73,6 +73,7 @@
 							<field name="recheck_comment" attrs="{'invisible': [('is_recheck', '=', False)]}" readonly="1"/>
 						</group><group colspan="4">
                             <field name="is_in_by_sc" invisible="1"/>
+                            <field name="is_in_by_gly" invisible="1"/>
 							<field name="order_date" readonly="1"/>
 							<field name="delivery_date" />
 							<field name="speed_type" />
@@ -138,13 +139,26 @@
 									<field name="production_size" readonly="1"/>									
 									<!-- <field name="meigong" options="{'no_create': True, 'no_create_edit': True}" attrs="{'readonly': [('parent.is_in_by_sc', '=', False)]}" /> -->
 									<field name="outman" options="{'no_create': True, 'no_create_edit': True}" attrs="{'readonly': [('parent.is_in_by_sc', '=', False)]}" />
-									<field name="lengbiao_sign" readonly="1" />
-									<field name="guoban_sign" readonly="1" />
-									<field name="caiqie_sign" readonly="1" />
-									<field name="houzhi_sign" readonly="1" />
-									<field name="pinguan_sign" readonly="1" />
-									<field name="daichuhuo_sign" readonly="1" />
-									<field name="yichuhuo_sign"  readonly="1"/>
+									<field name="lengbiao_sign" attrs="{'readonly': [('parent.is_in_by_gly', '=', False)]}" />
+									<button name="clean_lengbiao" string="刪冷裱" confirm="確定要清空此項内容嗎？" type="object" class="btn-primary" groups="dtsc.group_dtsc_gly" /> 						
+									
+									<field name="guoban_sign" attrs="{'readonly': [('parent.is_in_by_gly', '=', False)]}" />
+									<button name="clean_guoban" string="刪過板" confirm="確定要清空此項内容嗎？" type="object" class="btn-primary" groups="dtsc.group_dtsc_gly" /> 						
+									
+									<field name="caiqie_sign" attrs="{'readonly': [('parent.is_in_by_gly', '=', False)]}" />
+									<button name="clean_caiqie" string="刪裁切" confirm="確定要清空此項内容嗎？" type="object" class="btn-primary" groups="dtsc.group_dtsc_gly" /> 						
+									
+									<field name="houzhi_sign" attrs="{'readonly': [('parent.is_in_by_gly', '=', False)]}" />
+									<button name="clean_houzhi" string="刪後製" confirm="確定要清空此項内容嗎？" type="object" class="btn-primary" groups="dtsc.group_dtsc_gly" /> 						
+									
+									<field name="pinguan_sign" attrs="{'readonly': [('parent.is_in_by_gly', '=', False)]}" />
+									<button name="clean_pinguan" string="刪品管" confirm="確定要清空此項内容嗎？" type="object" class="btn-primary" groups="dtsc.group_dtsc_gly" /> 						
+									
+									<field name="daichuhuo_sign" attrs="{'readonly': [('parent.is_in_by_gly', '=', False)]}" />
+									<button name="clean_daichuhuo" string="刪完成包裝" confirm="確定要清空此項内容嗎？" type="object" class="btn-primary" groups="dtsc.group_dtsc_gly" /> 						
+									
+									<field name="yichuhuo_sign"  attrs="{'readonly': [('parent.is_in_by_gly', '=', False)]}"/>
+									<button name="clean_yichuhuo" string="刪已出貨" confirm="確定要清空此項内容嗎？" type="object" class="btn-primary" groups="dtsc.group_dtsc_gly" /> 	
 									<!-- <field name="is_disable" /> -->
 
 								</tree>

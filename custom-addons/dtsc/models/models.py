@@ -58,12 +58,14 @@ class UserListBefore(models.Model):
     _name = 'dtsc.reworklist'
     
     name = fields.Char(string = "師傅")   
+    is_disabled = fields.Boolean("禁用")  
 
 class UserListBefore(models.Model):
 
     _name = 'dtsc.userlistbefore'
     
     name = fields.Char(string = "師傅")
+    is_disabled = fields.Boolean("禁用")
     # worktype_ids = fields.Many2many('dtsc.usertype', string="工種")
   
 class UserList(models.Model):
@@ -72,6 +74,7 @@ class UserList(models.Model):
     
     name = fields.Char(string = "師傅")
     worktype_ids = fields.Many2many('dtsc.usertype', string="工種")
+    is_disabled = fields.Boolean("禁用")
 
 class ResCompany(models.Model):
     _inherit = "res.company"  

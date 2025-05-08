@@ -29,7 +29,7 @@ class YklComment(models.Model):
     partner_id = fields.Many2one("res.partner",string="廠商",domain=[('supplier_rank', '>', 0)])
     partner_name = fields.Char(string="廠商")
     color = fields.Char("顔色/品名")
-    hou = fields.Float("厚度mm",default="0")
+    hou = fields.Float("厚度mm",default="1")
     # hou_num = fields.Float(store=True,compute="_compute_hou_num")
     width = fields.Char("寬度")
     # width_num = fields.Float(store=True,compute="_compute_width_num")
@@ -72,17 +72,21 @@ class YklComment(models.Model):
     @api.depends("width","height","quantity")
     def _compute_single_units(self):
         for record in self:
-                formula = self.env["dtsc.unit_conversion"].search([("name" , "=" ,"單位轉換計算(才數)")]).conversion_formula
-                param1 = float(record.width)
-                param2 = float(record.height)
-                if formula:
-                    result = eval(formula,{
-                        'param1' :param1,
-                        'param2' :param2,
-                    })
-                    record.cai = int(result * record.quantity + 0.5)
+            formula = self.env["dtsc.unit_conversion"].search([("name" , "=" ,"單位轉換計算(才數)")]).conversion_formula
+            param1 = float(record.width)
+            param2 = float(record.height)
+            if formula:
+                result = eval(formula,{
+                    'param1' :param1,
+                    'param2' :param2,
+                })
+                cai = int(result * record.quantity + 0.5)
+                if cai == 0:
+                    record.cai = 1
                 else:
-                    record.cai = 0.0
+                    record.cai = cai
+            else:
+                record.cai = 1
 
 class ChatTemplate(models.Model):
     _name = 'dtsc.chattemplate'

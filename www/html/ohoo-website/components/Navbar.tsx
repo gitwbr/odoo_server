@@ -6,8 +6,8 @@ import { Bars3Icon, XMarkIcon } from '@heroicons/react/24/outline';
 
 const navigation = [
   { name: '首頁', href: '/' },
-  { name: '功能介紹', href: '/features' },
-  { name: '功能介紹2', href: '/features2' },
+  /* { name: '功能介紹', href: '/features' }, */
+  { name: '功能介紹', href: '/features2' },
   { name: '案例分享', href: '/cases' },
   { name: '常見問答', href: '/faq' },
   { name: '關於我們', href: '/about' },
@@ -21,7 +21,10 @@ export default function Navbar() {
       <nav className="flex items-center justify-between p-6 lg:px-8" aria-label="Global">
         <div className="flex lg:flex-1">
           <Link href="/" className="-m-1.5 p-1.5">
-            <span className="text-2xl font-bold text-blue-600">Euhon ERP</span>
+            <span className="block font-bold" style={{fontSize:'2.2rem', color:'#888888', lineHeight:'1.1', letterSpacing:'2px', display:'inline-block', width:'auto'}}>
+              Euh<span style={{color:'#7B5A7B'}}>o</span>n
+            </span>
+            <span className="block text-lg font-bold" style={{color:'#888888',letterSpacing:'2px',marginTop:'-2px',width:'100%'}}>歐鴻網路科技</span>
           </Link>
         </div>
         <div className="flex lg:hidden">
@@ -59,7 +62,10 @@ export default function Navbar() {
         <div className="fixed inset-y-0 right-0 z-50 w-full overflow-y-auto bg-white px-6 py-6 sm:max-w-sm sm:ring-1 sm:ring-gray-900/10">
           <div className="flex items-center justify-between">
             <Link href="/" className="-m-1.5 p-1.5">
-              <span className="text-2xl font-bold text-blue-600">Euhon ERP</span>
+              <span className="block font-bold" style={{fontSize:'2.2rem', color:'#888888', lineHeight:'1.1', letterSpacing:'2px', display:'inline-block', width:'auto'}}>
+                Euh<span style={{color:'#7B5A7B'}}>o</span>n
+              </span>
+              <span className="block text-lg font-bold" style={{color:'#888888',letterSpacing:'2px',marginTop:'-2px',width:'100%'}}>歐鴻網路科技</span>
             </Link>
             <button
               type="button"

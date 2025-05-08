@@ -240,7 +240,7 @@ class Checkout(models.Model):
     payment_first = fields.Boolean("先收款再製作")
     is_invisible = fields.Boolean(string="是否隐藏", default=False)
     create_id = fields.Many2one('res.users',string="創建者", default=lambda self: self.env.user)
-    kaidan = fields.Many2one('dtsc.userlistbefore',string="開單人員")
+    kaidan = fields.Many2one('dtsc.userlistbefore',string="開單人員",domain=[("is_disabled","=",False)])
     
     comment = fields.Char(string="訂單備註")
     # comment_customer = fields.Char(string="客戶備註")
@@ -272,7 +272,7 @@ class Checkout(models.Model):
     is_recheck = fields.Boolean(string="是否是重製單")
     is_copy = fields.Boolean(string="是否是追加單")
     source_name = fields.Char(string="來源賬單")
-    recheck_user = fields.Many2many('dtsc.reworklist',string="重製相關人員")
+    recheck_user = fields.Many2many('dtsc.reworklist',string="重製相關人員",domain=[("is_disabled","=",False)])
     recheck_groups = fields.Many2many('dtsc.department',string="重製相關部門") 
     recheck_comment = fields.Char(string="重製備註說明") 
     is_online = fields.Boolean( default = False)

@@ -28,12 +28,12 @@ const testimonials = [
   {
     content: '導入Euhon ERP後，我們的訂單處理時間減少了50%，客戶滿意度大幅提升。',
     author: '張經理',
-    company: '大台北廣告'
+    company: '大台北某廣告公司'
   },
   {
     content: '系統非常容易上手，售後服務也很到位，是我們數位轉型的最佳選擇。',
     author: '李總監',
-    company: '創意廣告印刷'
+    company: '某創意廣告印刷公司'
   }
 ];
 
@@ -63,7 +63,7 @@ export default function Home() {
               >
                 立即體驗
               </Link>
-              <Link href="/features" className="text-sm font-semibold leading-6 text-gray-900">
+              <Link href="/features2" className="text-sm font-semibold leading-6 text-gray-900">
                 了解更多 <span aria-hidden="true">→</span>
               </Link>
             </div>
