@@ -187,17 +187,19 @@
                                     </button>
                                     <div class="upgrade-buttons">
                                         <div class="upgrade-btn-wrapper">
+                                        <!-- 升級到v2版本的按鈕
                                         <button class="action-btn upgrade-btn upgrade-v2 ${instance.status === 1 && instance.version_id < 2 ? '' : 'disabled'}"
                                                 onclick="${instance.status === 1 && instance.version_id < 2 ? `upgradeInstance(${instance.id}, 2)` : ''}"
                                                 title="${instance.status !== 1 ? '實例未運行' : instance.version_id >= 2 ? '已是v2或更高版本' : '升級到v2版本'}">
                                             <i class="material-icons">upgrade</i>v2
-                                        </button>
+                                        </button> -->
                                         </div>
                                         <div class="upgrade-btn-wrapper">
                                         <button class="action-btn upgrade-btn upgrade-v3 ${instance.status === 1 && instance.version_id < 3 ? '' : 'disabled'}"
                                                 onclick="${instance.status === 1 && instance.version_id < 3 ? `upgradeInstance(${instance.id}, 3)` : ''}"
                                                 title="${instance.status !== 1 ? '實例未運行' : instance.version_id >= 3 ? '已是v3或更高版本' : '升級到v3版本'}">
-                                            <i class="material-icons">upgrade</i>v3
+                                            <!-- <i class="material-icons">upgrade</i>v3 -->
+                                            <i class="material-icons">upgrade</i>升級
                                         </button>
                                         </div>
                                     </div>
@@ -209,7 +211,8 @@
                             <td>${statusHtml}</td>
                             <td>${domainDisplay}</td>
                             <td>${instance.port}</td>
-                            <td id="version-${instance.id}" data-version="${instance.version_id}">v${instance.version_id}</td>
+                            <!--<td id="version-${instance.id}" data-version="${instance.version_id}">v${instance.version_id}</td> -->
+                            <td id="version-${instance.id}" data-version="${instance.version_id}">${instance.version_id === 3 ? '高級版' : '基礎版'}</td>
                             <td>${new Date(instance.created_at).toLocaleString()}</td>
                             <td>${new Date(instance.expires_at).toLocaleString()}</td>
                             

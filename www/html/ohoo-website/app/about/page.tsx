@@ -20,7 +20,7 @@ const teamMembers = [
   }
 ];
 
-const milestones = [
+/* const milestones = [
   {
     year: '2020',
     title: '公司成立',
@@ -41,7 +41,7 @@ const milestones = [
     title: '推出全新 2.0 版本',
     description: '整合更多智能化功能，提供更完整的行動支援，協助企業實現真正的數位轉型。'
   }
-];
+]; */
 
 export default function About() {
   return (

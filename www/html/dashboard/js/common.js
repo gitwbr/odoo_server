@@ -195,16 +195,18 @@ function getVersionCompareHtml() {
                         • 基礎功能
                     </div>
                 </div>
-                <div style="margin-bottom: 8px;">
+                <!--<div style="margin-bottom: 8px;">
                     <span style="color: #1890ff;">進階版 v2：</span>
                     <div style="padding-left: 12px;">
                         • CRM客戶管理<br>
                         • Line機器人整合
                     </div>
-                </div>
+                </div>-->
                 <div>
                     <span style="color: #fa8c16;">高級版 v3：</span>
                     <div style="padding-left: 12px;">
+                        • CRM客戶管理<br>
+                        • Line機器人整合<br>
                         • 完整訂單管理<br>
                         • 工單二維碼系統
                     </div>

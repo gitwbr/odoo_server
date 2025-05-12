@@ -483,7 +483,8 @@
                         </td>
                         <td id="instance-${instance.id}-status">${statusHtml}</td>
                         <td>${domainDisplay}</td>
-                        <td id="version-${instance.id}" data-version="${instance.version_id}">v${instance.version_id}</td>
+                        <!--<td id="version-${instance.id}" data-version="${instance.version_id}">v${instance.version_id}</td> -->
+                        <td id="version-${instance.id}" data-version="${instance.version_id}">${instance.version_id === 3 ? '高級版' : '基礎版'}</td>
                         <td>${new Date(instance.created_at).toLocaleString()}</td>
                         <td>${new Date(instance.expires_at).toLocaleString()}</td>
                         <td id="actions-${instance.id}">
