@@ -203,7 +203,7 @@ export default function Contact() {
       </div> */}
 
       {/* Contact Methods */}
-      <div className="bg-white">
+      {/* <div className="bg-white">
         <div className="mx-auto max-w-7xl px-6 py-24 sm:py-32 lg:px-8">
           <div className="mx-auto max-w-2xl lg:max-w-4xl">
             <h2 className="text-2xl font-bold tracking-tight text-gray-900">聯絡方式</h2>
@@ -259,23 +259,44 @@ export default function Contact() {
             </div>
           </div>
         </div>
-      </div>
+      </div> */}
 
       {/* Office Location */}
       <div className="bg-gray-50">
         <div className="mx-auto max-w-7xl px-6 py-24 sm:py-32 lg:px-8">
           <div className="mx-auto max-w-2xl lg:max-w-4xl">
-            <h2 className="text-2xl font-bold tracking-tight text-gray-900">公司地址</h2>
-            <p className="mt-6 text-lg leading-8 text-gray-600">
-              歡迎蒞臨參觀，了解更多關於我們的服務
-            </p>
+            <h2 className="text-2xl font-bold tracking-tight text-gray-900">聯絡方式</h2>
+            
             <div className="mt-10 space-y-4">
               <p className="text-base leading-7 text-gray-600">
-              台北市和平東路一段177號
+              Line：@903yfago
               </p>
               <p className="text-base leading-7 text-gray-600">
-                5F-1
+              Email：euhon_service@gmail.com
               </p>
+              <p className="text-base leading-7 text-gray-600">
+              地址：台北市和平東路一段177號 5F-1
+              </p>  
+              <p className="text-base leading-7 text-gray-600">
+              Add:5F.,No.1,Sec.1,Heping Rd.,Da'an Dist.,Taipei City 106,Taiwan(R.O.C.)
+              </p>  
+              <p className="mt-6 text-lg leading-8 text-gray-600">
+              歡迎蒞臨參觀，了解更多關於我們的服務
+            </p>
+            </div>
+            <div className="mt-12 flex justify-center">
+              <div className="w-full max-w-4xl rounded-xl overflow-hidden shadow-lg">
+                <iframe
+                  src="https://www.google.com/maps?q=台北市和平東路一段177號5F-1&output=embed"
+                  width="100%"
+                  height="500"
+                  style={{ border: 0 }}
+                  allowFullScreen={true}
+                  loading="lazy"
+                  referrerPolicy="no-referrer-when-downgrade"
+                  title="公司位置"
+                ></iframe>
+              </div>
             </div>
           </div>
         </div>

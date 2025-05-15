@@ -167,7 +167,7 @@ function insertLayout() {
     sidebar.className = 'sidebar';
     sidebar.innerHTML = `
         <div class="logo">
-            <a href="#" id="logo-link" style="text-decoration: none; color: inherit;">Ohoo ERP</a>
+            <a href="#" id="logo-link" style="text-decoration: none; color: inherit;">ＭegaBoard ERP</a>
         </div>
         <ul class="nav-menu">
             <li>

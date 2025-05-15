@@ -1,22 +1,42 @@
 "use client";
 
 import Navbar from '@/components/Navbar';
+import Image from 'next/image';
 
 const teamMembers = [
   {
-    name: '張志明',
+    name: '林逸昌',
     role: '創辦人兼執行長',
-    description: '擁有超過15年大圖產業經驗，深入了解產業痛點，致力於推動產業數位化轉型。'
+    description: ['從事網通研發二十年，目前經銷',
+      '1.智能化雷動代步重',
+      '2.VPN網路設備 &服務',
+      '3.VR眼鏡-線上會議系統',
+      '現任:',
+      '·红博科技股份有限公司 負责人',
+      '·台歐企業股份有限公司 董事'
+    ],
+    image: '/team/lin1.jpg'
   },
   {
-    name: '李美玲',
-    role: '技術總監',
-    description: '資深系統架構師，帶領團隊開發符合產業需求的創新解決方案。'
+    name: '王培宇',
+    /* role: '技術總監', */
+    role: '商務總監',
+    /* description: '資深系統架構師，帶領團隊開發符合產業需求的創新解決方案。' */
+    description: [
+      '· SaaS 雲端費用管理系統市場開發、產品行銷、策略推進。',
+      '· 洽談經銷商及合作夥伴加速產品市場曝光度。',
+      '· 大型客戶導入：大陸工程、 Jins、 KKCOMPANY，橫跨不同產業。'
+    ],
+    image: '/team/wang1.jpg'
   },
   {
-    name: '王建國',
-    role: '客戶服務總監',
-    description: '專注於提供最佳客戶體驗，確保客戶能夠充分運用系統提升營運效率。'
+    name: '曾煥中',
+    /* role: '客戶服務總監', */
+    role: '客戶體驗總監',
+    description: ['專注於提供最佳客戶體驗，確保客戶能夠充分運用系統提升營運效率。',
+      '·思想科技總經理 ',
+      '·人易科技總經理'],
+    image: '/team/zeng.jpg'
   }
 ];
 
@@ -28,7 +48,7 @@ const teamMembers = [
   },
   {
     year: '2021',
-    title: 'Euhon ERP 1.0 發布',
+    title: 'ＭegaBoard ERP 1.0 發布',
     description: '推出第一版系統，獲得多家企業採用，並持續根據使用者回饋進行優化。'
   },
   {
@@ -89,17 +109,27 @@ export default function About() {
             {teamMembers.map((member, index) => (
               <div key={index} className="flex flex-col items-start">
                 <div className="rounded-2xl bg-gray-100 p-2">
-                  <div className="h-48 w-48 rounded-xl bg-gray-200 flex items-center justify-center text-4xl font-bold text-gray-500">
-                    {member.name[0]}
-                  </div>
+                  <Image
+                    src={member.image}
+                    alt={member.name}
+                    width={192}
+                    height={192}
+                    className="h-48 w-48 rounded-xl object-cover"
+                  />
                 </div>
                 <h3 className="mt-6 text-lg font-semibold leading-8 tracking-tight text-gray-900">
                   {member.name}
                 </h3>
                 <p className="text-base leading-7 text-blue-600">{member.role}</p>
-                <p className="mt-4 text-base leading-7 text-gray-600">
-                  {member.description}
-                </p>
+                {Array.isArray(member.description) ? (
+                  <ul className="space-y-1 mt-4 text-base leading-7 text-gray-600">
+                    {member.description.map((line, i) => (
+                      <li key={i}>{line}</li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="mt-4 text-base leading-7 text-gray-600">{member.description}</p>
+                )}
               </div>
             ))}
           </div>
@@ -150,7 +180,7 @@ export default function About() {
               加入我們的行列
             </h2>
             <p className="mx-auto mt-6 max-w-xl text-lg leading-8 text-gray-600">
-              立即體驗 Euhon ERP，開啟您的數位化轉型之旅
+              立即體驗 ＭegaBoard ERP，開啟您的數位化轉型之旅
             </p>
             <div className="mt-10 flex items-center justify-center gap-x-6">
               <a

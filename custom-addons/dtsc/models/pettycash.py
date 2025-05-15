@@ -56,15 +56,47 @@ class PettyCash(models.Model):
         
         return res
     
-    def write(self, vals):
-        if self.pettymanager_id.state in ["succ"]:
-            raise UserError("此單已鎖定，無法修改任何内容。")
-        return super().write(vals)
+    # def write(self, vals):
+        # for rec in self:
+            # if rec.pettymanager_id.state in ["succ"]:
+                # raise UserError("此單已鎖定，無法修改任何内容。")
+
+            # manager_id = rec.pettymanager_id.id  # 保存当前管理单 ID
+
+        # res = super().write(vals)
+
+        # obj = self.env["dtsc.pettycash"].search([("pettymanager_id", "=", manager_id)], order="id asc")
+        # last_num = self.env["dtsc.pettymanager"].browse(manager_id).last_num
+        # for record in obj:
+            # if record.in_cash:
+                # last_num += record.in_cash
+            # if record.out_cash:
+                # last_num -= record.out_cash
+            # record.last_num = last_num
+
+        # return res
         
     def unlink(self):
-        if self.pettymanager_id.state in ["succ"]:
-            raise UserError("此單已鎖定，無法修改任何内容。")
-        return super().unlink()
+        for rec in self:
+            if rec.pettymanager_id.state in ["succ"]:
+                raise UserError("此單已鎖定，無法修改任何内容。")
+            
+            manager_id = rec.pettymanager_id.id  # 保留当前要处理的 manager_id
+
+            # 删除记录
+            res = super().unlink()
+
+            # 重新查询剩下的记录，重新计算余额
+            obj = self.env["dtsc.pettycash"].search([("pettymanager_id", "=", manager_id)], order="id asc")
+            last_num = self.env["dtsc.pettymanager"].browse(manager_id).last_num
+            for record in obj:
+                if record.in_cash:
+                    last_num += record.in_cash
+                if record.out_cash:
+                    last_num -= record.out_cash
+                record.last_num = last_num
+
+            return res
         
         
 class PettyManager(models.Model):
@@ -97,6 +129,20 @@ class PettyManager(models.Model):
     _sql_constraints = [
         ('unique_vat', 'unique(name)', '該月零用金表已經生成，無法再次保存')
     ]
+    
+    @api.onchange("last_num")
+    def onchange_last_num(self):
+        # print("in last_num")
+        last_num = self.last_num
+        # print(last_num)
+        for record in self.pettycash_ids:
+            if record.in_cash:
+                last_num = last_num + record.in_cash
+            if record.out_cash:
+                last_num = last_num - record.out_cash
+            
+            # print(last_num)
+            record.last_num = last_num
     
     def write(self, vals):
         if self.state in ["succ"]:

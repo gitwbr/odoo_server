@@ -26,7 +26,7 @@ const features = [
 
 const testimonials = [
   {
-    content: '導入Euhon ERP後，我們的訂單處理時間減少了50%，客戶滿意度大幅提升。',
+    content: '導入ＭegaBoard ERP後，我們的訂單處理時間減少了50%，客戶滿意度大幅提升。',
     author: '張經理',
     company: '大台北某廣告公司'
   },
@@ -54,7 +54,7 @@ export default function Home() {
               大圖產業數位化轉型的最佳夥伴
             </h1>
             <p className="mt-6 text-lg leading-8 text-gray-600">
-              告別傳统計價繁瑣、庫存管理混亂、生産流程延遲等困擾，Euhon ERP 助您實現數位化轉型，提升競爭力
+              告別傳统計價繁瑣、庫存管理混亂、生産流程延遲等困擾，ＭegaBoard ERP 助您實現數位化轉型，提升競爭力
             </p>
             <div className="mt-10 flex items-center justify-center gap-x-6">
               <Link
@@ -76,8 +76,8 @@ export default function Home() {
         <div className="mx-auto max-w-7xl px-6 lg:px-8">
           <div className="mx-auto max-w-2xl lg:text-center">
             <h2 className="text-base font-semibold leading-7 text-blue-600">效率提升</h2>
-            <p className="mt-2 text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
-              為什麼選擇 Euhon ERP
+            <p className="mt-2 text4xl font-bold tracking-tight text-gray-900 sm:text-4xl">
+              為什麼選擇 ＭegaBoard ERP
             </p>
             <p className="mt-6 text-lg leading-8 text-gray-600">
               我們擁有多年大圖產業服務經驗，深入了解您的需求，提供最專業的解決方案
@@ -141,7 +141,7 @@ export default function Home() {
               準備好開始您的數位轉型之旅了嗎？
             </h2>
             <p className="mx-auto mt-6 max-w-xl text-lg leading-8 text-gray-300">
-              立即預約免費諮詢，了解 Euhon ERP 如何幫助您提升業績！
+              立即預約免費諮詢，了解 ＭegaBoard ERP 如何幫助您提升業績！
             </p>
             <div className="mt-10 flex items-center justify-center gap-x-6">
               <Link
