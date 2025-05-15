@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
+import { MobileMenuProvider } from "@/components/MobileMenuContext";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -17,7 +18,9 @@ export default function RootLayout({
   return (
     <html lang="zh-TW">
       <body className={inter.className}>
-        {children}
+        <MobileMenuProvider>
+          {children}
+        </MobileMenuProvider>
       </body>
     </html>
   );

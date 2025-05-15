@@ -148,10 +148,6 @@ function insertLayout() {
                         <i class="material-icons">person</i>
                         <span>個人資料</span>
                     </div>
-                    <div class="menu-item" onclick="window.location.href='/dashboard/settings.html'">
-                        <i class="material-icons">settings</i>
-                        <span>系統設置</span>
-                    </div>
                     <div class="divider"></div>
                     <div class="menu-item" id="logout-btn">
                         <i class="material-icons">logout</i>
@@ -186,12 +182,6 @@ function insertLayout() {
                 <a href="/dashboard/profile.html" class="nav-item" id="nav-profile">
                     <i class="material-icons">person</i>
                     個人資料
-                </a>
-            </li>
-            <li>
-                <a href="#" class="nav-item" id="nav-settings">
-                    <i class="material-icons">settings</i>
-                    系統設置
                 </a>
             </li>
         </ul>

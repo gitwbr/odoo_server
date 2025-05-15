@@ -401,7 +401,7 @@ export default function Features2() {
         <div className="flex w-full items-center justify-end relative" style={{minHeight:'120px'}}>
           {/* 蓝色横条贴左侧，垂直居中 */}
           <div
-            className="w-20 md:w-96 h-12 md:h-16 bg-[#4A7BFF] mr-4 absolute left-0 top-1/2 -translate-y-1/2"
+            className="w-20 md:w-96 h-12 md:h-16 bg-[#4A7BFF] absolute left-0 top-1/2 -translate-y-1/2"
             style={{
               borderTopLeftRadius: 0,
               borderBottomLeftRadius: 0,
@@ -409,13 +409,19 @@ export default function Features2() {
               borderBottomRightRadius: '9999px',
             }}
           ></div>
-          <div className="flex flex-col items-end pr-2 md:pr-16 z-20 w-full">
+          <div className="flex flex-col items-end pr-2 md:pr-16 z-20 w-full" style={{paddingLeft: '5rem'}}>
             <div className="text-[#666] font-extrabold text-2xl md:text-4xl leading-snug text-right" style={{letterSpacing:'2px', lineHeight:'1.3'}}>
               <div>立即預約專人服務，</div>
-              <div>免費諮詢、量身推薦，</div>
+              <div>免費諮詢，</div>
+              <div>量身推薦，</div>
               <div>讓管理更輕鬆！</div>
             </div>
           </div>
+          <style jsx>{`
+            @media (min-width: 768px) {
+              .pl-md-96 { padding-left: 24rem !important; }
+            }
+          `}</style>
         </div>
         {/* 红色竖条（下方与橘色竖条左右对齐） */}
         <div className="flex w-full justify-end mt-16">
