@@ -3,7 +3,7 @@
 // import { useState, FormEvent } from 'react';
 import Navbar from '@/components/Navbar';
 
-const contactMethods = [
+/* const contactMethods = [
   {
     name: '客戶服務',
     description: '我們的客服團隊隨時為您服務',
@@ -25,7 +25,7 @@ const contactMethods = [
     email: 'sales@euhonerp.com',
     hours: '週一至週五 9:00-18:00'
   }
-];
+]; */
 
 /* 暂时注释掉未使用的接口
 interface FormData {
@@ -276,9 +276,6 @@ export default function Contact() {
               </p>
               <p className="text-base leading-7 text-gray-600">
               地址：台北市和平東路一段177號 5F-1
-              </p>  
-              <p className="text-base leading-7 text-gray-600">
-              Add:5F.,No.1,Sec.1,Heping Rd.,Da'an Dist.,Taipei City 106,Taiwan(R.O.C.)
               </p>  
               <p className="mt-6 text-lg leading-8 text-gray-600">
               歡迎蒞臨參觀，了解更多關於我們的服務
