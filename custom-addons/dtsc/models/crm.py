@@ -85,7 +85,13 @@ class CrmLead(models.Model):
         # action['view_id'] = self.env.ref('dtsc.view_checkout_tree_crm').id
         return action
 
-
+class checkoutComment(models.Model):
+    _name = "dtsc.checkoutcomment"
+    
+    sequence = fields.Integer("序號")
+    name = fields.Text("備註内容")
+    checkout_id = fields.Many2one("dtsc.checkout")
+    
 class CheckoutInherit(models.Model):
     _inherit = 'dtsc.checkout'
 
@@ -98,7 +104,7 @@ class CheckoutInherit(models.Model):
         ('waiting_confirmation', '待確認')
     ], ondelete={'waiting_confirmation': 'set default'})
     
-    
+    checkoutcomment_ids= fields.One2many("dtsc.checkoutcomment","checkout_id",string="備註列表")
     is_show_price = fields.Boolean(string="價格顯示",default=True)
     related_checkout_id = fields.Many2one('dtsc.checkout', string="關聯大圖訂單")
     is_new_partner = fields.Boolean("新客戶")
@@ -142,21 +148,26 @@ class CheckoutInherit(models.Model):
     
     def action_copy_checkout(self):
         for record in self:
-            # 1. 先複製主體資料
+            # 1. 複製主體
             new_checkout = record.with_context(from_crm=True).copy(default={})
 
-            # 2. 逐筆複製 checkoutline
+            # 2. 複製子項
             for line in record.product_ids:
                 line_data = line.copy_data()[0]
                 line_data.pop('id', None)
                 line_data['checkout_product_id'] = new_checkout.id
-                product_atts_ids = line.product_atts.ids  # 如果是 One2many 就改成 line.product_atts.copy_data()
+                product_atts_ids = line.product_atts.ids
                 line_data.pop('product_atts', None)
-                # 建立新的 checkoutline
-                new_line = self.env['dtsc.checkoutline'].create(line_data)
 
+                # 先建立基本資料
+                new_line = self.env['dtsc.checkoutline'].create(line_data)
+                
+
+                # 若有 One2many 關聯資料
                 if product_atts_ids:
-                    new_line.write({'product_atts': [(6, 0, product_atts_ids)]}) 
+                    new_line.write({'product_atts': [(6, 0, product_atts_ids)]})
+
+                # 複製相關報價細項
                 related_records = self.env['dtsc.checkoutlineaftermakepricelist'].search([
                     ('checkoutline_id', '=', line.id)
                 ])
@@ -232,6 +243,20 @@ class CheckoutInherit(models.Model):
         result = super(CheckoutInherit, self).create(vals)
 
         _logger.info("Created Checkout - Result: %s", result)
+        
+        comments = self.env['dtsc.crmusercomment'].search([
+            ('create_id', '=', self.env.user.id),
+            ('is_enable', '=', True)
+        ], order='sequence')
+        index = 0
+        for comment in comments:
+            index = index + 1
+            self.env['dtsc.checkoutcomment'].create({
+                'sequence': index,
+                'name': comment.comment,
+                'checkout_id': result.id
+            })
+            
         return result
     
     def action_confirm_to_draft(self):
@@ -584,13 +609,15 @@ class CheckoutInherit(models.Model):
         sheet.merge_range(row, 11,row, 13, all_price + int(all_price * 0.05 + 0.5) if all_price else 0, border_format)
         row += 1
         # 备注信息
-        commentObj = self.env["dtsc.crmusercomment"].search([("create_id","=",self.env.user.id)], order='sequence')
+        # commentObj = self.env["dtsc.crmusercomment"].search([("create_id","=",self.env.user.id)], order='sequence')
+        commentObj = self.env["dtsc.checkoutcomment"].search([("checkout_id","=",records[0].id)], order='sequence')
         
         row2 = row+len(commentObj)
         sheet.merge_range(row, 0, row2, 0, "備註", border_format)        
         
         for line in commentObj:
-            sheet.merge_range(row, 1,row, 13, str(line.sequence)+"."+(line.comment or ''), bold_format)
+            # sheet.merge_range(row, 1,row, 13, str(line.sequence)+"."+(line.comment or ''), bold_format)
+            sheet.merge_range(row, 1,row, 13, str(line.sequence)+"."+(line.name or ''), bold_format)
             row += 1        
         # sheet.merge_range(row, 1,row, 13, "2. 客戶自備印刷檔案。", border_format)
         # row += 1        
@@ -643,7 +670,8 @@ class CrmReport(models.AbstractModel):
         # _logger.info("================")
         docs = self.env['dtsc.checkout'].browse(docids)
         company = self.env['res.company'].search([])
-        comments = self.env["dtsc.crmusercomment"].search([("create_id","=",self.env.user.id)], order='sequence')
+        # comments = self.env["dtsc.crmusercomment"].search([("create_id","=",self.env.user.id)], order='sequence')
+        comments = self.env["dtsc.checkoutcomment"].search([("checkout_id","=",docs[0].id)], order='sequence')
         # _logger.info(comments)
         data["comments"] = comments
         data["len"] = len(data["comments"])

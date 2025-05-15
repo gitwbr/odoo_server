@@ -2,6 +2,7 @@
 
 // import { useState, FormEvent } from 'react';
 import Navbar from '@/components/Navbar';
+import Image from 'next/image';
 
 /* const contactMethods = [
   {
@@ -268,8 +269,35 @@ export default function Contact() {
             <h2 className="text-2xl font-bold tracking-tight text-gray-900">聯絡方式</h2>
             
             <div className="mt-10 space-y-4">
-              <p className="text-base leading-7 text-gray-600">
-              Line：@903yfago
+              <p className="text-base leading-7 text-gray-600 flex items-center gap-2">
+                <a
+                  href="https://line.me/ti/p/@903yfago"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center group"
+                  style={{ width: 'fit-content' }}
+                >
+                  <div className="relative">
+                    {/* Line 圓形圖標 */}
+                    <Image
+                      src="/images/line-icon.jpg"
+                      alt="Line"
+                      width={56}
+                      height={56}
+                      className="rounded-full shadow-lg"
+                    />
+                    {/* 紅色通知角標 */}
+                    <span className="absolute -top-1 -right-1 bg-red-600 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center border-2 border-white shadow">
+                      1
+                    </span>
+                  </div>
+                  {/* 對話框樣式 */}
+                  <span className="relative ml-2 px-4 py-2 bg-white rounded-full shadow text-gray-800 text-lg font-bold
+                    before:content-[''] before:absolute before:left-[-12px] before:top-1/2 before:-translate-y-1/2
+                    before:w-0 before:h-0 before:border-y-8 before:border-y-transparent before:border-r-8 before:border-r-white">
+                    加入好友，專人服務
+                  </span>
+                </a>
               </p>
               <p className="text-base leading-7 text-gray-600">
               Email：euhon_service@gmail.com

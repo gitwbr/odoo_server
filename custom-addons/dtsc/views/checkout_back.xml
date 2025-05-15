@@ -437,6 +437,14 @@
 								</field>
 								<h3></h3>
 							</page>
+							<page string="報價單備注" attrs="{'invisible': [('checkout_order_state', 'not in', ['waiting_confirmation'])]}">
+								<field name="checkoutcomment_ids">
+									<tree   editable="bottom" default_order="sequence">									
+										<field name="sequence"/>
+										<field name="name"/>										
+									</tree>									 
+								</field>
+							</page>
 							<!-- <page string="物料清單"> -->
 								<!-- <field name="product_check_ids"> -->
 									<!-- <tree create="false" delete="false" editable="bottom" decoration-danger="now_stock &lt; now_use" decoration-success="now_stock >= now_use">									 -->

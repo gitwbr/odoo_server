@@ -30,7 +30,7 @@ export default function Navbar() {
   return (
     <header className="relative inset-x-0 top-0 z-50 bg-white/80 backdrop-blur-sm">
       <nav className="flex items-center justify-between p-6 lg:px-8" aria-label="Global">
-        <div className="flex lg:flex-1">
+        <div className={`flex lg:flex-1 ${mobileMenuOpen ? 'hidden' : ''}`}>
           <Link href="/" className="-m-1.5 p-1.5">
             <span className="block font-bold" style={{fontSize:'2.2rem', color:'#888888', lineHeight:'1.1', letterSpacing:'2px', display:'inline-block', width:'auto'}}>
               Euh<span style={{color:'#7B5A7B'}}>o</span>n
@@ -38,7 +38,7 @@ export default function Navbar() {
             <span className="block text-lg font-bold" style={{color:'#888888',letterSpacing:'2px',marginTop:'-2px',width:'100%'}}>歐鴻網路科技</span>
           </Link>
         </div>
-        <div className="flex lg:hidden">
+        <div className={`flex lg:hidden ${mobileMenuOpen ? 'hidden' : ''}`}>
           <button
             type="button"
             className="-m-2.5 inline-flex items-center justify-center rounded-md p-2.5 text-gray-700"
