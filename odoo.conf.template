@@ -61,3 +61,4 @@ is_open_crm = False
 is_open_linebot = False
 is_open_full_checkoutorder = False
 is_open_makein_qrcode = False
+is_pro = False

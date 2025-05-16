@@ -303,7 +303,7 @@ export default function Contact() {
               Email：euhon_service@gmail.com
               </p>
               <p className="text-base leading-7 text-gray-600">
-              地址：台北市和平東路一段177號 5F-1
+              地址：台北市安和路二段19號6F-1
               </p>  
               <p className="mt-6 text-lg leading-8 text-gray-600">
               歡迎蒞臨參觀，了解更多關於我們的服務
@@ -312,7 +312,7 @@ export default function Contact() {
             <div className="mt-12 flex justify-center">
               <div className="w-full max-w-4xl rounded-xl overflow-hidden shadow-lg">
                 <iframe
-                  src="https://www.google.com/maps?q=台北市和平東路一段177號5F-1&output=embed"
+                  src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3615.054524228434!2d121.55016217539594!3d25.032223638363057!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3442abcc677da21d%3A0x99446e6f9be8116c!2zMTA25Y-w5YyX5biC5aSn5a6J5Y2A5a6J5ZKM6Lev5LqM5q61MTnomZ82ZiAx!5e0!3m2!1szh-TW!2stw!4v1747362639480!5m2!1szh-TW!2stw"
                   width="100%"
                   height="500"
                   style={{ border: 0 }}

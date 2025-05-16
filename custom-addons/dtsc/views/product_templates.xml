@@ -85,7 +85,8 @@
 					
 			<xpath expr="//field[@name='categ_id']" position="after">
 				<field name="unit_conversion_id"/>
-				<field name="make_ori_product_id" options="{'no_create': True, 'no_create_edit': True}"/>
+                <field name="is_open_full_checkoutorder" invisible="1" />
+				<field name="make_ori_product_id" options="{'no_create': True, 'no_create_edit': True}" attrs="{'invisible':[('is_open_full_checkoutorder', '=', False)]}"/>
 				<!-- <field name="product_liucheng"/> -->
 			</xpath>
 			

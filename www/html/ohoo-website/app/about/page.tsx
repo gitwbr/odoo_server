@@ -30,7 +30,7 @@ const teamMembers = [
     image: '/team/wang1.jpg'
   },
   {
-    name: '曾煥中',
+    name: '曾煥忠',
     /* role: '客戶服務總監', */
     role: '客戶體驗總監',
     description: ['專注於提供最佳客戶體驗，確保客戶能夠充分運用系統提升營運效率。',

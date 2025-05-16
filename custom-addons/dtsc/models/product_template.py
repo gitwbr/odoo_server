@@ -7,6 +7,7 @@ _logger = logging.getLogger(__name__)
 # from odoo.addons.website.models.mixins import WebsitePublishedMixin
 from odoo.http import request
 from odoo import api
+from odoo.tools import config
 # class Website(models.Model):
 
     # _inherit = "website"
@@ -101,7 +102,12 @@ class ResPartner(models.Model):
         # _logger.info(f"================{full_url}========")
         # website = self.env['website'].get_current_website()
         # return website.get_client_action(full_url)
-
+    is_open_full_checkoutorder = fields.Boolean(string="簡易流程",compute="_compute_is_open_full_checkoutorder")
+    
+    @api.depends()
+    def _compute_is_open_full_checkoutorder(self):
+        for record in self:
+            record.is_open_full_checkoutorder = config.get('is_open_full_checkoutorder')
     
     def action_open_make_type_selection(self):
         return {

@@ -88,6 +88,16 @@ class ProductAttributeValue(models.Model):
         ('name_uniq' , 'unique(name,attribute_id)' , _('不能使用重復的變體名'))
     ]
     
+    is_open_full_checkoutorder = fields.Boolean(string="簡易流程",compute="_compute_is_open_full_checkoutorder")
+    
+    
+
+    
+    @api.depends()
+    def _compute_is_open_full_checkoutorder(self):
+        for record in self:
+            record.is_open_full_checkoutorder = bool(config.get('is_open_full_checkoutorder'))
+            
     def write(self, vals):
         # 调用父类的 write 方法更新当前记录
         res = super(ProductAttributeValue, self).write(vals)
@@ -1192,11 +1202,13 @@ class IrUiMenu(models.Model):
     def _get_visibility_on_config_parameter(self, menu_xml_id, config_param):
         param = config.get(config_param)
         menu = self.env.ref(menu_xml_id, raise_if_not_found=False)
-        _logger.info("=================")
-        _logger.info(menu_xml_id)
-        _logger.info(config.get('is_open_crm'))
-        _logger.info("=================")
-        if menu:            
+        _logger.warning("=================")
+        _logger.warning(menu)
+        _logger.warning(menu_xml_id)
+        _logger.warning(config.get('is_open_crm'))
+        _logger.warning("=================")
+        if menu: 
+            _logger.warning("========invisible=========")
             menu.active = bool(param)
 
     @api.model
@@ -1207,8 +1219,12 @@ class IrUiMenu(models.Model):
         
         # self._get_visibility_on_config_parameter('dtsc.makein', 'is_open_full_checkoutorder')
         self._get_visibility_on_config_parameter('crm.crm_menu_root', 'is_open_crm')
-        self._get_visibility_on_config_parameter('linebot', 'is_open_linebot')
-        self._get_visibility_on_config_parameter('menu_daka', 'is_open_linebot')
+        self._get_visibility_on_config_parameter('dtsc.linebot', 'is_open_linebot')
+        self._get_visibility_on_config_parameter('dtsc.menu_daka', 'is_open_linebot')
+        self._get_visibility_on_config_parameter('dtsc.ywcklzb13', 'is_open_full_checkoutorder')#已完成捲料口聊錶目錄
+        self._get_visibility_on_config_parameter('dtsc.wnklb', 'is_open_full_checkoutorder')#場内扣料
+        self._get_visibility_on_config_parameter('dtsc.jlklb12', 'is_open_full_checkoutorder')#捲料口聊錶目錄
+        self._get_visibility_on_config_parameter('website.menu_website_pages_list', 'is_pro')#網站
         # print("Custom logic applied")
         return menus
 

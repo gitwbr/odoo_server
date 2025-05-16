@@ -5,9 +5,10 @@
         <field name="model">product.attribute.value</field>
         <field name="arch" type="xml">            
             <tree editable="bottom">
+                <field name="is_open_full_checkoutorder" invisible="1"/>
                 <field name="name"/>
-                <field name="make_ori_product_id" options="{'no_create': True, 'no_create_edit': True}"/>
-                <field name="stock_type" />
+                <field name="make_ori_product_id" options="{'no_create': True, 'no_create_edit': True}" attrs="{'invisible':[('is_open_full_checkoutorder', '=', False)]}"  /> 
+                <field name="stock_type" /> 
                 <field name="price_extra" widget='monetary' groups="dtsc.group_dtsc_yw,dtsc.group_dtsc_kj"/>  
             </tree>
         </field>
