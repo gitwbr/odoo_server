@@ -138,7 +138,8 @@
             </div>
 
             <div id="instances" class="tab-content">
-                <div style="display: flex; justify-content: flex-end; align-items: center; margin-bottom: 16px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                    <div style="color: red; font-size: 14px;">⚠️ 新建實例默認賬號密碼admin/admin，登錄後及時修改默認賬號密碼。</div>
                     <button id="createBtn" class="create-btn" onclick="createInstance()">
                         <i class="material-icons" style="font-size: 16px;">add</i>
                         創建實例
@@ -215,7 +216,7 @@
             
             // 如果实例有domain，则使用domain构建完整域名
             if (instance.domain) {
-                return `https://${instance.domain}.${baseDomain}`;
+                return `https://${instance.domain}.${baseDomain}/web?debug=1#model=dtsc.checkout&view_type=list`;
             }
             
             // 否则回退到使用端口访问
@@ -385,8 +386,13 @@
                             <div class="action-buttons">
                                 <button class="action-btn ${instance.status === 1 ? '' : 'disabled'}" 
                                         onclick="${instance.status === 1 ? `window.open('${accessUrl}', '_blank')` : ''}" 
-                                        title="${instance.status === 1 ? '訪問實例' : '實例未運行'}">
+                                        title="${instance.status === 1 ? '開始體驗' : '實例未運行'}">
                                     <i class="material-icons">open_in_new</i>
+                                </button>
+                                <button class="action-btn ${instance.status === 1 ? '' : 'disabled'}" 
+                                        onclick="${instance.status === 1 ? `navigator.clipboard.writeText('${accessUrl}').then(() => showToast('成功', '域名已複製到剪貼板', 'success'))` : ''}" 
+                                        title="${instance.status === 1 ? '複製域名' : '實例未運行'}">
+                                    <i class="material-icons">content_copy</i>
                                 </button>
                                 <!-- 刪除實例按鈕 
                                 <button class="action-btn ${instance.status === 1 ? '' : 'disabled'}" 
@@ -494,7 +500,12 @@
                                         title="${instance.status === 1 ? '訪問實例' : '實例未運行'}">
                                     <i class="material-icons">open_in_new</i>
                                 </button>
-                                 <!-- 重启和刪除實例按鈕 
+                                <button class="action-btn ${instance.status === 1 ? '' : 'disabled'}" 
+                                        onclick="${instance.status === 1 ? `navigator.clipboard.writeText('${accessUrl}').then(() => showToast('成功', '域名已複製到剪貼板', 'success'))` : ''}" 
+                                        title="${instance.status === 1 ? '複製域名' : '實例未運行'}">
+                                    <i class="material-icons">content_copy</i>
+                                </button>
+                                <!-- 重启和刪除實例按鈕 
                                 <button class="action-btn ${instance.status === 1 ? '' : 'disabled'}" 
                                         onclick="${instance.status === 1 ? `restartInstance(${instance.id})` : ''}" 
                                         title="${instance.status === 1 ? '重啟實例' : '實例未運行'}">

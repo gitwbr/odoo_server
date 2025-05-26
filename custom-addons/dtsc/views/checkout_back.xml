@@ -339,7 +339,8 @@
                                         <!-- <field name="is_in_by_mg" invisible="1"/>
                                         <field name="is_in_by_yw" invisible="1"/>
                                         <field name="is_in_by_kj" invisible="1"/> -->
-										<field name="is_purchse" attrs="{'readonly': [('parent.is_in_by_mg', '=', False)],'column_invisible':[('parent.is_open_full_checkoutorder', '=', False)]}" />								
+										<!-- <field name="is_purchse" attrs="{'readonly': [('parent.is_in_by_mg', '=', False)],'column_invisible':[('parent.is_open_full_checkoutorder', '=', False)]}" />								 -->
+										<field name="is_purchse" attrs="{'readonly': [('parent.is_in_by_mg', '=', False)]}" />								
 										<field name="is_install" attrs="{'readonly': [('parent.is_in_by_mg', '=', False)]}" />
 										<field name="small_image"   widget="image" class="w100" optional="hide" />
 										<field name="sequence" style="text-align: center;" />

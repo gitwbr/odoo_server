@@ -7,7 +7,21 @@
             <tree editable="bottom">
                 <field name="is_open_full_checkoutorder" invisible="1"/>
                 <field name="name"/>
-                <field name="make_ori_product_id" options="{'no_create': True, 'no_create_edit': True}" attrs="{'invisible':[('is_open_full_checkoutorder', '=', False)]}"  /> 
+                <field name="make_ori_product_id" options="{'no_create': True, 'no_create_edit': True}" attrs="{'column_invisible':[('is_open_full_checkoutorder', '=', False)]}"  /> 
+                <field name="stock_type" /> 
+                <field name="price_extra" widget='monetary' groups="dtsc.group_dtsc_yw,dtsc.group_dtsc_kj"/>  
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_product_attribute_value_tree_custom_no_full" model="ir.ui.view">
+        <field name="name">product.attribute.value.tree.custom</field>
+        <field name="model">product.attribute.value</field>
+        <field name="arch" type="xml">            
+            <tree editable="bottom">
+                <field name="is_open_full_checkoutorder" invisible="1"/>
+                <field name="name"/>
+                <!-- <field name="make_ori_product_id" options="{'no_create': True, 'no_create_edit': True}" attrs="{'column_invisible':[('is_open_full_checkoutorder', '=', False)]}"  />  -->
                 <field name="stock_type" /> 
                 <field name="price_extra" widget='monetary' groups="dtsc.group_dtsc_yw,dtsc.group_dtsc_kj"/>  
             </tree>
@@ -36,6 +50,13 @@
         <field name="view_mode">tree,form</field>
 		<field name="domain">[('name','not in',['無','不叫配件'])]</field>
     </record>
+
+	<record id="action_server_product_attribute_value" model="ir.actions.server">
+		<field name="name">變體價格溢價server</field>
+		<field name="model_id" ref="product.model_product_attribute_value"/>
+		<field name="code">action = model.action_product_attribute_value()</field>
+		<field name="state">code</field>
+	</record>
 
 
 	<record id="view_product_template_attribute_value_tree" model="ir.ui.view">

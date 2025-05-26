@@ -393,25 +393,27 @@ class MakeIn(models.Model):
     
     def stock_in(self):
         install_name = self.name.replace("B","W")
+        is_pro = config.get('is_pro')
         
-        for record in self.order_ids:
-            if not record.outman:
-                raise UserError("請設置每一條輸出員工！")
+        # for record in self.order_ids:
+            # if not record.outman:
+                # raise UserError("請設置每一條輸出員工！")
         
-        is_open_makein_qrcode = config.get('is_open_makein_qrcode')
-        if is_open_makein_qrcode == False:
-            if not self.houzhiman:
-                raise UserError("請錄入後置員工！")
+        # is_open_makein_qrcode = config.get('is_open_makein_qrcode')
+        # if is_open_makein_qrcode == False:
+            # if not self.houzhiman:
+                # raise UserError("請錄入後置員工！")
             
-            if not self.pinguanman:
-                raise UserError("請錄入品管員工！")
-        
-        for record in self.order_ids:
-            if record.product_id.make_ori_product_id.tracking == "serial":
-                if record.is_stock_off == False:
-                    raise UserError("請先去捲料扣料表完成扣料動作！")
-        
-        if self.no_mprlist == False:
+            # if not self.pinguanman:
+                # raise UserError("請錄入品管員工！")
+        if is_pro == True:
+            for record in self.order_ids:
+                if record.product_id.make_ori_product_id.tracking == "serial":
+                    if record.is_stock_off == False:
+                        raise UserError("請先去捲料扣料表完成扣料動作！")
+        if is_pro == False:
+            self.write({"install_state":"stock_in"}) 
+        elif self.no_mprlist == False:
             obj = self.env['dtsc.mpr'].search([('name', '=',install_name)],limit=1)
             if obj:
                 if obj.state == "succ":

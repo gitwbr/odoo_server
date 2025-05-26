@@ -16,6 +16,7 @@ from pytz import timezone
 _logger = logging.getLogger(__name__)
 import xlsxwriter
 import base64
+from odoo.tools import config
 class StockQuantityHistory(models.TransientModel):
     _name = 'stock.quantity.history'
     _description = 'Stock Quantity History'
@@ -69,6 +70,33 @@ class StockQuant(models.Model):
     stock_date_num = fields.Float("指定日期庫存",compute="_compute_stock_date_num")
     
     is_set_date = fields.Boolean(store=False)
+    
+    # is_open_full_checkoutorder = fields.Boolean(string="簡易流程",compute="_compute_is_open_full_checkoutorder")
+    
+    
+    @api.model
+    def action_dtsc_stock_quant(self):
+        is_simple = bool(config.get('is_open_full_checkoutorder'))
+        view_id = self.env.ref(
+            'dtsc.view_stock_quant_tree_inventory_editable_dtsc' if is_simple
+            else 'dtsc.view_stock_quant_tree_inventory_editable_dtsc_not_full'
+        ).id
+
+        return {
+            'type': 'ir.actions.act_window',
+            'name': '庫存盤點',
+            'res_model': 'stock.quant',
+            'view_mode': 'tree',
+            'view_id': view_id,
+            'target': 'current',
+            'domain' : [('quantity', '!=', 0),('location_id.usage', 'in', ['internal'])],
+            'context' : {'group_by' : 'product_id', 'default_is_set_date': False},
+        }
+    
+    # @api.depends()
+    # def _compute_is_open_full_checkoutorder(self):
+        # for record in self:
+            # record.is_open_full_checkoutorder = bool(config.get('is_open_full_checkoutorder'))
     
     @api.model
     def is_set_color(self, name):
@@ -1123,6 +1151,24 @@ class StockMoveLine(models.Model):
     
     report_year = fields.Many2one("dtsc.year",string="年",compute="_compute_year_month",store=True)
     report_month = fields.Many2one("dtsc.month",string="月",compute="_compute_year_month",store=True) 
+    
+    @api.model
+    def action_dtsc_stock_move_line(self):
+        is_simple = bool(config.get('is_open_full_checkoutorder'))
+        view_id = self.env.ref(
+            'dtsc.dtsc_view_move_line_tree' if is_simple
+            else 'dtsc.dtsc_view_move_line_tree_no_full'
+        ).id
+
+        return {
+            'type': 'ir.actions.act_window',
+            'name': '庫存移動',
+            'res_model': 'stock.move.line',
+            'view_mode': 'tree',
+            'view_id': view_id,
+            'target': 'current',
+            'domain' : [('qty_done', '!=', 0)],
+        }
     
     def action_printexcel_move_line(self):
         active_ids = self._context.get('active_ids')

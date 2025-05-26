@@ -1717,7 +1717,7 @@ class Checkout(models.Model):
         sequence_number = 1
         is_open_full_checkoutorder = self.env['ir.config_parameter'].sudo().get_param('dtsc.is_open_full_checkoutorder')
         for record in self.product_ids:
-            if True: #not is_open_full_checkoutorder or (record.is_purchse == 'make_out'):#簡易流程全部走外部工單邏輯
+            if record.is_purchse == 'make_out':#簡易流程全部走外部工單邏輯 
                 if record.product_id.can_be_expensed == True:
                     continue                
                 product_value = {

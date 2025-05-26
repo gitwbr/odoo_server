@@ -355,10 +355,10 @@ class MakeOut(models.Model):
         self.write({"install_state":"installing"}) 
         
     def btn_send(self):
-        is_open_makeout_qrcode = config.get('is_open_makein_qrcode')
-        if is_open_makeout_qrcode == False:
-            if not self.pinguanman:
-                raise UserError("請錄入品管員工！")
+        # is_open_makeout_qrcode = config.get('is_open_makein_qrcode')
+        # if is_open_makeout_qrcode == False:
+            # if not self.pinguanman:
+                # raise UserError("請錄入品管員工！")
         if not self.supplier_id:
             raise UserError("請錄入委外商！")
         

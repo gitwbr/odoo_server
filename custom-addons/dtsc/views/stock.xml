@@ -141,6 +141,77 @@
         </field>
     </record>
 	
+	<record id="dtsc_view_move_line_tree" model="ir.ui.view">
+        <field name="name">stock.move.line.tree</field>
+        <field name="model">stock.move.line</field>
+        <field name="arch" type="xml">
+            <tree string="庫存移動" create="0" default_order="id desc" action="action_open_reference" type="object">
+                <field name="location_usage" invisible="1"/>
+                <field name="location_dest_usage" invisible="1"/>
+                <field name="date"/>
+                <field name="reference" string="Reference"
+                       invisible="context.get('no_reference', False)"/>
+                <field name="product_id"/>
+				<field name="description"/>		
+                <field name="lot_id" optional="show" groups="stock.group_production_lot"/>
+                <field name="package_id" optional="hide" groups="stock.group_tracking_lot"/>
+                <field name="result_package_id" optional="hide" groups="stock.group_tracking_lot"/>
+                <field name="location_id"/>
+                <field name="location_dest_id"/>
+                <field name="company_id" optional="hide" groups="base.group_multi_company" force_save="1"/>
+				
+				<field name="move_before_quantity"/>		 
+				<field name="move_after_quantity"/>	
+                <field name="qty_done" string="Quantity"
+                    decoration-danger="(location_usage in ('internal','transit')) and (location_dest_usage not in ('internal','transit'))"
+                    decoration-success="(location_usage not in ('internal','transit')) and (location_dest_usage in ('internal','transit'))"/>
+                <field name="product_uom_id" options="{'no_open': True, 'no_create': True}" string="Unit" groups="uom.group_uom"/>
+                <field name="state" widget='badge' optional="show"
+                       decoration-danger="state=='cancel'"
+                       decoration-info="state== 'assigned'"
+                       decoration-muted="state == 'draft'"
+                       decoration-success="state == 'done'"
+                       decoration-warning="state not in ('draft','cancel','done','assigned')" invisible="1"/>
+                <field name="create_uid" string="Done By" widget="many2one_avatar_user" optional="hide"/>
+            </tree>
+        </field>
+    </record>
+	<record id="dtsc_view_move_line_tree_no_full" model="ir.ui.view">
+        <field name="name">stock.move.line.tree</field>
+        <field name="model">stock.move.line</field>
+        <field name="arch" type="xml">
+            <tree string="庫存移動" create="0" default_order="id desc" action="action_open_reference" type="object">
+                <field name="location_usage" invisible="1"/>
+                <field name="location_dest_usage" invisible="1"/>
+                <field name="date"/>
+                <field name="reference" string="Reference"
+                       invisible="context.get('no_reference', False)"/>
+                <field name="product_id"/>
+				<field name="description"/>		
+                <!-- <field name="lot_id" optional="show" groups="stock.group_production_lot"/> -->
+                <field name="package_id" optional="hide" groups="stock.group_tracking_lot"/>
+                <field name="result_package_id" optional="hide" groups="stock.group_tracking_lot"/>
+                <field name="location_id"/>
+                <field name="location_dest_id"/>
+                <field name="company_id" optional="hide" groups="base.group_multi_company" force_save="1"/>
+				
+				<field name="move_before_quantity"/>		 
+				<field name="move_after_quantity"/>	
+                <field name="qty_done" string="Quantity"
+                    decoration-danger="(location_usage in ('internal','transit')) and (location_dest_usage not in ('internal','transit'))"
+                    decoration-success="(location_usage not in ('internal','transit')) and (location_dest_usage in ('internal','transit'))"/>
+                <field name="product_uom_id" options="{'no_open': True, 'no_create': True}" string="Unit" groups="uom.group_uom"/>
+                <field name="state" widget='badge' optional="show"
+                       decoration-danger="state=='cancel'"
+                       decoration-info="state== 'assigned'"
+                       decoration-muted="state == 'draft'"
+                       decoration-success="state == 'done'"
+                       decoration-warning="state not in ('draft','cancel','done','assigned')" invisible="1"/>
+                <field name="create_uid" string="Done By" widget="many2one_avatar_user" optional="hide"/>
+            </tree>
+        </field>
+    </record>
+	
 	<record id="stock_move_line_view_inherit" model="ir.ui.view">
 		<field name="name">stock.move.line.view.inherit</field>
 		<field name="model">stock.move.line</field>

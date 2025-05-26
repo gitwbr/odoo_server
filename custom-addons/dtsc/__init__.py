@@ -3,7 +3,10 @@
 from . import controllers
 from . import models
 from odoo import api, SUPERUSER_ID
+import logging
+from odoo.tools import config
 
+_logger = logging.getLogger(__name__)
 def _assign_groups_to_admin(cr, registry):
     with api.Environment.manage():
         env = api.Environment(cr, SUPERUSER_ID, {})
@@ -26,5 +29,5 @@ def _assign_groups_to_admin(cr, registry):
         
         
 
-def post_init_hook(cr, registry):
+def post_init_hook(cr, registry): 
     _assign_groups_to_admin(cr, registry)   

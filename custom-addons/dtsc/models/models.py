@@ -91,7 +91,23 @@ class ProductAttributeValue(models.Model):
     is_open_full_checkoutorder = fields.Boolean(string="簡易流程",compute="_compute_is_open_full_checkoutorder")
     
     
+    @api.model
+    def action_product_attribute_value(self):
+        is_simple = bool(config.get('is_open_full_checkoutorder'))
+        view_id = self.env.ref(
+            'dtsc.view_product_attribute_value_tree_custom' if is_simple
+            else 'dtsc.view_product_attribute_value_tree_custom_no_full'
+        ).id
 
+        return {
+            'type': 'ir.actions.act_window',
+            'name': '變體價格溢價',
+            'res_model': 'product.attribute.value',
+            'view_mode': 'tree',
+            'view_id': view_id,
+            'target': 'current',
+            'domain' : [('name','not in',['無','不叫配件'])],
+        }
     
     @api.depends()
     def _compute_is_open_full_checkoutorder(self):
@@ -1209,14 +1225,14 @@ class IrUiMenu(models.Model):
         _logger.warning("=================")
         if menu: 
             _logger.warning("========invisible=========")
-            menu.active = bool(param)
+            menu.active = bool(param) 
 
     @api.model
     @tools.ormcache_context('self._uid', 'debug', keys=('lang',))
     def load_menus(self, debug):
         menus = super(IrUiMenu, self).load_menus(debug)
         # 添加自定义的可见性处理
-        
+         
         # self._get_visibility_on_config_parameter('dtsc.makein', 'is_open_full_checkoutorder')
         self._get_visibility_on_config_parameter('crm.crm_menu_root', 'is_open_crm')
         self._get_visibility_on_config_parameter('dtsc.linebot', 'is_open_linebot')
@@ -1224,7 +1240,14 @@ class IrUiMenu(models.Model):
         self._get_visibility_on_config_parameter('dtsc.ywcklzb13', 'is_open_full_checkoutorder')#已完成捲料口聊錶目錄
         self._get_visibility_on_config_parameter('dtsc.wnklb', 'is_open_full_checkoutorder')#場内扣料
         self._get_visibility_on_config_parameter('dtsc.jlklb12', 'is_open_full_checkoutorder')#捲料口聊錶目錄
-        self._get_visibility_on_config_parameter('website.menu_website_pages_list', 'is_pro')#網站
+        self._get_visibility_on_config_parameter('website.menu_website_configuration', 'is_pro')#網站
+        self._get_visibility_on_config_parameter('dtsc.qrcode_work', 'is_pro')#員工QRCODE
+        self._get_visibility_on_config_parameter('dtsc.menu_ykl', 'is_pro')#壓克力統計表
+        self._get_visibility_on_config_parameter('dtsc.stock_l', 'is_pro')#壓克力統計表
+        self._get_visibility_on_config_parameter('dtsc.scanqrcode', 'is_pro')#製作物 
+        self._get_visibility_on_config_parameter('dtsc.wngd', 'is_pro')#製作物 
+        self._get_visibility_on_config_parameter('dtsc.menu_work_time', 'is_pro')#员工绩效 
+        self._get_visibility_on_config_parameter('dtsc.yinshou_id', 'is_pro')#应收子目录 
         # print("Custom logic applied")
         return menus
 

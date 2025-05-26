@@ -139,7 +139,7 @@
 		<field name="view_id" ref="dtsc.view_product_attribute_value_tree_custom"/>
 	</record>
 
-
+	
 	<record id="dtsc.machine_price_template_action" model="ir.actions.act_window">
 		<field name="name">機台與變價設定</field> 
 		<field name="res_model">dtsc.machineprice</field>
@@ -228,7 +228,14 @@
       <field name="view_id" ref="stock.view_move_line_tree"/>
     </record>
 	
-	<record model="ir.actions.act_window" id="dtsc.stock_quant">
+	<record id="action_server_stock_move_line" model="ir.actions.server">
+		<field name="name">庫存盤點server</field>
+		<field name="model_id" ref="stock.model_stock_move_line"/> 
+		<field name="code">action = model.action_dtsc_stock_move_line()</field>
+		<field name="state">code</field>
+	</record>
+	
+	<record model="ir.actions.act_window" id="action_dtsc_stock_quant">
       <field name="name">庫存盤點</field>
       <field name="res_model">stock.quant</field>
       <field name="view_mode">tree</field>
@@ -237,6 +244,14 @@
       <field name="context">{'group_by' : 'product_id', 'default_is_set_date': False}</field>
       <field name="view_id" ref="dtsc.view_stock_quant_tree_inventory_editable_dtsc"/>
     </record>
+	
+	<record id="action_server_stock_quant" model="ir.actions.server">
+		<field name="name">庫存盤點server</field>
+		<field name="model_id" ref="stock.model_stock_quant"/> 
+		<field name="code">action = model.action_dtsc_stock_quant()</field>
+		<field name="state">code</field>
+	</record>
+	
 	
 	<record model="ir.actions.act_window" id="dtsc.stock_picking">
       <field name="name">庫存調撥</field>
@@ -496,7 +511,7 @@
 	</record>
 	
     <!-- Top menu item -->
-    <menuitem name="印刷訂單系統" id="dtsc.menu_root" web_icon="dtsc,static/description/icon.png"/>
+    <menuitem name="MEGABOARD大圖ERP" id="dtsc.menu_root" web_icon="dtsc,static/description/icon.png"/>
     <!-- menu categories -->
     <menuitem name="大圖訂單" id="dtsc.checkout" sequence="1" action="dtsc.action_window" parent="dtsc.menu_root" groups="dtsc.group_dtsc_mg,dtsc.group_dtsc_yw,dtsc.group_dtsc_kj,dtsc.group_dtsc_sc,dtsc.group_dtsc_ck"/>
     <!-- <menuitem name="製作物" id="dtsc.menu_make" action="dtsc.action_window_make" parent="dtsc.menu_root"/> -->
@@ -525,8 +540,8 @@
 	<menuitem name="應收帳單" id="dtsc.yszd" action="dtsc.yingshou" parent="dtsc.menu_root" groups="dtsc.group_dtsc_yw,dtsc.group_dtsc_kj"/>
 	
 	<menuitem id="yinshou_id" parent="dtsc.yszd" name="應收帳單" sequence="1" action="dtsc.yingshou"/>
-	<menuitem id="fapiao_id" parent="dtsc.yszd" name="發票" sequence="2" action="dtsc.fapiao"/>
-	<menuitem id="zherang_id" parent="dtsc.yszd" name="折讓" sequence="3" action="dtsc.zrfp"/>
+	<!-- <menuitem id="fapiao_id" parent="dtsc.yszd" name="發票" sequence="2" action="dtsc.fapiao"/> -->
+	<!-- <menuitem id="zherang_id" parent="dtsc.yszd" name="折讓" sequence="3" action="dtsc.zrfp"/> -->
 	
 	
 	
@@ -537,8 +552,8 @@
 	
 	<menuitem id="stock_s" parent="dtsc.menu_stock" name="庫存" sequence="1" action="dtsc.stock_stock" groups="dtsc.group_dtsc_mg,dtsc.group_dtsc_yw,dtsc.group_dtsc_kj,dtsc.group_dtsc_sc,dtsc.group_dtsc_cg,dtsc.group_dtsc_ck"/>
 	<menuitem id="stock_l" parent="dtsc.menu_stock" name="批次/序號" sequence="2" action="dtsc.stock_lot1" groups="dtsc.group_dtsc_mg,dtsc.group_dtsc_sc,dtsc.group_dtsc_cg,dtsc.group_dtsc_ck"/>
-	<menuitem id="stock_move" parent="dtsc.menu_stock" name="庫存移動" sequence="3" action="dtsc.stock_moveline" groups="dtsc.group_dtsc_mg,dtsc.group_dtsc_yw,dtsc.group_dtsc_sc,dtsc.group_dtsc_cg,dtsc.group_dtsc_ck"/>
-	<menuitem id="stock_q" parent="dtsc.menu_stock" name="庫存盤點" sequence="4" action="dtsc.stock_quant"  groups="dtsc.group_dtsc_cg,dtsc.group_dtsc_ck"/>
+	<menuitem id="stock_move" parent="dtsc.menu_stock" name="庫存移動" sequence="3" action="action_server_stock_move_line" groups="dtsc.group_dtsc_mg,dtsc.group_dtsc_yw,dtsc.group_dtsc_sc,dtsc.group_dtsc_cg,dtsc.group_dtsc_ck"/>
+	<menuitem id="stock_q" parent="dtsc.menu_stock" name="庫存盤點" sequence="4" action="action_server_stock_quant"  groups="dtsc.group_dtsc_cg,dtsc.group_dtsc_ck"/>
 	<menuitem id="stock_a"
                   parent="dtsc.menu_stock"
                   name="補貨"
@@ -558,8 +573,8 @@
 	
 	<menuitem id="selling_products" parent="dtsc.menu_product" name="銷售產品" sequence="1" action="product.product_template_action" groups="dtsc.group_dtsc_mg,dtsc.group_dtsc_yw,dtsc.group_dtsc_kj,dtsc.group_dtsc_cg,dtsc.group_dtsc_ck"/>
 	<menuitem id="purchasing_products" parent="dtsc.menu_product" name="採購生產用產品" sequence="2" action="product_template_action_purchasable"/>
-	<menuitem id="product_attribute" parent="dtsc.menu_product" name="變體價格和物料" sequence="4" action="action_product_attribute_value" groups="dtsc.group_dtsc_mg,dtsc.group_dtsc_yw,dtsc.group_dtsc_kj,dtsc.group_dtsc_sc,dtsc.group_dtsc_ck"/>
-	<menuitem id="product_category_set" parent="dtsc.menu_product" name="產品類別" sequence="5" action="action_category_set"/>
+	<menuitem id="product_attribute" parent="dtsc.menu_product" name="變體價格和物料" sequence="4" action="action_server_product_attribute_value" groups="dtsc.group_dtsc_mg,dtsc.group_dtsc_yw,dtsc.group_dtsc_kj,dtsc.group_dtsc_sc,dtsc.group_dtsc_ck"/>
+	<menuitem id="product_category_set" parent="dtsc.menu_product" name="產品類別" sequence="5" action="action_category_set"/> 
 	<menuitem id="product_attribute_set" parent="dtsc.menu_product" name="屬性" sequence="6" action="action_attribute_set" groups="dtsc.group_dtsc_mg"/>
 	
 	
@@ -617,43 +632,52 @@
 	<!--網站-->
 	<!--會計-->
 	<record id="sale.sale_menu_root" model="ir.ui.menu"> 
-		<field name="active" eval="True"/>
+		<field name="active" eval="False"/>
 	</record>
 	<record id="note.menu_note_notes" model="ir.ui.menu"> 
-		<field name="active" eval="True"/>
+		<field name="active" eval="False"/>
 	</record>
 	<record id="calendar.mail_menu_calendar" model="ir.ui.menu"> 
-		<field name="active" eval="True"/>
+		<field name="active" eval="False"/>
 	</record>
 	<record id="contacts.menu_contacts" model="ir.ui.menu"> 
-		<field name="active" eval="True"/>
+		<field name="active" eval="False"/>
 	</record>
 	<record id="mrp.menu_mrp_root" model="ir.ui.menu"> 
-		<field name="active" eval="True"/>
+		<field name="active" eval="False"/>
 	</record>
 	<record id="utm.menu_link_tracker_root" model="ir.ui.menu"> 
-		<field name="active" eval="True"/>
+		<field name="active" eval="False"/>
 	</record>
 	<record id="crm.crm_menu_root" model="ir.ui.menu"> 
-		<field name="active" eval="True"/>
+		<field name="active" eval="False"/>
 	</record>
 	<record id="hr_expense.menu_hr_expense_root" model="ir.ui.menu"> 
-		<field name="active" eval="True"/>
+		<field name="active" eval="False"/>
 	</record>
 	<record id="hr_holidays.menu_hr_holidays_root" model="ir.ui.menu"> 
-		<field name="active" eval="True"/>
+		<field name="active" eval="False"/>
 	</record>
 	<record id="hr_attendance.menu_hr_attendance_root" model="ir.ui.menu"> 
-		<field name="active" eval="True"/>
+		<field name="active" eval="False"/>
 	</record>
 	<record id="hr.menu_hr_root" model="ir.ui.menu"> 
-		<field name="active" eval="True"/>
+		<field name="active" eval="False"/>
 	</record>
 	<record id="website.menu_website_configuration" model="ir.ui.menu"> 
-		<field name="active" eval="True"/>
+		<field name="active" eval="False"/>
 	</record>
 	<record id="account.menu_finance" model="ir.ui.menu">
-		<field name="active" eval="True"/>
+		<field name="active" eval="False"/>
+	</record>
+	<record id="spreadsheet_dashboard.spreadsheet_dashboard_menu_root" model="ir.ui.menu">
+		<field name="active" eval="False"/>
+	</record>
+	<record id="base.menu_management" model="ir.ui.menu">
+		<field name="active" eval="False"/>
+	</record>
+	<record id="mail.menu_root_discuss" model="ir.ui.menu">
+		<field name="active" eval="False"/>
 	</record>
   </data>
 </odoo>

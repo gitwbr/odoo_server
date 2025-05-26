@@ -84,7 +84,7 @@ class LineBotController(http.Controller):
                     self.process_attendance(user_id)
                     self.reply_message(user_id, "✅你的打卡已记录成功！")
                 elif text.startswith("綁定"):
-                    print("in bangding")
+                    # print("in bangding")
                     employee_raw = text.split("綁定")[1].strip()
                     employee_name = re.sub(r"^[\s\+\-]+", "", employee_raw)
                     employee = request.env["dtsc.workqrcode"].sudo().search([("name", "=", employee_name)])
