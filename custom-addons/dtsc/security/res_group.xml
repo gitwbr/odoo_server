@@ -587,10 +587,20 @@
             </record>   
         
             <!-- 只包括客户 -->
-            <record id="res_partner_rule_mg_base" model="ir.rule"><!-- 美工（客户供应商）读的权限 -->
+            <!-- <record id="res_partner_rule_mg_base" model="ir.rule">
                 <field name="name">baserule美工</field>
                 <field name="model_id" ref="base.model_res_partner"/>
                 <field name="groups" eval="[(4, ref('dtsc.group_dtsc_mg'))]"/>
+                <field name="perm_read">1</field>
+                <field name="perm_write">0</field> 
+                <field name="perm_create">0</field>
+                <field name="perm_unlink">0</field>
+            </record> -->
+			
+			<record id="res_partner_rule_bs_base" model="ir.rule">
+                <field name="name">baserule datubs</field>
+                <field name="model_id" ref="base.model_res_partner"/>
+                <field name="groups" eval="[(4, ref('dtsc.group_dtsc_bs'))]"/>
                 <field name="perm_read">1</field>
                 <field name="perm_write">0</field> 
                 <field name="perm_create">0</field>

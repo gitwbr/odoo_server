@@ -187,6 +187,16 @@ class CheckoutInherit(models.Model):
                 new_line.write({'product_total_price':line.product_total_price})
                 new_line.write({'price':line.price})
                 new_line.write({'machine_cai_cai':line.machine_cai_cai})
+            
+            new_checkout.checkoutcomment_ids.unlink()
+            
+            for a in record.checkoutcomment_ids:
+                self.env['dtsc.checkoutcomment'].create({
+                    'checkout_id': new_checkout.id,
+                    'name': a.name,
+                    'sequence': a.sequence,
+                })     
+                
             return {
                 'type': 'ir.actions.act_window',
                 'name': '複製報價單',
@@ -382,6 +392,17 @@ class CheckoutInherit(models.Model):
             # self.env.cr.commit()
             record.related_checkout_id = new_checkout.id
             new_checkout.crm_lead_id = False
+            
+            new_checkout.checkoutcomment_ids.unlink()
+            
+            for a in record.checkoutcomment_ids:
+                self.env['dtsc.checkoutcomment'].create({
+                        'checkout_id': new_checkout.id,
+                        'name': a.name,
+                        'sequence': a.sequence,
+                    })   
+
+            
             return {
                 'type': 'ir.actions.act_window',
                 'name': '大圖訂單',

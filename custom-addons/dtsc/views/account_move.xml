@@ -381,8 +381,19 @@
             </field>
         </record>
 	
-
-	
+		<record id="res_config_settings_view_form_inherit_mail_label" model="ir.ui.view">
+			<field name="name">res.config.settings.view.form.inherit.mail.label</field>
+			<field name="model">res.config.settings</field>
+			<field name="inherit_id" ref="mail.res_config_settings_view_form"/>
+			<field name="arch" type="xml">
+				<xpath expr="(//h2)[4]" position="replace">
+					<h2>郵件</h2>
+				</xpath>
+				<xpath expr="//div[@id='activities_setting']" position="attributes">
+					<attribute name="invisible">1</attribute>
+				</xpath>
+			</field>
+		</record>
 	   <!-- <record id="view_dtsc_config_settings" model="ir.ui.view"> -->
             <!-- <field name="name">dtsc.config.settings.form</field> -->
             <!-- <field name="model">dtsc.config.settings</field> -->
