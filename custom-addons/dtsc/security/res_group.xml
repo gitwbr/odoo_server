@@ -1063,6 +1063,16 @@
 		<field name="perm_unlink" eval="False"/>
 		<field name="domain_force">[("sale_ok", "=", True)]</field>
 	</record>
+    
+    <record id="model_dtsc_crmusercomment_rule_wb" model="ir.model.access"> 
+        <field name="name">dtsc_crmusercomment外部</field>
+        <field name="model_id" ref="dtsc.model_dtsc_crmusercomment"/>
+        <field name="group_id" ref="base.group_public"/>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="True"/>
+        <field name="perm_create" eval="True"/>
+        <field name="perm_unlink" eval="True"/>
+    </record>
 
 	<!-- 外部 -->
 
@@ -1077,7 +1087,21 @@
 		<field name="perm_create" eval="0"/>
 		<field name="perm_unlink" eval="0"/>
 	</record>
+    
 	<!-- docker -->
+
+    <!-- 隐藏账号 -->
+    <!-- <record id="hide_user_rule" model="ir.rule">
+        <field name="name">Hide user</field>
+        <field name="model_id" ref="base.model_res_users"/>
+        <field name="domain_force">[('login', '!=', '11111')]</field>
+        <field name="groups" eval="[(4, ref('base.group_user'))]"/>
+        <field name="perm_read" eval="1"/>
+        <field name="perm_write" eval="1"/>
+        <field name="perm_create" eval="1"/>
+        <field name="perm_unlink" eval="1"/>
+    </record> -->
+    <!-- 隐藏账号 -->
 	
 	
     <data>
