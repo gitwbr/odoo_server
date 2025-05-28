@@ -33,6 +33,11 @@ def create_app():
     app = Flask(__name__)
     CORS(app)
     
+    # 配置 session cookie 相关参数，确保 Google 登录流程 session 不丢失
+    app.config['SESSION_COOKIE_DOMAIN'] = '.euhon.com'
+    app.config['SESSION_COOKIE_SECURE'] = True
+    app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+    
     # 配置郵件
     app.config.update(MAIL_CONFIG)
     

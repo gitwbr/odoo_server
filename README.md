@@ -984,8 +984,17 @@ git rm -r --cached client*/
 ## 官网
 cd /home/odoo/odoo16
 # docker-compose up -d --build ohoo-website
+npm run build
+npm start
 docker-compose build ohoo-website
 docker-compose restart ohoo-website
+#
+npm install
+npm run dev
+      y: 0,\
+npm run build
+npm start
+
 
 
 ## 重启全部运行中的客户容器

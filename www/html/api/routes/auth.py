@@ -1,4 +1,4 @@
-from flask import Blueprint, request, jsonify, current_app, session
+from flask import Blueprint, request, jsonify, current_app, session, redirect
 import bcrypt
 from models.user import User
 from utils.email import send_email
@@ -160,7 +160,6 @@ def google_login():
     try:
         # 打印当前使用的重定向URI，用于调试
         logger.debug(f"重定向URI配置: {current_app.config['GOOGLE_CONFIG']['redirect_uri']}")
-        
         flow = Flow.from_client_config(
             {
                 "web": {
@@ -172,24 +171,16 @@ def google_login():
             },
             scopes=current_app.config['GOOGLE_CONFIG']['scope']
         )
-        
         flow.redirect_uri = current_app.config['GOOGLE_CONFIG']['redirect_uri']
-        
-        # 打印最终使用的重定向URI，确认是否一致
         logger.debug(f"流程中使用的重定向URI: {flow.redirect_uri}")
-        
         authorization_url, state = flow.authorization_url(
             access_type='offline',
             include_granted_scopes='true'
         )
-        
-        # 打印生成的授权URL，便于检查其中的redirect_uri参数
         logger.debug(f"授权URL: {authorization_url}")
-        
         session['state'] = state
-        
-        return jsonify({'auth_url': authorization_url}), 200
-        
+        # 直接重定向到 Google 授权页面
+        return redirect(authorization_url)
     except Exception as e:
         logger.error(f'Google登錄失敗: {str(e)}')
         return jsonify({'error': str(e)}), 500

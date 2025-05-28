@@ -307,7 +307,6 @@ export default function Features2() {
                   <li>・印刷訂單系統</li>
                   <li>・施工/完工報告單生成</li>
                   <li>・及時報表與資料分析（基本款）</li>
-                  <li>・雲端部署、手機APP</li>
                   <li>・操作簡易，一站式平台</li>
                   <li>・基本官網</li>
                   <li>・免費年度更新</li>
@@ -361,7 +360,6 @@ export default function Features2() {
                   <li>・施工/完工報告單生成</li>
                   <li>・及時報表與資料分析（進階款）</li>
                   <li>・<span className="text-[#4A7BFF] font-bold">員工績效管理報告</span></li>
-                  <li>・雲端部署、手機APP</li>
                   <li>・操作簡易，一站式平台</li>
                   <li>・基本官網</li>
                   <li>・免費年度更新</li>

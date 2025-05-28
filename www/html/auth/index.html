@@ -163,8 +163,10 @@
     });
 
     document.querySelector('.social-btn').addEventListener('click', async function() {
-        try {
-            const response = await fetch('/api/google/login');
+        /* try {
+            const response = await fetch('/api/google/login', {
+                credentials: 'include'
+            });
             if (!response.ok) {
                 const text = await response.text();
                 console.error('Response:', text);
@@ -177,7 +179,8 @@
         } catch (error) {
             console.error('Google登錄失敗:', error);
             console.error('Error details:', error.message);
-        }
+        } */
+       window.location.href = '/api/google/login';
     });
 
     // 添加檢查 URL 參數的代碼

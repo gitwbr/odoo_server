@@ -203,7 +203,7 @@ function getVersionCompareHtml() {
                     </div>
                 </div>-->
                 <div>
-                    <span style="color: #fa8c16;">高級版 v3：</span>
+                    <span style="color: #fa8c16;">進階版 v3：</span>
                     <div style="padding-left: 12px;">
                         • CRM客戶管理<br>
                         • Line機器人整合<br>
