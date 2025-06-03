@@ -987,7 +987,7 @@ cd /home/odoo/odoo16
 npm run build
 npm start
 docker-compose build ohoo-website
-docker-compose restart ohoo-website
+docker-compose start ohoo-website
 #
 npm install
 npm run dev

@@ -213,11 +213,14 @@ class Installproduct(models.Model):
     search_line_name = fields.Char(compute="_compute_search_line_name", store=True)
     
     
-    def write(self, vals):
-        if self.checkout_order_state in ["receivable_assigned"]:
-            raise UserError("該大圖訂單已轉應收，不能修改！")
+    # def write(self, vals):
+        # if self.checkout_order_state in ["receivable_assigned"]:
+            # allowed_fields = {"install_state"}
+            # disallowed = set(vals.keys()) - allowed_fields
+            # if disallowed:
+                # raise UserError("該大圖訂單已轉應收，不能修改！")
 
-        return super(Installproduct, self).write(vals)
+        # return super(Installproduct, self).write(vals)
             
     @api.depends("install_product_ids.name","install_product_ids.size","install_product_ids.caizhi","install_product_ids.install_note","install_product_ids.gongdan","name","custom_init_name","project_name")
     def _compute_search_line_name(self):
@@ -732,12 +735,12 @@ class InstallproductLine(models.Model):
     
     
     
-    def write(self, vals):
-        for record in self:
-            if record.install_product_id.checkout_order_state in ["receivable_assigned"]:
-                raise UserError("該大圖訂單已轉應收，不能修改！")
+    # def write(self, vals):
+        # for record in self:
+            # if record.install_product_id.checkout_order_state in ["receivable_assigned"]:
+                # raise UserError("該大圖訂單已轉應收，不能修改！")
 
-        return super(InstallproductLine, self).write(vals)
+        # return super(InstallproductLine, self).write(vals)
 
     
     def _inverse_image_yt(self):

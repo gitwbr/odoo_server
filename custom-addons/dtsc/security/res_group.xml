@@ -955,6 +955,13 @@
 	<!-- 网站 -->
 	
 	<!-- 外部 -->
+    <record id="model_res_partner_rule_wb" model="ir.model.access"> 
+		<field name="name">res_partner外部</field>
+		<field name="model_id" ref="base.model_res_partner"/>
+		<field name="group_id" ref="base.group_public"/>
+		<field name="perm_read" eval="True"/>
+	</record>   
+
 	<record id="model_dtsc_checkout_rule_wb" model="ir.model.access"> 
         <field name="name">大圖訂單外部</field>
         <field name="model_id" ref="dtsc.model_dtsc_checkout"/>

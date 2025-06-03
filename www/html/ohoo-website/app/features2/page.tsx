@@ -305,8 +305,10 @@ export default function Features2() {
                 <div className="text-[#7B5A7B] text-base font-semibold mb-4">快速啟用・基本管理，適合新創、小型企業。</div>
                 <ul className="text-[#7B5A7B] text-base space-y-2 list-none text-left w-full max-w-xs mx-auto">
                   <li>・印刷訂單系統</li>
+                  <li>・CRM模組</li>
                   <li>・施工/完工報告單生成</li>
                   <li>・及時報表與資料分析（基本款）</li>
+                  <li>・雲端部署</li>
                   <li>・操作簡易，一站式平台</li>
                   <li>・基本官網</li>
                   <li>・免費年度更新</li>
@@ -355,11 +357,12 @@ export default function Features2() {
                   <li>・印刷訂單系統</li>
                   <li>・<span className="text-[#4A7BFF] font-bold">流程進度顯示</span></li>
                   <li>・<span className="text-[#4A7BFF] font-bold">庫存掃碼精準掌控</span></li>
-                  <li>・<span className="text-[#4A7BFF] font-bold">CRM模組</span></li>
+                  <li>・CRM模組</li>
                   <li>・<span className="text-[#4A7BFF] font-bold">EIP線上簽核</span></li>
                   <li>・施工/完工報告單生成</li>
                   <li>・及時報表與資料分析（進階款）</li>
                   <li>・<span className="text-[#4A7BFF] font-bold">員工績效管理報告</span></li>
+                  <li>・雲端部署</li>
                   <li>・操作簡易，一站式平台</li>
                   <li>・基本官網</li>
                   <li>・免費年度更新</li>

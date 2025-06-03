@@ -57,7 +57,7 @@ server_wide_modules = base,web
 # init = base,web,base_setup,base_automation,mail,calendar,contacts,hr,resource,web_settings_dashboard,auth_signup,base_import,web_tour,digest,sms,social_media,auth_oauth,auth_password_policy,auth_totp,auth_totp_portal,base_address_extended,base_sparse_field,base_vat,google_account,google_recaptcha,iap,mail_bot,partner_autocomplete,phone_validation,portal,sms,social_media,web_editor,web_kanban_gauge,web_unsplash,dtsc
 # update = base_setup,web,dtsc 
 
-is_open_crm = False
+is_open_crm = True
 is_open_linebot = False
 is_open_full_checkoutorder = False
 is_open_makein_qrcode = False

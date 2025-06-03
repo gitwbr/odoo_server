@@ -373,7 +373,7 @@ odoo.define('dtsc.order', function (require) {
                         }
                         debugLog("New record ID:", new_id);
                         alert("感謝您的訂購！！");
-                        location.reload();  // 刷新页面
+                        window.location.href = window.location.origin + '/order/list';  // 跳转到订单列表页面
                     })
                     .catch(function(error){
                         console.error("Error:", error);
