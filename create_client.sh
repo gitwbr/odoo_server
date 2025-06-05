@@ -80,9 +80,11 @@ function create_client() {
     # 添加服务到 docker-compose.yml
     local CONFIG="  # Client${CLIENT_NUM} 服務\n"
     CONFIG+="  web${CLIENT_NUM}:\n"
-    #CONFIG+="    build: .\n"
-    #CONFIG+="    image: custom-odoo:16.0\n"
-    CONFIG+="    image: custom-odoo-web_default:latest\n"
+    #CONFIG+="    build:\n"
+    #CONFIG+="      context: .\n"
+    #CONFIG+="      dockerfile: Dockerfile\n"
+    CONFIG+="    image: custom-odoo:16.0.1\n"
+    #CONFIG+="    image: custom-odoo-web_default:latest\n"
     CONFIG+="    depends_on:\n"
     CONFIG+="      - db${CLIENT_NUM}\n"
     CONFIG+="    volumes:\n"
@@ -137,7 +139,7 @@ function create_client() {
     # 启动新创建的服务
     echo "Starting services..."
     docker-compose up -d web${CLIENT_NUM} db${CLIENT_NUM}
-    
+    exit 1
     # 等待服务启动
     print_info "等待服务启动（10秒）..."
     sleep 10
@@ -156,8 +158,8 @@ function create_client() {
     fi
     
     # 终止脚本，不继续执行
-    echo "已删除 nginx 配置，脚本停止执行。"
-    exit 1
+    #echo "已删除 nginx 配置，脚本停止执行。"
+    
 
     # 生成当前客户端的nginx配置
     echo "生成nginx配置文件..."

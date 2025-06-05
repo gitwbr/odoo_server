@@ -75,6 +75,48 @@
    sudo usermod -aG docker $USER
    newgrp docker
 
+## 镜像真实处理（dockerfile）
+   # 查看容器中的依赖
+   docker exec -it odoo16-web3-1 pip list --format=freeze > requirements.txt
+      # 进入容器
+      docker run -it --rm odoo16-web3-1 bash
+      # 在容器内查看
+      pip list --format=freeze
+
+   # 删除旧镜像
+   docker rmi custom-odoo:16.0.1
+   
+   # 使用docker build命令构建基础镜像
+   docker build -t custom-odoo:16.0.1 .
+
+   # 格式：docker commit 容器ID 新镜像名称:标签
+   docker commit client129-web129-1 custom-odoo:16.0.1
+
+   # 查看镜像中的Python包
+   docker run --rm custom-odoo:16.0.1 pip list --format=freeze
+
+# 將當前運行的容器保存為新鏡像
+docker commit b67e5cfb5610 custom-odoo-web_default:latest
+docker commit 577f6c02a997 custom-postgres-db_default:latest
+
+docker save custom-odoo-web_default:latest > ~/docker_images/custom-odoo-web_default.tar
+备用cd ~/docker_images && docker save -o custom-odoo-web_default.tar custom-odoo-web_default:latest
+docker save custom-postgres-db_default:latest > ~/docker_images/custom-postgres-db_default.tar
+备用cd ~/docker_images && docker save -o custom-postgres-db_default.tar custom-postgres-db_default:latest
+# 載入鏡像
+docker load < /tmp/custom-odoo-web_default.tar
+docker load < /tmp/custom-postgres-db_default.tar
+
+#### 2024-02-03 依赖安装
+1. 安装图片处理相关依赖：
+```bash
+docker-compose exec -u root web3 pip3 install --no-cache-dir --force-reinstall pymupdf
+docker-compose exec -u root web129 pip3 install --no-cache-dir --force-reinstall workalendar
+# 查看状态
+   docker-compose exec web5 python3 -c "import fitz; print('PyMuPDF installed successfully')"
+docker-compose exec -u root web3 pip3 install --no-cache-dir svglib>=1.5.1 PyMuPDF>=1.23.7 Pillow>=10.0.0
+```
+
 ## 功能特点
 
 - 支持多个客户端实例的独立运行
@@ -272,14 +314,7 @@ du -sh client*/db/*.gz
 
 ### 手动安装依赖记录
 
-#### 2024-02-03 依赖安装
-1. 安装图片处理相关依赖：
-```bash
-docker-compose exec -u root web5 pip3 install --no-cache-dir --force-reinstall pymupdf
-# 查看状态
-   docker-compose exec web5 python3 -c "import fitz; print('PyMuPDF installed successfully')"
-docker-compose exec -u root web5 pip3 install --no-cache-dir svglib>=1.5.1 PyMuPDF>=1.23.7 Pillow>=10.0.0
-```
+
 # 进入容器查看实际的挂载点
 docker exec odoo16-web3-1 ls -l /mnt/
 
@@ -846,17 +881,7 @@ JavaScript (.js)	  ⚠️ 部分自动生效（强制刷新浏览器）	     ❌
 docker ps | grep web5
 docker ps | grep db5
 
-# 將當前運行的容器保存為新鏡像
-docker commit b67e5cfb5610 custom-odoo-web_default:latest
-docker commit 577f6c02a997 custom-postgres-db_default:latest
 
-docker save custom-odoo-web_default:latest > ~/docker_images/custom-odoo-web_default.tar
-备用cd ~/docker_images && docker save -o custom-odoo-web_default.tar custom-odoo-web_default:latest
-docker save custom-postgres-db_default:latest > ~/docker_images/custom-postgres-db_default.tar
-备用cd ~/docker_images && docker save -o custom-postgres-db_default.tar custom-postgres-db_default:latest
-# 載入鏡像
-docker load < /tmp/custom-odoo-web_default.tar
-docker load < /tmp/custom-postgres-db_default.tar
 
 
 ## web本地处理

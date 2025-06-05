@@ -129,7 +129,7 @@ services:
 
   # Client3 服務
   web3:
-    image: custom-odoo-web_default:latest
+    image: custom-odoo:16.0.1
     depends_on:
       - db3
     volumes:

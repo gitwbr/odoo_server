@@ -40,7 +40,7 @@ const faqs: FAQs = {
     questions: [
       {
         question: '系統是否支援行動裝置？',
-        answer: '是的，ＭegaBoard ERP 提供完整的行動支援，您可以通過手機或平板隨時查看訂單狀態、處理審批事項等。'
+        answer: '是的，ＭegaBoard ERP 提供完整的行動支援，您可以通過手機或平板隨時查看訂單狀態、處理待審事項等。'
       },
       {
         question: '系統如何確保數據安全？',

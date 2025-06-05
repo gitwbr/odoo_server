@@ -393,7 +393,7 @@
                                         <!-- <field name="stock_valuation_value" string="成本"/> -->
                                         <!-- <field name="gross_profit" string="毛利"/> -->
                                     </group>
-                                    <group colspan="3" string="訂單價格" attrs="{'invisible': ['|',('is_recheck', '=', True),('checkout_order_state', 'in', ['waiting_confirmation'])]}">
+                                    <group colspan="3" string="訂單價格" attrs="{'invisible': ['|','|',('is_recheck', '=', True),('is_dayang','=',True),('checkout_order_state', 'in', ['waiting_confirmation'])]}">
                                         <field name="is_in_by_mg" invisible="1"/>
                                         <field name="is_in_by_yw" invisible="1"/>
                                         <field name="is_in_by_kj" invisible="1"/>

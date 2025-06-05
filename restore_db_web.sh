@@ -186,6 +186,7 @@ docker exec $CONTAINER_NAME mkdir -p /var/lib/odoo/client${CLIENT_NUM}/filestore
 # 复制 filestore
 print_info "复制 filestore..."
 FILESTORE_PATH=$(dirname "$BACKUP_FILE")/filestore_${DB_NAME}
+print_info "Filestore路径: $FILESTORE_PATH"
 if [ -d "$FILESTORE_PATH" ]; then
     docker cp "$FILESTORE_PATH/." "$WEB_CONTAINER:/var/lib/odoo/client${CLIENT_NUM}/filestore/${DB_NAME}/"
     print_success "Filestore 复制成功"

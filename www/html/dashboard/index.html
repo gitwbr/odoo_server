@@ -186,6 +186,12 @@
                                     </button>
                                     
                                     <button class="action-btn" 
+                                            onclick="restoreDatabase(${instance.id})"
+                                            title="恢復初始化">
+                                        <i class="material-icons">restore</i>
+                                    </button>
+
+                                    <button class="action-btn" 
                                             onclick="deleteInstance(${instance.id})"
                                             title="刪除實例">
                                         <i class="material-icons">delete</i>
@@ -287,6 +293,31 @@
             } catch (error) {
                 console.error('重啟實例失敗:', error);
                 showToast('錯誤', '重啟失敗', 'error');
+            }
+        }
+
+        // 恢复数据库
+        async function restoreDatabase(instanceId) {
+            if (!confirm('確定要恢復初始化嗎？此操作將重置數據。')) {
+                return;
+            }
+
+            try {
+                showToast('提示', '正在恢復初始化...', 'info');
+                const response = await fetch(`/api/instance/restore/${instanceId}`, {
+                    method: 'POST'
+                });
+                const data = await response.json();
+
+                if (response.ok) {
+                    showToast('成功', '恢復初始化成功', 'success');
+                    setTimeout(loadAllInstances, 5000);
+                } else {
+                    showToast('錯誤', data.error || '恢復初始化失敗', 'error');
+                }
+            } catch (error) {
+                console.error('恢復初始化失敗:', error);
+                showToast('錯誤', '恢復初始化失敗', 'error');
             }
         }
 

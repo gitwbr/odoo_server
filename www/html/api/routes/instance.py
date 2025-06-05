@@ -242,3 +242,34 @@ def check_domain():
         return jsonify({
             'error': str(e)
         }), 500
+
+@instance.route('/restore/<int:instance_id>', methods=['POST'])
+def restore_database(instance_id):
+    try:
+        # 检查用户是否登录
+        user_id = session.get('user_id')
+        if not user_id:
+            return jsonify({'error': '未登录'}), 401
+            
+        # 获取实例信息
+        instance = Instance.get_by_id(instance_id)
+        if not instance:
+            return jsonify({'error': '实例不存在'}), 404
+            
+        # 检查是否是该用户的实例
+        if user_id != 1 and instance.user_id != user_id:
+            return jsonify({'error': '无权限操作此实例'}), 403
+            
+        # 执行恢复操作
+        Instance.restore_database(instance_id)
+        
+        return jsonify({
+            'message': '恢复初始化成功',
+            'instance_id': instance_id
+        })
+        
+    except Exception as e:
+        logger.error(f'恢复数据库失败: {str(e)}')
+        return jsonify({
+            'error': str(e)
+        }), 500
