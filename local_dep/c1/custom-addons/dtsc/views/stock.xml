@@ -1,0 +1,330 @@
+<odoo>
+	<!-- <record id="product_product_search_view_inherit" model="ir.ui.view"> -->
+		<!-- <field name="name">product.product.search.view.inherit</field> -->
+		<!-- <field name="model">product.product</field> -->
+		<!-- <field name="inherit_id" ref="mrp.mrp_product_product_search_view"/> -->
+		<!-- <field name="arch" type="xml"> -->
+		
+			<!-- <xpath expr="//filter[@name='consumable']" position="after"> -->
+                    
+                    <!-- <filter string="採購生產用產品" domain="[('categ_id','child_of',[4])]"/> -->
+                <!-- </xpath> -->
+		<!-- </field> -->
+	
+	<!-- </record> -->
+	<record id="action_printexcel_crm_excel" model="ir.actions.server">
+		<field name="name">盤點損耗表</field>
+		<field name="model_id" ref="model_stock_move_line"/>
+		<field name="state">code</field>
+		<field name="code">
+			action = env['stock.move.line'].with_context(env.context).action_printexcel_move_line()
+		</field>
+		<field name="binding_model_id" ref="model_stock_move_line"/>
+		<field name="binding_type">action</field>
+		<field name="binding_view_types">list</field>
+	</record>
+	
+	
+	<record id="stock_picking_form_view_inherit" model="ir.ui.view">
+		<field name="name">stock.picking.form.view.inherit</field>
+		<field name="model">stock.picking</field>
+		<field name="inherit_id" ref="stock.view_picking_form"/>
+		<field name="arch" type="xml">
+			<button name="do_print_picking" position="attributes">
+				<attribute name="invisible">1</attribute>
+			</button>
+			<button name="action_open_label_type" position="attributes">
+				<attribute name="invisible">1</attribute>
+			</button>
+		</field>
+	</record>
+	
+	<record id="product_product_tree_view_inherit" model="ir.ui.view">
+		<field name="name">product.product.tree.view.inherit</field>
+		<field name="model">product.product</field>
+		<field name="inherit_id" ref="product.product_product_tree_view"/>
+		<field name="priority" eval="99"/>
+		<field name="arch" type="xml">
+			
+			<xpath expr="//field[@name='default_code']" position="attributes">
+				<attribute name="invisible">1</attribute>	
+			</xpath>
+			<xpath expr="//field[@name='lst_price']" position="attributes">
+				<attribute name="invisible">1</attribute>	
+			</xpath>
+			<xpath expr="//field[@name='priority']" position="attributes">
+				<attribute name="invisible">1</attribute>	
+			</xpath>
+			<xpath expr="//field[@name='is_published']" position="attributes">
+				<attribute name="invisible">1</attribute>	
+			</xpath>
+			<xpath expr="//field[@name='standard_price']" position="attributes">
+				<attribute name="invisible">1</attribute>	
+			</xpath>
+			<xpath expr="//field[@name='product_tag_ids']" position="attributes">
+				<attribute name="invisible">1</attribute>	
+			</xpath>
+			<xpath expr="//field[@name='virtual_available']" position="attributes">
+				<attribute name="invisible">1</attribute>	
+			</xpath>
+			<xpath expr="//field[@name='qty_available']" position="before">
+				<field name="average_price" />
+			</xpath>
+			
+		</field>
+		
+	</record>
+	
+	
+	<record id="view_mpr_tree" model="ir.ui.view">
+        <field name="name">dtsc.mpr.tree</field>
+        <field name="model">dtsc.mpr</field>
+        <field name="arch" type="xml">
+            <tree create="false" delete="true">
+				<field name="name" readonly="1"/>
+				<field name="from_name" readonly="1"/>
+				<field name="state" readonly="1"/>
+            </tree>
+        </field>
+    </record>
+	
+	<record id="view_mpr_form" model="ir.ui.view">
+        <field name="name">dtsc.mpr.form</field>
+        <field name="model">dtsc.mpr</field>
+        <field name="arch" type="xml">
+            <form>
+				<header>
+					<button name="confirm_btn" type="object" class="oe_highlight" string="確認扣料" confirm="請檢查扣料數據是否準確，確認執行扣料動作嗎？" attrs="{'invisible':[('state','not in',['draft'])]}" groups="dtsc.group_dtsc_mg,dtsc.group_dtsc_sc,dtsc.group_dtsc_ck"/>
+					<button name="back_btn" type="object" class="oe_highlight" string="恢復扣料" confirm="確認執行恢復扣料動作嗎？" attrs="{'invisible':[('state','not in',['succ'])]}" groups="dtsc.group_dtsc_mg,dtsc.group_dtsc_sc,dtsc.group_dtsc_ck"/>
+					<field name="state" widget="statusbar" statusbar_visible="draft,succ"/> 
+				</header>
+				<sheet>
+				
+					<div class="oe_title">
+						<h2>扣料表</h2>
+					</div>
+					<group>
+						<group>
+							<field name="name" readonly="1"/>
+							<field name="stock_location_id" attrs="{'readonly': [('state', '=', 'succ')]}"/> 
+						</group>
+						<group>
+							<field name="from_name" readonly="1"/>
+						</group>
+					</group>
+					<field name="mprline_ids" options="{'deletable': True}">
+						<tree editable="bottom">            
+                            <field name="is_in_by_mg" invisible="1"/>
+                            <field name="is_in_by_sc" invisible="1"/>
+                            <field name="is_in_by_ck" invisible="1"/>
+                            <!-- <field name="barcode_input"/> -->
+							<field name="product_id_formake" invisible="1"/>
+							<!-- categ_id 6 15 墨水和其他 -->
+							<field name="stock_location_id"/>
+							<field name="product_product_id" domain="[('product_tmpl_id.purchase_ok', '=', True),('product_tmpl_id.categ_id', 'not in', [6 ,15])]" options="{'no_create': True, 'no_create_edit': True}"/> <!-- domain="[('product_tmpl_id' , '=' , product_id_formake )]" />-->
+							<!-- <field name="product_lot" domain="[('product_id' , '=' , product_product_id ), ('product_qty', '>', 0)]" attrs="{'readonly': [ ('is_in_by_mg', '=', False), ('is_in_by_sc', '=', False), ('is_in_by_ck', '=', False)]}"/> -->
+							<!-- <field name="product_lot" attrs="{'readonly': [ ('is_in_by_mg', '=', False), ('is_in_by_sc', '=', False), ('is_in_by_ck', '=', False)]}"/> -->
+							<!-- <field name="attr_name"/> -->
+							<!-- <field name="product_id"/> -->
+							<field name="uom_id"/>
+							<field name="now_stock"/>
+							<!-- <field name="lot_stock_num"/> -->
+							<field name="now_use"/>
+							<!-- <field name="now_use" attrs="{'readonly':[('is_all', '=', True)]}"/> -->
+							<!-- <field name="is_all"/> -->
+							<field name="final_use" attrs="{'readonly': [ ('is_in_by_mg', '=', False), ('is_in_by_sc', '=', False), ('is_in_by_ck', '=', False)]}"/>
+							<field name="comment" attrs="{'readonly': [ ('is_in_by_mg', '=', False), ('is_in_by_sc', '=', False), ('is_in_by_ck', '=', False)]}"/>
+						</tree>
+					</field>
+				</sheet>
+            </form>
+        </field>
+    </record>
+	
+	<record id="dtsc_view_move_line_tree" model="ir.ui.view">
+        <field name="name">stock.move.line.tree</field>
+        <field name="model">stock.move.line</field>
+        <field name="arch" type="xml">
+            <tree string="庫存移動" create="0" default_order="id desc" action="action_open_reference" type="object">
+                <field name="location_usage" invisible="1"/>
+                <field name="location_dest_usage" invisible="1"/>
+                <field name="date"/>
+                <field name="reference" string="Reference"
+                       invisible="context.get('no_reference', False)"/>
+                <field name="product_id"/>
+				<field name="description"/>		
+                <field name="lot_id" optional="show" groups="stock.group_production_lot"/>
+                <field name="package_id" optional="hide" groups="stock.group_tracking_lot"/>
+                <field name="result_package_id" optional="hide" groups="stock.group_tracking_lot"/>
+                <field name="location_id"/>
+                <field name="location_dest_id"/>
+                <field name="company_id" optional="hide" groups="base.group_multi_company" force_save="1"/>
+				
+				<field name="move_before_quantity"/>		 
+				<field name="move_after_quantity"/>	
+                <field name="qty_done" string="Quantity"
+                    decoration-danger="(location_usage in ('internal','transit')) and (location_dest_usage not in ('internal','transit'))"
+                    decoration-success="(location_usage not in ('internal','transit')) and (location_dest_usage in ('internal','transit'))"/>
+                <field name="product_uom_id" options="{'no_open': True, 'no_create': True}" string="Unit" groups="uom.group_uom"/>
+                <field name="state" widget='badge' optional="show"
+                       decoration-danger="state=='cancel'"
+                       decoration-info="state== 'assigned'"
+                       decoration-muted="state == 'draft'"
+                       decoration-success="state == 'done'"
+                       decoration-warning="state not in ('draft','cancel','done','assigned')" invisible="1"/>
+                <field name="create_uid" string="Done By" widget="many2one_avatar_user" optional="hide"/>
+            </tree>
+        </field>
+    </record>
+	<record id="dtsc_view_move_line_tree_no_full" model="ir.ui.view">
+        <field name="name">stock.move.line.tree</field>
+        <field name="model">stock.move.line</field>
+        <field name="arch" type="xml">
+            <tree string="庫存移動" create="0" default_order="id desc" action="action_open_reference" type="object">
+                <field name="location_usage" invisible="1"/>
+                <field name="location_dest_usage" invisible="1"/>
+                <field name="date"/>
+                <field name="reference" string="Reference"
+                       invisible="context.get('no_reference', False)"/>
+                <field name="product_id"/>
+				<field name="description"/>		
+                <!-- <field name="lot_id" optional="show" groups="stock.group_production_lot"/> -->
+                <field name="package_id" optional="hide" groups="stock.group_tracking_lot"/>
+                <field name="result_package_id" optional="hide" groups="stock.group_tracking_lot"/>
+                <field name="location_id"/>
+                <field name="location_dest_id"/>
+                <field name="company_id" optional="hide" groups="base.group_multi_company" force_save="1"/>
+				
+				<field name="move_before_quantity"/>		 
+				<field name="move_after_quantity"/>	
+                <field name="qty_done" string="Quantity"
+                    decoration-danger="(location_usage in ('internal','transit')) and (location_dest_usage not in ('internal','transit'))"
+                    decoration-success="(location_usage not in ('internal','transit')) and (location_dest_usage in ('internal','transit'))"/>
+                <field name="product_uom_id" options="{'no_open': True, 'no_create': True}" string="Unit" groups="uom.group_uom"/>
+                <field name="state" widget='badge' optional="show"
+                       decoration-danger="state=='cancel'"
+                       decoration-info="state== 'assigned'"
+                       decoration-muted="state == 'draft'"
+                       decoration-success="state == 'done'"
+                       decoration-warning="state not in ('draft','cancel','done','assigned')" invisible="1"/>
+                <field name="create_uid" string="Done By" widget="many2one_avatar_user" optional="hide"/>
+            </tree>
+        </field>
+    </record>
+	
+	<record id="stock_move_line_view_inherit" model="ir.ui.view">
+		<field name="name">stock.move.line.view.inherit</field>
+		<field name="model">stock.move.line</field>
+		<field name="inherit_id" ref="stock.view_move_line_tree"/>
+		<field name="arch" type="xml">
+		
+			<xpath expr="//field[@name='product_id']" position="after">
+				<field name="description"/>		 
+			</xpath>
+			<xpath expr="//field[@name='qty_done']" position="before">
+				<field name="move_before_quantity"/>		 
+				<field name="move_after_quantity"/>		 
+			</xpath>
+			<xpath expr="//field[@name='state']" position="attributes">
+				<attribute name="invisible">1</attribute>		 
+			</xpath>
+		</field>
+	</record>
+	<record id="stock_move_line_search_view_inherit" model="ir.ui.view">
+		<field name="name">stock.move.line.search.view.inherit</field>
+		<field name="model">stock.move.line</field>
+		<field name="inherit_id" ref="stock.stock_move_line_view_search"/>
+		<field name="arch" type="xml">
+			<xpath expr="//search" position="inside">				
+				<searchpanel>
+                    <field name="report_year" string="年"  select="multi"/>
+                    <field name="report_month" string="月" context="{'group_by': 'report_year'}" select="multi"/>
+                </searchpanel>
+			</xpath> 
+		</field>
+	</record>
+	
+	<record id="stock_quant_search_view_inherit" model="ir.ui.view">
+		<field name="name">stock.quant.search.view.inherit</field>
+		<field name="model">stock.quant</field>
+		<field name="inherit_id" ref="stock.quant_search_view"/>
+		<field name="arch" type="xml">
+			<xpath expr="//search" position="inside">
+				
+				<filter string="非零庫存" name="zskc" domain="[('quantity', '!=', 0.0)]"/> 
+			</xpath> 
+		</field>
+	</record>
+	
+
+    
+    <record id="view_inherited_orderpoint_tree" model="ir.ui.view">
+        <field name="name">stock.warehouse.orderpoint.tree.inherited</field>
+        <field name="model">stock.warehouse.orderpoint</field>
+        <field name="inherit_id" ref="stock.view_warehouse_orderpoint_tree_editable"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='qty_forecast']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            <xpath expr="//field[@name='route_id']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+        </field>
+    </record>
+
+	<record id="view_stock_reorder_report_search_inherited" model="ir.ui.view">
+        <field name="name">stock.stock_reorder_report_search.inherited</field>
+        <field name="model">stock.warehouse.orderpoint</field>
+        <field name="inherit_id" ref="stock.stock_reorder_report_search"/>
+        <field name="arch" type="xml">
+            <!-- 通过XPath定位searchpanel并移除 -->
+            <searchpanel position="replace">
+            </searchpanel>
+        </field>
+    </record>
+	
+		<!--原本是按照预计库存数量判断 现在改成按本身库存去更改颜色-->
+	<record id="dtsc_product_product_qty_color" model="ir.ui.view">
+		<field name="name">product.qty.available.override</field>
+		<field name="model">product.product</field>
+		<field name="inherit_id" ref="product.product_product_tree_view"/>
+		<field name="arch" type="xml">
+			<!-- 使用 XPath 定位到 qty_available -->
+			<xpath expr="//field[@name='qty_available']" position="replace">
+				<!-- <field name="qty_available" attrs="{'invisible':[('type', '!=', 'product')]}" optional="show" decoration-danger="virtual_available &lt; 0" decoration-warning="virtual_available == 0" decoration-bf="1"/> -->
+				<field name="qty_available" attrs="{'invisible':[('type', '!=', 'product')]}" optional="show" decoration-danger="qty_available &lt; 0"         decoration-warning="qty_available == 0" decoration-bf="1"/>
+
+			</xpath>
+		</field>
+	</record>
+	
+	<!-- wbr補貨頁面 -->
+	<record id="view_warehouse_orderpoint_tree_editable_inherit" model="ir.ui.view">
+        <field name="name">stock.warehouse.orderpoint.tree.inherit</field>
+        <field name="model">stock.warehouse.orderpoint</field>
+        <field name="inherit_id" ref="stock.view_warehouse_orderpoint_tree_editable"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='supplier_id']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+			 <xpath expr="//field[@name='qty_to_order']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+			 <xpath expr="//field[@name='product_max_qty']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+			<xpath expr="//button[@name='action_product_forecast_report']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+			<xpath expr="//button[@name='action_replenish']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            <xpath expr="//button[@name='action_stock_replenishment_info']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+        </field>
+    </record>
+   
+	<!-- wbr補貨頁面 -->
+	
+</odoo>

@@ -1,0 +1,53 @@
+<odoo>
+	<record id="view_checkout_line_tree" model="ir.ui.view">
+		<field name="name">dtsc.checkoutline.tree</field>
+		<field name="model">dtsc.checkoutline</field>
+		<field name="arch" type="xml">
+			<tree>			
+				<field name="project_product_name" invisible="1" />
+				<field name="product_id"   invisible="1" options="{'no_create': True, 'no_create_edit': True}"/>
+				<field name="product_width" invisible="1" />	
+				<field name="product_height" invisible="1" />	
+				<field name="machine_id"  options="{'no_create': True, 'no_create_edit': True}"/>
+				<field name="product_atts" invisible="1"  options="{'no_create': True, 'no_create_edit': True}" widget="many2many_tags" domain="[('id' , 'in' , allowed_product_atts )]"/> 
+				<field name="multi_chose_ids" invisible="1" />
+				<field name="quantity"  invisible="1" />
+				<field name="quantity_peijian" invisible="1" />
+				<field name="single_units" invisible="1" />
+				<field name="total_units"  invisible="1"/>
+				<field name="mergecai" attrs="{'readonly': [('parent.is_in_by_mg', '=', False)]}" invisible="1" />	
+				<field name="jijiamoshi" invisible="1" attrs="{'readonly': [('parent.is_in_by_yw', '=', False)]}" groups="dtsc.group_dtsc_yw,dtsc.group_dtsc_kj"/> 
+				<field name="product_details" readonly="1" optional="hide" invisible="1" />
+				<field name="comment" invisible="1" />
+				<field name="allowed_product_atts" invisible="1" />
+				<field name="peijian_price" invisible="1" groups="dtsc.group_dtsc_yw,dtsc.group_dtsc_kj"/> 
+				<field name="units_price" invisible="1" groups="dtsc.group_dtsc_yw,dtsc.group_dtsc_kj"/> 
+				<field name="product_total_price" invisible="1"  groups="dtsc.group_dtsc_yw,dtsc.group_dtsc_kj"/> 
+				<field name="total_make_price" invisible="1" groups="dtsc.group_dtsc_yw,dtsc.group_dtsc_kj"/> 
+				<field name="price" invisible="1" sum="價錢" optional="show" readonly="1" groups="dtsc.group_dtsc_yw,dtsc.group_dtsc_kj"/> 
+				
+				
+				<field name="create_date" />
+				
+				<field name="machine_cai_cai" sum="才數" optional="show" readonly="1" /> 
+				<field name="machine_cai_price" sum="價錢" optional="show" readonly="1" groups="dtsc.group_dtsc_gly"/> 
+				<field name="is_chuhuo_state_or_cancel" />
+			</tree>
+		</field>	
+	</record>
+	
+	<record id="search_checkout_line_tree" model="ir.ui.view">
+		<field name="name">dtsc.checkoutline.search</field>
+		<field name="model">dtsc.checkoutline</field>
+		<field name="arch" type="xml">
+			<search>
+				<searchpanel>
+                    <field name="is_chuhuo_state_or_cancel" string="是否出貨"/>
+                </searchpanel>
+				
+				<!-- <field name="search_line_name" string="所有訊息"/> -->
+				<!-- <field name="customer_id" string="客戶名稱"/> -->
+			</search>
+		</field>		
+	</record>
+</odoo>

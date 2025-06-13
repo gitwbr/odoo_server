@@ -1,0 +1,167 @@
+<odoo>
+    <record id="view_delivery_carrier_form_custom" model="ir.ui.view">
+        <field name="name">delivery.carrier.form.custom</field>
+        <field name="model">delivery.carrier</field>
+        <field name="inherit_id" ref="delivery.view_delivery_carrier_form"/> 
+        <field name="arch" type="xml">
+            <!-- 在选择 'custom_rule' 时显示自定义公式和参数字段 -->
+            <xpath expr="//group[@name='provider_details']" position="after">
+                <group string="自定義運費規則" attrs="{'invisible': [('delivery_type', '!=', 'custom_rule')]}">
+                    <field name="custom_formula" placeholder="e.g., param2 * ceil(total_quantity / param1) => ps total_quantity(總數量) ceil(向上取整)" string="公式"/>
+                    <field name="custom_param1" string="參數 1"/>
+                    <field name="custom_param2" string="參數 2"/>
+                </group>
+            </xpath>
+			<xpath expr="//field[@name='product_id']" position="attributes">
+				<attribute name="context">{'default_sale_ok': True, 'default_detailed_type': 'product'}</attribute>
+			</xpath>
+        </field>
+    </record>
+	
+	<template id="remove_zip_field" inherit_id="website_sale.address">
+		<!-- <xpath expr="//input[@name='zip']/ancestor::div[1]" position="replace"/> -->
+		
+		<!-- <xpath expr="//input[@name='city']/ancestor::div[1]" position="replace"/> -->
+		<xpath expr="//input[@name='street2']/ancestor::div[1]" position="replace"/>
+		<!-- <xpath expr="//input[@name='zip']/ancestor::div[1]" position="replace">
+			<t t-if="'zip' in checkout and checkout['zip']">
+				<input type="hidden" name="zip" t-att-value="checkout['zip']"/>
+			</t>
+			<t t-else="">
+				<input type="hidden" name="zip" value="000000"/>
+			</t>
+		</xpath> -->
+		<xpath expr="//input[@name='zip']/ancestor::div[1]" position="attributes">
+        <attribute name="style">display:none !important;</attribute>
+    </xpath>
+		<!-- <xpath expr="//input[@name='zip']" position="attributes">
+			<attribute name="style">display: none;</attribute>
+		</xpath>
+		<xpath expr="//label[@for='zip']" position="replace">
+		</xpath> -->
+
+
+
+
+		<xpath expr="//input[@name='city']/ancestor::div[1]" position="replace">
+			<!-- <t t-if="'city' in checkout and checkout['city']">
+				<input type="hidden" name="city" t-att-value="checkout['city']"/>
+			</t>
+			<t t-else="">
+				<input type="hidden" name="city" value="-"/>
+			</t> -->
+		</xpath>
+
+		<!-- <xpath expr="//select[@name='country_id']" position="attributes">
+			<attribute name="t-att-selected">227</attribute>
+			<attribute name="disabled">disabled</attribute>
+		</xpath> -->
+		<xpath expr="//select[@name='country_id']" position="after">
+    <script>
+        // 强制触发 change 事件
+        document.querySelector("select[name='country_id']").dispatchEvent(new Event('change'));
+    </script>
+</xpath>
+		<xpath expr="//label[@for='state_id']" position="replace">
+			<label class="col-form-label" for="state_id">城市</label>
+		</xpath>
+
+	
+
+	</template>
+	<template id="extend_address_on_payment" inherit_id="website_sale.address_on_payment">
+        <!-- <xpath expr="//div[@id='shipping_and_billing']" position="inside">
+            <t t-if="order">
+				<div>
+					<b>Billing Partner Name:</b> <span t-esc="order.partner_id.contact_address"/>
+				</div>
+				<div t-if="order.partner_shipping_id">
+					<b>Shipping Partner Name:</b> <span t-esc="order.partner_shipping_id.contact_address"/>
+				</div>
+			</t>
+        </xpath> -->
+		<xpath expr="//span[@t-esc='order.partner_id']" position="replace">
+			<span t-field="order.partner_id" t-options='{"widget": "contact", "fields": ["address", "name", "phone"], "no_marker": True}' class="address-inline"/>
+		</xpath>
+		<xpath expr="//span[@t-esc='order.partner_shipping_id']" position="replace">
+			<span t-field="order.partner_shipping_id" t-options='{"widget": "contact", "fields": ["address", "name", "phone"], "no_marker": True}' class="address-inline"/>
+		</xpath>
+    </template>
+	
+	<template id="dtsc_custom_template_kanban" inherit_id="website_sale.address_kanban">
+		<xpath expr="//t[@t-esc='contact']" position="replace">
+			<t t-esc="contact.name"/> <br/>
+			<span t-field="contact" t-options='{"widget": "contact", "fields": ["address"], "no_marker": True}' class="address-inline"/>
+		</xpath>
+	</template>
+	
+	
+	<template id="extend_website_sale_payment" inherit_id="website_sale.payment">
+    <xpath expr="//div[@id='payment_method']" position="replace">
+        <!-- 先判断地区限制条件 -->
+        <div t-if="website_sale_order.partner_shipping_id.state_id.name not in ['宜蘭縣', '花蓮縣', '台東縣', '連江縣', '金門縣', '澎湖縣']">
+            <!-- 如果地区条件满足，再判断支付方式 -->
+            <div t-if="providers or tokens" id="payment_method" class="mt-3">
+                <h3 class="mb24">請選擇支付方式</h3>
+                <t t-call="payment.checkout">
+                    <t t-set="footer_template_id" t-value="'website_sale.payment_footer'"/>
+                    <t t-set="submit_button_label">立即支付</t>
+                </t>
+            </div>
+            <div t-else="" class="alert alert-warning">
+                <strong>找不到合適的付款方式</strong><br/>
+                如果您發現此異常事項，請聯繫網站管理員。
+            </div>
+        </div>
+        <!-- 如果在限制地区，显示"该地区需要专人服务" -->
+        <div t-else="" class="alert alert-warning">
+            <strong>該地區需要專人服務</strong><br/>
+        </div>
+    </xpath>
+</template>
+
+	<record id="view_product_template_form_inherit_min_purchase_amount" model="ir.ui.view">
+        <field name="name">product.template.form.min.purchase.amount</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="product.product_template_only_form_view"/>
+        <field name="arch" type="xml">
+			<xpath expr="//field[@name='categ_id']" position="after">
+                    <field name="min_purchase_amount" string="最低購買金額" placeholder="默認值為 0"/>
+            </xpath>
+        </field>
+    </record>
+	
+	<template id="website_sale_total_inherit" inherit_id="website_sale.total" name="Website Sale Total with Min Purchase Warning">
+		<xpath expr="//div[@id='cart_total']/table" position="after">
+			<t t-if="website_sale_order.show_min_purchase_warning">
+				<div class="alert alert-warning mt-2">
+					部分產品的總價低於最低購買金額，已按最低購買金額計算。
+				</div>
+			</t>
+		</xpath>
+	</template> 
+	
+	<template id="cart_lines_min_quantity" inherit_id="website_sale.cart_lines">
+		<xpath expr="//a[contains(@class, 'js_add_cart_json') and descendant::i[contains(@class, 'fa-minus')]]" position="attributes">
+			<attribute name="t-if">line.product_uom_qty > line.min_quantity</attribute>
+			<!-- <attribute name="t-att-data-min-quantity">line.min_quantity</attribute> -->
+		</xpath>
+		<!-- <xpath expr="//a[contains(@class, 'js_add_cart_json') and descendant::i[contains(@class, 'fa-minus')]]" position="before">
+			<t t-raw="line" />
+			<t t-esc="line.min_quantity" />
+		</xpath> -->
+		<xpath expr="//input[contains(@class, 'js_quantity')]" position="attributes">
+			<attribute name="t-att-data-min-quantity">line.min_quantity</attribute>
+			<attribute name="t-att-min">line.min_quantity</attribute>
+		</xpath>
+	</template>
+	
+	
+	<template id="hide_badge_extra_price" inherit_id="sale.badge_extra_price" name="Hide Badge Extra Price">
+		<xpath expr="//span[@class='badge rounded-pill text-bg-light border']" position="replace">
+			<!-- 替换为空内容，隐藏显示 -->
+		</xpath>
+	</template>
+	
+ 
+</odoo>

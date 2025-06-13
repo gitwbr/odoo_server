@@ -1,0 +1,216 @@
+<odoo>
+
+
+		<!-- <record id="action_install_to_invisible" model="ir.actions.server"> -->
+		<!-- <field name="name">轉隐藏</field> -->
+		<!-- <field name="model_id" ref="model_dtsc_installproduct"/> -->
+		<!-- <field name="state">code</field> -->
+		<!-- <field name="code"> -->
+			<!-- action = env['dtsc.installproduct'].with_context(env.context).set_invisible() -->
+		<!-- </field> -->
+		<!-- <field name="binding_model_id" ref="model_dtsc_installproduct"/> -->
+		<!-- <field name="binding_type">action</field> -->
+		<!-- <field name="binding_view_types">list</field> -->
+        <!-- <field name="groups_id" eval="[(4, ref('dtsc.group_dtsc_mg'))]"/> -->
+	<!-- </record> -->
+	
+    <record id="model_dtsc_installproduct" model="ir.model">
+        <field name="name">施工單</field>
+        <field name="model">dtsc.installproduct</field>
+    </record>
+	<record id="view_installproduct_tree" model="ir.ui.view">
+		<field name="name">dtsc.installproduct.tree</field>
+		<field name="model">dtsc.installproduct</field>
+		<field name="arch" type="xml">
+			<tree js_class="InstallProductClass" create="false"  decoration-danger="install_state == 'cancel'" decoration-warning="sjsf &gt; 0 and not is_invoice" decoration-info="is_invoice == True">
+                <field name="name" readonly="1"/>
+                <field name="custom_init_name" readonly="1"/>
+                <field name="project_name" readonly="1"/>
+                <field name="in_date" readonly="1"/>
+                <field name="address" readonly="1"/>
+                <field name="fzyw" readonly="1"/>
+                <field name="install_state" readonly="1"/>
+                <field name="sjsf" readonly="1" invisible="1"/>
+                <field name="is_invoice" readonly="1" invisible="1"/>
+			</tree>
+		</field>
+	</record>
+	
+	<record id="view_installproduct_form" model="ir.ui.view">
+		<field name="name">dtsc.installproduct.form</field>
+		<field name="model">dtsc.installproduct</field>
+		<field name="arch" type="xml">
+			<form>
+				<header>
+					<button name="send_install_list" type="object" class="oe_highlight" string="派單" attrs="{'invisible': [('install_state', 'in', ['cancel','installing','succ'])]}" groups="dtsc.group_dtsc_mg,dtsc.group_dtsc_yw"/>
+					<button name="succ_install_list" type="object" class="oe_highlight" string="完成" attrs="{'invisible': [('install_state', 'in', ['draft','cancel','succ'])]}" groups="dtsc.group_dtsc_mg,dtsc.group_dtsc_yw"/>
+					<button name="back_install_list" type="object" class="oe_highlight" string="返回" attrs="{'invisible': [('install_state', 'in', ['draft','cancel'])]}" groups="dtsc.group_dtsc_mg,dtsc.group_dtsc_yw"/>
+					<button name="del_install_list" type="object" class="oe_highlight" string="作廢" attrs="{'invisible': [('install_state', 'in', ['cancel'])]}" groups="dtsc.group_dtsc_mg,dtsc.group_dtsc_yw"/>
+					<button name="send_google" type="object" class="oe_highlight" string="行事曆" groups="dtsc.group_dtsc_mg,dtsc.group_dtsc_yw"/>
+					<field name="install_state" widget="statusbar" statusbar_visible="draft,installing,succ,cancel"/>
+				</header>
+				<sheet>
+					<div class="oe_title">
+						<h2>施工單</h2>
+					</div>
+					<group col="6">
+						<group colspan="4">
+							<field name="company_id" readonly="1" class="oe_inline" style="font-size:22px"/>
+						</group>
+						<group colspan="2">
+							<field name="name" readonly="1" style="font-size:18px"/>
+						</group>
+					</group>
+					<div style="width:100%; border-top:1px solid black; margin-top:5px; margin-bottom:5px;"></div>
+					<group col="6">
+						<group colspan="2">
+							<field name="xcllr"/>
+							<field name="xcllr_phone"/>
+							<field name="address"/>
+							<field name="email_id" options="{'no_create': True, 'no_create_edit': True}"/>
+							<field name="email_name"/>
+						</group>
+						<group colspan="2">
+							<field name="cbsllr"/>
+							<field name="cbsllr_phone"/>
+							<field name="fzyw" options="{'no_create': True, 'no_create_edit': True}"/>
+							<field name="cb" attrs="{'readonly':[('checkout_order_state','in',['receivable_assigned'])]}" groups="dtsc.group_dtsc_kj,dtsc.group_dtsc_yw"/>
+							<field name="cb_other"  attrs="{'readonly':[('checkout_order_state','in',['receivable_assigned'])]}" groups="dtsc.group_dtsc_kj,dtsc.group_dtsc_yw"/>
+							<field name="cb_total"  attrs="{'readonly':[('checkout_order_state','in',['receivable_assigned'])]}" groups="dtsc.group_dtsc_kj,dtsc.group_dtsc_yw"/>
+							<field name="sjsf"  attrs="{'readonly':[('checkout_order_state','in',['receivable_assigned'])]}" groups="dtsc.group_dtsc_kj,dtsc.group_dtsc_yw"/>
+							<field name="checkout_order_state"  invisible="1"/>
+						</group>
+						<group colspan="2">
+							<field name="in_date"/>
+							<field name="in_date_end"/>
+							<field name="is_out_date" />
+							<field name="out_date" attrs="{'invisible':[('is_out_date','=',False)]}"/>
+							<field name="out_date_end" attrs="{'invisible':[('is_out_date','=',False)]}"/>
+							<field name="car_num"/>
+						</group>	
+						<group colspan="6">
+								<field name="google_comment"/>
+						</group>						
+					</group>
+					<notebook>
+						<page string="施工清單">
+							<field name="install_product_ids">
+								<tree  create="false" delete="false" editable="bottom">
+                                    <field name="sequence" readonly="1"/>
+									<field name="project_product_name" readonly="1"/>
+									<field name="name" readonly="1"/>
+									<field name="size" readonly="1"/>
+									<field name="caizhi" readonly="1"/>
+									<field name="install_note"/>
+									<field name="image_yt"   widget="image" class="w200" />
+									<field name="image_sgq"   widget="image" class="w200" />
+									<field name="image_wgt" widget="image" class="w200" />
+									<button name="get_action_manage_images" type="object" string="多圖管理" class="btn-primary"/>
+									<field name="caishu" sum="Total"/>
+									<field name="shuliang" readonly="1"/>
+									<field name="gongdan" readonly="1"/>
+								</tree>
+							</field>
+							
+							<group col="6">
+								<group colspan="3">
+									<field name="comment" readonly="1"/>
+									<field name="fzyw"/>
+									<field name="total_quantity" readonly="1"/>
+									<field name="zcs" readonly="1"/>
+									<!-- <field name="image" widget="image" style="width:100px;"/> -->
+									<!-- <button name="upload_image" string="上傳圖片" type="object" class="btn-primary" /> -->
+									<!-- <field name="image_urls" invisible="1"/> -->
+									<!-- <field name="image_urls"/> -->
+								</group>
+								<group>
+									<field name="signature" widget="signature" readonly="context.get('readonly', False)" />
+								</group>
+							</group>
+						</page>
+						<page string="施工圖片">
+							<field name="image_ids">
+								<tree editable="False">
+									<field name="project_product_name" />
+									<field name="install_note" />									
+									<!-- <field name="name" /> -->
+									<field name="image_yt" widget="image" class="w200" />
+									<field name="image_sgq" widget="image" class="w200" />
+									<field name="image_wgt" widget="image" class="w200" />
+									<!-- <button name="unlink_record" type="object" string="刪除" icon="fa-trash" class="btn-danger"/> -->
+								</tree>
+							</field>
+						</page>
+					</notebook>
+					<!-- <group> -->
+						<!-- <field name="image_ids"> -->
+							<!-- <tree> -->
+								<!-- <field name="install_line_id" /> -->
+								<!-- <field name="image"  widget="image" class="my_custom_tree_image" style="width:100px;"/> -->
+							<!-- </tree> -->
+						<!-- </field> -->
+					<!-- </group> -->
+				</sheet>
+			</form>
+		</field>
+	</record>
+     <record id="action_report_install" model="ir.actions.report">
+        <field name="name">施工單</field>
+        <field name="model">dtsc.installproduct</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">dtsc.report_install_template</field>
+        <field name="report_file">dtsc.report_install_template</field>
+        <field name="binding_model_id" ref="model_dtsc_installproduct"/>
+        <field name="binding_type">report</field> 
+    </record>
+	
+	<record id="action_report_succ_install" model="ir.actions.report">
+        <field name="name">完工報告</field>
+        <field name="model">dtsc.installproduct</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">dtsc.report_succ_install_template</field>
+        <field name="report_file">dtsc.report_succ_install_template</field>
+        <field name="binding_model_id" ref="model_dtsc_installproduct"/>
+        <field name="binding_type">report</field> 
+    </record>
+	
+	<record id="action_install_line_image1" model="ir.actions.act_window">
+		<field name="name">上傳圖片</field>
+		<field name="res_model">dtsc.imagelist</field>
+		<field name="view_mode">tree,form</field>
+		<!-- <field name="context">{'default_install_line_id': active_id, 'default_install_id': parent.install_id.id}</field> -->
+		<!-- <field name="domain">[('install_line_id', '=', active_id)]</field> -->
+	</record>
+	
+	
+	<record id="view_imagelist_tree" model="ir.ui.view">
+		<field name="name">dtsc.imagelist.tree</field>
+		<field name="model">dtsc.imagelist</field>
+		<field name="arch" type="xml">
+			<tree editable="bottom" delete="True">
+                <!-- <field name="name" /> -->
+                <field name="install_note" />
+                <field name="image_yt" widget="image" class="w200" />
+                <field name="image_sgq" widget="image" class="w200" />
+                <field name="image_wgt" widget="image" class="w200" />
+                <button name="unlink_record" type="object" string="刪除" icon="fa-trash" class="btn-danger"/>
+			</tree>
+		</field>
+	</record>
+	
+	<record id="search_installproduct" model="ir.ui.view">
+		<field name="name">dtsc.installproduct.search</field>
+		<field name="model">dtsc.installproduct</field>
+		<field name="arch" type="xml">
+			<search>
+				
+				<field name="name" string="單號"/>
+				<field name="search_line_name" string="所有訊息"/>
+				
+
+                <!-- <filter name="出貨日-其他" string="出貨日-其他" domain="[('date_labels.name', '=', '出貨日-其他')]"/> -->
+                       
+			</search>
+		</field>		
+	</record>
+</odoo>

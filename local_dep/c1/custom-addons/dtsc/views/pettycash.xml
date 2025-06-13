@@ -1,0 +1,164 @@
+<odoo>
+	<record id="action_printexcel_pettymanager_excel" model="ir.actions.server">
+		<field name="name">零用金轉Excel</field>
+		<field name="model_id" ref="model_dtsc_pettymanager"/>
+		<field name="state">code</field>
+		<field name="code">
+			action = env['dtsc.pettymanager'].with_context(env.context).action_printexcel_pettymanager()
+		</field>
+		<field name="binding_model_id" ref="model_dtsc_pettymanager"/>
+		<field name="binding_type">action</field>
+		<field name="binding_view_types">list</field>
+	</record>
+
+	<record id="view_petty_manager_tree" model="ir.ui.view">
+		<field name="name">petty.manager.tree</field>
+		<field name="model">dtsc.pettymanager</field>
+		<field name="arch" type="xml">
+			<tree>
+				<field name="name" string="日期"/>
+				<field name="last_num"/>
+			</tree>
+		</field>
+	</record>
+	
+	<record id="view_petty_manager_form" model="ir.ui.view">
+		<field name="name">petty.manager.form</field>
+		<field name="model">dtsc.pettymanager</field>
+		<field name="arch" type="xml">
+			<form>
+				<header>
+					<button name="succ_button" type="object" class="oe_highlight" string="完成" attrs="{'invisible':[('state','not in',['editable'])]}" />
+					<button name="back_button" type="object" class="oe_highlight" string="返回" attrs="{'invisible':[('state','not in',['succ'])]}" />
+					<field name="state" widget="statusbar" statusbar_visible="editable,succ" />
+				</header>
+				<sheet class="w3000">
+					<div class="oe_title">
+						<h1>
+							<!-- <field name="name" /> -->
+							<field name="name" readonly="1"/>
+						</h1>
+					</div>				
+					<group>
+						<field name="report_year"/>
+						<field name="month"/>
+						<field name="last_num"/>
+					</group>
+					<notebook>
+						<page string="零用金明细">
+					
+							<field name="pettycash_ids" >
+								<tree editable="bottom" default_order="id asc" limit="100" >
+									<field name="date_c"/>
+									<field name="project"/>
+									<field name="in_cash"/>
+									<field name="out_cash"/>
+									<field name="last_num"/>
+									<field name="name"/>
+									<field name="comment"/>
+									<field name="invoice_id"/>
+								</tree>
+							</field>
+						</page>
+					</notebook>
+				</sheet>
+			</form>
+		</field>
+	</record>
+	
+	<record id="action_report_pettymanager" model="ir.actions.report">
+        <field name="name">零用金</field>
+        <field name="model">dtsc.pettymanager</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">dtsc.report_pettymanager_template</field>
+        <field name="report_file">dtsc.report_pettymanager_template</field>
+        <field name="binding_model_id" ref="model_dtsc_pettymanager"/>
+        <field name="binding_type">report</field>
+    </record>
+	
+	<template id="report_pettymanager_template">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+				<t t-call="dtsc.external_layout_coin">
+                    <!-- 计算总页数 -->
+                    <t t-set="total_lines" t-value="len(doc.pettycash_ids)"/>
+                    <t t-set="lines_per_page" t-value="20"/>
+                    <t t-set="total_pages" t-value="(total_lines + lines_per_page - 1) // lines_per_page"/>
+
+                    <!-- 循环每页 -->
+                    <t t-foreach="[page_num for page_num in range(1, int(total_pages) + 1)]" t-as="page_num">
+						<!-- <t t-foreach="[1, 2]" t-as="copy"> -->
+                        <div class="page">
+                            <!-- 调用头部模板 -->
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <div>
+                                    <h3><span t-field="doc.name" style="font-size: 26px;margin-right: 20px;"/>零用金</h3> <!-- 增加右边距 -->
+                                </div>
+                                <!-- <div style="font-size: 24px;"> -->
+                                    <!-- <strong>日期:</strong> <span t-field="doc.name"/> -->
+                                <!-- </div> -->
+                                <div style="font-size: 24px;">
+                                    <strong>前期餘額:</strong> <span t-field="doc.last_num"/>
+                                </div>
+                            </div>                     
+
+                            <!-- 订单详情表格 -->
+                            <table class="table table-condensed" style="font-size:19px;width:1280px;table-layout: auto;">
+                                <thead>
+                                    <tr>
+										<th style="height: 60px;min-width:60px; text-align: center;vertical-align: middle;border: 1px solid #000;">日期</th>
+                                        <th style="height: 60px;min-width:60px; text-align: center;vertical-align: middle;border: 1px solid #000;">項目</th>
+                                        <th style="height: 60px;min-width:60px; text-align: center;vertical-align: middle;border: 1px solid #000;">收入</th>
+                                        <th style="height: 60px;min-width:60px; text-align: center;vertical-align: middle;border: 1px solid #000;">支出</th>
+                                        <th style="height: 60px;min-width:70px; text-align: center;vertical-align: middle;border: 1px solid #000;">餘額</th>
+                                        <th style="height: 60px;min-width:100px; text-align: center;vertical-align: middle;border: 1px solid #000;">人員</th>
+                                        <th style="height: 60px;min-width:100px; text-align: center;vertical-align: middle;border: 1px solid #000;">備註</th>
+                                        <th style="height: 60px;min-width:60px; text-align: center;vertical-align: middle;border: 1px solid #000;">發票號碼</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <t t-foreach="doc.pettycash_ids[(page_num-1) * lines_per_page : page_num * lines_per_page]" t-as="order">
+                                        <tr style="height: 75px;">
+                                            <td style="height: 75px;padding: 0px; text-align: center;vertical-align: middle;border: 1px solid #000; "><span t-field="order.date_c"/></td>
+                                            <td style="height: 75px;padding: 0px; text-align: center;vertical-align: middle;border: 1px solid #000; "><span t-field="order.project"/></td>
+                                            <td style="height: 75px;padding: 0px; text-align: center;vertical-align: middle;border: 1px solid #000; "><span t-field="order.in_cash"/></td>
+                                            <td style="height: 75px;padding: 0px; text-align: center;vertical-align: middle;border: 1px solid #000; "><span t-field="order.out_cash"/></td>
+                                            <td style="height: 75px;padding: 0px; text-align: center;vertical-align: middle;border: 1px solid #000; "><span t-field="order.last_num"/></td>
+                                            <td style="height: 75px;padding: 0px; text-align: center;vertical-align: middle;border: 1px solid #000; "><span t-field="order.name"/></td>
+                                            <td style="height: 75px;padding: 0px; text-align: center;vertical-align: middle;border: 1px solid #000; "><span t-field="order.comment"/></td>
+                                            <td style="height: 75px;padding: 0px; text-align: center;vertical-align: middle;border: 1px solid #000; "><span t-field="order.invoice_id"/></td>
+                                        </tr>
+                                    </t>
+                                    <!-- 补足不满 8 项的空白行 -->
+                                    <!-- <t t-set="current_page_lines" t-value="min(len(doc.order_ids) - (page_num-1) * (lines_per_page // 2), lines_per_page // 2)"/>
+                                    <t t-if="current_page_lines &lt; lines_per_page // 2">
+                                        <t t-foreach="range(0, ((lines_per_page // 2) - current_page_lines) * 2)" t-as="empty_line">
+                                            <tr>
+                                                <td colspan="8" style="height: 75px; padding: 0px; text-align: center;vertical-align: middle;border: 1px solid #000; "></td>
+                                            </tr>
+                                        </t>
+                                    </t> -->
+                                </tbody>
+                            </table>
+
+							<div style="display: flex; justify-content: space-between;font-size:19px">
+                               
+								<div style="flex: 1; text-align: center;">
+                                    <span>P：<t t-esc="page_num"/> / <t t-esc="total_pages"/></span>
+                                </div>
+                            </div>
+                          
+							
+                        </div>
+						<!-- </t> -->
+                        <!-- 分页 -->
+                        <t t-if="page_num &lt; total_pages">
+                            <div style="page-break-after: always;"></div>
+                        </t>
+                    </t>
+                </t>
+
+            </t>
+        </t>
+    </template>    
+</odoo>

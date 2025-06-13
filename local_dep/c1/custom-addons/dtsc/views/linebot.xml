@@ -1,0 +1,289 @@
+<odoo>
+	<template id="liff_checkin_page" name="LIFF Check-in Page">
+		  <!-- <t t-call="website.layout"> -->
+		<script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+		<style>
+            /* Custom styles */
+            .center-block {
+                display: block;
+                margin-left: auto;
+                margin-right: auto;
+                text-align: center; /* Center align text inside the button */
+            }
+            .btn-centered {
+                width: 300px; /* Increased width */
+                height: 50px; /* Increased height */
+                font-size: 18px; /* Larger font size for better readability */
+                line-height: 50px; /* Align the text vertically */
+            }
+            #map {
+                margin: 10px auto; /* Adds margin around the map */
+                height: 500px; /* Increased height */
+                width: 95%; /* Adjust width with some margin */
+                border: 1px solid #ddd;
+            }
+            .text-center h2, .text-center p {
+                text-align: center;
+            }
+			#current-time {
+                font-size: 24px; /* Increased font size for "打卡时间" */
+                font-weight: bold; /* Make the font weight bold for better visibility */
+            }
+        </style>
+			<div class="container mt-5">
+            <!-- Display Check-in Time -->
+            <div class="row">
+                <div class="col-12 text-center">
+                    <p id="current-time" class="lead">當前時間：--:--:--</p>
+                </div>
+            </div>
+            <!-- Check-in Button -->
+            <div class="row mt-4">
+                <div class="col-12 text-center">
+                    <button id="checkin-btn" class="btn btn-primary btn-lg btn-centered center-block">打卡</button>
+                </div>
+            </div>
+            <!-- Display Location Info -->
+            <div class="row mt-3">
+                <div class="col-12 text-center">
+                    <p id="current-location">正在定位中…</p>
+                </div>
+            </div>
+            
+            <!-- Display Map -->
+            <div class="row mt-3">
+                <div class="col-12">
+                    <div id="map"></div>
+                </div>
+            </div>
+        </div>
+			
+			<!-- 前端 JavaScript -->
+			<script type="text/javascript">
+			  // 加载 Google Maps API 的函数
+			  function loadGoogleMapsAPI(callback) {
+				  if (window.google)
+				  {
+						if(window.google.maps) {
+						  callback();
+						  return;
+					  }
+				  }
+				  var script = document.createElement("script");
+				  script.src = "https://maps.googleapis.com/maps/api/js?key=AIzaSyAaRtvYPCxY0Ewi6oCyg16AdSlr74rx0q4";
+				  script.async = true;
+				  script.defer = true;
+				  script.onload = callback;
+				  document.head.appendChild(script);
+			  }
+			  
+			  // 初始化地圖，並在指定位置添加標記
+			  function initMap(latitude, longitude) {
+				  var mapOptions = {
+					  center: { lat: latitude, lng: longitude },
+					  zoom: 15
+				  };
+				  var map = new google.maps.Map(document.getElementById("map"), mapOptions);
+				  new google.maps.Marker({
+					  position: { lat: latitude, lng: longitude },
+					  map: map,
+					  title: "您的位置"
+				  });
+			  }
+			  
+			  // 更新定位資訊及地圖
+			  function updateLocation() {
+				  if (navigator.geolocation) {
+					  navigator.geolocation.getCurrentPosition(function(position) {
+						  var lat = position.coords.latitude;
+						  var lng = position.coords.longitude;
+						  document.getElementById("current-location").innerText = "定位成功";
+						  loadGoogleMapsAPI(function() {
+							  initMap(lat, lng);
+						  });
+					  }, function(error) {
+						  document.getElementById("current-location").innerText = "無法獲取位置";
+					  });
+				  } else {
+					  document.getElementById("current-location").innerText = "您的瀏覽器不支持定位";
+				  }
+			  }
+			  
+			  // 實時更新打卡時間
+			  function updateTime() {
+				  var now = new Date();
+				  document.getElementById("current-time").innerText = "打卡時間：" + now.toLocaleTimeString();
+			  }
+			  function sendCheckInData(lat, lng, lineId) {
+				  fetch('/incheck', {
+					  method: 'POST',
+					  headers: {
+						  'Content-Type': 'application/json',
+					  },
+					  body: JSON.stringify({latitude: lat, longitude: lng, line_id: lineId})
+				  })
+				  .then(response => response.json())
+				  .then(data => {
+					  alert("打卡成功！");
+				  })
+				  .catch((error) => {
+					  console.error('Error:', error);
+				  });
+			  }
+			document.addEventListener("DOMContentLoaded", function() {
+				//const liffId = "2006957760-wVrpD4em";
+				
+				const queryString = window.location.search;
+				//alert("Query String: " + queryString);
+				const decodedQueryString = decodeURIComponent(queryString);
+				//alert("Decoded Query String: " + decodedQueryString);
+				const regex = /liffid=([a-zA-Z0-9\-]+)/; // Matches 'liffid=' followed by any alphanumeric or dash
+				const match = decodedQueryString.match(regex);
+				const liffId = match[1];
+				//alert(liffId)
+				//const liffId = "2006957760-wVrpD4em";
+				liff.init({
+						liffId: liffId
+					}).then(() => {
+						//alert("準備好了")
+						updateTime();
+						setInterval(updateTime, 1000);
+						updateLocation();
+						
+						document.getElementById("checkin-btn").addEventListener("click", function() {
+						//alert("打卡按钮被点击");  检查按钮点击事件是否触发
+						liff.getProfile()
+						.then(function(profile) {
+						  const lineId = profile.userId;
+						  navigator.geolocation.getCurrentPosition(function(position) {
+							  sendCheckInData(position.coords.latitude, position.coords.longitude, lineId);
+						  });
+						});
+						
+					  });
+						
+					});
+				  
+				  
+				  // 打卡按鈕事件處理
+				  
+			  });
+			</script>
+		  <!-- </t> -->
+		</template>
+
+
+
+	<record id="view_attendance_tree" model="ir.ui.view">
+        <field name="name">dtsc.attendance.tree</field>
+        <field name="model">dtsc.attendance</field>
+        <field name="arch" type="xml">
+            <tree create="false" editable="bottom">
+				<field name="name" />
+				<field name="in_time" />
+				<field name="in_status" decoration-danger="in_status == 'cd'" decoration-success="in_status == 'zc'" />
+				<field name="out_time" />
+				<field name="out_status" decoration-danger="out_status == 'zt'" decoration-success="out_status == 'zc'" />
+				<field name="work_time" />
+				<!-- <field name="line_user_id" /> -->
+				<!-- <field name="lat_in" /> -->
+				<!-- <field name="lang_in" /> -->
+				<field name="is_in_place" decoration-danger="is_in_place == 'bzfw'" decoration-success="is_in_place == 'zc'"/>
+				<!-- <field name="lat_out" /> -->
+				<!-- <field name="lang_out" /> -->
+				<field name="is_out_place" decoration-danger="is_out_place == 'bzfw'" decoration-success="is_out_place == 'zc'"/>
+            </tree>
+        </field>
+    </record>
+
+	<record id="view_linebot_tree" model="ir.ui.view">
+        <field name="name">dtsc.linebot.tree</field>
+        <field name="model">dtsc.linebot</field>
+        <field name="arch" type="xml">
+            <tree>
+				<field name="name" />
+				<field name="line_channel_secret" />
+				<field name="line_access_token" />
+            </tree>
+        </field>
+    </record>
+	
+	<record id="view_linebot_form" model="ir.ui.view">
+        <field name="name">dtsc.linebot.form</field>
+        <field name="model">dtsc.linebot</field>
+        <field name="arch" type="xml">
+            <form>
+				<header>
+					<button name="update_menu" type="object" class="oe_highlight" string="更新菜單" confirm="是否確認需要更新菜單？"  />
+					<button name="create_liff" type="object" class="oe_highlight" string="自動創建打卡頁面" confirm="是否確認需要創建打卡頁面？"  />
+				</header>
+				<sheet class="w3000">
+					<div class="oe_title">
+						<h2>Line設定</h2>
+						<h1>
+							<!-- <field name="name" /> -->
+							<field name="name"/>
+							
+						</h1>
+					</div>
+					<group col="12" string="基礎設定">
+						<group colspan="6">
+							<field name="menu_id" readonly="1"/>
+							<field name="liff_id" readonly="1"/>
+							<field name="liff_url" readonly="1"/>
+							<field name="liff_access_token" readonly="1"/>
+							<field name="liff_channel_id"/>
+							<field name="liff_secret"/>
+							<field name="line_channel_secret" />
+							<field name="line_access_token" />
+						</group>
+						
+						<group colspan="6">
+							<field name="image"  widget="image" class="w200"/>
+						</group>
+					</group>						
+					<group col="12">
+						<group colspan="4">
+							<field name="is_tanxing"/>
+							<field name="work_time"/>
+							<field name="start_time"/>
+							<field name="end_time"/>
+						</group>
+						<group colspan="8"> 
+							<field name="latlang_range"/>							
+							<field name="lat_lang" widget="geo_location"/>
+						</group>
+					</group>						
+							
+					<group col="12" string="菜單功能設定">
+						<group colspan="2">
+							<field name="menu_type_1" />
+							<field name="menu_context_1" />
+						</group>
+						<group colspan="2">
+							<field name="menu_type_2" />
+							<field name="menu_context_2" />
+						</group>
+						<group colspan="2">
+							<field name="menu_type_3" />
+							<field name="menu_context_3" />
+						</group>
+						<group colspan="2">
+							<field name="menu_type_4" />
+							<field name="menu_context_4" />
+						</group>
+						<group colspan="2">
+							<field name="menu_type_5" />
+							<field name="menu_context_5" />
+						</group>
+						<group colspan="2">
+							<field name="menu_type_6" />
+							<field name="menu_context_6" />
+						</group>
+						
+					</group>
+				</sheet> 
+            </form>
+        </field>
+    </record>
+</odoo>

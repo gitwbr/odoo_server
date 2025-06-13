@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="DtscPartner.ListButtons" t-inherit="web.ListView.Buttons">
+
+       <!-- hr.expense and hr.expense.sheet -->
+        <xpath expr="//button[hasclass('o_list_button_add')]" position="after">
+            <button type="button" class="btn btn-secondary" style="margin-left: 10px;" t-on-click="OnTestClick">
+                下載匯入模板
+            </button>
+        </xpath>
+	</t>
+	<t t-name="dtsc.CustomImportView" t-inherit="base_import.ImportView" t-inherit-mode="extension">
+		<xpath expr="//a[@title='Download']" position="replace">
+			<!-- 留空来移除元素或添加你的自定义按钮 -->
+		</xpath>
+	</t>
+	<t t-name="InstallProduct.ListButtons" t-inherit="web.ListView.Buttons">
+
+       <!-- hr.expense and hr.expense.sheet -->
+        <xpath expr="//button[hasclass('o_list_export_xlsx')]" position="after">
+            <button type="button" class="btn btn-secondary" style="margin-left: 10px;" t-on-click="OnTestClick">
+                下載月度報表
+            </button>
+        </xpath>
+	</t>
+</templates>

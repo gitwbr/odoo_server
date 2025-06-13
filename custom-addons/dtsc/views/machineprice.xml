@@ -10,6 +10,7 @@
 				<field name="selected_value" options="{'no_create': True, 'no_create_edit': True}"/>
 				<field name="price"/>
 				<field name="isdefault"/>
+				<field name="is_disabled" optional="hide"/>
 		  
 			</tree>
 		</field>

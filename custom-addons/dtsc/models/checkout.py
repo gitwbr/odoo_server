@@ -300,6 +300,7 @@ class Checkout(models.Model):
     
     is_open_full_checkoutorder = fields.Boolean(string="簡易流程",compute="_compute_is_open_full_checkoutorder")
     is_dayang = fields.Boolean('打樣')
+    lock_price = fields.Boolean('價格鎖定')
     
     def write(self, vals):
         for rec in self:
@@ -2162,7 +2163,7 @@ class Checkout(models.Model):
     
 
     def copy_last_record(self):
-        last_record = self.product_ids.sorted(lambda r: r.id)[-1] if self.product_ids else None
+        last_record = self.product_ids.sorted(lambda r: r.sequence or 0)[-1] if self.product_ids else None
         if last_record:
             try:
                 # 使用 copy_data 获取最后一条记录的数据
@@ -2173,6 +2174,7 @@ class Checkout(models.Model):
                 new_record_values['checkout_product_id'] = self.id  # 确保关联正确
                 new_record_values['product_atts'] = None  # 确保关联正确
                 new_record_values['is_copy_last'] = 1  # 是否是复制最后一条
+                new_record_values['sequence'] = last_record.sequence + 1  
                 product_atts_ids = last_record.product_atts.ids
                 # pprint(new_record_values)
                 # print(self.customer_class_id.id)
@@ -2222,8 +2224,11 @@ class Checkout(models.Model):
             next_month_str = next_date.strftime('%m')  # 月份
         
         
-            records = self.env['dtsc.checkout'].search([('name', 'like', 'A'+next_year_str+next_month_str+'%')], order='name desc', limit=1)
-            #print("查找數據庫中最後一條",records.name)
+            recordA = self.env['dtsc.checkout'].search([('name', 'like', 'A'+next_year_str+next_month_str+'%')], order='name desc', limit=1)
+            recordF = self.env['dtsc.checkout'].search([('name', 'like', 'F'+next_year_str+next_month_str+'%')], order='name desc', limit=1)
+            # print("查找數據庫中最後一條",records.name)
+            '''
+            records = recordA
             if records:
                 last_name = records.name
                 # 从最后一条记录的name中提取序列号并转换成整数
@@ -2235,7 +2240,17 @@ class Checkout(models.Model):
             else:
                 # 如果没有找到记录，就从A23100001开始
                 new_name = "A"+next_year_str+next_month_str+"00001" 
-        
+            '''
+            # 提取序號，若找不到則為 0
+            last_seq_A = int(recordA.name[5:]) if recordA and recordA.name[5:].isdigit() else 0
+            last_seq_F = int(recordF.name[5:]) if recordF and recordF.name[5:].isdigit() else 0
+
+            # 取最大值並 +1
+            max_seq = max(last_seq_A, last_seq_F)
+            new_sequence = max_seq + 1 if max_seq > 0 else 1
+
+            # 產生新的單號（永遠以 A 開頭）
+            new_name = "A{}{}{:05d}".format(next_year_str, next_month_str, new_sequence)
         
             vals['name'] = new_name
             # vals['name'] = self.env['ir.sequence'].next_by_code("dtsc.checkout") or _('New')
@@ -2334,7 +2349,7 @@ class CheckOutLine(models.Model):
     # product_atts = fields.Many2many("product.template.attribute.value",string="屬性名稱" )
     product_details = fields.Char("詳細信息")
     
-    machine_id = fields.Many2one("dtsc.machineprice",string="生產機台")
+    machine_id = fields.Many2one("dtsc.machineprice",string="生產機台",domain=[("is_disabled","=",False)])
     # output_mark = fields.Char("輸出方式備註")
     quantity = fields.Float("數量" ,required=True ,default="1")
     quantity_peijian = fields.Float("配件數")
@@ -2674,13 +2689,12 @@ class CheckOutLine(models.Model):
                 # 如果没有找到对应的记录，可能需要设置一个默认值或者抛出一个异常
                 vals['units_price'] = 0  # 或者选择抛出一个异常
         
-        children = self.env['dtsc.checkoutline'].search([('checkout_product_id', '=', vals['checkout_product_id'])], order='id desc',limit=1)
-
-        
-        if children:            
-            vals['sequence'] = children.sequence + 1
-        else:
-            vals['sequence'] = 1        
+        if not vals.get('sequence'): # covers: not in vals, or is None, or is 0, or is False
+            children = self.env['dtsc.checkoutline'].search([('checkout_product_id', '=', vals['checkout_product_id'])], order='sequence desc',limit=1)            
+            if children:            
+                vals['sequence'] = children.sequence + 1
+            else:
+                vals['sequence'] = 1       
        
         #如果是复制最后一条
         # if 'is_copy_last' in vals:
@@ -2761,7 +2775,10 @@ class CheckOutLine(models.Model):
     @api.depends("total_make_price","peijian_price","product_total_price","jijiamoshi","mergecai")
     def _compute_price(self): 
         # print("_compute_price")
-        for record in self:            
+        for record in self:      
+            if record.checkout_product_id.lock_price == True:
+                continue  
+                
             if record.checkout_product_id.checkout_order_state in ["receivable_assigned"]:
                 continue 
             else:
@@ -2776,6 +2793,9 @@ class CheckOutLine(models.Model):
     def _compute_total_make_price(self):   
         print("_compute_total_make_price")
         for record in self:
+            if record.checkout_product_id.lock_price == True:
+                continue  
+                
             if record.checkout_product_id.checkout_order_state in ["receivable_assigned"]:# or record.checkout_product_id.is_new_partner == True:
                 continue
             elif record.checkout_product_id.checkout_order_state in ["waiting_confirmation"] and record.checkout_product_id.is_new_partner == True:#儅在CRM中且有設客戶分類則有預設價格
@@ -2887,6 +2907,9 @@ class CheckOutLine(models.Model):
     def _compute_peijian_price(self):
         # print("_compute_peijian_price")
         for record in self:
+            if record.checkout_product_id.lock_price == True:
+                continue  
+                
             if record.checkout_product_id.checkout_order_state in ["receivable_assigned"]:# or record.checkout_product_id.is_new_partner == True:
                 continue
             elif record.checkout_product_id.checkout_order_state in ["waiting_confirmation"] and record.checkout_product_id.is_new_partner == True:#儅在CRM中且有設客戶分類則有預設價格
@@ -2966,6 +2989,9 @@ class CheckOutLine(models.Model):
     def _compute_units_price(self):
         print("_compute_units_price")
         for record in self:
+            if record.checkout_product_id.lock_price == True:
+                continue  
+                
             if record.checkout_product_id.checkout_order_state in ["receivable_assigned"]:# or record.checkout_product_id.is_new_partner == True:
                 continue
             elif record.checkout_product_id.checkout_order_state in ["waiting_confirmation"]: #CRM訂單由此進入
@@ -2986,6 +3012,9 @@ class CheckOutLine(models.Model):
     @api.depends("units_price","total_units","jijiamoshi") 
     def _compute_product_total_price(self):
         for record in self:
+            if record.checkout_product_id.lock_price == True:
+                continue  
+        
             if record.checkout_product_id.checkout_order_state in ["receivable_assigned"]:
                 continue   
             else:

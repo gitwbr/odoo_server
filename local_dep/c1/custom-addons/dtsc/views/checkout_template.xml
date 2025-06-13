@@ -1,0 +1,66 @@
+<odoo>
+    <template id="checkout_table_template" name="Checkout Table Template">
+        <table class="table table-bordered custom-order-table">
+            <thead>
+                <tr>
+                    <th>日期</th>
+                    <th>訂單流水號</th>
+                    <th>訂單內容</th>
+                    <th>金額</th> 
+                    <!-- <th>訂單狀態</th>-->
+                    <th>進度表</th>
+                    <th>取消訂單原因</th>
+                </tr>
+            </thead>
+            <tbody>
+                <t t-foreach="request.env['dtsc.checkout'].search([('customer_id', '=', request.env.user.partner_id.id)])" t-as="record">
+                    <tr>
+                        <td><t t-esc="record.create_date_str"/></td>
+                        <td><t t-esc="record.name"/></td>
+                        <td><t t-esc="record.order_content"/></td> 
+                        <td><t t-esc="record.total_price_added_tax"/></td>
+                        <!-- <td>
+                            <t t-if="record.checkout_order_state == 'draft' or record.checkout_order_state == 'quoting'">
+                                訂單確認
+                            </t>
+                            <t t-elif="record.checkout_order_state == 'producing'">
+                                生產中
+                            </t>
+                            <t t-elif="record.checkout_order_state == 'cancel'">
+                                取消
+                            </t>
+                            <t t-else="">
+                                已發貨
+                            </t>
+                        </td> -->
+                        <td>
+                            <!-- 进度表，包含所有状态 -->
+                            <div class="progress">
+								<!-- 订单确认状态 -->
+								<div class="progress-bar" role="progressbar" 
+									 t-att-class="'progress-bar-warning' if record.checkout_order_state not in ['cancel'] else 'progress-bar-secondary'" 
+									 style="width: 33%;">
+									訂單確認
+								</div>
+								<!-- 生产中状态 -->
+								<div class="progress-bar" role="progressbar" 
+									 t-att-class="'progress-bar-info' if record.checkout_order_state in ['producing','finished','price_review_done','receivable_assigned','closed'] else 'progress-bar-secondary'" 
+									 style="width: 33%;">
+									生產中
+								</div>
+								<!-- 已发货状态 -->
+								<div class="progress-bar" role="progressbar" 
+									 t-att-class="'progress-bar-success' if record.checkout_order_state in ['finished','price_review_done','receivable_assigned','closed'] else 'progress-bar-secondary'" 
+									 style="width: 34%;">
+									已發貨
+								</div>
+							</div>
+
+                        </td>
+                        <td><t t-esc="record.del_reason"/></td>
+                    </tr>
+                </t>
+            </tbody>
+        </table>
+    </template>
+</odoo>

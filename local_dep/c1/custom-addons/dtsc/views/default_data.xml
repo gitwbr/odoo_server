@@ -1,0 +1,99 @@
+<odoo>
+	<data noupdate="1">
+	<record id="account_tax_1" model="account.tax">
+        <field name="name">銷項5%</field>
+        <field name="type_tax_use">sale</field>
+        <field name="active">true</field>
+        <field name="amount_type">percent</field>
+        <field name="description">5%</field>
+        <field name="amount">5</field>
+        <field name="real_amount">5</field>
+        <field name="country_id">227</field>
+    </record>
+	<record id="account_tax_2" model="account.tax">
+        <field name="name">銷項5%-内含</field>
+        <field name="type_tax_use">sale</field>
+        <field name="active">false</field>
+        <field name="amount_type">percent</field>
+        <field name="description">5%</field>
+        <field name="amount">5</field>
+        <field name="real_amount">5</field>
+        <field name="country_id">227</field>
+    </record>
+	<record id="account_tax_3" model="account.tax">
+        <field name="name">進項5%</field>
+        <field name="type_tax_use">purchase</field>
+        <field name="active">true</field>
+        <field name="amount_type">percent</field>
+        <field name="description">5%</field>
+        <field name="amount">5</field>
+        <field name="real_amount">5</field>
+        <field name="country_id">227</field>
+    </record>
+	<record id="account_tax_4" model="account.tax">
+        <field name="name">進項5%-内含</field>
+        <field name="type_tax_use">purchase</field>
+        <field name="active">false</field>
+        <field name="amount_type">percent</field>
+        <field name="description">5%</field>
+        <field name="amount">5</field>
+        <field name="real_amount">5</field>
+        <field name="country_id">227</field>
+    </record>
+	<record id="unit_conversion_1" model="dtsc.unit_conversion">
+        <field name="name">單位轉換計算(才數)</field>
+        <field name="parameter_length">2</field>
+        <field name="first_unit">寬度(公分)</field>
+        <field name="second_unit">高度(公分)</field>
+        <field name="rounding_method">up</field>
+        <field name="decimal_places">0</field>
+        <field name="conversion_formula">param1 * param2 / 900</field>
+        <field name="converted_unit_name">每件(才數)</field>
+    </record>
+	
+	<record id="usertype_1" model="dtsc.usertype">
+		<field name="name">輸出</field>
+	</record>
+	<record id="usertype_2" model="dtsc.usertype">
+		<field name="name">後製</field>
+	</record>
+	<record id="usertype_3" model="dtsc.usertype">
+		<field name="name">品管</field>
+	</record>
+
+	<record id="accountaccount_1" model="account.account">
+		<field name="name">銷貨收入</field>
+		<field name="code">411100</field>
+		<field name="account_type">income</field>
+		<field name="internal_group">income</field>
+		<field name="root_id">52049</field>
+		<field name="reconcile">True</field>
+		<field name="company_id">1</field>
+	</record>
+	<record id="accountaccount_2" model="account.account">
+		<field name="name">採購支出</field>
+		<field name="code">411101</field>
+		<field name="account_type">expense</field>
+		<field name="internal_group">expense</field>
+		<field name="root_id">52049</field>
+		<field name="reconcile">True</field>
+		<field name="company_id">1</field>
+	</record>
+	
+	<record id="journal_1" model="account.journal">
+		<field name="name">銷售</field>
+		<field name="code">sale</field>
+		<field name="type">sale</field>
+		<field name="default_account_id" ref="accountaccount_1"/>  <!-- 引用第一个账户 -->
+        <field name="suspense_account_id" ref="accountaccount_1"/>  
+	</record>
+	<record id="journal_2" model="account.journal">
+		<field name="name">應付</field>
+		<field name="code">BILL</field>
+		<field name="type">purchase</field>
+		<field name="default_account_id" ref="accountaccount_2"/>  <!-- 引用第一个账户 -->
+        <field name="suspense_account_id" ref="accountaccount_2"/>
+	</record>
+	
+	</data>
+</odoo>

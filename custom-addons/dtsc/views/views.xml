@@ -145,6 +145,7 @@
 		<field name="res_model">dtsc.machineprice</field>
 		<field name="view_mode">tree,form</field>
 		<field name="type">ir.actions.act_window</field>
+		<field name="domain">[('is_disabled','=',False)]</field>
 	</record>
 
 	<record id="dtsc.worker_name_list_before" model="ir.actions.act_window">
@@ -597,13 +598,13 @@
 	
 	
 	<menuitem id="menu_chart_dashboard_root" parent="dtsc.menu_root" name="報表" sequence="10" action="dtsc.action_server_chart_dashboard2" groups="dtsc.group_dtsc_gly"/>
-    <menuitem id="menu_chart_dashboard" name="出貨統計表" parent="menu_chart_dashboard_root" action="action_server_chart_dashboard2" sequence="1"/>
-    <menuitem id="menu_sales_chart_dashboard" name="業務出貨統計表" parent="menu_chart_dashboard_root" action="action_server_sales_chart_dashboard" sequence="2"/>
-    <menuitem id="menu_machine_chart_dashboard" name="機台出貨統計表" parent="menu_chart_dashboard_root" action="action_server_machine_chart_dashboard" sequence="3"/>
-    <menuitem id="menu_product_chart_dashboard" name="材料出貨統計表" parent="menu_chart_dashboard_root" action="action_server_product_chart_dashboard" sequence="4"/>
-    <menuitem id="menu_makeout_chart_dashboard" name="委外生產統計表" parent="menu_chart_dashboard_root" action="action_server_makeout_chart_dashboard" sequence="5"/>
-	<menuitem id="menu_order_preview" name="下單統計表" parent="menu_chart_dashboard_root" action="action_order_preview1" sequence="6"/>
-	<menuitem id="menu_make_order_preview" name="工單狀況表" parent="menu_chart_dashboard_root" action="action_make_machine_chart_dashboard" sequence="7"/>
+    <menuitem id="menu_chart_dashboard" name="出貨統計表" parent="menu_chart_dashboard_root" action="action_server_chart_dashboard2" sequence="1" groups="dtsc.group_dtsc_gly"/>
+    <menuitem id="menu_sales_chart_dashboard" name="業務出貨統計表" parent="menu_chart_dashboard_root" action="action_server_sales_chart_dashboard" sequence="2" groups="dtsc.group_dtsc_gly"/>
+    <menuitem id="menu_machine_chart_dashboard" name="機台出貨統計表" parent="menu_chart_dashboard_root" action="action_server_machine_chart_dashboard" sequence="3" groups="dtsc.group_dtsc_gly"/>
+    <menuitem id="menu_product_chart_dashboard" name="材料出貨統計表" parent="menu_chart_dashboard_root" action="action_server_product_chart_dashboard" sequence="4" groups="dtsc.group_dtsc_gly"/>
+    <menuitem id="menu_makeout_chart_dashboard" name="委外生產統計表" parent="menu_chart_dashboard_root" action="action_server_makeout_chart_dashboard" sequence="5" groups="dtsc.group_dtsc_gly"/>
+	<menuitem id="menu_order_preview" name="下單統計表" parent="menu_chart_dashboard_root" action="action_order_preview1" sequence="6" groups="dtsc.group_dtsc_gly"/>
+	<menuitem id="menu_make_order_preview" name="工單狀況表" parent="menu_chart_dashboard_root" action="action_make_machine_chart_dashboard" sequence="7" groups="dtsc.group_dtsc_gly"/>
 	<menuitem id="menu_work_time" name="員工績效(工時)" parent="menu_chart_dashboard_root" action="action_work_time" sequence="8" groups="dtsc.group_dtsc_gly"/>
 	<menuitem id="menu_daka" name="考勤記錄" parent="menu_chart_dashboard_root" action="action_kaoqing" sequence="9" groups="dtsc.group_dtsc_gly"/>
 	<menuitem id="menu_pettycash" name="零用金" parent="menu_chart_dashboard_root" action="action_pettycash1" sequence="10" groups="dtsc.group_dtsc_gly"/>

@@ -1,0 +1,435 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+		<!-- 壓克力統計表 -->
+	<record id="report_yklcomment_tree" model="ir.ui.view">
+		<field name="name">dtsc.yklcomment.report.tree</field>
+		<field name="model">dtsc.yklcomment</field>
+		<field name="arch" type="xml">
+			<tree editable="bottom">			
+				<field name="name" />
+				<field name="loc_id" />
+				<field name="partner_name" />
+				<field name="color" readonly="1"/>
+				<field name="hou"  readonly="1" />
+				<!-- <field name="sort_num" /> -->
+				<!-- <field name="hou_num" invisible="1"/> -->
+				<field name="width"  />
+				<!-- <field name="width_num" invisible="1"  /> -->
+				<field name="height"  />
+				<field name="quantity"  />
+				<field name="cai" sum="小計" />
+				<field name="dateend"  />		
+				<field name="comment_account"  />
+				<field name="comment"  />	
+			</tree>
+		</field>	
+	</record>
+	
+		<record id="report_yklcomment_form" model="ir.ui.view">
+		<field name="name">dtsc.yklcomment.report.form</field>
+		<field name="model">dtsc.yklcomment</field>
+		<field name="arch" type="xml">
+			<form>		
+				<header>
+					<button name="copy_action" type="object" class="oe_highlight" string="複製"/>
+				</header>
+				<sheet class="w3000">
+				<group>
+					<field name="name" invisible="1" />
+					<field name="loc_id" />
+					<field name="partner_name" />
+					<field name="color" required="1" />
+					<field name="hou" required="1" />
+					<field name="width"  />
+					<field name="height"  />
+					<field name="quantity"  />
+					<field name="cai" sum="小計" />
+					<field name="comment_account"  />
+					<field name="comment"  />
+					<field name="dateend"  />	
+				</group>
+				</sheet>				
+			</form>
+		</field>	
+	</record>
+	
+	<record id="search_yklcomment_report" model="ir.ui.view">
+		<field name="name">dtsc.yklcomment.search.report</field>
+		<field name="model">dtsc.yklcomment</field>
+		<field name="arch" type="xml">
+			<search>
+				<searchpanel>
+                    <field name="loc_id"  />
+                </searchpanel>
+				
+				<filter string="顔色/品名分組" name="group_by_color_id" domain="[]" context="{'group_by': 'color'}"/>	
+				<filter string="厚度" name="group_by_hou_id" domain="[]" context="{'group_by': 'hou'}"/>	
+
+			</search> 
+		</field>		
+	</record>
+	
+	
+	<!-- 出货统计表 -->
+	<record id="report_checkout_treee" model="ir.ui.view">
+		<field name="name">dtsc.checkout.report.tree</field>
+		<field name="model">dtsc.checkout</field>
+		<field name="arch" type="xml">
+			<tree  default_order="display_name_reportt">	 			
+				<field name="display_name_reportt"  readonly="1"  />
+				<!-- <field name="customer_bianhao"   readonly="1"  /> -->
+				<field name="shuibie"  readonly="1"  />
+				<field name="estimated_date"  readonly="1"  />
+				<field name="delivery_order"  readonly="1"  />
+				<field name="record_price_and_construction_charge" sum="Total" width="140px" string="金額(未)"  />
+				<!-- <field name="construction_charge_price" sum="Total" string="施工金額(未)"  /> -->
+				<field name="tax_of_price" sum="Total" width="140px"  string="稅額" />
+				<field name="total_price_added_tax" sum="Total" width="140px"  string="小計" />
+				<field name="unit_all" sum="Total" width="140px"  string="小計(才)" />
+			</tree>
+		</field>	
+	</record>
+	
+	
+	<record id="search_checkout_report" model="ir.ui.view">
+		<field name="name">dtsc.checkout.search.report</field>
+		<field name="model">dtsc.checkout</field>
+		<field name="arch" type="xml">
+			<search>
+				<searchpanel>
+                    <field name="user_partner_id" string="業務" />
+                    <field name="report_year" string="年" select="multi"/>
+                    <field name="report_month" string="月" context="{'group_by': 'report_year'}" select="multi"/>
+
+                </searchpanel>
+				
+				<field name="search_line_namee" string="所有訊息"/>
+				<field name="customer_id" string="客戶名稱"/>			
+				
+				<filter string="當月數據" name="custom_26_to_25" 
+					domain="[('estimated_date', '>=', context.get('default_start_date')), ('estimated_date', '&lt;=', context.get('default_end_date'))]"/>	
+			</search> 
+		</field>		
+	</record>
+	<!-- 业务出货统计表 -->
+	<record id="report_checkout_sales" model="ir.ui.view">
+		<field name="name">dtsc.checkout.report.tree</field>
+		<field name="model">dtsc.checkout</field>
+		<field name="arch" type="xml">
+			<tree>				
+				<field name="user_partner_id" string="業務" readonly="1"  />
+				<field name="estimated_date"  readonly="1"  />
+				<field name="record_price" sum="Total" width="140px"  string="訂單總額"/>
+				<field name="install_cb_price" sum="Total" width="140px"  string="施工(成本)" />
+				<field name="install_total_price" sum="Total" width="140px"  string="施工(實際收費)" />
+				<field name="ye_ji" sum="Total" width="140px" string="業績小計"  />
+				<field name="delivery_order"  invisible="1" readonly="1"  />
+				<field name="name"  optional="hide" readonly="1"  />	
+				<field name="unit_all" sum="Total" width="140px"  string="才數小計" />
+				<!-- <field name="product_total_price_all" sum="Total"  string="輸出金額" /> -->
+				<!-- <field name="install_total_price_all" sum="Total"  string="輸出金額" /> -->
+			</tree>
+		</field>	
+	</record>
+	<!-- 委外生产统计表 -->
+	<record id="report_makeout_product" model="ir.ui.view">
+		<field name="name">dtsc.makeout.product.report.tree</field>
+		<field name="model">dtsc.makeout</field>
+		<field name="arch" type="xml">
+			<tree default_order="display_name_reportt,delivery_date desc">		
+				<!-- <group expand="1" string="分組結果">			 -->
+					<field name="display_name_reportt" readonly="1"  />
+					<field name="name" readonly="1"  />
+					<field name="delivery_date" readonly="1"  />
+					<field name="total_quantity" string="數量"  readonly="1"  />
+					<field name="total_size" string="才數"  readonly="1"  />
+					
+				<!-- </group> -->
+			</tree>
+		</field>	
+	</record>
+	
+	<!-- 材料出货统计表 -->
+	
+	<record id="report_checkoutline_product" model="ir.ui.view">
+		<field name="name">dtsc.checkoutline.product.report.tree</field>
+		<field name="model">dtsc.checkoutline</field>
+		<field name="arch" type="xml">
+			<tree>			
+				<!-- <group expand="1" string="分組結果">			 -->
+					<field name="machineAndproduct" string="類別" readonly="1"  />
+					<field name="saleuser"  readonly="1"  />
+					<field name="total_units" sum="Total" width="140px"  readonly="1"  />
+					<field name="price" sum="Total" width="140px"  readonly="1"  />
+					<field name="estimated_date" readonly="1"  />
+					
+				<!-- </group> -->
+			</tree>
+		</field>	
+	</record>
+	
+	<!-- <record id="view_kanban_checkoutline" model="ir.ui.view"> -->
+		<!-- <field name="name">dtsc.checkoutline.kanban</field> -->
+		<!-- <field name="model">dtsc.checkoutline</field> -->
+		<!-- <field name="arch" type="xml"> -->
+			<!-- <kanban> -->
+				<!-- <field name="machine_id"/> -->
+				<!-- <field name="product_id"/> -->
+				<!-- <templates> -->
+					<!-- <t t-name="kanban-box"> -->
+						<!-- <div t-attf-class="oe_kanban_global_click o_kanban_record"> -->
+							<!-- <strong> -->
+								<!-- <t t-esc="record.machine_id.value"/> -->
+							<!-- </strong> -->
+							<!-- <div><t t-esc="record.product_id.value"/></div> -->
+						<!-- </div> -->
+					<!-- </t> -->
+				<!-- </templates> -->
+			<!-- </kanban> -->
+		<!-- </field> -->
+	<!-- </record> -->
+	
+	<!-- <record id="view_graph_checkoutline" model="ir.ui.view"> -->
+		<!-- <field name="name">dtsc.checkoutline.graph</field> -->
+		<!-- <field name="model">dtsc.checkoutline</field> -->
+		<!-- <field name="arch" type="xml"> -->
+			<!-- <graph string="Check Outline Graph" type="bar"> -->
+				<!-- <field name="machine_id" type="row"/> -->
+				<!-- <field name="product_id" type="row"/> -->
+				<!-- <field name="total_units" type="measure"/> -->
+			<!-- </graph> -->
+		<!-- </field> -->
+	<!-- </record> -->
+	<!-- 工單狀態表 -->
+	<record id="report_make_checkoutline_machine" model="ir.ui.view">
+		<field name="name">dtsc.make.checkoutline.machine.report.tree</field>
+		<field name="model">dtsc.checkoutline</field>
+		<field name="arch" type="xml">
+			<tree>				
+				<field name="machine_id" string="機台" readonly="1"  />
+				<field name="make_orderid" string="工單編號" readonly="1"/>
+				<button name="go_make" type="object" string="查看工單"  />
+					
+				<field name="estimated_date_only" readonly="1"  />
+				<field name="total_units" width="140px" string="進單量"  readonly="1"  />
+				<field name="outman_count" width="140px"  readonly="1"  />
+				<field name="lengbiao_count" width="140px"  readonly="1"  />
+				<field name="guoban_count" width="140px"  readonly="1"  />
+				<field name="caiqie_count" width="140px"  readonly="1"  />
+				<field name="houzhi_count" width="140px"  readonly="1"  />
+				<field name="pinguan_count" width="140px"  readonly="1"  />
+				<field name="daichuhuo_count" width="140px"  readonly="1"  />
+				<field name="yichuhuo_count" width="140px"  readonly="1"  />
+			</tree>
+		</field>	
+	</record>
+	
+	<record id="search_make_machine_checkoutline_report" model="ir.ui.view">
+		<field name="name">dtsc.checkoutline.machine.search.report</field>
+		<field name="model">dtsc.checkoutline</field>
+		<field name="arch" type="xml">
+			<search>
+				<searchpanel>
+					<field name="report_year" string="年" select="multi"/>
+					<field name="report_month" string="月" context="{'group_by': 'report_year'}" select="multi"/>
+				</searchpanel>
+				<field name="machine_id" string="機台"/> 
+				<filter string="昨天" name="filter_yesterday" domain="[('estimated_date_only','=', (context_today() - relativedelta(days=1)).strftime('%%Y-%%m-%%d'))]"/>
+				<filter string="今天" name="filter_today" domain="[('estimated_date_only','=', context_today().strftime('%%Y-%%m-%%d'))]"/>
+				<filter string="明天" name="filter_yesterday" domain="[('estimated_date_only','=', (context_today() + relativedelta(days=1)).strftime('%%Y-%%m-%%d'))]"/>
+				<filter string="後天" name="filter_yesterday" domain="[('estimated_date_only','=', (context_today() + relativedelta(days=2)).strftime('%%Y-%%m-%%d'))]"/>
+				<!-- <filter string="明天" name="filter_tomorrow" domain="[('estimated_date_only', '=', (context_today() + timedelta(days=1)))]"/> -->
+				<!-- <filter string="後天" name="filter_after_tomorrow" domain="[('estimated_date_only', '=', (context_today() + timedelta(days=2)))]"/> -->
+ 
+				<filter string="機台分組" name="group_by_machine_id" domain="[]" context="{'group_by': 'machine_id'}"/>				
+			</search>
+		</field>        
+	</record>
+	
+	
+	<!-- 机台出货统计表 -->
+	<record id="report_checkoutline_machine" model="ir.ui.view">
+		<field name="name">dtsc.checkoutline.machine.report.tree</field>
+		<field name="model">dtsc.checkoutline</field>
+		<field name="arch" type="xml">
+			<tree>				
+				<field name="machine_id" string="機台" readonly="1"  />
+				<field name="estimated_date" readonly="1"  />
+				<field name="cai_done" width="140px"  readonly="1"  />
+				<field name="cai_not_done" width="140px"  readonly="1"  />
+				<field name="price" string="小計(金額)" width="140px"  readonly="1"  />
+				<field name="total_units" string="小計(才)" width="140px"  readonly="1"  />
+
+
+			</tree>
+		</field>	
+	</record>
+	
+	<record id="search_sales_checkout_report" model="ir.ui.view">
+		<field name="name">dtsc.checkout.sales.search.report</field>
+		<field name="model">dtsc.checkout</field>
+		<field name="arch" type="xml">
+			<search>
+				<searchpanel>
+                    <field name="user_partner_id" string="業務" />
+                    <field name="report_year" string="年" select="multi"/>
+                    <field name="report_month" string="月" context="{'group_by': 'report_year'}" select="multi"/>
+
+                </searchpanel>
+				
+				<field name="search_line_namee" string="所有訊息"/>
+				<field name="customer_id" string="客戶名稱"/>			
+				
+				<filter string="當月數據" name="custom_26_to_25" 
+					domain="[('estimated_date', '>=', context.get('default_start_date')), ('estimated_date', '&lt;=', context.get('default_end_date'))]"/>	
+			</search>
+		</field>		
+	</record>
+	
+	<record id="search_machine_checkoutline_report" model="ir.ui.view">
+		<field name="name">dtsc.checkoutline.machine.search.report</field>
+		<field name="model">dtsc.checkoutline</field>
+		<field name="arch" type="xml">
+			<search>
+				<searchpanel>
+					<field name="report_year" string="年" select="multi"/>
+					<field name="report_month" string="月" context="{'group_by': 'report_year'}" select="multi"/>
+				</searchpanel>
+				<field name="machine_id" string="機台"/>        
+				<filter string="當月數據" name="custom_26_to_25" 
+					domain="[('estimated_date', '>=', context.get('default_start_date')), ('estimated_date', '&lt;=', context.get('default_end_date'))]"/>    
+			</search>
+		</field>        
+	</record>
+
+	<record id="search_checkoutline_product" model="ir.ui.view">
+		<field name="name">dtsc.checkoutline.product.search.report</field>
+		<field name="model">dtsc.checkoutline</field>
+		<field name="arch" type="xml">
+			<search>
+				<searchpanel>
+                    <field name="report_year" string="年" select="multi"/>
+                    <field name="report_month" string="月" context="{'group_by': 'report_year'}" select="multi"/>
+
+            </searchpanel>
+			<filter string="當月數據" name="custom_26_to_25" 
+				domain="[('estimated_date', '>=', context.get('default_start_date')), ('estimated_date', '&lt;=', context.get('default_end_date'))]"/>	
+			</search>
+		</field>		
+	</record>
+	
+	<record id="search_makeout_report" model="ir.ui.view">
+		<field name="name">dtsc.makeout.search.report</field>
+		<field name="model">dtsc.makeout</field>
+		<field name="arch" type="xml">
+			<search>
+				<searchpanel>
+                    <field name="report_year" string="年" select="multi"/>
+                    <field name="report_month" string="月" context="{'group_by': 'report_year'}" select="multi"/>
+
+            </searchpanel>
+			<filter string="當月數據" name="custom_26_to_25" 
+				domain="[('delivery_date', '>=', context.get('default_start_date')), ('delivery_date', '&lt;=', context.get('default_end_date'))]"/>	
+			</search>
+		</field>		
+	</record>
+	
+
+    <record id="23" model="dtsc.year">
+        <field name="name">2023</field>
+    </record>
+    <record id="24" model="dtsc.year">
+        <field name="name">2024</field>
+    </record>
+    <record id="25" model="dtsc.year">
+        <field name="name">2025</field>
+    </record>
+    <record id="26" model="dtsc.year">
+        <field name="name">2026</field>
+    </record>
+    <record id="27" model="dtsc.year">
+        <field name="name">2027</field>
+    </record>
+    <record id="28" model="dtsc.year">
+        <field name="name">2028</field>
+    </record>
+    <record id="29" model="dtsc.year">
+        <field name="name">2029</field>
+    </record>
+    <record id="30" model="dtsc.year">
+        <field name="name">2030</field>
+    </record>
+    <record id="31" model="dtsc.year">
+        <field name="name">2031</field>
+    </record>
+    <record id="32" model="dtsc.year">
+        <field name="name">2032</field>
+    </record>
+    <record id="33" model="dtsc.year">
+        <field name="name">2033</field>
+    </record>
+    <record id="34" model="dtsc.year">
+        <field name="name">2034</field>
+    </record>
+    <record id="35" model="dtsc.year">
+        <field name="name">2035</field>
+    </record>
+    <record id="36" model="dtsc.year">
+        <field name="name">2036</field>
+    </record>
+    <!-- 增加更多年份記錄... -->
+
+    <!-- 預設月份 -->
+    <record id="1" model="dtsc.month">
+        <field name="name">01</field>
+    </record>
+    <record id="2" model="dtsc.month">
+        <field name="name">02</field>
+    </record>
+    <record id="3" model="dtsc.month">
+        <field name="name">03</field>
+    </record>
+    <record id="4" model="dtsc.month">
+        <field name="name">04</field>
+    </record>
+    <record id="5" model="dtsc.month">
+        <field name="name">05</field>
+    </record>
+    <record id="6" model="dtsc.month">
+        <field name="name">06</field>
+    </record>
+    <record id="7" model="dtsc.month">
+        <field name="name">07</field>
+    </record>
+    <record id="8" model="dtsc.month">
+        <field name="name">08</field>
+    </record>
+    <record id="9" model="dtsc.month">
+        <field name="name">09</field>
+    </record>
+    <record id="10" model="dtsc.month">
+        <field name="name">10</field>
+    </record>
+    <record id="11" model="dtsc.month">
+        <field name="name">11</field>
+    </record>
+    <record id="12" model="dtsc.month">
+        <field name="name">12</field>
+    </record>
+	
+    <!-- <record id="1" model="dtsc.usertype"> -->
+        <!-- <field name="name">輸出</field> -->
+    <!-- </record> -->
+    <!-- <record id="2" model="dtsc.usertype"> -->
+        <!-- <field name="name">後製</field> -->
+    <!-- </record> -->
+    <!-- <record id="3" model="dtsc.usertype"> -->
+        <!-- <field name="name">品管</field> -->
+    <!-- </record> -->
+    <!-- <record id="4" model="dtsc.usertype"> -->
+        <!-- <field name="name">其他</field> -->
+    <!-- </record> -->
+	
+	
+	
+</odoo>

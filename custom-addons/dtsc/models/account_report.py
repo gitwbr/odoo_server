@@ -248,10 +248,11 @@ class AccountReportWizard(models.TransientModel):
         output = io.BytesIO()
         workbook = xlsxwriter.Workbook(output)
         worksheet = workbook.add_worksheet("應付貨款總計表")
-
+        
+        company_id = self.env["res.company"].search([],limit=1)   
         # 写入标题
         title_format = workbook.add_format({'bold': True, 'align': 'center', 'valign': 'vcenter', 'font_size': 14})
-        worksheet.merge_range('A1:I1', "科影數位影像股份有限公司", title_format)
+        worksheet.merge_range('A1:I1', company_id.name if company_id else "", title_format)
         worksheet.merge_range('A2:I2', f"{end_year}年{end_month}月 應付貨款總計表", title_format)
 
         # 写入表头

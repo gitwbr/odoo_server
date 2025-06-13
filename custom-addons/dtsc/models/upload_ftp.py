@@ -29,12 +29,12 @@ class UploadModel(models.Model):
             # 本地保存路径
             """ if not os.path.exists(local_save_path):
                 os.makedirs(local_save_path, exist_ok=True)
-                os.chmod(local_save_path, 0o755)
+                os.chmod(local_save_path, 0o777)
                 _logger.info('創建本地保存目錄: %s', local_save_path)
                 
             if not os.path.exists(local_folder_path):
                 os.makedirs(local_folder_path, exist_ok=True)
-                os.chmod(local_folder_path, 0o755)
+                os.chmod(local_folder_path, 0o777)
                 _logger.info('創建本地檔案夾: %s', local_folder_path)
                 
             with open(local_file_path, 'wb') as local_file:

@@ -77,9 +77,11 @@
 
 ## 镜像真实处理（dockerfile）
    # 查看容器中的依赖
-   docker exec -it odoo16-web3-1 pip list --format=freeze > requirements.txt
+   docker exec -it odoo_my_odoo_1 pip list --format=freeze > requirements.txt
       # 进入容器
       docker run -it --rm odoo16-web3-1 bash
+      docker exec -it odoo_my_odoo_1 /bin/bash
+      docker exec -it odoo16-web3-1 /bin/bash
       # 在容器内查看
       pip list --format=freeze
 
@@ -94,6 +96,14 @@
 
    # 查看镜像中的Python包
    docker run --rm custom-odoo:16.0.1 pip list --format=freeze
+   docker run --rm b22e7cb89f65 pip list --format=freeze
+
+   # 清楚所有none镜像
+   docker system prune -f
+
+   # 删除所有已停止的容器
+   docker container prune
+
 
 # 將當前運行的容器保存為新鏡像
 docker commit b67e5cfb5610 custom-odoo-web_default:latest

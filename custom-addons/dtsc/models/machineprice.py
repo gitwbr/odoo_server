@@ -27,3 +27,4 @@ class Machineprice(models.Model):
 
     price = fields.Float("變價", digits=(16,2))
     isdefault = fields.Boolean(string="為預設機台",default=False)
+    is_disabled = fields.Boolean(string="封存",default=False)

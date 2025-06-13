@@ -1,0 +1,268 @@
+<odoo>
+
+	<record id="view_dtsc_stock_report" model="ir.ui.view">
+		<field name="name">dtsc.stockreportwizard.report</field>
+		<field name="model">dtsc.stockreportwizard</field>
+		<field name="arch" type="xml">
+			<form>
+				<group>
+					<field name="endtime"/>
+					<field name="select_method"/>
+					<field name="is_print_zero"/>				
+				</group>																		
+				<footer>
+					<button string="確認列印" type="object" name="your_confirm_method"/>
+					<button string="取消" class="btn-secondary" special="cancel"/>
+				</footer>
+			</form>
+		</field>
+	</record>
+	
+	<record id="dtsc_stock_quant_report" model="ir.actions.server">
+		<field name="name">列印庫存</field>
+		<field name="model_id" ref="dtsc.model_stock_quant"/>
+		<field name="binding_model_id" ref="dtsc.model_stock_quant"/>
+		<field name="state">code</field>
+		<field name="code">
+			action = {
+				'type': 'ir.actions.act_window',
+				'name': '列印庫存',
+				'res_model': 'dtsc.stockreportwizard',
+				'view_mode': 'form',
+				'target': 'new',
+			}
+		</field>
+	</record>
+		
+     <record id="action_report_stock_quant3" model="ir.actions.report">
+			<field name="name">庫存表</field>
+			<field name="model">stock.quant</field>
+			<field name="report_type">qweb-pdf</field>
+			<field name="report_name">dtsc.report_inventory</field>
+			<field name="report_file">dtsc.report_inventory</field>
+			<field name="binding_model_id" ref="stock.model_stock_quant"/>
+			<field name="binding_type">report</field>
+		</record>
+		
+		<record id="action_report_stock_quant_amount3" model="ir.actions.report">
+			<field name="name">庫存表(金額)</field>
+			<field name="model">stock.quant</field>
+			<field name="report_type">qweb-pdf</field>
+			<field name="report_name">dtsc.report_inventory_amount</field>
+			<field name="report_file">dtsc.report_inventory_amount</field>
+			<field name="binding_model_id" ref="stock.model_stock_quant"/>
+			<field name="binding_type">report</field>
+		</record>
+		
+		<record id="action_report_stock_quant_base3" model="ir.actions.report">
+			<field name="name">庫存表-展開</field>
+			<field name="model">stock.quant</field>
+			<field name="report_type">qweb-pdf</field>
+			<field name="report_name">dtsc.report_inventory_base</field>
+			<field name="report_file">dtsc.report_inventory_base</field>
+			<field name="binding_model_id" ref="stock.model_stock_quant"/>
+			<field name="binding_type">report</field>
+		</record>
+	
+	<record id="dtsc_stock_picking_internal_form_inherit" model="ir.ui.view">
+		<field name="name">dtsc.stock.picking.form.inherit</field>
+		<field name="model">stock.picking</field>
+		<field name="inherit_id" ref="stock.view_picking_form"/>
+		<field name="arch" type="xml">
+			 <xpath expr="//page[@name='operations']//field[@name='product_id']" position="attributes">
+            <!-- 为 `product_id` 字段添加一个 domain 限制产品只能是可用于采购的产品 -->
+				<attribute name="domain">[('purchase_ok', '=', True)]</attribute>
+				<attribute name="options">{'no_create': True, 'no_create_edit': True}</attribute>
+			</xpath>
+			 <xpath expr="//page[@name='operations']//field[@name='product_id']" position="after">
+				<field name="now_stock"/>
+			</xpath>
+			<!-- 定位到第一个 button_validate 按钮 -->
+			<xpath expr="//button[@name='button_validate' and contains(@class, 'oe_highlight')]" position="attributes">
+				<!-- 添加新的权限组到 groups 属性 -->
+				<attribute name="groups">stock.group_stock_user,dtsc.group_dtsc_sc</attribute>
+			</xpath>
+			<!-- <field name="location_id" domain="[('usage', '=', 'internal')]"> -->
+			<!-- <field name="location_dest_id" domain="[('usage', '=', 'internal')]"> -->
+			<xpath expr="//field[@name='location_id' and @groups='stock.group_stock_multi_locations']" position="attributes">
+				<attribute name="domain">[('usage', '=', 'internal')]</attribute>
+			</xpath>
+			
+			<!-- 只在 location_dest_id 字段添加 domain，保留其他配置 -->
+			<xpath expr="//field[@name='location_dest_id' and @groups='stock.group_stock_multi_locations']" position="attributes">
+				<attribute name="domain">[('usage', '=', 'internal')]</attribute> <!-- 添加 domain -->
+			</xpath><!-- 定位到第二个 button_validate 按钮 -->
+			<xpath expr="//button[@name='button_validate' and contains(@class, 'o_btn_validate')]" position="attributes">
+				<!-- 添加新的权限组到 groups 属性 -->
+				<attribute name="groups">stock.group_stock_user,dtsc.group_dtsc_sc</attribute>
+			</xpath>
+			<button name="action_confirm" position="attributes">				
+				<attribute name="invisible">1</attribute>
+			</button>
+			<button name="action_open_label_type" position="attributes">				
+				<attribute name="invisible">1</attribute>
+			</button>
+			<button name="button_scrap" position="attributes">				
+				<attribute name="invisible">1</attribute>
+			</button>
+			<button name="action_confirm" position="after">
+				<button name="action_move_done" string="確認調撥" type="object" class="oe_highlight" attrs="{'invisible':[('state','not in',['draft'])]}"/>
+			</button>
+			<xpath expr="//field[@name='product_id']"  position="after">
+				<field name="lot_id" domain="[('product_id' , '=' , product_id ), ('product_qty', '>', 0)]"/>
+			</xpath>
+		</field>
+	</record>
+	
+	<record id="stock_qunat_search_inherit" model="ir.ui.view">
+		<field name="name">stock.quant.inherit</field>
+		<field name="model">stock.quant</field>
+		<field name="inherit_id" ref="stock.quant_search_view"/>
+		<field name="arch" type="xml">
+			<xpath expr="//search" position="inside">
+				<searchpanel>
+					<field name="location_id" select="one"/>
+					<field name="categ_id" string="產品分類"/>
+				</searchpanel>
+			</xpath> 
+		</field>
+	</record>
+	
+	 <record model="ir.ui.view" id="view_stock_quant_tree_inventory_editable_dtsc">
+        <field name="name">stock.quant.inventory.tree.editable.dtsc</field>
+        <field name="model">stock.quant</field>
+        <field eval="10" name="priority"/>
+        <field name="arch" type="xml">
+            <tree default_order="location_id, inventory_date, product_id, package_id, lot_id, owner_id" decoration-info='inventory_quantity != False' decoration-warning='is_outdated' editable="bottom" create="1" edit="1" import="1" js_class="inventory_report_list_dtsc" class="o_inventory_adjustments" sample="1">
+                <header>
+                    <button name="stock.action_stock_inventory_adjustement_name" groups="stock.group_stock_manager" type="action" string="套用"/>
+                    <button name="action_reset" type="object" string="清除"/>
+                    <button name="stock.action_stock_request_count" groups="stock.group_stock_manager" type="action" string="請求盤點"/>
+                </header>
+                <field name="create_date" invisible="1"/>
+                <field name="write_date" invisible="1"/>
+                <field name="id" invisible="1"/>
+                <field name="is_outdated" invisible="1"/>
+                <field name="sn_duplicated" invisible="1"/>
+                <field name="tracking" invisible="1"/>
+                <field name="inventory_quantity_set" invisible="1"/>
+                <field name="company_id" invisible="1"/>
+                <field name="location_id" domain="[('usage', 'in', ['internal', 'transit'])]" attrs="{'readonly': [('id', '!=', False)]}" invisible="context.get('hide_location', False)" options="{'no_create': True}"/>
+                <field name="storage_category_id" groups="stock.group_stock_storage_categories" invisible="context.get('hide_location', False)" options="{'no_create': True}" optional="hidden"/>
+                <field name="cyclic_inventory_frequency" invisible="context.get('hide_location', False)" options="{'no_create': True}" optional="hidden"/>
+                <field name="priority" widget="priority" nolabel="1" optional="hidden"/>
+                <field name="product_id" attrs="{'readonly': [('id', '!=', False)]}" readonly="context.get('single_product', False)" force_save="1" options="{'no_create': True}"/>
+                <field name="product_categ_id" optional="hide"/>
+                <button name="action_warning_duplicated_sn" type="object" attrs="{'invisible': [('sn_duplicated', '=', False)]}" title="This lot/serial number is already in another location" class="btn btn-secondary text-warning float-end" icon="fa-warning"/>
+                <field name="lot_id" groups="stock.group_production_lot"
+                    attrs="{'readonly': ['|', ('tracking', 'not in', ['serial', 'lot']), '&amp;', ('id', '!=', False), '|', ('lot_id', '!=', False), ('quantity', '!=', 0)]}"
+                    invisible="context.get('hide_lot', False)"
+                    context="{'default_product_id': product_id, 'default_company_id': company_id}"
+                    decoration-warning="sn_duplicated"
+                    force_save="1"/>
+                <field name="package_id" groups="stock.group_tracking_lot" attrs="{'readonly': [('id', '!=', False)]}"/>
+                <field name="owner_id" groups="stock.group_tracking_owner" attrs="{'readonly': [('id', '!=', False)]}" options="{'no_create': True}"/>
+                <field name="last_count_date" optional='hidden' readonly='1'/>
+                <!-- <field name="available_quantity" string="可用數量" decoration-danger="available_quantity &lt; 0" optional="hidden"/> -->
+                <field name="quantity" optional="show" decoration-warning="quantity &lt; 0" string="在庫數量"/>
+				<field name="zksl_cai"/>		 
+                <field name="product_uom_id" groups="uom.group_uom" string="單位"/>
+                <field name="inventory_quantity" widget="counted_quantity_widget"/>
+                <field name="inventory_diff_quantity" string="差異"  attrs="{'invisible': [('inventory_quantity_set', '=', False)]}" decoration-muted="inventory_diff_quantity == 0" decoration-danger="inventory_diff_quantity &lt; 0" decoration-success="inventory_diff_quantity &gt; 0" decoration-bf="inventory_diff_quantity != 0"/>
+                <field name="inventory_date" invisible="1" optional="show"/>
+				<field name="is_set_date" invisible="1"/>					
+				<field name="stock_date" invisible="1"/>					
+				<field name="stock_date_num" invisible="context.get('default_is_set_date') != True "/>			
+				<field name="lastmodifydate"/>					
+				<field name="average_price" optional="hide"/>
+				<field name="total_value" optional="hide"/>
+                <field name="user_id" string="使用者" optional="show"/>
+                <field name='company_id' groups="base.group_multi_company" optional="hide"/>
+                <button name="action_inventory_history" type="object" class="btn btn-link text-info" icon="fa-history" string="記錄"/>
+                <button name="action_apply_inventory" groups="stock.group_stock_manager" type="object" string="套用" class="btn btn-link" icon="fa-save" attrs="{'invisible': [('inventory_quantity_set', '=', False)]}"/>
+                <button name="action_set_inventory_quantity" type="object" string="設定" class="btn btn-link" icon="fa-bullseye" attrs="{'invisible': [('inventory_quantity_set', '=', True)]}"/>
+                <button name="action_set_inventory_quantity_to_zero" type="object" string="清除" class="btn text-warning" icon="fa-times" attrs="{'invisible': [('inventory_quantity_set', '=', False)]}"/>
+            </tree>
+        </field>
+    </record>
+	
+	 <record model="ir.ui.view" id="view_stock_quant_tree_inventory_editable_dtsc_not_full">
+        <field name="name">stock.quant.inventory.tree.editable.dtsc</field>
+        <field name="model">stock.quant</field>
+        <field eval="10" name="priority"/>
+        <field name="arch" type="xml">
+            <tree default_order="location_id, inventory_date, product_id, package_id, owner_id" decoration-info='inventory_quantity != False' decoration-warning='is_outdated' editable="bottom" create="1" edit="1" import="1" js_class="inventory_report_list_dtsc" class="o_inventory_adjustments" sample="1">
+                <header>
+                    <button name="stock.action_stock_inventory_adjustement_name" groups="stock.group_stock_manager" type="action" string="套用"/>
+                    <button name="action_reset" type="object" string="清除"/>
+                    <button name="stock.action_stock_request_count" groups="stock.group_stock_manager" type="action" string="請求盤點"/>
+                </header>
+                <field name="create_date" invisible="1"/>
+                <field name="write_date" invisible="1"/>
+                <field name="id" invisible="1"/>
+                <field name="is_outdated" invisible="1"/>
+                <field name="sn_duplicated" invisible="1"/>
+                <field name="tracking" invisible="1"/>
+                <field name="inventory_quantity_set" invisible="1"/>
+                <field name="company_id" invisible="1"/>
+                <field name="location_id" domain="[('usage', 'in', ['internal', 'transit'])]" attrs="{'readonly': [('id', '!=', False)]}" invisible="context.get('hide_location', False)" options="{'no_create': True}"/>
+                <field name="storage_category_id" groups="stock.group_stock_storage_categories" invisible="context.get('hide_location', False)" options="{'no_create': True}" optional="hidden"/>
+                <field name="cyclic_inventory_frequency" invisible="context.get('hide_location', False)" options="{'no_create': True}" optional="hidden"/>
+                <field name="priority" widget="priority" nolabel="1" optional="hidden"/>
+                <field name="product_id" attrs="{'readonly': [('id', '!=', False)]}" readonly="context.get('single_product', False)" force_save="1" options="{'no_create': True}"/>
+                <field name="product_categ_id" optional="hide"/>
+                <button name="action_warning_duplicated_sn" type="object" attrs="{'invisible': [('sn_duplicated', '=', False)]}" title="This lot/serial number is already in another location" class="btn btn-secondary text-warning float-end" icon="fa-warning"/>
+
+                <field name="package_id" groups="stock.group_tracking_lot" attrs="{'readonly': [('id', '!=', False)]}"/>
+                <field name="owner_id" groups="stock.group_tracking_owner" attrs="{'readonly': [('id', '!=', False)]}" options="{'no_create': True}"/>
+                <field name="last_count_date" optional='hidden' readonly='1'/>
+                <!-- <field name="available_quantity" string="可用數量" decoration-danger="available_quantity &lt; 0" optional="hidden"/> -->
+                <field name="quantity" optional="show" decoration-warning="quantity &lt; 0" string="在庫數量"/>
+				<field name="zksl_cai"/>		 
+                <field name="product_uom_id" groups="uom.group_uom" string="單位"/>
+                <field name="inventory_quantity" widget="counted_quantity_widget"/>
+                <field name="inventory_diff_quantity" string="差異"  attrs="{'invisible': [('inventory_quantity_set', '=', False)]}" decoration-muted="inventory_diff_quantity == 0" decoration-danger="inventory_diff_quantity &lt; 0" decoration-success="inventory_diff_quantity &gt; 0" decoration-bf="inventory_diff_quantity != 0"/>
+                <field name="inventory_date" invisible="1" optional="show"/>
+				<field name="is_set_date" invisible="1"/>					
+				<field name="stock_date" invisible="1"/>					
+				<field name="stock_date_num" invisible="context.get('default_is_set_date') != True "/>			
+				<field name="lastmodifydate"/>					
+				<field name="average_price" optional="hide"/>
+				<field name="total_value" optional="hide"/>
+                <field name="user_id" string="使用者" optional="show"/>
+                <field name='company_id' groups="base.group_multi_company" optional="hide"/>
+                <button name="action_inventory_history" type="object" class="btn btn-link text-info" icon="fa-history" string="記錄"/>
+                <button name="action_apply_inventory" groups="stock.group_stock_manager" type="object" string="套用" class="btn btn-link" icon="fa-save" attrs="{'invisible': [('inventory_quantity_set', '=', False)]}"/>
+                <button name="action_set_inventory_quantity" type="object" string="設定" class="btn btn-link" icon="fa-bullseye" attrs="{'invisible': [('inventory_quantity_set', '=', True)]}"/>
+                <button name="action_set_inventory_quantity_to_zero" type="object" string="清除" class="btn text-warning" icon="fa-times" attrs="{'invisible': [('inventory_quantity_set', '=', False)]}"/>
+            </tree>
+        </field>
+    </record>
+	
+	<record id="stock_quant_tree_view_inherit" model="ir.ui.view">
+		<field name="name">stock.quant.tree.view.inherit</field>
+		<field name="model">stock.quant</field>
+		<field name="inherit_id" ref="stock.view_stock_quant_tree_inventory_editable"/>
+		<field name="arch" type="xml">
+			
+			<!-- <xpath expr="//tree" position="attributes"> -->
+				<!-- <attribute name="decoration-info">"inventory_quantity != False"</attribute> -->
+			<!-- </xpath> -->
+
+			<xpath expr="//field[@name='user_id']" position="before">
+				<field name="is_set_date" invisible="1"/>					
+				<field name="stock_date" invisible="1"/>					
+				<field name="stock_date_num" invisible="context.get('default_is_set_date') != True "/>			
+				<field name="lastmodifydate"/>					
+				<field name="average_price"/>
+				<field name="total_value"/>
+			</xpath>
+			<xpath expr="//field[@name='product_uom_id']" position="before">
+				<field name="zksl_cai"/>		 
+			</xpath>
+			<xpath expr="//field[@name='inventory_date']" position="attributes">
+				<attribute name="invisible">1</attribute>	
+			</xpath>
+		</field>
+	</record>
+</odoo>

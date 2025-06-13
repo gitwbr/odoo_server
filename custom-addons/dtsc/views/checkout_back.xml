@@ -298,6 +298,7 @@
                             <field name="is_in_by_kj" invisible="1"/>
                             <field name="is_in_by_sc" invisible="1"/>
 							<field name="is_dayang" attrs="{'invisible': [('name', '=', False)]}" />
+							<field name="lock_price"/>
 							<field name="create_date" readonly="1" string="建立日期"/>
 							<!-- <field name="check_product_state" invisible="1"/> -->
 							<field name="quantity" invisible="1"/>

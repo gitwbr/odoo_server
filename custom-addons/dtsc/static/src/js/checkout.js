@@ -1249,7 +1249,7 @@ odoo.define('dtsc.checkout', function (require) {
 			var deliveryRow = $('<div class="form-row customer-detail mt-3">').append(  // mt-3增加上边距
 				$('<div class="form-group col-md-12">').append(
 					$('<label>').attr('for', 'delivery_char').text('交貨方式'),
-					$('<input>').addClass('form-control val_required').attr({type: 'text', name: 'delivery_char', id: 'delivery_char', placeholder: '請輸入交貨方式:自取、快遞(科影代叫)、貨運、施工，若無填寫一律為自取...等'}),
+					$('<input>').addClass('form-control val_required').attr({type: 'text', name: 'delivery_char', id: 'delivery_char', placeholder: '請輸入交貨方式:自取、快遞、貨運、施工，若無填寫一律為自取...等'}),
 					$('<div>').addClass('invalid-feedback').text('必填')
 				)
 			);

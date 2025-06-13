@@ -8,32 +8,21 @@ from collections import defaultdict
 import logging
 
 _logger = logging.getLogger(__name__)
-from odoo.addons.website.controllers.main import Website
-from urllib.parse import quote
-import werkzeug
 
-#class WebsiteForceHttps(Website):
-
-
-    # @http.route('/website/force/<int:website_id>', type='http', auth="user", website=True, sitemap=False, multilang=False,override=True)
-    # def website_force(self, website_id, path='/', isredir=False, **kw):
-        # _logger.info("==================================")
-        # website = request.env['website'].browse(website_id)
-        # _logger.info(f"----------------{website}--------------------")
-        # if not isredir and website.domain:
-            # _logger.info(f"------===={website.domain}=====--------")
-            # domain_from = request.httprequest.environ.get('HTTP_HOST', '')
-            # domain_to = website.domain.replace("http://", "").replace("https://", "")
-            # domain_to_https = f"https://{domain_to}"
-            # force_url = f'/website/force/{website.id}?isredir=1&path={quote(path)}'
-            # url_to = werkzeug.urls.url_join(domain_to_https, force_url)
-            # _logger.info(f"------===={url_to}=====--------")
-            # return request.redirect(url_to)
-        # _logger.info(f"++++++++++++++++")
-        # website._force()
-        # return request.redirect(path)
-        
 class CustomWebsiteSale(WebsiteSale):
+    '''
+    @http.route(['/shop/cart'], type='http', auth="public", website=True)
+    def cart(self, **post):
+        # 调用原来的购物车方法
+        response = super(CustomWebsiteSale, self).cart(**post)
+
+        # 获取当前的 sale.order（未确认的订单）
+        order = request.website.sale_get_order()
+
+        print(order)
+
+        return response
+    '''
 
     # @http.route(['/shop/cart'], type='http', auth="public", website=True, sitemap=False)
     # def cart(self, access_token=None, revive='', **post):
@@ -144,11 +133,11 @@ class CustomWebsiteSale(WebsiteSale):
             shipping_address = order.partner_shipping_id.contact_address if order.partner_shipping_id else None
             _logger.info(f"Billing Address: {billing_address}")
             _logger.info(f"Shipping Address: {shipping_address}")
-
-            # 检查订单中是否包含特定产品
+            
+             # 检查订单中是否包含特定产品
             has_special_product = False
             if order and result.qcontext.get('deliveries', False):
-                special_products = ['PET全透片0.02cm', 'test']
+                special_products = ['LOGO', '保麗龍', '壓克力字', '卡典']
                 for line in order.order_line:
                     if any(product_name in line.product_id.name for product_name in special_products):
                         has_special_product = True
@@ -157,7 +146,7 @@ class CustomWebsiteSale(WebsiteSale):
 
                 # 如果包含特定产品，只显示指定配送方式
                 if has_special_product:
-                    target_carrier = request.env['delivery.carrier'].sudo().search([('name', '=', '免費運輸費用')], limit=1)
+                    target_carrier = request.env['delivery.carrier'].sudo().search([('name', '=', '自取')], limit=1)
                     if target_carrier:
                         _logger.info(f"找到指定配送方式: {target_carrier.name}")
                         deliveries = result.qcontext['deliveries']
@@ -187,3 +176,4 @@ class CustomWebsiteSaleVariantController(VariantController):
         combination['min_quantity'] = min_quantity
         _logger.info(f"min_quantity: {min_quantity}")
         return combination 
+

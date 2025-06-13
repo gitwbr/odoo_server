@@ -21,6 +21,7 @@ RUN pip3 install --no-cache-dir \
     flask \
     flask-cors \
     psycopg2-binary \
+    workalendar \
     bcrypt 
 
 # 验证安装

@@ -1,0 +1,225 @@
+<odoo>
+    <data>
+        <!-- 确保正确继承视图 --> 
+        <record id="crm_case_form_view_oppor_inherit_checkout" model="ir.ui.view">
+            <field name="name">crm.lead.form.inherit.checkout</field>
+            <field name="model">crm.lead</field>
+            <field name="inherit_id" ref="crm.crm_lead_view_form"/>
+            <field name="arch" type="xml">
+			
+
+				<!-- 隐藏 opportunity_partner 中的 partner_id -->
+				<xpath expr="//group[@name='opportunity_partner']/field[@name='partner_id']" position="attributes">
+					<attribute name="invisible">1</attribute>
+				</xpath>
+				
+                <!-- 在 form/header 中插入按钮 -->
+                <xpath expr="//button[@name='action_sale_quotations_new']" position="replace">
+                    <button string="新增大圖訂單" name="action_open_checkout" type="object" class="oe_highlight" 
+						title="Create a new large picture order"/>
+                </xpath>
+				
+				<xpath expr="//button[@name='action_view_sale_quotation']" position="replace">
+					<button class="oe_stat_button" type="object"
+						name="action_view_related_checkout"
+						icon="fa-pencil-square-o"
+						attrs="{'invisible': [('type', '=', 'lead')]}">
+						<field name="checkout_count" widget="statinfo" string="大圖訂單"/>
+					</button>
+				</xpath>
+				<xpath expr="//field[@name='description']" position="replace">
+				</xpath>
+				<xpath expr="//page[@name='internal_notes']" position="inside">
+					<field name="crm_comment_ids" >
+						<tree editable="bottom" class="my_custom_class"  limit="100">
+							<field name="comment_date" />										
+							<field name="comment_data" />										
+							<field name="comment_price" />										
+						</tree>
+					</field>
+				</xpath>
+				
+				<!-- <xpath expr="//page[@name='internal_notes']" position="after"> -->
+					<!-- <page name="crm_user_comment" string="打印備註" > -->
+						<!-- <field name="crm_usercomment"  domain="[('create_id', '=', uid)]" > -->
+							<!-- <tree editable="bottom"> -->
+								<!-- <field name="sequence" />										 -->
+								<!-- <field name="comment" />					 -->
+								<!-- <field name="create_id" invisible="1"/>					 -->
+							<!-- </tree> -->
+						<!-- </field> -->
+					<!-- </page> -->
+				<!-- </xpath> -->
+            </field>
+        </record>
+		
+		
+		<record id="crm_view_checkout_form" model="ir.ui.view">
+            <field name="name">dtsc.checkout.form</field>
+            <field name="model">dtsc.checkout</field>
+            <field name="inherit_id" ref="dtsc.view_checkout_form"/>
+            <field name="arch" type="xml">
+                <xpath expr="//field[@name='checkout_order_state']" position="attributes">
+					<attribute name="statusbar_visible">waiting_confirmation,draft,quoting,producing,finished,price_review_done,receivable_assigned,closed,cancel</attribute>
+				</xpath>
+				<xpath expr="//header" position="inside">
+					<!-- 添加确认按钮，仅在"待確認"状态下显示 -->
+					<field name="related_checkout_id" invisible="1" />
+					<button name="action_confirm_to_draft"
+							string="訂單成立"
+							type="object"
+							class="oe_highlight"
+							attrs="{'invisible': ['|',('related_checkout_id', '!=', False),('checkout_order_state', '!=', 'waiting_confirmation')]}"/>
+					
+					<button name="go_datu" type="object" class="oe_highlight" string="查看關聯大圖訂單" attrs="{'invisible': [('related_checkout_id', '=', False)]}" />		
+					<button name="action_copy_checkout"
+							string="複製"
+							type="object"
+							class="oe_highlight"
+							attrs="{'invisible': [('checkout_order_state', '!=', 'waiting_confirmation')]}" />
+				</xpath>
+				
+				<xpath expr="//div[@class='oe_title']" position="after">
+					<!-- 添加确认按钮，仅在"待確認"状态下显示 -->
+					<group>
+						<field name="is_new_partner" attrs="{'invisible': [('checkout_order_state', '!=', 'waiting_confirmation')]}"/>
+					</group>
+				</xpath>
+				
+				<xpath expr="//field[@name='user_id']" position="after">
+					<field name="crm_date" attrs="{'invisible': [('checkout_order_state', '!=', 'waiting_confirmation')]}"/>
+					<field name="is_show_price" attrs="{'invisible': [('checkout_order_state', '!=', 'waiting_confirmation')]}"/>
+				</xpath>
+				<xpath expr="//field[@name='customer_id']" position="before">					
+					<field name="new_partner" attrs="{'invisible': [('is_new_partner', '!=', True)]}"/>
+					<field name="new_customer_class_id" options="{'no_create': True, 'no_create_edit': True}" attrs="{'invisible': [('is_new_partner', '!=', True)]}"/>
+					<field name="new_init" attrs="{'invisible': [('is_new_partner', '!=', True)]}"/>
+					<field name="new_street" attrs="{'invisible': [('is_new_partner', '!=', True)]}"/>
+					<field name="new_vat" attrs="{'invisible': [('is_new_partner', '!=', True)]}"/>
+					<field name="new_phone" attrs="{'invisible': [('is_new_partner', '!=', True)]}"/>
+					<field name="new_mobile" attrs="{'invisible': [('is_new_partner', '!=', True)]}"/>
+					<field name="new_custom_contact_person" attrs="{'invisible': [('is_new_partner', '!=', True)]}"/>
+					<field name="new_custom_fax" attrs="{'invisible': [('is_new_partner', '!=', True)]}"/>
+					<field name="new_property_payment_term_id" options="{'no_create': True, 'no_create_edit': True}" attrs="{'invisible': [('is_new_partner', '!=', True)]}"/>
+					<field name="new_custom_pay_mode" attrs="{'invisible': [('is_new_partner', '!=', True)]}"/>
+					<field name="new_email" attrs="{'invisible': [('is_new_partner', '!=', True)]}"/>
+					<field name="new_custom_invoice_form" attrs="{'invisible': [('is_new_partner', '!=', True)]}"/>
+				</xpath>
+				
+
+            </field>
+        </record>
+		<record id="view_checkout_tree_crm" model="ir.ui.view">
+			<field name="name">dtsc.checkout.tree.crm</field>
+			<field name="model">dtsc.checkout</field>
+			<field name="arch" type="xml">
+				<tree  create="0" decoration-info="is_online == True"  default_order="create_date desc">				
+					<field name="name" string="單號" readonly="1" class="w100" />
+					<field name="related_checkout_id" invisible="1" />
+					<button name="go_datu" type="object" string="查看關聯大圖訂單" attrs="{'invisible': [('related_checkout_id', '=', False)]}" />
+					<field name="is_invisible" invisible="1"/>
+					<field name="custom_init_name" string="客戶" readonly="1"/>
+					<field name="project_name" string="案件摘要" readonly="1"/>
+					<field name="delivery_carrier" string="交貨方式" />
+					<!-- <field name="delivery_carrier_char" string="送件"/> -->
+					<field name="estimated_date_str"/>
+					<field name="checkout_order_state" string="狀態"/>
+					<field name="delivery_order" readonly="1"/>
+					<field name="customer_class_id" invisible="1"/>
+					<field name="sequence_count" sum="項次數" widget="integer"/>
+					<field name="quantity" widget="integer"/>
+					<field name="unit_all" sum="總才數" widget="integer" string="總才數"/>
+					<!-- <field name="total_price_added_tax" widget="integer"/> -->
+					<field name="user_id"/>
+					<field name="create_id" invisible="1"/>
+					<field name="kaidan"/>
+					<field name="create_date_str" string="進單日"/>
+					<field name="create_date" string="進單日" widget="remaining_days"/>
+					<field name="is_online" invisible="1"/>
+					<!-- <field name="report_year"/> -->
+					<!-- <field name="report_month"/> -->
+					<!-- <field name="is_delivery"/> -->
+					<!-- <field name="is_recheck"/> -->
+				</tree>
+			</field>	
+		</record>
+		<record id="dtsc.action_checkout_tree_view" model="ir.actions.act_window">
+			<field name="name">大圖訂單</field>
+			<field name="res_model">dtsc.checkout</field>
+			<field name="view_mode">tree,form</field>
+			<field name="view_id" ref="dtsc.view_checkout_tree_crm"/>
+			<!-- 默认排除 "待确认" 状态 -->
+			<!-- <field name="domain">[('checkout_order_state', '!=', 'waiting_confirmation')]</field> -->
+			<!-- <field name="context">{'default_create': False}</field> -->
+		</record>
+		
+		
+		<record id="quick_create_opportunity_form_inherit" model="ir.ui.view">
+			<field name="name">crm.lead.form.quick_create.inherit</field>
+			<field name="model">crm.lead</field>
+			<field name="inherit_id" ref="crm.quick_create_opportunity_form"/>
+			<field name="arch" type="xml">
+				<!-- 移除原有的 partner_id 字段 -->
+				<xpath expr="//field[@name='partner_id']" position="replace">
+				</xpath>
+			</field>
+		</record>
+
+		<record id="crm_case_tree_view_oppor_inherit" model="ir.ui.view">
+			<field name="name">crm.lead.tree.opportunity.inherit</field>
+			<field name="model">crm.lead</field>
+			<field name="inherit_id" ref="crm.crm_case_tree_view_oppor"/>
+			<field name="arch" type="xml">
+				<!-- 替换 contact_name 为 customer_name -->
+				<xpath expr="//field[@name='contact_name']" position="replace">
+				</xpath>
+			</field>
+		</record>
+		
+		<record id="crm_case_kanban_view_leads_inherit" model="ir.ui.view">
+			<field name="name">crm.lead.kanban.lead.inherit</field>
+			<field name="model">crm.lead</field>
+			<field name="inherit_id" ref="crm.crm_case_kanban_view_leads"/>
+			<field name="arch" type="xml">
+				<!-- 移除包含 partner_id 的 <div> -->
+				<xpath expr="//div[span[@t-esc='record.partner_id.value']]" position="replace">
+					<!-- 替换为空，删除该 <div> -->
+				</xpath>
+			</field>
+		</record>
+
+		<record id="dtsc.action_crmusercomment" model="ir.actions.act_window">
+			<field name="name">打印備註</field>
+			<field name="type">ir.actions.act_window</field>
+			<field name="res_model">dtsc.crmusercomment</field>
+			<field name="view_mode">tree,form</field>
+			<field name="domain">[('create_id', '=', uid)]</field>		 
+		</record>
+		
+		<record id="view_crmusercomment_tree" model="ir.ui.view">
+			<field name="name">dtsc.crmusercomment.tree</field>
+			<field name="model">dtsc.crmusercomment</field>
+			<field name="arch" type="xml">
+				<tree editable="bottom" default_order="sequence">				
+					<field name="is_enable"/>
+					<field name="sequence" width="120px"/>
+					<field name="comment"/>
+
+				</tree>
+			</field>	
+		</record>
+		<menuitem id="crm_user_comment_menu" name="打印備註" parent="crm.crm_menu_root" sequence="100" action="dtsc.action_crmusercomment"/>
+		<record id="crm_lead_user_see_own" model="ir.rule">
+			<field name="name">Only see own CRM leads</field>
+			<field name="model_id" ref="crm.model_crm_lead"/>
+			<field name="domain_force">[('user_id', '=', user.id)]</field>
+			<field name="groups" eval="[(4, ref('dtsc.group_dtsc_yw'))]"/>
+		</record>
+		<record id="crm_lead_gly_see_all" model="ir.rule">
+			<field name="name">gly see all crm leads</field>
+			<field name="model_id" ref="crm.model_crm_lead"/>
+			<field name="domain_force">[(1, '=', 1)]</field> <!-- 永遠為 True -->
+			<field name="groups" eval="[(4, ref('dtsc.group_dtsc_gly'))]"/>
+		</record>
+    </data>
+</odoo>

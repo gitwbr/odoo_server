@@ -1,0 +1,43 @@
+
+version: '3'
+
+services:
+
+  pgadmin:
+    image: dpage/pgadmin4
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=admin@admin.com
+      - PGADMIN_DEFAULT_PASSWORD=admin123456
+    ports:
+      - "5050:80"
+    networks:
+      - odoo_net
+    restart: unless-stopped
+    
+  db:
+    image: postgres
+    environment:
+      - POSTGRES_DB=postgres
+      - POSTGRES_PASSWORD=odoo
+      - POSTGRES_USER=odoo
+      - PGDATA=/var/lib/postgresql/data/pgdata
+    volumes:
+      - ./client1/postgresql:/var/lib/postgresql/data
+    ports:
+      - "5401:5432"
+    networks:
+      - odoo_net
+    restart: unless-stopped
+    command: postgres -c 'max_connections=100'
+
+  my_odoo:
+    image: my_private_odoo:1.0.1
+    ports:
+      - "8069:8069"
+    networks:
+      - odoo_net
+    restart: unless-stopped
+    
+networks:
+  odoo_net:
+    driver: bridge

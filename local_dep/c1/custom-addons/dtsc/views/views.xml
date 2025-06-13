@@ -1,0 +1,683 @@
+<odoo>
+  <data>
+    <!-- explicit list view definition -->
+	
+
+
+    <record model="ir.actions.act_window" id="dtsc.action_window">
+		<field name="name">大圖訂單</field>
+		<field name="res_model">dtsc.checkout</field>
+		<field name="view_mode">tree,form,kanban</field>
+		<!-- 默认排除待确认状态 -->
+		<field name="domain">[
+			('is_invisible', '=', False),
+			('checkout_order_state', '!=', 'waiting_confirmation')
+		]</field>
+		<field name="view_id" ref="dtsc.view_checkout_tree"/>
+		<field name="search_view_id" ref="search_checkout"/>
+	</record>
+
+
+    <!-- <record model="ir.actions.act_window" id="dtsc.yewubaobiaos"> -->
+		  <!-- <field name="name">業務報表</field> -->
+		  <!-- <field name="res_model">dtsc.checkoutreport</field> -->
+		  <!-- <field name="view_mode">graph,pivot</field>	   -->
+		  <!-- <field name="view_id" ref="dtsc.view_dtsc_checkoutreport_graph"/> -->
+    <!-- </record> -->
+	
+	<!-- <record model="ir.actions.act_window" id="dtsc.action_window_make"> -->
+      <!-- <field name="name">製作物</field> -->
+      <!-- <field name="res_model">dtsc.book</field> -->
+      <!-- <field name="view_mode">tree,form,kanban</field> -->
+    <!-- </record> -->
+
+	<record model="ir.actions.act_window" id="dtsc.action_window_make_in">
+      <field name="name">內部工單</field>
+      <field name="res_model">dtsc.makein</field>
+      <field name="view_mode">tree,form,kanban</field>
+		<field name="search_view_id" ref="search_makein"/>
+    </record>
+
+	<record model="ir.actions.act_window" id="dtsc.action_window_make_out">
+      <field name="name">委外訂單</field>
+      <field name="res_model">dtsc.makeout</field>
+      <field name="view_mode">tree,form,kanban</field>
+	  <field name="view_id" ref="dtsc.view_makeoutt_tree"/>
+		<field name="search_view_id" ref="search_makeout"/>
+    </record>
+
+	<record model="ir.actions.act_window" id="dtsc.action_window_install">
+      <field name="name">施工工單</field>
+      <field name="res_model">dtsc.installproduct</field>
+      <field name="view_mode">tree,form,kanban</field>
+	  <field name="domain">[('is_invisible','=',False), ('install_state', '!=', 'cancel')]</field>
+    </record>
+
+	<record model="ir.actions.act_window" id="dtsc.action_window_deliveryorder">
+      <field name="name">出貨單</field>
+      <field name="res_model">dtsc.deliveryorder</field>
+      <field name="view_mode">tree,form,kanban</field>
+    </record>
+
+	
+	
+	<!-- <record model="ir.actions.act_window" id="dtsc.action_window_custom">
+      <field name="name">客戶</field>
+      <field name="res_model">dtsc.book</field>
+      <field name="view_mode">tree,form,kanban</field>
+    </record> -->
+	
+		
+	
+
+	
+	<record model="ir.actions.act_window" id="dtsc.action_window_custom">
+		<field name="name">客戶</field>
+		<field name="res_model">res.partner</field>
+		<field name="view_mode">tree,form,kanban</field> 
+		<field name="domain">[('customer_rank','>',0)]</field>
+		<field name="context">{'default_is_customer' : True}</field>
+		<field name="view_id" ref="dtsc.view_partner_tree_custom"/>
+	</record>
+
+	
+	<record id="action_supplier" model="ir.actions.act_window">
+		<field name="name">供應商</field>
+		<field name="res_model">res.partner</field>
+		<field name="view_mode">tree,form,kanban</field>
+		<field name="domain">[('supplier_rank','&gt;',0)]</field>
+		<field name="context">{'default_is_supplier' : True}</field>
+		<field name="view_id" ref="dtsc.view_partner_tree_supp"/>
+	</record>
+
+	
+	<record model="ir.actions.act_window" id="dtsc.action_window_product">
+      <field name="name">產品</field>
+      <field name="res_model">product.template</field>
+      <field name="view_mode">tree,form,kanban</field>
+    </record>
+	
+	
+	<!-- <record model="ir.actions.act_url" id="dtsc.action_url_order">
+      <field name="name">開啟網頁下單</field>
+	  <field name="type">ir.actions.act_url</field>
+      <field name="url">http://43.153.210.49:8069/checkout</field>
+    </record> -->
+	<record id="action_checkout" model="ir.actions.act_url">
+		<field name="name">Checkout Page</field>
+		<field name="type">ir.actions.act_url</field>
+		<field name="url">/checkout</field>
+		<field name="target">new</field>
+	</record>
+	
+	<record model="ir.actions.act_window" id="dtsc.action_window_setting">
+      <field name="name">設置</field>
+      <field name="res_model">dtsc.book</field>
+      <field name="view_mode">tree,form,kanban</field>
+    </record>
+	
+	<record id="product_template_action_purchasable" model="ir.actions.act_window">
+		<field name="name">產品</field>
+		<field name="type">ir.actions.act_window</field>
+		<field name="res_model">product.template</field>
+		<field name="view_mode">kanban,tree,form</field>
+		<field name="domain">[('purchase_ok','=',True)]</field>
+	</record>
+	
+	<!-- <record id="product_template_action_mrp_bom" model="ir.actions.act_window"> -->
+		<!-- <field name="name">物料清单</field> -->
+		<!-- <field name="type">ir.actions.act_window</field> -->
+		<!-- <field name="res_model">mrp.bom</field> -->
+		<!-- <field name="view_mode">tree,form</field> -->
+	<!-- </record> -->
+		
+	<record id="product_template_attribute" model="ir.actions.act_window">
+		<field name="name">變體價格溢價</field>
+		<field name="type">ir.actions.act_window</field>
+		<field name="res_model">product.attribute.value</field>
+		<field name="view_mode">tree,form</field>
+		<field name="view_id" ref="dtsc.view_product_attribute_value_tree_custom"/>
+	</record>
+
+	
+	<record id="dtsc.machine_price_template_action" model="ir.actions.act_window">
+		<field name="name">機台與變價設定</field> 
+		<field name="res_model">dtsc.machineprice</field>
+		<field name="view_mode">tree,form</field>
+		<field name="type">ir.actions.act_window</field>
+	</record>
+
+	<record id="dtsc.worker_name_list_before" model="ir.actions.act_window">
+		<field name="name">印前人員</field> 
+		<field name="res_model">dtsc.userlistbefore</field>
+		<field name="view_mode">tree,form</field>
+	</record>
+	
+	<record id="dtsc.worker_name_list" model="ir.actions.act_window">
+		<field name="name">產線人員</field> 
+		<field name="res_model">dtsc.userlist</field>
+		<field name="view_mode">tree,form</field>
+	</record>
+	
+	<record id="dtsc.re_worker_name_list" model="ir.actions.act_window">
+		<field name="name">重製人員表</field> 
+		<field name="res_model">dtsc.reworklist</field>
+		<field name="view_mode">tree,form</field>
+	</record>
+	
+	<record id="dtsc.custom_muban" model="ir.actions.act_window">
+		<field name="name">客戶分類模板</field> 
+		<field name="res_model">dtsc.producttype</field>
+		<field name="view_mode">tree,form</field>
+	</record>
+	<record id="dtsc.qrcode_w" model="ir.actions.act_window">
+		<field name="name">員工Qrcode</field> 
+		<field name="res_model">dtsc.workqrcode</field>
+		<field name="view_mode">tree,form</field>
+	</record>
+	<record id="dtsc.vat_login" model="ir.actions.act_window">
+		<field name="name">統編帳號密碼</field> 
+		<field name="res_model">dtsc.vatlogin</field>
+		<field name="view_mode">tree,form</field>
+		<field name="domain">[('partner_id.customer_rank','>',0)]</field>
+	</record>
+	
+	<record model="ir.actions.act_window" id="action_category_set">
+      <field name="name">產品類別</field>
+      <field name="res_model">product.category</field>
+      <field name="view_mode">tree,form,kanban</field>
+    </record>
+	
+	<record model="ir.actions.act_window" id="action_attribute_set">
+      <field name="name">屬性</field>
+      <field name="res_model">product.attribute</field>
+      <field name="view_mode">tree,form,kanban</field>
+    </record>
+	
+	<record model="ir.actions.act_window" id="dtsc.stock_stock">
+      <field name="name">庫存</field>
+      <field name="res_model">product.product</field>
+      <field name="view_mode">tree,form,kanban</field>
+	  <field name="domain">[('purchase_ok','=',True)]</field>
+    </record>
+	
+	<record model="ir.actions.act_window" id="dtsc.purchase_order_1">
+      <field name="name">採購</field>
+      <field name="res_model">purchase.order</field>
+      <field name="view_mode">tree,form,kanban</field>
+      <!-- <field name="context">{'group_by' : 'partner_display_name','search_default_exclude_state_4': 1,'search_default_exclude_invoice_status_no': 1}</field> -->
+      <field name="context">{'group_by' : 'partner_display_name','search_default_exclude_state_4': 1}</field>
+	  <field name="domain">[('my_state', '!=', '5')]</field>
+    </record>
+	
+	<record model="ir.actions.act_window" id="dtsc.stock_lot1">
+      <field name="name">批次/序號</field>
+      <field name="res_model">stock.lot</field>
+      <field name="view_mode">tree,form</field>
+	  <!-- <field name="domain">['|', ('purchase_order_id', '=', False), ('purchase_order_id.my_state', '!=', '5')]</field> -->
+	  <!-- <field name="domain">[('purchase_order_id', '!=', False)]</field> -->
+       <field name="context">{'search_default_del_purchase_order': 1}</field>
+	 <field name="view_id" ref="dtsc.view_stock_lot_tree_inherit"/>
+    </record>
+	
+	<record model="ir.actions.act_window" id="dtsc.stock_moveline">
+      <field name="name">庫存移動</field>
+      <field name="res_model">stock.move.line</field>
+      <field name="view_mode">tree,form</field>
+      <field name="domain">[('qty_done', '!=', 0)]</field>
+      <field name="view_id" ref="stock.view_move_line_tree"/>
+    </record>
+	
+	<record id="action_server_stock_move_line" model="ir.actions.server">
+		<field name="name">庫存盤點server</field>
+		<field name="model_id" ref="stock.model_stock_move_line"/> 
+		<field name="code">action = model.action_dtsc_stock_move_line()</field>
+		<field name="state">code</field>
+	</record>
+	
+	<record model="ir.actions.act_window" id="action_dtsc_stock_quant">
+      <field name="name">庫存盤點</field>
+      <field name="res_model">stock.quant</field>
+      <field name="view_mode">tree</field>
+      <field name="view_id" ref="stock.view_stock_quant_tree_inventory_editable"/>
+	  <field name="domain">[('quantity', '!=', 0),('location_id.usage', 'in', ['internal'])]</field> <!--只顯示本地庫存商品-->
+      <field name="context">{'group_by' : 'product_id', 'default_is_set_date': False}</field>
+      <field name="view_id" ref="dtsc.view_stock_quant_tree_inventory_editable_dtsc"/>
+    </record>
+	
+	<record id="action_server_stock_quant" model="ir.actions.server">
+		<field name="name">庫存盤點server</field>
+		<field name="model_id" ref="stock.model_stock_quant"/> 
+		<field name="code">action = model.action_dtsc_stock_quant()</field>
+		<field name="state">code</field>
+	</record>
+	
+	
+	<record model="ir.actions.act_window" id="dtsc.stock_picking">
+      <field name="name">庫存調撥</field>
+      <field name="res_model">stock.picking</field>
+      <field name="view_mode">tree,form</field>
+      <field name="view_id" ref="stock.vpicktree"/>
+	  <field name="domain">[('picking_type_id.code', '=', 'internal')] </field>
+	  <field name="context">{'default_picking_type_id': 5}</field>  <!-- 传递操作类型的 内部調撥 -->
+	</record>
+    
+	<record model="ir.actions.act_window" id="dtsc.supp_price">
+      <field name="name">供應商價格表</field>
+      <field name="res_model">product.supplierinfo</field>
+      <field name="view_mode">tree,form</field>
+      <field name="view_id" ref="dtsc.supplierinfo_tree"/>
+	</record>
+	
+	<record model="ir.actions.act_window" id="dtsc.linesetting">
+      <field name="name">Line設定</field>
+      <field name="res_model">dtsc.linebot</field>
+      <field name="view_mode">tree,form</field>
+	</record>
+    
+    <!-- <record model="ir.actions.act_window" id="dtsc.bh">
+        <field name="name">補貨</field>
+        <field name="res_model">stock.warehouse.orderpoint</field>
+        <field name="view_mode">tree</field>
+        <field name="view_id" ref="stock.view_warehouse_orderpoint_tree_editable"/>
+        <field name="domain">[('trigger', '=', 'auto')]</field>
+		<field name="context">{'search_default_filter_to_reorder': 1}</field>
+    </record> -->
+	 <record model="ir.actions.act_window" id="dtsc.bh">
+        <field name="name">補貨</field>
+        <field name="res_model">stock.warehouse.orderpoint</field>
+        <field name="view_mode">tree</field>
+        <field name="view_id" ref="view_warehouse_orderpoint_tree_editable_inherit"/>
+        <field name="domain">[('trigger', '=', 'auto')]</field>
+        <field name="context">{'search_default_filter_to_reorder': 1}</field>
+    </record>
+	
+	<record model="ir.actions.act_window" id="dtsc.in_mpr">
+      <field name="name">廠內扣料表</field> 
+      <field name="res_model">dtsc.mpr</field>
+      <field name="view_mode">tree,form</field>
+    </record>
+	
+	<record model="ir.actions.act_window" id="dtsc.lot_mprscancode1">
+      <field name="name">捲料扣料表</field>
+      <field name="res_model">dtsc.lotmprscancode</field>
+      <field name="view_mode">tree,form</field>
+    </record>
+	
+	<record model="ir.actions.act_window" id="dtsc.lot_mpr1">
+      <field name="name">已完成扣料總表</field>
+      <field name="res_model">dtsc.lotmpr</field>
+      <field name="view_mode">tree,form</field>
+	  <field name="context">{'search_default_succ_search': 1}</field>
+    </record> 
+	
+	<record id="dtsc.yingshou" model="ir.actions.act_window">
+		<field name="name">應收帳單</field>
+		<field name="type">ir.actions.act_window</field>
+		<field name="res_model">account.move</field>
+		<field name="view_mode">tree,form</field>
+		<field name="context">{'default_move_type' : 'out_invoice' ,'group_by' : 'partner_display_name'}</field>
+		<!-- <field name="context">{'default_move_type' : 'out_invoice' }</field> -->
+		<field name="domain">[('move_type','=',"out_invoice")]</field>
+		<field name="search_view_id" ref="view_account_move_search_inherit"/>
+     
+	</record>
+	
+	<record model="ir.actions.act_window" id="dtsc.fapiao">
+      <field name="name">發票</field>
+      <field name="res_model">dtsc.billinvoice</field>
+      <field name="view_mode">tree,form</field>
+    </record>
+	<record model="ir.actions.act_window" id="dtsc.zrfp">
+      <field name="name">折讓</field>
+      <field name="res_model">dtsc.allowances</field>
+      <field name="view_mode">tree,form</field>
+    </record>
+	
+	<record model="ir.actions.act_window" id="dtsc.jttj1">
+		<field name="name">機台統計</field>
+		<field name="type">ir.actions.act_window</field>
+		<field name="res_model">dtsc.checkoutline</field>
+		<field name="view_mode">tree</field>
+		<field name="view_id" ref="dtsc.view_checkout_line_tree"/>
+		<field name="context">{'group_by' : 'machine_id'}</field>
+		<field name="domain">[('is_chuhuo_state_or_cancel','not in',['cancel']),('machine_id',"!=",False)]</field>
+    </record>
+	
+	
+	<record id="dtsc.yingfuzd" model="ir.actions.act_window">
+		<field name="name">應付帳單</field>
+		<field name="type">ir.actions.act_window</field>
+		<field name="res_model">account.move</field>
+		<field name="view_mode">tree,form</field>
+		<field name="domain">[('move_type','=',"in_invoice")]</field>
+		<field name="context">{'default_move_type' : 'in_invoice' ,'group_by' : 'partner_display_name'}</field>		
+		<field name="search_view_id" ref="view_account_move_search_inherit"/>
+	</record>
+	
+	<record id="action_chart_dashboard2" model="ir.actions.act_window">
+        <field name="name">出貨統計表</field> 
+		<field name="res_model">dtsc.checkout</field>
+		<field name="view_mode">kanban,graph,tree</field>
+		<field name="domain">[('checkout_order_state','in',["price_review_done","receivable_assigned"])]</field>
+		<!-- <field name="context">{'group_by' : 'display_name_reportt','search_default_custom_26_to_today': 1}</field> -->
+		<field name="view_id" ref="dtsc.report_checkout_treee"/>
+		<field name="search_view_id" ref="search_checkout_report"/>
+		<!-- <field name="order">customer_bianhao desc</field> -->
+    </record>
+
+	<record id="action_server_chart_dashboard2" model="ir.actions.server">
+		<field name="name">出貨統計表server</field>
+		<field name="model_id" ref="model_dtsc_checkout"/>
+		<field name="code">action = model.action_chart_dashboard2()</field>
+		<field name="state">code</field>
+	</record>
+	
+	<record id="action_sales_chart_dashboard" model="ir.actions.act_window">
+        <field name="name">業務出貨統計表</field>
+		<field name="res_model">dtsc.checkout</field>
+		<field name="view_mode">kanban,graph,tree</field>
+		<field name="domain">[('checkout_order_state','in',["price_review_done","receivable_assigned"])]</field>
+		<!-- <field name="context">{'group_by' : 'user_partner_id','search_default_custom_26_to_today': 1}</field> -->
+		<field name="view_id" ref="dtsc.report_checkout_sales"/>
+		<field name="search_view_id" ref="search_sales_checkout_report"/>
+    </record>	
+
+	<record id="action_server_sales_chart_dashboard" model="ir.actions.server">
+		<field name="name">業務出貨統計表server</field>
+		<field name="model_id" ref="model_dtsc_checkout"/>
+		<field name="code">action = model.action_sales_chart_dashboard()</field>
+		<field name="state">code</field>
+	</record>
+	
+	<record id="action_machine_chart_dashboard" model="ir.actions.act_window">
+        <field name="name">機台出貨統計表</field>
+		<field name="res_model">dtsc.checkoutline</field>
+		<field name="view_mode">kanban,graph,tree</field>
+		<!-- <field name="domain">[('checkout_product_id.checkout_order_state','in',["price_review_done","receivable_assigned"])]</field> -->
+		<field name="domain">[('checkout_product_id.checkout_order_state','not in',["closed","cancel","waiting_confirmation"]),('checkout_product_id.is_invisible', '=', False),('machine_id',"!=",False)]</field>
+		<!-- <field name="context">{'group_by' : 'machine_id','search_default_custom_26_to_today': 1}</field> -->
+		<field name="view_id" ref="dtsc.report_checkoutline_machine"/>
+		<field name="search_view_id" ref="search_machine_checkoutline_report"/>
+    </record>
+	
+	<record id="action_server_machine_chart_dashboard" model="ir.actions.server">
+		<field name="name">機台出貨統計表server</field>
+		<field name="model_id" ref="model_dtsc_checkoutline"/>
+		<field name="code">action = model.action_machine_chart_dashboard()</field>
+		<field name="state">code</field>
+	</record>
+
+	<record id="action_product_chart_dashboard" model="ir.actions.act_window">
+        <field name="name">產品出貨統計表</field>
+		<field name="res_model">dtsc.checkoutline</field>
+		<field name="view_mode">kanban,graph,tree</field>
+		<field name="domain">[('checkout_product_id.checkout_order_state','in',["price_review_done","receivable_assigned"])]</field>
+		<!-- <field name="context">{'group_by' : ['machineAndproduct','saleuser'],'search_default_custom_26_to_today': 1}</field> -->
+		<field name="view_id" ref="dtsc.report_checkoutline_product"/>
+		<field name="search_view_id" ref="dtsc.search_checkoutline_product"/>
+    </record>
+
+	<record id="action_server_product_chart_dashboard" model="ir.actions.server">
+		<field name="name">產品出貨統計表server</field>
+		<field name="model_id" ref="model_dtsc_checkoutline"/>
+		<field name="code">action = model.action_product_chart_dashboard()</field>
+		<field name="state">code</field>
+	</record>
+
+	<record id="action_makeout_chart_dashboard" model="ir.actions.act_window">
+        <field name="name">委外生產統計表</field>
+		<field name="res_model">dtsc.makeout</field>
+		<field name="view_mode">kanban,graph,tree</field>
+		<field name="domain">[('checkout_id.checkout_order_state','in',["finished","price_review_done","receivable_assigned"]),('install_state','not in',["cancel"])]</field>
+		<field name="context">{'group_by' : 'display_name_reportt'}</field>
+		<field name="view_id" ref="dtsc.report_makeout_product"/>
+		<field name="search_view_id" ref="search_makeout_report"/>
+    </record>
+
+	<record id="action_server_makeout_chart_dashboard" model="ir.actions.server">
+		<field name="name">委外生產統計表server</field>
+		<field name="model_id" ref="model_dtsc_makeout"/>
+		<field name="code">action = model.action_makeout_chart_dashboard()</field>
+		<field name="state">code</field>
+	</record>
+	
+	<record model="ir.actions.act_window" id="action_order_preview1">
+		<field name="name">下單統計表</field>
+		<field name="res_model">dtsc.order.preview</field>
+		<field name="view_mode">tree,form</field>
+	</record>
+	
+	<record id="action_make_machine_chart_dashboard" model="ir.actions.act_window">
+        <field name="name">工單狀況表</field>
+		<field name="res_model">dtsc.checkoutline</field>
+		<field name="view_mode">tree</field>
+		<!-- <field name="domain">[('checkout_product_id.checkout_order_state','in',["price_review_done","receivable_assigned"])]</field> -->
+		<field name="domain">[('checkout_product_id.checkout_order_state','not in',["closed","cancel","waiting_confirmation"]),('checkout_product_id.is_invisible', '=', False),('machine_id',"!=",False)]</field>
+		<field name="context">{'search_default_group_by_machine_id': 1}</field>
+		<field name="view_id" ref="dtsc.report_make_checkoutline_machine"/>
+		<field name="search_view_id" ref="search_make_machine_checkoutline_report"/>
+    </record>
+	
+	<record model="ir.actions.act_window" id="action_work_time">
+		<field name="name">員工績效(工時)</field>
+		<field name="res_model">dtsc.worktime</field>
+		<field name="view_mode">tree,form</field>
+	</record>
+	<record model="ir.actions.act_window" id="action_kaoqing">
+		<field name="name">考勤記錄</field>
+		<field name="res_model">dtsc.attendance</field>
+		<field name="view_mode">tree,form</field>
+	</record>
+	<record model="ir.actions.act_window" id="action_pettycash1">
+		<field name="name">零用金</field>
+		<field name="res_model">dtsc.pettymanager</field>
+		<field name="view_mode">tree,form</field>
+		<field name="view_id" ref="view_petty_manager_tree"/>
+		<!-- <field name="res_id" ref="default_manager"/> -->
+	</record>
+
+	<record model="ir.actions.act_window" id="action_ykl">
+		<field name="name">壓克力統計表</field>
+		<field name="res_model">dtsc.yklcomment</field>
+		<field name="view_mode">tree,form</field>
+		<field name="context">{'search_default_group_by_color_id': 1,'search_default_group_by_hou_id': 1}</field>
+		<!-- <field name="context">{'group_by' : 'name'}</field> -->
+	</record>
+	
+	<record model="ir.actions.act_window" id="action_calendar_dtsc" >
+		<field name="name">日曆</field>
+		<field name="res_model">dtsc.calendar</field>
+		<field name="view_mode">calendar,tree,form</field>
+	</record>
+	
+	<!-- <record id="action_scan_qrcode_search" model="ir.actions.server"> -->
+		<!-- <field name="name">查詢</field> -->
+		<!-- <field name="res_model">dtsc.makeout</field> -->
+		<!-- <field name="model_id" ref="model_dtsc_makeout"/> -->
+		<!-- <field name="code">action = model.action_makeout_chart_dashboard()</field> -->
+		<!-- <field name="state">code</field> -->
+	<!-- </record> -->
+	<record id="action_scan_qrcode_search" model="ir.actions.act_url">
+		<field name="name">查詢</field>
+		<field name="type">ir.actions.act_url</field>
+		<field name="url">/workmanager</field>
+	</record>
+	
+	<record id="action_work_sign_search1" model="ir.actions.act_url">
+		<field name="name">製作流程記錄表</field>
+		<field name="type">ir.actions.act_url</field>
+		<field name="url">/makesign</field>
+	</record>
+	
+    <!-- Top menu item -->
+    <menuitem name="MEGABOARD大圖ERP" id="dtsc.menu_root" web_icon="dtsc,static/description/icon.png"/>
+    <!-- menu categories -->
+    <menuitem name="大圖訂單" id="dtsc.checkout" sequence="1" action="dtsc.action_window" parent="dtsc.menu_root" groups="dtsc.group_dtsc_mg,dtsc.group_dtsc_yw,dtsc.group_dtsc_kj,dtsc.group_dtsc_sc,dtsc.group_dtsc_ck"/>
+    <!-- <menuitem name="製作物" id="dtsc.menu_make" action="dtsc.action_window_make" parent="dtsc.menu_root"/> -->
+
+	<menuitem name="委外工單" id="dtsc.makeout" sequence="2" action="dtsc.action_window_make_out" parent="dtsc.menu_root"  groups="dtsc.group_dtsc_mg,dtsc.group_dtsc_yw,dtsc.group_dtsc_kj,dtsc.group_dtsc_sc,dtsc.group_dtsc_ck"/>
+    <menuitem name="內部工單" id="dtsc.makein" sequence="3" action="dtsc.action_window_make_in" parent="dtsc.menu_root" groups="dtsc.group_dtsc_mg,dtsc.group_dtsc_yw,dtsc.group_dtsc_kj,dtsc.group_dtsc_sc,dtsc.group_dtsc_ck"/>
+    
+	<menuitem name="製作物" id="dtsc.scanqrcode" sequence="4" action="dtsc.action_scan_qrcode_search" parent="dtsc.menu_root" groups="dtsc.group_dtsc_mg,dtsc.group_dtsc_yw,dtsc.group_dtsc_kj,dtsc.group_dtsc_sc,dtsc.group_dtsc_ck"/>
+    <menuitem id="cx" parent="dtsc.scanqrcode" name="查詢" sequence="1" action="dtsc.action_scan_qrcode_search" groups="dtsc.group_dtsc_mg,dtsc.group_dtsc_yw,dtsc.group_dtsc_kj,dtsc.group_dtsc_sc,dtsc.group_dtsc_cg,dtsc.group_dtsc_ck"/>
+    <menuitem id="lcjl" parent="dtsc.scanqrcode" name="流程記錄表" sequence="2" action="dtsc.action_work_sign_search1" groups="dtsc.group_dtsc_mg,dtsc.group_dtsc_yw,dtsc.group_dtsc_kj,dtsc.group_dtsc_sc,dtsc.group_dtsc_cg,dtsc.group_dtsc_ck"/>
+	
+	
+	<menuitem name="施工工單" id="dtsc.installproduct" sequence="5" action="dtsc.action_window_install" parent="dtsc.menu_root"/>
+    <menuitem name="出貨單" id="dtsc.deliveryorder" sequence="6" action="dtsc.action_window_deliveryorder" parent="dtsc.menu_root"/>
+    <!-- <menuitem name="每月對賬單" id="dtsc.menu_statement" action="dtsc.action_window_statement" parent="dtsc.menu_root"/> -->
+    <!-- <menuitem name="客戶" id="dtsc.menu_custom" action="dtsc.action_window_custom" parent="dtsc.menu_root"/> -->
+	<menuitem name="客戶" id="dtsc.menu_custom" action="dtsc.action_window_custom" parent="dtsc.menu_root" groups="dtsc.group_dtsc_mg,dtsc.group_dtsc_yw,dtsc.group_dtsc_kj"/>
+    <!-- <menuitem name="供應商" id="dtsc.menu_supplier" action="dtsc.action_window_supplier" parent="dtsc.menu_root"/> -->
+	<menuitem name="供應商" id="dtsc.menu_supplier" action="dtsc.action_supplier" parent="dtsc.menu_root" groups="dtsc.group_dtsc_mg,dtsc.group_dtsc_kj,dtsc.group_dtsc_cg"/>
+    <menuitem name="產品" id="dtsc.menu_product" action="product.product_template_action" parent="dtsc.menu_root" groups="dtsc.group_dtsc_mg,dtsc.group_dtsc_yw,dtsc.group_dtsc_kj,dtsc.group_dtsc_sc,dtsc.group_dtsc_cg,dtsc.group_dtsc_ck"/>
+    <!-- <menuitem name="開啟網頁下單" id="dtsc.menu_order" action="dtsc.action_url_order" parent="dtsc.menu_root"/> -->
+	<menuitem id="menu_checkout" name="開啟網頁下單" parent="dtsc.menu_root" action="action_checkout" groups="dtsc.group_dtsc_mg"/>
+    <menuitem name="設置" id="dtsc.menu_setting" action="dtsc.customer_template_action" parent="dtsc.menu_root" groups="dtsc.group_dtsc_mg,dtsc.group_dtsc_yw,dtsc.group_dtsc_kj"/>
+    <menuitem name="庫存" id="dtsc.menu_stock" action="dtsc.stock_stock" parent="dtsc.menu_root"  groups="dtsc.group_dtsc_mg,dtsc.group_dtsc_yw,dtsc.group_dtsc_kj,dtsc.group_dtsc_sc,dtsc.group_dtsc_cg,dtsc.group_dtsc_ck"/>
+    <menuitem name="採購" id="dtsc.purchase" action="dtsc.purchase_order_1" parent="dtsc.menu_root" groups="dtsc.group_dtsc_kj,dtsc.group_dtsc_cg"/>
+	<menuitem name="應收帳單" id="dtsc.yszd" action="dtsc.yingshou" parent="dtsc.menu_root" groups="dtsc.group_dtsc_yw,dtsc.group_dtsc_kj"/>
+	
+	<menuitem id="yinshou_id" parent="dtsc.yszd" name="應收帳單" sequence="1" action="dtsc.yingshou"/>
+	<!-- <menuitem id="fapiao_id" parent="dtsc.yszd" name="發票" sequence="2" action="dtsc.fapiao"/> -->
+	<!-- <menuitem id="zherang_id" parent="dtsc.yszd" name="折讓" sequence="3" action="dtsc.zrfp"/> -->
+	
+	
+	
+    <menuitem name="應付帳單" id="dtsc.yfzd" action="dtsc.yingfuzd" parent="dtsc.menu_root" groups="dtsc.group_dtsc_kj,dtsc.group_dtsc_cg"/>
+    <!-- <menuitem name="業務報表" id="dtsc.ywbb" action="dtsc.yewubaobiaos" parent="dtsc.menu_root"/>  -->
+	
+	
+	
+	<menuitem id="stock_s" parent="dtsc.menu_stock" name="庫存" sequence="1" action="dtsc.stock_stock" groups="dtsc.group_dtsc_mg,dtsc.group_dtsc_yw,dtsc.group_dtsc_kj,dtsc.group_dtsc_sc,dtsc.group_dtsc_cg,dtsc.group_dtsc_ck"/>
+	<menuitem id="stock_l" parent="dtsc.menu_stock" name="批次/序號" sequence="2" action="dtsc.stock_lot1" groups="dtsc.group_dtsc_mg,dtsc.group_dtsc_sc,dtsc.group_dtsc_cg,dtsc.group_dtsc_ck"/>
+	<menuitem id="stock_move" parent="dtsc.menu_stock" name="庫存移動" sequence="3" action="action_server_stock_move_line" groups="dtsc.group_dtsc_mg,dtsc.group_dtsc_yw,dtsc.group_dtsc_sc,dtsc.group_dtsc_cg,dtsc.group_dtsc_ck"/>
+	<menuitem id="stock_q" parent="dtsc.menu_stock" name="庫存盤點" sequence="4" action="action_server_stock_quant"  groups="dtsc.group_dtsc_cg,dtsc.group_dtsc_ck"/>
+	<menuitem id="stock_a"
+                  parent="dtsc.menu_stock"
+                  name="補貨"
+                  sequence="5"
+                  action="dtsc.bh"
+                  groups="dtsc.group_dtsc_cg,dtsc.group_dtsc_ck"/>
+	<menuitem id="jttj_id" parent="dtsc.menu_stock" name="機台統計" sequence="6" action="dtsc.jttj1"/>
+	<menuitem id="stock_p" parent="dtsc.menu_stock" name="庫存調撥" sequence="7" action="dtsc.stock_picking"  groups="dtsc.group_dtsc_cg,dtsc.group_dtsc_ck,dtsc.group_dtsc_sc"/>
+	<menuitem id="ywcklzb13" parent="dtsc.menu_stock" name="已完成扣料總表" sequence="8" action="dtsc.lot_mpr1"/>
+	<menuitem id="menu_ykl" name="壓克力統計表" parent="menu_stock" action="action_ykl" sequence="9" groups="dtsc.group_dtsc_mg,dtsc.group_dtsc_sc"/> 
+	
+	
+	<menuitem id="wngd" parent="dtsc.makein" name="內部工單" sequence="1" action="dtsc.action_window_make_in"/>
+	<menuitem id="wnklb" parent="dtsc.makein" name="廠內扣料表" sequence="2" action="dtsc.in_mpr"/>
+	<menuitem id="jlklb12" parent="dtsc.makein" name="捲料扣料表" sequence="3" action="dtsc.lot_mprscancode1"/>
+	<!-- <menuitem id="ywcklzb12" parent="dtsc.makein" name="已完成扣料總表" sequence="4" action="dtsc.lot_mpr1"/> -->
+	
+	<menuitem id="selling_products" parent="dtsc.menu_product" name="銷售產品" sequence="1" action="product.product_template_action" groups="dtsc.group_dtsc_mg,dtsc.group_dtsc_yw,dtsc.group_dtsc_kj,dtsc.group_dtsc_cg,dtsc.group_dtsc_ck"/>
+	<menuitem id="purchasing_products" parent="dtsc.menu_product" name="採購生產用產品" sequence="2" action="product_template_action_purchasable"/>
+	<menuitem id="product_attribute" parent="dtsc.menu_product" name="變體價格和物料" sequence="4" action="action_server_product_attribute_value" groups="dtsc.group_dtsc_mg,dtsc.group_dtsc_yw,dtsc.group_dtsc_kj,dtsc.group_dtsc_sc,dtsc.group_dtsc_ck"/>
+	<menuitem id="product_category_set" parent="dtsc.menu_product" name="產品類別" sequence="5" action="action_category_set"/> 
+	<menuitem id="product_attribute_set" parent="dtsc.menu_product" name="屬性" sequence="6" action="action_attribute_set" groups="dtsc.group_dtsc_mg"/>
+	
+	
+	<menuitem id="unit_conversion" parent="dtsc.menu_setting" name="單位換算" sequence="1" action="dtsc.action_window_unit_conversion" groups="dtsc.group_dtsc_gly"/>
+	<!-- <menuitem id="product_price_calculator" parent="dtsc.menu_setting" name="價格公式" sequence="2" action="dtsc.action_product_price_calculator" groups="dtsc.group_dtsc_gly"/> -->
+	<!-- <menuitem id="product_price_table" parent="dtsc.menu_setting" name="價格表匯入" sequence="3" action="dtsc.action_product_price_table" groups="dtsc.group_dtsc_gly"/> -->
+	<menuitem id="customer_classification" parent="dtsc.menu_setting" name="客戶分類" sequence="4" action="dtsc.customer_template_action" groups="dtsc.group_dtsc_yw"/>
+	<menuitem id="make_type" parent="dtsc.menu_setting" name="後加工方式" sequence="5" action="dtsc.make_type_template_action" groups="dtsc.group_dtsc_mg"/>
+	<menuitem id="machine_price" parent="dtsc.menu_setting" name="機台與變價設定" sequence="6" action="dtsc.machine_price_template_action" groups="dtsc.group_dtsc_mg,dtsc.group_dtsc_yw"/>
+	<menuitem id="worker_name_before" parent="dtsc.menu_setting" name="印前人員" sequence="6" action="dtsc.worker_name_list_before" groups="dtsc.group_dtsc_mg,dtsc.group_dtsc_yw,dtsc.group_dtsc_kj"/>
+	<menuitem id="worker_name" parent="dtsc.menu_setting" name="產線人員" sequence="7" action="dtsc.worker_name_list" groups="dtsc.group_dtsc_mg,dtsc.group_dtsc_yw,dtsc.group_dtsc_kj"/>
+	<menuitem id="re_work_name" parent="dtsc.menu_setting" name="重製人員表" sequence="8" action="dtsc.re_worker_name_list" groups="dtsc.group_dtsc_mg,dtsc.group_dtsc_yw,dtsc.group_dtsc_kj"/>
+	<menuitem id="fenleimuban" parent="dtsc.menu_setting" name="客戶分類模板" sequence="9" action="dtsc.custom_muban" groups="dtsc.group_dtsc_gly"/>
+	<menuitem id="qrcode_work" parent="dtsc.menu_setting" name="員工Qrcode" sequence="10" action="dtsc.qrcode_w" groups="dtsc.group_dtsc_gly"/>
+	<menuitem id="vatl" parent="dtsc.menu_setting" name="統編帳號密碼" sequence="11" action="dtsc.vat_login" groups="dtsc.group_dtsc_gly"/>
+	<menuitem id="gysjgbW" parent="dtsc.menu_setting" name="供應商價格表" sequence="12" action="dtsc.supp_price" groups="dtsc.group_dtsc_gly"/>
+	<menuitem id="linebot" parent="dtsc.menu_setting" name="Line設定" sequence="13" action="dtsc.linesetting" groups="dtsc.group_dtsc_gly"/>
+	
+	
+	
+	
+	<menuitem id="menu_chart_dashboard_root" parent="dtsc.menu_root" name="報表" sequence="10" action="dtsc.action_server_chart_dashboard2" groups="dtsc.group_dtsc_gly"/>
+    <menuitem id="menu_chart_dashboard" name="出貨統計表" parent="menu_chart_dashboard_root" action="action_server_chart_dashboard2" sequence="1"/>
+    <menuitem id="menu_sales_chart_dashboard" name="業務出貨統計表" parent="menu_chart_dashboard_root" action="action_server_sales_chart_dashboard" sequence="2"/>
+    <menuitem id="menu_machine_chart_dashboard" name="機台出貨統計表" parent="menu_chart_dashboard_root" action="action_server_machine_chart_dashboard" sequence="3"/>
+    <menuitem id="menu_product_chart_dashboard" name="材料出貨統計表" parent="menu_chart_dashboard_root" action="action_server_product_chart_dashboard" sequence="4"/>
+    <menuitem id="menu_makeout_chart_dashboard" name="委外生產統計表" parent="menu_chart_dashboard_root" action="action_server_makeout_chart_dashboard" sequence="5"/>
+	<menuitem id="menu_order_preview" name="下單統計表" parent="menu_chart_dashboard_root" action="action_order_preview1" sequence="6"/>
+	<menuitem id="menu_make_order_preview" name="工單狀況表" parent="menu_chart_dashboard_root" action="action_make_machine_chart_dashboard" sequence="7"/>
+	<menuitem id="menu_work_time" name="員工績效(工時)" parent="menu_chart_dashboard_root" action="action_work_time" sequence="8" groups="dtsc.group_dtsc_gly"/>
+	<menuitem id="menu_daka" name="考勤記錄" parent="menu_chart_dashboard_root" action="action_kaoqing" sequence="9" groups="dtsc.group_dtsc_gly"/>
+	<menuitem id="menu_pettycash" name="零用金" parent="menu_chart_dashboard_root" action="action_pettycash1" sequence="10" groups="dtsc.group_dtsc_gly"/>
+	<menuitem id="menu_calendar" name="日曆" parent="menu_chart_dashboard_root" action="action_calendar_dtsc" sequence="11" groups="dtsc.group_dtsc_gly"/>
+	<!-- <menuitem id="menu_calendar" name="日曆" parent="menu_chart_dashboard_root" action="action_calendar" sequence="12" groups="dtsc.group_dtsc_gly"/> -->
+	<!-- 
+	<menuitem id="submenu1" name="銷售產品" parent="dtsc.action_window_product" action="dtsc.action_window_product"/>
+
+	<menuitem id="menu2" name="采購生產用產品" parent="dtsc.action_window_product" action="action2"/>
+	<menuitem id="menu3" name="BOM設置" parent="dtsc.action_window_product" action="action3"/> -->
+	
+	
+	
+	
+	
+	<!--銷售-->
+	<!--聯繫人-->
+	<!--聯繫人-->
+	<!--製造-->
+	<!--鏈接追蹤-->
+	<!--crm-->
+	<!--費用-->
+	<!--休假-->
+	<!--考勤-->
+	<!--員工-->
+	<!--網站-->
+	<!--會計-->
+	<record id="sale.sale_menu_root" model="ir.ui.menu"> 
+		<field name="active" eval="False"/>
+	</record>
+	<record id="note.menu_note_notes" model="ir.ui.menu"> 
+		<field name="active" eval="False"/>
+	</record>
+	<record id="calendar.mail_menu_calendar" model="ir.ui.menu"> 
+		<field name="active" eval="False"/>
+	</record>
+	<record id="contacts.menu_contacts" model="ir.ui.menu"> 
+		<field name="active" eval="False"/>
+	</record>
+	<record id="mrp.menu_mrp_root" model="ir.ui.menu"> 
+		<field name="active" eval="False"/>
+	</record>
+	<record id="utm.menu_link_tracker_root" model="ir.ui.menu"> 
+		<field name="active" eval="False"/>
+	</record>
+	<record id="crm.crm_menu_root" model="ir.ui.menu"> 
+		<field name="active" eval="False"/>
+	</record>
+	<record id="hr_expense.menu_hr_expense_root" model="ir.ui.menu"> 
+		<field name="active" eval="False"/>
+	</record>
+	<record id="hr_holidays.menu_hr_holidays_root" model="ir.ui.menu"> 
+		<field name="active" eval="False"/>
+	</record>
+	<record id="hr_attendance.menu_hr_attendance_root" model="ir.ui.menu"> 
+		<field name="active" eval="False"/>
+	</record>
+	<record id="hr.menu_hr_root" model="ir.ui.menu"> 
+		<field name="active" eval="False"/>
+	</record>
+	<record id="website.menu_website_configuration" model="ir.ui.menu"> 
+		<field name="active" eval="False"/>
+	</record>
+	<record id="account.menu_finance" model="ir.ui.menu">
+		<field name="active" eval="False"/>
+	</record>
+	<record id="spreadsheet_dashboard.spreadsheet_dashboard_menu_root" model="ir.ui.menu">
+		<field name="active" eval="False"/>
+	</record>
+	<record id="base.menu_management" model="ir.ui.menu">
+		<field name="active" eval="False"/>
+	</record>
+	<record id="mail.menu_root_discuss" model="ir.ui.menu">
+		<field name="active" eval="False"/>
+	</record>
+  </data>
+</odoo>

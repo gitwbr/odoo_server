@@ -1,0 +1,44 @@
+<odoo>
+    <data>
+        <!-- The action to open the test page -->
+        <record id="window_test" model="ir.actions.client">
+            <field name="name">测试页面</field>
+            <field name="tag">test_action</field>
+        </record>
+		
+		
+	<!-- <record id="report_checkout_sales" model="ir.ui.view"> -->
+		<!-- <field name="name">dtsc.checkout.report.tree</field> -->
+		<!-- <field name="model">dtsc.checkout</field> -->
+		<!-- <field name="arch" type="xml"> -->
+			<!-- <tree>				 -->
+				<!-- <field name="user_partner_id" string="業務" readonly="1"  /> -->
+				<!-- <field name="product_total_price_all" sum="Total"  string="輸出金額" /> -->
+				<!-- <field name="install_total_price" sum="Total"  string="施工金額" /> -->
+				<!-- <field name="yeji" sum="Total" string="業績小計"  /> -->
+	
+				<!-- <field name="unit_all" sum="Total"  string="才數小計" /> -->
+			<!-- </tree> -->
+		<!-- </field>	 -->
+	<!-- </record> -->
+	
+	<!-- <record id="search_sales_checkout_report" model="ir.ui.view"> -->
+		<!-- <field name="name">dtsc.checkout.sales.search.report</field> -->
+		<!-- <field name="model">dtsc.checkout</field> -->
+		<!-- <field name="arch" type="xml"> -->
+			<!-- <search> -->
+				<!-- <searchpanel> -->
+                    <!-- <field name="user_partner_id" string="業務" /> -->
+
+                <!-- </searchpanel> -->
+				
+				<!-- <field name="search_line_namee" string="所有訊息"/> -->
+				<!-- <field name="customer_id" string="客戶名稱"/>			 -->
+		
+			<!-- </search> -->
+		<!-- </field>		 -->
+	<!-- </record> -->
+    </data>
+</odoo>
+
+

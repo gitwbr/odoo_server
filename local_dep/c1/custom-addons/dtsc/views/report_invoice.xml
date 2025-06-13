@@ -1,0 +1,838 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+		
+	
+		<record id="view_dtsc_accountreportwizard_wizard_form" model="ir.ui.view">
+			<field name="name">dtsc.accountreportwizard</field>
+			<field name="model">dtsc.accountreportwizard</field>
+			<field name="arch" type="xml">
+				<form>
+					<group>
+						<field name="starttime"/>
+						<field name="endtime"/>
+						<field name="select_company"/>
+						<field name="move_type" invisible="1"/>       
+						<field name="print_customer_label_out_invoice"
+							   attrs="{'invisible': [('move_type', '!=', 'out_invoice')]}" />
+						<field name="print_customer_label_in_invoice"
+							   attrs="{'invisible': [('move_type', '!=', 'in_invoice')]}" />                          
+						<field name="company_list_customer" widget="many2many_tags" options="{'no_create': True, 'no_create_edit': True}" attrs="{'invisible': ['|', ('select_company', 'not in', ['not_all','not_all_zero']), ('move_type', '!=', 'out_invoice')]}" />
+						<field name="company_list_supplier" widget="many2many_tags" options="{'no_create': True, 'no_create_edit': True}" attrs="{'invisible': ['|', ('select_company', 'not in', ['not_all','not_all_zero']), ('move_type', '!=', 'in_invoice')]}" />
+
+					</group>																		
+					<footer>
+						<button string="確認列印" type="object" name="your_confirm_method"/>
+						<button string="取消" class="btn-secondary" special="cancel"/>
+					</footer>
+				</form>
+			</field>
+		</record>
+
+	
+	
+		<record id="dtsc_invoice_review" model="ir.ui.view">
+			<field name="name">account.move</field>
+			<field name="model">account.move</field>
+			<field name="inherit_id" ref="account.view_move_form"/>
+			<field name="arch" type="xml">
+				 <xpath expr="//div[hasclass('o_attachment_preview')]" position="attributes">
+					<attribute name="invisible">true</attribute>
+				</xpath>
+			</field>
+		</record>
+	
+		<record id="dtsc_invoices" model="ir.actions.report">
+			<field name="name">列印報表</field>
+			<field name="model">account.move</field>
+            <field name="binding_model_id" ref="model_account_move"/>
+			<field name="report_type">qweb-pdf</field>
+			<field name="report_name">dtsc.report_invoice_template</field>
+			<field name="report_file">dtsc.report_invoice_template</field>
+		</record>
+
+		<record id="dtsc_payment" model="ir.actions.report">
+			<field name="name">列印付款單</field>
+			<field name="model">account.move</field>
+            <field name="binding_model_id" ref="model_account_move"/>
+			<field name="report_type">qweb-pdf</field>
+			<field name="report_name">dtsc.report_payment_template</field>
+			<field name="report_file">dtsc.report_payment_template</field>
+		</record>
+		<!-- <template id="report_payment_template">
+			<t t-call="web.html_container">
+				<head>
+					<meta charset="utf-8"/>
+				</head>	
+				<t t-foreach="docs" t-as="o">
+					<div style="font-size: 24px;">
+						<strong>測試:</strong> <span t-field="o.partner_id.name"/>
+						<strong>測試:</strong> <span t-field="o.invoice_date"/>
+						<strong>測試:</strong> <span t-field="o.pay_mode"/>
+						<strong>測試:</strong> <span t-field="o.sale_price"/>
+					</div>
+				</t>
+			</t>
+		 </template> -->
+		 <template id="report_payment_template">
+			<t t-call="web.html_container">
+				<head>
+					<meta charset="utf-8"/>
+					<style>
+						.table {
+							border: 1px solid black;
+							border-collapse: collapse;
+							width: 100%;
+							table-layout: fixed; /* 确保列宽固定 */
+						}
+						.table th, .table td {
+							border: 1px solid black;
+							padding: 5px;
+							font-size: 20px;
+							word-wrap: break-word;
+							text-align: left;
+						}
+						.header, .content {
+							width: 100%;
+							text-align: left;
+						}
+						.header td {
+							font-weight: bold;
+						}
+					</style>
+				</head>
+				<t t-foreach="docs" t-as="o">
+					<div class="header"></div>
+
+					<div class="content">
+						<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+							<div style="font-weight: bold; font-size: 30px; text-align: center; flex: 1;">
+								廠商付款明細
+							</div>
+							<div style="font-size: 30px; text-align: right;">
+								月份:<t t-esc="o.invoice_date"/>
+							</div>
+						</div>
+
+						<table class="table table-condensed">
+							<!-- 使用 colgroup 来定义列宽度 -->
+							<colgroup>
+								<col style="width: 15%;" />  <!-- 第一列 -->
+								<col style="width: 10%;" />  <!-- 第二列 -->
+								<col style="width: 15%;" />  <!-- 第三列 -->
+								<col style="width: 10%;" />  <!-- 第四列 -->
+								<col style="width: 20%;" />  <!-- 第五列 -->
+								<col style="width: 15%;" />  <!-- 第六列 -->
+								<col style="width: 15%;" />  <!-- 第七列 -->
+							</colgroup>
+
+							<tr>
+								<td>支票到期日</td>
+								<td colspan="3"><t t-esc="o.pay_date_due"/></td>
+								<td colspan="3">
+									<t t-if="o.pay_mode == '1'">(現金)</t>
+									<t t-if="o.pay_mode == '2'">(支票)</t>
+									<t t-if="o.pay_mode == '3'">(匯款)</t>
+									<t t-if="o.pay_mode not in ['1', '2', '3']">(其他)</t>
+								</td>
+							</tr> 
+							<tr>
+								<td>發票號碼</td>
+								<td colspan="3"><t t-esc="o.vat_num"/></td>
+								<td>付款方式</td> 
+								<td colspan="2"><t t-esc="o.pay_type.name"/></td>
+							</tr>
+							<tr>
+								<td colspan="2">戶名</td>
+								<td colspan="2">銀行帳號</td>
+								<td colspan="3">銀行名稱</td>                                
+							</tr>
+							<tr>
+								<td colspan="2">
+									<t t-esc="o.partner_id.name"/> (<t t-esc="o.partner_id.custom_id"/>)
+								</td>
+								<td colspan="2">
+									<t t-esc="o.supp_bank_id.acc_number"/>
+								</td>
+								<td colspan="3">
+									<t t-esc="o.supp_bank_id.bank_id.name"/>
+								</td>
+							</tr>
+							<tr>
+								<td>票據金額</td>
+								<td>未稅</td>
+								<td><t t-esc="'{:,.0f}'.format(abs(o.sale_price))"/></td> 
+								<td>稅金</td>
+								<td><t t-esc="'{:,.0f}'.format(abs(o.tax_price))"/></td> 
+								<td>小計</td>
+								<td><t t-esc="'{:,.0f}'.format(abs(o.total_price))"/></td> 
+							</tr>
+							<tr>
+								<td colspan="7">備註: <t t-esc="o.comment_infu"/></td>
+							</tr>
+							<tr style="height:100px">
+								<td colspan="4" valign="middle">製表人:</td>
+								<td colspan="3" valign="middle">核准:</td>
+							</tr>
+						</table>
+					</div>
+				</t>
+			</t>
+		</template>
+
+		 <template id="report_invoice_template">
+				<t t-call="web.html_container">
+					<head>
+						<meta charset="utf-8"/>
+					</head>		
+					<style>
+					  .my-table {
+						width: 100%;
+						border-collapse: collapse;
+					  }
+					  .table-header, .table-row, .subtotal-row, .table-footer {
+						display: flex;
+						border: 1px solid black;
+						page-break-inside: avoid;
+					  }
+					  .table-summary {
+						 display: flex;
+						 border: 1px solid black;
+						 padding:5px;
+						 page-break-inside: avoid;
+					  }
+					  .table-header > div {
+						border-right: 1px solid black;
+						padding: 5px;
+						font-size: 12px;
+						font-weight: bold; /* 仅标题部分加粗 */
+					  }
+					  .table-row > div, .subtotal-row > div {
+						border-right: 1px solid black;
+						padding: 5px;
+						font-size: 12px;
+					  }
+					  .table-header > div:last-child, .table-row > div:last-child, .subtotal-row > div:last-child {
+						border-right: none;
+					  }
+					</style>
+					<t t-if="not data.get('print_customer_label') or data['print_customer_label'] == 'invoice'">
+						<t t-foreach="data['company_details']" t-as="o">				
+							<div class="page">
+								<!-- Title -->
+								<div style="display: flex; justify-content: space-between; align-items: center;">
+									<div>
+										<p>
+											<h3>	
+												<span style="margin-right: 20px;font-size: 24px;"><t t-esc="res_company.name"/></span><span style="font-size: 24px;"><t t-esc="o['title_name']"/></span>
+												<!-- <t t-if="'starttime' in data and data['starttime']">
+													<span style="padding-right: 20px;font-size: 18px;"><strong>帳款區間:</strong><t t-esc="data['starttime']"/>~<t t-esc="data['endtime']"/></span>
+												</t> -->
+												<t t-if="'endtime' in data and data['endtime']">
+													<span style="padding-left: 20px; font-size: 18px;">
+														<strong>帳款年月:</strong>
+														<t t-esc="data['endtime'].split('-')[0] + '年' + data['endtime'].split('-')[1] + '月'" />
+													</span>
+												</t>
+
+												<t t-if="o['move_type'] == 'in_invoice'">					
+													<span style="margin-left:150px;font-size: 16px;">廠商付款條款: <t t-esc="o['supp_pay_type']"/></span>
+													<span style="margin-left:30px;font-size: 16px;">付款日: <t t-esc="o['pay_date_due']"/></span>							
+												</t>
+											</h3>
+											
+										</p>
+										<p><t t-esc="res_company.street"/>     Tel:<t t-esc="res_company.phone"/>    Fax:<t t-esc="res_company.fax"/></p>
+									</div>
+								</div>
+								<!-- End Title -->
+								<hr style="border-top: 2px solid #333; opacity: 1;"/>	
+								<!-- Main Information -->
+									<t t-if="o['move_type'] == 'out_invoice'">
+										<table class="table table-condensed">
+											<tbody>
+												<tr>
+													<td style="width: 10%;"><strong>客戶名稱:</strong></td> 
+													<td style="width: 31%;"><span t-esc="o['company_name']"/></td>
+													<td style="width: 8%;"><strong>電話:</strong></td>
+													<td style="width: 15%;"><span t-esc="o['phone']"/></td>
+													<td style="width: 8%;"><strong>稅別:</strong></td>
+													<td style="width: 10%;">
+													  <t t-if="o['custom_invoice_form'] == '21'">三聯式</t>
+													  <t t-elif="o['custom_invoice_form'] == '22'">二聯式</t>
+													  <t t-else="1">其它</t>
+													</td>
+													<td style="width: 8%;"><strong>統編:</strong></td>
+													<td style="width: 10%;"><span t-esc="o['vat']"/></td>
+												</tr>
+												<tr>
+													<!-- <td style="width: 10%;"><strong>聯絡人:</strong></td> -->
+													<!-- <td style="width: 25%;"><span t-esc="o['custom_contact_person']"/></td> -->
+													<!-- <td style="width: 10%;"></td> -->
+													<!-- <td style="width: 25%;"></td> -->
+													<td style="width: 10%;"><strong>地址:</strong></td>
+													<td colspan="5" style="width: 35%;"><span t-esc="o['address']"/></td>
+													<td style="width: 10%;"><strong>業務:</strong></td>
+													<td style="width: 25%;"><span t-esc="o['user_id']"/></td>
+												</tr>
+											</tbody>
+										</table>
+									</t>
+									<t t-if="o['move_type'] == 'in_invoice'">
+										<table class="table table-condensed">
+											<tbody>
+												<tr>
+													<td style="width: 10%;"><strong>工廠名稱:</strong></td> 
+													<td style="width: 30%;"><span t-esc="o['company_name']"/></td>
+													<td style="width: 10%;"><strong>電話:</strong></td>
+													<td style="width: 15%;"><span t-esc="o['phone']"/></td>
+													<td style="width: 10%;"><strong>傳真:</strong></td>
+													<td style="width: 15%;"><span t-esc="o['custom_fax']"/></td>
+												</tr>
+												<tr>
+													<td style="width: 10%;"><strong>付款方式:</strong></td> 
+													<td style="width: 30%;">
+														<t t-if="o['pay_mode'] == '1'">附回郵</t>
+														<t t-elif="o['pay_mode'] == '2'">匯款</t>
+														<t t-elif="o['pay_mode'] == '3'">業務收款</t>
+														<t t-elif="o['pay_mode'] == '4'">其他</t>
+														<t t-else="1">其他</t>
+													 </td>
+													<td style="width: 10%;"><strong>發票號:</strong></td>
+													<td style="width: 15%;"><span t-esc="o['vat_num']"/></td>
+													<td style="width: 10%;"></td>
+													<td style="width: 15%;"></td>
+												</tr>
+												<tr>
+													<td style="width: 10%;"><strong>銀行:</strong></td> 
+													<td style="width: 30%;"><span t-esc="o['bank_name']"/></td>
+													<td style="width: 10%;"><strong>帳戶號碼:</strong></td>
+													<td style="width: 15%;"><span t-esc="o['bank_acc_num']"/></td>
+													<td style="width: 10%;"></td>
+													<td style="width: 15%;"></td>
+												</tr>
+												<tr>
+													<!-- <td style="width: 10%;"><strong>聯絡人:</strong></td> -->
+													<!-- <td style="width: 25%;"><span t-esc="o['invoice_person']"/></td> -->
+													<td style="width: 10%;"><strong>地址:</strong></td>
+													<td colspan="5" style="width: 35%;"><span t-esc="o['street']"/></td>
+												</tr>
+											</tbody>
+										</table>
+									</t>
+									<!-- Order Details -->
+
+									<t t-if="o['move_type'] == 'out_invoice'">
+										<div class="my-table">
+										  <div class="table-header">
+											 <div style="flex: 1 0 10%; text-align: center;">出貨日期</div>
+											<div style="flex: 1 0 12%; text-align: center;">大圖訂單</div>
+											<div style="flex: 1 0 33%; text-align: left;">檔名/輸出材質/加工方式</div>
+											<div style="flex: 1 0 12%; text-align: center;">尺寸(才)</div>
+											<div style="flex: 1 0 6%; text-align: center;">數量</div>
+											<div style="flex: 1 0 6%; text-align: center;">單價</div>
+											<div style="flex: 1 0 6%; text-align: center;">加工</div>
+											<div style="flex: 1 0 6%; text-align: center;">小計</div>
+										  </div>
+										  <t t-set="current_date" t-value="False"/>
+										  <t t-set="day_total" t-value="0"/>
+										  <t t-set="all_total" t-value="0"/>
+										  
+										  <t t-foreach="o['invoice_ids']" t-as="order">
+											<t t-if="current_date and current_date != order['delivery_date']">
+											 <!--  <div class="subtotal-row">
+												<div style="width: 90%;border-right: 0;">小計(<t t-esc="current_date"/>):</div>
+												<div style="width: 10%; text-align: right;"><span t-esc="'{:,.0f}'.format(day_total)"/></div>
+											  </div> -->
+											  <div class="subtotal-row" style="display: flex;">  
+													<div style="flex: 1 0 15%; border-right:0 ;text-align: left; ">小計(<t t-esc="current_date"/>):</div>
+													<div style="flex: 1 0 7%;  border-right:0 ;text-align: center;"></div>
+													<div style="flex: 1 0 33%; border-right:0 ;text-align: center;"></div>
+													<div style="flex: 1 0 12%; border-right:0 ;text-align: center;"></div>
+													<div style="flex: 1 0 6%;  border-right:0 ;text-align: center;"></div>
+													<div style="flex: 1 0 6%;  border-right:0 ;text-align: center;"></div>
+													<div style="flex: 1 0 6%; border-right: 1px solid black; text-align: center;"></div>
+													<div style="flex: 1 0 6%; text-align: center;"><span t-esc="'{:,.0f}'.format(day_total)"/></div>
+													<!-- <div style="width: 90%;border-right: 0;">小計(<t t-esc="current_date"/>):</div>
+													<div style="width: 10%; text-align: right;"><span t-esc="'{:,.0f}'.format(day_total)"/></div> -->
+												</div>
+											  <t t-set="day_total" t-value="0"/>
+											</t>
+											<div class="table-row">
+											  <div style="flex: 1 0 10%; text-align: center;"><span t-esc="order['delivery_date']"/></div>
+											  <div style="flex: 1 0 12%; text-align: center;">
+												<div><span t-esc="order['in_out_id']"/></div>
+												<div><span t-esc="order['project_name']"/></div>
+											  </div>
+											  <div style="flex: 1 0 33%; text-align: left; word-break: break-all; word-wrap: break-word;"><span t-esc="order['ys_name']"/></div>
+											  <!--  <div style="flex: 1 0 12%; text-align: center;"><span t-esc="order['size_value']"/></div> -->
+											<div style="flex: 1 0 12%; text-align: center;">
+												<t t-if="order['size_value'] and '(' in order['size_value']">
+													<t t-esc="order['size_value'].split('(')[0]"/>
+													<br/>
+													(<t t-esc="int(order['size_value'].split('(', 1)[1].split(')')[0].split('.')[0])"/>)
+												</t>
+												<t t-else="">
+													<span t-esc="order['size_value'] or ''"/>
+												</t>
+											</div>
+											  <div style="flex: 1 0 6%; text-align: center;"><span t-esc="round(order['quantity_show'])"/></div>
+											  <div style="flex: 1 0 6%; text-align: center;"><span t-esc="order['price_unit_show']"/></div>
+											  <div style="flex: 1 0 6%; text-align: center;"><span t-esc="'{:,.0f}'.format(order['make_price'])"/></div>
+											  <div style="flex: 1 0 6%; text-align: center;"><span t-esc="'{:,.0f}'.format(order['price_subtotal'])"/></div>
+											</div>
+											<t t-set="current_date" t-value="order['delivery_date']"/>
+											<t t-set="day_total" t-value="day_total + order['price_subtotal']"/>
+											<t t-set="all_total" t-value="all_total + order['price_subtotal']"/>
+											
+											<t t-if="order_last">
+											   <div class="subtotal-row" style="display: flex;">   
+													<div style="flex: 1 0 15%; border-right:0 ;text-align: left; ">小計(<t t-esc="current_date"/>):</div>
+													<div style="flex: 1 0 7%;  border-right:0 ;text-align: center;"></div>
+													<div style="flex: 1 0 33%; border-right:0 ;text-align: center;"></div>
+													<div style="flex: 1 0 12%; border-right:0 ;text-align: center;"></div>
+													<div style="flex: 1 0 6%;  border-right:0 ;text-align: center;"></div>
+													<div style="flex: 1 0 6%;  border-right:0 ;text-align: center;"></div>
+													<div style="flex: 1 0 6%; border-right: 1px solid black; text-align: center;"></div>
+													<div style="flex: 1 0 6%; text-align: center;"><span t-esc="'{:,.0f}'.format(day_total)"/></div>
+													<!-- <div style="width: 90%;border-right: 0;">小計(<t t-esc="current_date"/>):</div>
+													<div style="width: 10%; text-align: right;"><span t-esc="'{:,.0f}'.format(day_total)"/></div> -->
+												</div>
+											  <div class="table-summary">
+												當月貨款：<span t-esc="'{:,.0f}'.format(abs(o['sale_price']))" style="padding-right: 10px;"/> 
+												<!-- <t t-if="o['custom_invoice_form'] == '21' or o['custom_invoice_form'] == '22'"> -->
+												稅額：<span t-esc="'{:,.0f}'.format(abs(o['tax_price']))" style="padding-right: 10px;"/>  
+												稅後金額：<span t-esc="'{:,.0f}'.format(abs(o['total_price']))" style="padding-right: 10px;"/> 
+												<!-- </t> -->
+												<!-- <t t-else="1"> -->
+													<!-- 稅額：<span style="padding-right: 10px;"> 0</span> -->
+													<!-- 稅後金額：<span t-esc="'{:,.0f}'.format(abs(o['total_price']))" style="padding-right: 10px;"/>  -->
+												<!-- </t> -->
+												<!-- 稅額：<span t-esc="'{:,.0f}'.format(all_total * 0.05 + 0.1)" style="padding-right: 10px"/>  -->
+												<!-- 稅後金額：<span t-esc="'{:,.0f}'.format(all_total * 1.05 + 0.1)"  style="padding-right: 10px"/>  -->
+												已收金額：<span style="padding-right: 10px"> _______</span>
+												應收金額：<span style="padding-right: 10px"> _______</span>
+											  </div>
+											  
+										
+											  <div class="table-summary">
+												<!-- 收款方式：<span t-esc="o['receive_mode']"/> -->
+												收款方式：
+												<label>
+													<span t-if="o['receive_mode'] == '1'" style="border: 1px solid black; padding: 1px; width: 10px; height: 10px; display: inline-block; background-color: black;"></span>
+													<span t-if="o['receive_mode'] != '1'" style="border: 1px solid black; padding: 1px; width: 10px; height: 10px; display: inline-block;"></span> 附回郵
+												</label>
+												<label>
+													<span t-if="o['receive_mode'] == '2'" style="border: 1px solid black; padding: 1px; width: 10px; height: 10px; display: inline-block; background-color: black;"></span>
+													<span t-if="o['receive_mode'] != '2'" style="border: 1px solid black; padding: 1px; width: 10px; height: 10px; display: inline-block;"></span> 匯款
+												</label>
+												<label>
+													<span t-if="o['receive_mode'] == '3'" style="border: 1px solid black; padding: 1px; width: 10px; height: 10px; display: inline-block; background-color: black;"></span>
+													<span t-if="o['receive_mode'] != '3'" style="border: 1px solid black; padding: 1px; width: 10px; height: 10px; display: inline-block;"></span> 業務收款
+												</label>
+												<label>
+													<span t-if="o['receive_mode'] == '4'" style="border: 1px solid black; padding: 1px; width: 10px; height: 10px; display: inline-block; background-color: black;"></span>
+													<span t-if="o['receive_mode'] != '4'" style="border: 1px solid black; padding: 1px; width: 10px; height: 10px; display: inline-block;"></span> 其他
+												</label>
+											  </div>
+											  <div class="table-summary">
+												更正或作廢發票，請於次月5日前寄回，逾期恕不受理。
+											  </div>
+											</t>
+										  </t>
+										 <!--  <div class="table-footer">
+											<div style="width: 33%; text-align: left; padding: 80px 5px; font-size: 20px;"><strong>製表人:</strong></div>
+											<div style="width: 33%; text-align: center; padding: 80px 5px; font-size: 20px;"><strong>簽核:</strong></div>
+											<div style="width: 33%;"></div>
+										  </div> -->
+										</div>
+
+									</t>
+									<t t-if="o['move_type'] == 'in_invoice'">
+										<div class="my-table">
+										  <div class="table-header">
+											<div style="width: 15%;text-align: center;">日期</div>
+											<div style="width: 15%;text-align: center;">採購單號</div>
+											<div style="flex: 1 0 35%;text-align: center;">品名規格</div>
+											<div style="width: 10%; text-align: center;">數量</div>
+											<div style="width: 10%; text-align: center;">單位</div>
+											<div style="width: 10%; text-align: center;">單價</div>
+											<div style="width: 10%; text-align: center;">小計</div> 
+										  </div>
+										  <t t-set="current_date" t-value="False"/>
+										  <t t-set="day_total" t-value="0"/>
+										  <t t-set="all_total" t-value="0"/>
+										  
+										  <t t-foreach="o['invoice_ids']" t-as="order">
+											<t t-if="current_date and current_date != order['date']">
+											  <!-- <div class="subtotal-row">
+												<div style="width: 90%;border-right: 0;">小計(<t t-esc="current_date"/>):</div>
+												<div style="width: 10%;text-align: right;"><span t-esc="'{:,.0f}'.format(day_total)"/></div>
+											  </div> -->
+											  <div class="subtotal-row" style="display: flex;">
+												<div style="width: 15%; border-right: 1px solid white; text-align: left;">小計 (<t t-esc="current_date"/>):</div>
+												<div style="width: 15%; border-right: 1px solid white; text-align: center;"></div>
+												<div style="flex: 1 0 35%; border-right: 1px solid white; text-align: center;"></div>
+												<div style="width: 10%;  border-right: 1px solid white; text-align: center;"></div>
+												<div style="width: 10%;  border-right: 1px solid white; text-align: center;"></div>
+												<div style="width: 10%;  border-right: 1px solid black; text-align: center;"></div>
+												<div style="width: 10%;  text-align: center;"><span t-esc="'{:,.0f}'.format(day_total)"/></div>
+												<!-- <div style="width: 90%;border-right: 0;">小計(<t t-esc="current_date"/>):</div>
+												<div style="width: 10%; text-align: right;"><span t-esc="'{:,.0f}'.format(abs(o['sale_price']))"/></div> -->
+											</div>
+											  <t t-set="day_total" t-value="0"/>
+											</t>
+											<div class="table-row">
+											  <div style="width: 15%;text-align: center;"><span t-esc="order['date']"/></div>
+											  <div style="width: 15%;text-align: center;"><span t-esc="order['in_out_id']"/></div>
+											  <div style="flex: 1 0 35%; text-align: left; word-break: break-all; word-wrap: break-word;"><span t-esc="order['ys_name']"/></div>
+											  <div style="width: 10% ;text-align: center;"><span t-esc="round(order['quantity'])"/></div>
+											  <div style="width: 10% ;text-align: center;"><span t-esc="order['product_uom_id']"/></div>
+											  <div style="width: 10% ;text-align: center;"><span t-esc="'{:,.0f}'.format(order['price_unit'])"/></div>
+											  <div style="width: 10% ;text-align: center;"><span t-esc="'{:,.0f}'.format(order['price_subtotal'])"/></div>
+											</div>
+											<t t-set="current_date" t-value="order['date']"/>
+											<t t-set="day_total" t-value="day_total + order['price_subtotal']"/>
+											<t t-set="all_total" t-value="all_total + order['price_subtotal']"/>
+											
+											<t t-if="order_last">
+											  <!-- <div class="subtotal-row">
+												<div style="width: 90%;">小計(<t t-esc="current_date"/>):</div>
+											
+												<div style="width: 10%;"><span t-esc="'{:,.0f}'.format(abs(o['sale_price']))"/></div>
+											  </div> -->
+											  <div class="subtotal-row" style="display: flex;">
+												<div style="width: 15%; border-right: 1px solid white; text-align: left;">小計 (<t t-esc="current_date"/>):</div>
+												<div style="width: 15%; border-right: 1px solid white; text-align: center;"></div>
+												<div style="flex: 1 0 35%; border-right: 1px solid white; text-align: center;"></div>
+												<div style="width: 10%;  border-right: 1px solid white; text-align: center;"></div>
+												<div style="width: 10%;  border-right: 1px solid white; text-align: center;"></div>
+												<div style="width: 10%;  border-right: 1px solid black; text-align: center;"></div>
+												<div style="width: 10%;  text-align: center;"><span t-esc="'{:,.0f}'.format(day_total)"/></div>
+												<!-- <div style="width: 90%;border-right: 0;">小計(<t t-esc="current_date"/>):</div>
+												<div style="width: 10%; text-align: right;"><span t-esc="'{:,.0f}'.format(abs(o['sale_price']))"/></div> -->
+											</div>
+											  <div class="table-summary">
+												未稅金額：<span t-esc="'{:,.0f}'.format(abs(o['sale_price']))" style="padding-right: 10px;"/>  
+												<!-- <t t-if="o['vat'] == '21' or o['vat'] == '22'"> -->
+												營業稅：<span t-esc="'{:,.0f}'.format(abs(o['tax_price']))" style="padding-right: 10px;"/>  
+												總計：<span t-esc="'{:,.0f}'.format(abs(o['total_price']))" style="padding-right: 10px;"/>  
+												<!-- </t> -->
+												<!-- <t t-else="1"> -->
+													<!-- 營業稅：<span style="padding-right: 10px;"> 0</span> -->
+													<!-- 總計：<span t-esc="'{:,.0f}'.format(abs(o['total_price']))" style="padding-right: 10px;"/>  -->
+												<!-- </t> -->
+											  </div>
+											  <!-- <div class="table-summary">
+												未稅金額：<span t-esc="'{:,.0f}'.format(abs(o['sale_price']))" style="padding-right: 10px;"/> 
+												營業稅：<span t-esc="'{:,.0f}'.format(abs(o['tax_price']))" style="padding-right: 10px;"/> 
+												總計：<span t-esc="'{:,.0f}'.format(abs(o['total_price']))" style="padding-right: 10px;"/> 
+											  </div> -->
+											</t>
+										  </t>
+										  <div class="table-footer">
+											<div style="width: 33%; text-align: left; padding: 80px 5px; font-size: 20px;"><strong>製表人:</strong></div>
+											<div style="width: 33%; text-align: center;padding: 80px 5px; font-size: 20px;"><strong>簽核:</strong></div>
+											<div style="width: 33%;"></div> <!-- 留空白，用于对齐 -->
+										  </div>
+										</div>
+
+							
+									</t>
+							</div>
+							<t t-if="data['company_details'].index(o) &lt; len(data['company_details']) - 1">
+								<div style="page-break-after: always;"></div>
+							</t>
+						</t>
+					</t>
+					<!-- <t t-if="data.get('print_customer_label')">-->
+					<t t-if="data.get('print_customer_label') and data['print_customer_label'] == 'customer_label'">
+						<t t-foreach="range(0, len(data['company_details']), 24)" t-as="page_start">
+							<t t-set="is_last_page" t-value="page_start + 24 >= len(data['company_details'])"/>
+							<div t-att-style="'margin: 0; padding: 0;%s' % (' page-break-after: always;' if not is_last_page else '')">
+								<table style="width: 100%; height: 100%; border-collapse: collapse; border-spacing: 0; margin: 0; padding: 0;">
+									<t t-foreach="range(8)" t-as="row">
+										<tr style="height: 12.5%;">
+											<t t-foreach="range(3)" t-as="col">
+												<t t-set="index" t-value="page_start + (row * 3) + col"/>
+												<td style="width: 33.33%;  vertical-align: middle; padding: 2mm;">
+												<!-- background-color: #f5f5f5; border: 0.5px solid #ddd; -->
+													<t t-if="index &lt; len(data['company_details'])">
+														<div style="display: flex; flex-direction: column; justify-content: center; height: 100%; padding-left: 4mm;">
+															<p style="margin: 2mm 0;"><t t-esc="data['company_details'][index]['address']"/></p>
+															<p style="margin: 2mm 0;"><t t-esc="data['company_details'][index]['company_name']"/></p>
+															<p style="margin: 2mm 0;">
+																<t t-esc="data['company_details'][index]['custom_contact_person']"/>
+																<span style="margin-left: 5px;"></span>
+																<t t-esc="data['company_details'][index]['phone']"/>
+															</p>
+														</div>
+													</t>
+												</td>
+											</t>
+										</tr>
+									</t>
+								</table>
+							</div>
+						</t>
+					</t>
+
+
+					
+					<!-- <t t-if="data.get('print_customer_label') and data['print_customer_label'] == 'pay_all'">
+						<div class="page">
+							<div style="text-align: center;">
+								<h3 style="font-size: 24px;">科影數位影像股份有限公司</h3>
+								<h4><t t-esc="data['endtime'].split('-')[0] + '年' + data['endtime'].split('-')[1] + '月'" />應付貨款明細表</h4>
+							</div>
+
+						   <div class="my-table">
+								<div class="table-header">
+									<div style="flex: 2; border-right: 1px solid black; padding: 5px;">廠商名稱</div>
+									<div style="flex: 1; border-right: 1px solid black; padding: 5px;">付款方式</div>
+									<div style="flex: 1; border-right: 1px solid black; padding: 5px;">付款條件</div>
+									<div style="flex: 1; border-right: 1px solid black; padding: 5px;">到期日</div>
+									<div style="flex: 1; border-right: 1px solid black; padding: 5px;">金額</div>
+									<div style="flex: 1; border-right: 1px solid black; padding: 5px;">稅金</div>
+									<div style="flex: 1; border-right: 1px solid black; padding: 5px;">小計</div>
+									<div style="flex: 2; border-right: 1px solid black; padding: 5px;">發票號碼</div>
+								</div>
+
+								<t t-foreach="data['company_details']" t-as="line">
+									<div class="table-row">
+										<div style="flex: 2; border-right: 1px solid black; padding: 5px;"><t t-esc="line['company_name']"/></div>
+										<div style="flex: 1; border-right: 1px solid black; padding: 5px;"><t t-esc="line['supp_pay_type']"/></div>
+										<div style="flex: 1; padding: 5px;">
+											<t t-if="line['pay_mode'] == '1'">附回郵</t>
+											<t t-elif="line['pay_mode'] == '2'">匯款</t>
+											<t t-elif="line['pay_mode'] == '3'">業務收款</t>
+											<t t-elif="line['pay_mode'] == '4'">其他</t>
+											<t t-else="line">其他</t>
+										</div>
+										<div style="flex: 1; border-right: 1px solid black; padding: 5px;"><t t-esc="line['pay_date_due']"/></div>
+									
+										<div style="flex: 1; border-right: 1px solid black; padding: 5px; text-align: right;">
+											<span t-set="total_untaxed" t-value="sum(order['price_subtotal'] for order in line['invoice_ids'])"/>
+											<span t-esc="'{:,.0f}'.format(total_untaxed)"/>
+										</div>
+										
+										<div style="flex: 1; border-right: 1px solid black; padding: 5px; text-align: right;">
+											<span t-esc="'{:,.0f}'.format(total_untaxed * 0.05)"/>
+										</div>
+										
+										<div style="flex: 1; border-right: 1px solid black; padding: 5px; text-align: right;">
+											<span t-esc="'{:,.0f}'.format(total_untaxed * 1.05)"/>
+										</div>
+										<div style="flex: 2; border-right: 1px solid black; padding: 5px;"><t t-esc="line['vat_num']"/></div>
+									</div>
+								</t>
+							</div>
+						</div>
+					</t> -->
+
+				</t>
+        </template>
+		
+		
+
+
+		<!-- 添加向导动作到应收账单的更多(动作)菜单 -->
+		<record id="action_invoice_open_wizard" model="ir.actions.server">
+			<field name="name">列印報表</field>
+			<field name="model_id" ref="account.model_account_move"/>
+			<field name="binding_model_id" ref="account.model_account_move"/>
+			<field name="state">code</field>
+			<field name="code">
+				action = {
+					'type': 'ir.actions.act_window',
+					'name': '輸出報表',
+					'res_model': 'dtsc.accountreportwizard',
+					'view_mode': 'form',
+					'target': 'new',
+				}
+			</field>
+			 <!-- <field name="context">{'default_active_id': active_id, 'default_active_ids': active_ids}</field> -->
+		</record>
+
+		
+		<template id="dtsc_report_invoice_out" inherit_id="account.report_invoice_document">
+            <xpath expr="." position="replace">
+                <t t-call="web.html_container">
+					<t t-set="o" t-value="o.with_context(lang=lang)" />
+					<t t-foreach="docs" t-as="doc">
+						<t t-call="web.external_layout">
+							<div class="page">
+								 <!-- Title -->
+								<div style="display: flex; justify-content: space-between; align-items: center;">
+									<div>
+										<p>
+											<h3>	
+												<span style="margin-right: 20px;"><t t-esc="res_company.name"/></span>對帳單
+												
+											</h3>
+										</p>
+										<p><t t-esc="res_company.street"/>     Tel:<t t-esc="res_company.phone"/>    Fax:<t t-esc="res_company.fax"/></p>
+									</div>
+								</div>
+								<hr style="border-top: 2px solid #333; opacity: 1;"/>		
+								<!-- Main Information -->
+								<t t-if="doc.move_type == 'out_invoice'">
+									<table class="table table-condensed">
+										<tbody>
+											<tr>
+												<td style="width: 10%;"><strong>客戶名稱:</strong></td> 
+												<td style="width: 15%;"><span t-field="o.partner_id.name"/></td>
+												<td style="width: 10%;"><strong>電話:</strong></td>
+												<td style="width: 15%;"><span t-field="o.partner_id.phone"/></td>
+												<td style="width: 10%;"><strong>稅別:</strong></td>
+												<td style="width: 15%;"><span t-field="o.partner_id.custom_invoice_form"/></td>
+												<td style="width: 10%;"><strong>統編:</strong></td>
+												<td style="width: 15%;"><span t-field="o.partner_id.vat"/></td>
+											</tr>
+											<tr>
+												<td style="width: 10%;"><strong>聯絡人:</strong></td>
+												<td style="width: 25%;"><span t-field="o.partner_id.custom_contact_person"/></td>
+												<td style="width: 10%;"><strong>地址:</strong></td>
+												<td colspan="3" style="width: 35%;"><span t-field="o.partner_id.street"/></td>
+												<td style="width: 10%;"><strong>業務:</strong></td>
+												<td style="width: 25%;"><span t-field="o.partner_id.user_id"/></td>
+											</tr>
+										</tbody>
+									</table>
+								</t>
+								<t t-if="doc.move_type == 'in_invoice'">
+									<table class="table table-condensed">
+										<tbody>
+											<tr>
+												<td style="width: 10%;"><strong>工廠名稱:</strong></td> 
+												<td style="width: 15%;"><span t-field="o.partner_id.name"/></td>
+												<td style="width: 10%;"><strong>電話:</strong></td>
+												<td style="width: 15%;"><span t-field="o.partner_id.phone"/></td>
+												<td style="width: 10%;"><strong>傳真:</strong></td>
+												<td style="width: 15%;"><span t-field="o.partner_id.custom_fax"/></td>
+											</tr>
+											<tr>
+												<td style="width: 10%;"><strong>聯絡人:</strong></td>
+												<td style="width: 25%;"><span t-field="o.partner_id.purch_person"/></td>
+												<td style="width: 10%;"><strong>地址:</strong></td>
+												<td colspan="3" style="width: 35%;"><span t-field="o.partner_id.street"/></td>
+											</tr>
+										</tbody>
+									</table>
+								</t>
+								<!-- Order Details -->
+								<t t-if="doc.move_type == 'out_invoice'">
+									<table class="table table-condensed">
+										<thead>
+											<tr>
+												<th>出貨日期</th>
+												<th>出貨單號</th>
+												<th>檔名/輸出材質/加工方式</th>
+												<th>尺寸(才)</th>
+												<th>備註說明</th>
+												<th>數量</th>
+												<th>單價</th>
+												<th>加工</th>
+												<th>小計</th>
+											</tr>
+										</thead>
+										<tbody>
+											<t t-foreach="o.invoice_line_ids" t-as="order">
+												<tr>
+													<td></td>
+													<td><span t-field="order.in_out_id"/></td>
+													<td><span t-field="order.ys_name"/></td>
+													<td><span t-field="order.size_value"/></td>
+													<td><span t-field="order.comment"/></td>
+													<td><span t-field="order.quantity_show"/></td>
+													<td><span t-field="order.price_unit_show"/></td>
+													<td><span t-field="order.make_price"/></td>
+													<td><span t-field="order.price_subtotal"/></td>
+												</tr>
+											</t>
+										</tbody>
+									</table>
+								</t>
+								<t t-if="doc.move_type == 'in_invoice'">
+									<table class="table table-condensed">
+										<thead>
+											<tr>
+												<th>日期</th>
+												<th>采購單單號</th>
+												<th>品名規格</th>
+												<th>數量</th>
+												<th>單位</th>
+												<th>單價</th>
+												<th>小計</th>
+											</tr>
+										</thead>
+										<tbody>
+											<t t-foreach="o['invoice_ids']" t-as="order">
+												<tr>
+													<td><span t-esc="order['date']"/></td>
+													<td><span t-esc="order['in_out_id']"/></td>
+													<td><span t-esc="order['ys_name']"/></td>
+													<td><span t-esc="order['size_value']"/></td>
+													<td><span t-esc="order['comment']"/></td>
+													<td><span t-esc="order['quantity_show']"/></td>
+													<td><span t-esc="order['price_unit_show']"/></td>
+													<td><span t-esc="order['quantity_show']"/></td>
+													<td><span t-esc="order['make_price']"/></td>
+													<td><span t-esc="order['price_subtotal']"/></td>
+												</tr>
+											</t>
+										</tbody>
+									</table>
+									
+									
+								</t>
+								
+								<div class="clearfix mb-4">
+										<div id="total" class="row">
+											<div t-attf-class="#{'col-6' if report_type != 'html' else 'col-sm-7 col-md-6'} ms-auto">
+												<table class="table table-sm table-borderless" style="page-break-inside: avoid;">
+
+													<t t-set="tax_totals" t-value="o.tax_totals"/>
+													<t t-call="account.document_tax_totals"/>
+
+													
+												</table>
+											</div>
+										</div>
+									</div>
+							</div>							
+						</t>
+					</t>
+				</t>
+			</xpath>
+        </template>
+		
+	</data>
+</odoo>
+	
+       		 <!-- <template id="dtsc_report_invoice_out" inherit_id="account.report_invoice_with_payments"> -->
+            <!-- <xpath expr="." position="replace"> -->
+                <!-- <t t-call="web.html_container"> -->
+					<!-- <t t-foreach="docs" t-as="o"> -->
+						<!-- <t t-set="lang" t-value="o.partner_id.lang"/> -->
+						<!-- <t t-set="print_with_payments" t-value="True"/> -->
+						<!-- <t t-call="web.external_layout"> -->
+							<!-- 123 -->
+						<!-- </t> -->
+					<!-- </t> -->
+				<!-- </t> -->
+			<!-- </xpath> -->
+        <!-- </template> -->
+
+
+
+		<!-- <record id="dtsc_invoices_inherited" model="ir.actions.report"> -->
+			<!-- <field name="name">打印</field> -->
+            <!-- <field name="model">account.move</field> -->
+            <!-- <field name="report_type">qweb-pdf</field> -->
+            <!-- <field name="report_name">account.report_invoice_with_payments</field> -->
+            <!-- <field name="report_file">account.report_invoice_with_payments</field> -->
+            <!-- <field name="binding_model_id" ref="model_account_move"/> -->
+            <!-- <field name="binding_type">report</field> -->
+            <!-- <field name="binding_view_types">list</field> -->
+		<!-- </record> -->

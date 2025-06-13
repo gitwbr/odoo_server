@@ -1,0 +1,11 @@
+<odoo>
+    <template id="dtsc.chart_template">
+        <t t-call="web.layout">
+            <div>
+                <h2>销售统计图</h2>
+                <button id="generate_chart" class="btn btn-primary">生成图表</button>
+                <canvas id="salesChart"></canvas>
+            </div>
+        </t>
+    </template>
+</odoo>

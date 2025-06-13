@@ -1,0 +1,119 @@
+<odoo>
+	<!-- <record id="action_lot_mpr" model="ir.actions.server"> -->
+		<!-- <field name="name">同步時間</field> -->
+		<!-- <field name="model_id" ref="model_dtsc_lotmpr"/> -->
+		<!-- <field name="state">code</field> -->
+		<!-- <field name="code"> -->
+			<!-- action = env['dtsc.lotmpr'].with_context(env.context).asyn_date() -->
+		<!-- </field> -->
+		<!-- <field name="binding_model_id" ref="model_dtsc_lotmpr"/> -->
+		<!-- <field name="binding_type">action</field> -->
+		<!-- <field name="binding_view_types">list</field> -->
+		
+        <!-- <field name="groups_id" eval="[(4, ref('dtsc.group_dtsc_mg'))]"/> -->
+	<!-- </record> -->
+	<record id="view_lotmprscancode_tree" model="ir.ui.view">
+        <field name="name">dtsc.lotmprscancode.tree</field>
+        <field name="model">dtsc.lotmprscancode</field>
+        <field name="arch" type="xml">
+            <tree create="false" delete="false" editable="top">
+				<field name="barcode_input" /> 
+				<!-- <field name="errorlog"/> -->
+				<button string="進入" type="object" name="open_form_view" />
+				<button string="清空" type="object" name="clean_view" />
+            </tree>
+        </field>
+    </record>
+
+	<record id="view_lotmpr_tree" model="ir.ui.view">
+        <field name="name">dtsc.lotmpr.tree</field>
+        <field name="model">dtsc.lotmpr</field>
+        <field name="arch" type="xml">
+            <tree create="false" delete="false">
+				<field name="name" />
+				<field name="succ_date" />
+				<field name="state" />
+				<field name="final_stock_num" /> 
+            </tree>
+        </field>
+    </record>
+	
+	<record id="search_lotmpr" model="ir.ui.view">
+		<field name="name">dtsc.lotmpr.search</field>
+		<field name="model">dtsc.lotmpr</field>
+		<field name="arch" type="xml">
+			<search>
+				<searchpanel>
+					<field name="report_year" string="年"  select="multi"/>
+					<field name="report_month" string="月" context="{'group_by': 'report_year'}" select="multi"/>
+
+				</searchpanel>   
+				<filter string="已完成" name="succ_search" domain="[('state', '=', 'succ')]"/>
+				<field name="name" string="條碼名稱"/>
+			</search>
+		</field>		
+	</record>
+	<record id="view_lotmpr_form" model="ir.ui.view">
+        <field name="name">dtsc.lotmpr.form</field>
+        <field name="model">dtsc.lotmpr</field>
+        <field name="arch" type="xml">
+			<form>
+				<header>
+					<button name="ok_btn" type="object" class="oe_highlight" string="扣料" confirm="是否對確認進行扣料動作？"  attrs="{'invisible':[('state','not in',['draft'])]}" groups="dtsc.group_dtsc_mg,dtsc.group_dtsc_sc,dtsc.group_dtsc_ck"/>
+					<button name="back_btn" type="object" class="oe_highlight" string="返回" confirm="是否對確認更改成未完成？"  attrs="{'invisible':[('state','not in',['succ'])]}" groups="dtsc.group_dtsc_mg,dtsc.group_dtsc_sc,dtsc.group_dtsc_ck"/>
+					<field name="state" widget="statusbar" statusbar_visible="draft,succ"/> 
+				</header>
+				<sheet> 
+					<group>
+						<group>
+							<field name="product_id" readonly="1"/>
+							<field name="name" readonly="1"/>
+							<field name="stock_location_id" readonly="1"/>
+							<field name="uom_id" readonly="1"/>
+							<field name="barcode_backup"/>
+							<!-- <field name="stock_location_id_backup"  readonly="1"/> -->
+						</group>
+						<group>
+							<field name="total_size" readonly="1"/>
+							<field name="last_cai" readonly="1"/>
+							<field name="lot_stock_num" readonly="1"/>
+							<field name="final_stock_num" readonly="1"/>
+						</group>
+					</group>
+					<field name="lotmprline_id" >
+						<tree editable="bottom">  
+							<field name="name"/>
+							<field name="sccz"/>
+							<field name="yujixiaohao"/>
+							<field name="sjkl" />
+							<field name="shengyu"/>
+							<field name="outman"/> 
+							<field name="state"/> 
+							<field name="comment"/> 
+							<!-- <button string="刪除" type="object" confirm="是否對確定刪除此項次？" name="delete_btn"/> -->
+						</tree>
+					</field>
+					<group col="6">
+						<group colspan="3">
+						</group>
+						<group colspan="2">
+						</group>
+						<group colspan="1">
+							<div style="width:100px">
+								<button name="confirm_btn" type="object" class="oe_highlight" string="材料耗盡" confirm="請確認該捲料是否已經全部使用完畢" attrs="{'invisible':[('state','not in',['draft'])]}" groups="dtsc.group_dtsc_mg,dtsc.group_dtsc_sc,dtsc.group_dtsc_ck"/>
+							</div>
+						</group>
+					</group>
+				</sheet>
+			</form>
+       
+        </field>
+    </record>
+
+	
+	<data>
+        <record id="default_lotmprscancode" model="dtsc.lotmprscancode">
+            <field name="barcode_input"></field>
+        </record>
+    </data>
+</odoo>

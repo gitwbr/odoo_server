@@ -1,0 +1,638 @@
+<odoo>
+		
+	<!-- <record id="action_add_custom_checkout_to_invisible" model="ir.actions.server"> -->
+		<!-- <field name="name">轉隐藏</field> -->
+		<!-- <field name="model_id" ref="model_dtsc_checkout"/> -->
+		<!-- <field name="state">code</field> -->
+		<!-- <field name="code"> -->
+			<!-- action = env['dtsc.checkout'].with_context(env.context).set_invisible() -->
+		<!-- </field> -->
+		<!-- <field name="binding_model_id" ref="model_dtsc_checkout"/> -->
+		<!-- <field name="binding_type">action</field> -->
+		<!-- <field name="binding_view_types">list</field> -->
+        <!-- <field name="groups_id" eval="[(4, ref('dtsc.group_dtsc_mg'))]"/> -->
+	<!-- </record> -->
+	<record id="action_hebing_checkout_to_menu" model="ir.actions.server">
+		<field name="name">合併</field>
+		<field name="model_id" ref="model_dtsc_checkout"/>
+		<field name="state">code</field>
+		<field name="code">
+			action = env['dtsc.checkout'].with_context(env.context).action_hebing()
+		</field>
+		<field name="binding_model_id" ref="model_dtsc_checkout"/>
+		<field name="binding_type">action</field>
+		<field name="binding_view_types">list</field>
+		<!-- <field name="binding_view_id" ref="dtsc.view_checkout_tree"/> -->
+        <field name="groups_id" eval="[(4, ref('dtsc.group_dtsc_mg')), (4, ref('dtsc.group_dtsc_yw'))]"/>
+	</record>
+	
+	<record id="action_add_custom_checkout_to_menu" model="ir.actions.server">
+		<field name="name">轉出貨單</field>
+		<field name="model_id" ref="model_dtsc_checkout"/>
+		<field name="state">code</field>
+		<field name="code">
+			action = env['dtsc.checkout'].with_context(env.context).action_delivery()
+		</field>
+		<field name="binding_model_id" ref="model_dtsc_checkout"/>
+		<field name="binding_type">action</field>
+		<field name="binding_view_types">list</field>
+		<!-- <field name="binding_view_id" ref="dtsc.view_checkout_tree"/> -->
+        <field name="groups_id" eval="[(4, ref('dtsc.group_dtsc_mg')), (4, ref('dtsc.group_dtsc_sc'))]"/>
+	</record>
+
+	<record id="action_add_custom_invoice_to_menu" model="ir.actions.server">
+		<field name="name">轉應收單</field>
+		<field name="model_id" ref="model_dtsc_checkout"/>
+		<field name="state">code</field>
+		<field name="code">
+			action = env['dtsc.checkout'].with_context(env.context).action_invoice()
+		</field>
+		<field name="binding_model_id" ref="model_dtsc_checkout"/>
+		<field name="binding_type">action</field>
+		<field name="binding_view_types">list</field>
+        <field name="groups_id" eval="[(4, ref('dtsc.group_dtsc_kj'))]"/>
+	</record>
+
+	<record id="action_copy_list" model="ir.actions.server">
+		<field name="name">追加單據</field>
+		<field name="model_id" ref="model_dtsc_checkout"/>
+		<field name="state">code</field>
+		<field name="code">
+			action = env['dtsc.checkout'].with_context(env.context).action_copy()
+		</field>
+		<field name="binding_model_id" ref="model_dtsc_checkout"/>
+		<field name="binding_type">action</field>
+		<field name="binding_view_types">list</field>
+        <field name="groups_id" eval="[(4, ref('dtsc.group_dtsc_mg'))]"/>
+	</record>
+	
+	<record id="action_printexcel_delivery_list" model="ir.actions.server">
+		<field name="name">出貨統計表轉Excel</field>
+		<field name="model_id" ref="model_dtsc_checkout"/>
+		<field name="state">code</field>
+		<field name="code">
+			action = env['dtsc.checkout'].with_context(env.context).action_printexcel_delivery()
+		</field>
+		<field name="binding_model_id" ref="model_dtsc_checkout"/>
+		<field name="binding_type">action</field>
+		<field name="binding_view_types">list</field>
+        <field name="groups_id" eval="[(4, ref('dtsc.group_dtsc_mg'))]"/>
+	</record>
+	
+	<record id="action_printexcel_saler_list" model="ir.actions.server">
+		<field name="name">業務出貨統計表轉Excel</field>
+		<field name="model_id" ref="model_dtsc_checkout"/>
+		<field name="state">code</field>
+		<field name="code">
+			action = env['dtsc.checkout'].with_context(env.context).action_printexcel_saler()
+		</field>
+		<field name="binding_model_id" ref="model_dtsc_checkout"/>
+		<field name="binding_type">action</field>
+		<field name="binding_view_types">list</field>
+        <field name="groups_id" eval="[(4, ref('dtsc.group_dtsc_mg'))]"/>
+	</record>	
+	
+	<record id="action_printexcel_machine_list" model="ir.actions.server">
+		<field name="name">機台出貨統計表轉Excel</field>
+		<field name="model_id" ref="model_dtsc_checkoutline"/>
+		<field name="state">code</field>
+		<field name="code">
+			action = env['dtsc.checkoutline'].with_context(env.context).action_printexcel_machine()
+		</field>
+		<field name="binding_model_id" ref="model_dtsc_checkoutline"/>
+		<field name="binding_type">action</field>
+		<field name="binding_view_types">list</field>
+        <field name="groups_id" eval="[(4, ref('dtsc.group_dtsc_mg'))]"/>
+	</record>
+	
+	<record id="action_printexcel_product_list" model="ir.actions.server">
+		<field name="name">產品出貨統計表轉Excel</field>
+		<field name="model_id" ref="model_dtsc_checkoutline"/>
+		<field name="state">code</field>
+		<field name="code">
+			action = env['dtsc.checkoutline'].with_context(env.context).action_printexcel_product()
+		</field>
+		<field name="binding_model_id" ref="model_dtsc_checkoutline"/>
+		<field name="binding_type">action</field>
+		<field name="binding_view_types">list</field>
+        <field name="groups_id" eval="[(4, ref('dtsc.group_dtsc_mg'))]"/>
+	</record>
+	<record id="action_printexcel_makeout_list" model="ir.actions.server">
+		<field name="name">統計表生成Excel(簡易)</field>
+		<field name="model_id" ref="model_dtsc_makeout"/>
+		<field name="state">code</field>
+		<field name="code">
+			action = env['dtsc.makeout'].with_context(env.context).action_printexcel_makeout()
+		</field>
+		<field name="binding_model_id" ref="model_dtsc_makeout"/>
+		<field name="binding_type">action</field>
+		<field name="binding_view_types">list</field>
+        <field name="groups_id" eval="[(4, ref('dtsc.group_dtsc_mg'))]"/>
+	</record>
+	
+	<record id="action_printexcel_crm_excel" model="ir.actions.server">
+		<field name="name">報價單轉Excel</field>
+		<field name="model_id" ref="model_dtsc_checkout"/>
+		<field name="state">code</field>
+		<field name="code">
+			action = env['dtsc.checkout'].with_context(env.context).action_printexcel_crm()
+		</field>
+		<field name="binding_model_id" ref="model_dtsc_checkout"/>
+		<field name="binding_type">action</field>
+		<field name="binding_view_types">list</field>
+        <field name="groups_id" eval="[(4, ref('dtsc.group_dtsc_mg')), (4, ref('dtsc.group_dtsc_yw'))]"/>
+	</record>	
+	
+	
+    <record id="view_dtsc_deliverydate_form" model="ir.ui.view">
+        <field name="name">dtsc.deliverydate.form</field>
+        <field name="model">dtsc.deliverydate</field>
+        <field name="arch" type="xml">
+            <form string="請確認出貨日期">
+                <group>
+                    <field name="selected_date"/>
+                </group>
+                <footer>
+                    <button string="確認" type="object" name="action_confirm" class="btn-primary"/>
+                    <button string="取消" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_dtsc_del_reason_form" model="ir.ui.view">
+        <field name="name">dtsc.delreason.form</field>
+        <field name="model">dtsc.delreason</field>
+        <field name="arch" type="xml">
+            <form>
+                <group>
+                    <field name="del_reason"/>
+                </group>
+                <footer>
+                    <button string="確認" type="object" name="action_confirm" class="btn-primary"/>
+                    <button string="取消" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+	
+	<record id="view_checkout_tree" model="ir.ui.view">
+		<field name="name">dtsc.checkout.tree</field>
+		<field name="model">dtsc.checkout</field>
+		<field name="arch" type="xml">
+			<tree decoration-info="is_online == True"  default_order="create_date desc">				
+				<field name="name" string="單號" readonly="1" width="120px" />
+				<field name="is_invisible" invisible="1"/>
+				<field name="custom_init_name" string="客戶" readonly="1"/>
+				<field name="project_name" string="案件摘要" readonly="1"/>
+				<field name="delivery_carrier" string="交貨方式" />
+				<!-- <field name="delivery_carrier_char" string="送件"/> -->
+				<field name="estimated_date_str"/>
+				<field name="checkout_order_state" string="狀態"/>
+				<field name="delivery_order" readonly="1"/>
+				<field name="customer_class_id" invisible="1"/>
+				<field name="sequence_count" sum="項次數" widget="integer"/>
+				<field name="quantity" widget="integer"/>
+				<field name="unit_all" sum="總才數" widget="integer" string="總才數"/>
+				<!-- <field name="total_price_added_tax" widget="integer"/> -->
+				<field name="user_id"/>
+				<field name="create_id" invisible="1"/>
+				<field name="kaidan"/>
+				<field name="create_date_str" string="進單日"/>
+				<field name="create_date" string="進單日" widget="remaining_days"/>
+				<field name="is_online" invisible="1"/>
+				<!-- <field name="report_year"/> -->
+				<!-- <field name="report_month"/> -->
+				<!-- <field name="is_delivery"/> -->
+				<!-- <field name="is_recheck"/> -->
+			</tree>
+		</field>	
+	</record>
+	
+	<record id="view_checkout_form" model="ir.ui.view">
+		<field name="name">dtsc.checkout.form</field>
+		<field name="model">dtsc.checkout</field>
+		<field name="arch" type="xml">
+			<form>		
+				<header>
+					<!-- 20210320 流程0：回到草稿-->
+					<!-- 20210320 流程1：列印報價，後接【客戶確認】-->
+					<button name="sale_quoting" type="object" class="oe_highlight" string="做檔中" attrs="{'invisible':[('checkout_order_state','not in',['draft'])]}" groups="dtsc.group_dtsc_mg"/>
+					<!-- 流程2：確認尺寸價格，以及委內委外後分別生成委外訂單和委內訂單-->
+					<button name="in_out_check" type="object" class="oe_highlight" string="訂單確認" attrs="{'invisible':[('checkout_order_state','not in',['quoting'])]}"  groups="dtsc.group_dtsc_mg"/>
+					<button name="finish_enable" type="object" class="oe_highlight" string="訂單完成" attrs="{'invisible':[('checkout_order_state','not in',['producing'])]}" groups="dtsc.group_dtsc_mg,dtsc.group_dtsc_sc" />
+					<button name="jiage_queren" type="object" class="oe_highlight" string="價格確認" attrs="{
+						'invisible': [
+							'|','|','|', 
+							('checkout_order_state', 'not in', ['finished']), 
+							('is_current_user', '=', False),
+							('is_recheck','=',True),
+							('is_dayang','=',True),
+						]
+					}"  groups="dtsc.group_dtsc_yw" />
+					<!-- <button name="go_inshou" type="object" class="oe_highlight" string="生成應收賬單" attrs="{'invisible':[('checkout_order_state','not in',['price_review_done'])]}" groups="dtsc.group_dtsc_kj" /> -->
+					<!-- <button name="go_over" type="object" class="oe_highlight" string="結案" attrs="{'invisible':[('checkout_order_state','not in',['receivable_assigned'])]}"  /> -->
+					
+					
+					
+					<button name="in_re_check" type="object" class="oe_highlight" string="内部工單重發" attrs="{'invisible':['|',('is_open_full_checkoutorder','=',False),('checkout_order_state','not in',['producing'])]}" groups="dtsc.group_dtsc_mg" />
+					<button name="out_re_check" type="object" class="oe_highlight" string="委外工單重發" attrs="{'invisible':[('checkout_order_state','not in',['producing'])]}" groups="dtsc.group_dtsc_mg" />
+					<button name="install_re_check" type="object" class="oe_highlight" string="生成施工單" attrs="{'invisible':[('checkout_order_state','not in',['producing','finished','price_review_done','receivable_assigned'])]}" groups="dtsc.group_dtsc_mg" />
+					<button name="chuhuo_re_check" type="object" class="oe_highlight" string="轉出貨單" confirm="確定發貨日期後點擊確定生成出貨單！" attrs="{'invisible':['|',('checkout_order_state','not in',['finished']),('is_delivery','!=',False)]}" groups="dtsc.group_dtsc_mg,dtsc.group_dtsc_sc" />
+					<button name="button_del" type="object" class="oe_highlight" string="作廢"  attrs="{'invisible': [('checkout_order_state', 'not in', ['draft','quoting','producing','finished'])]}" groups="dtsc.group_dtsc_mg"/>
+					<!-- <button name="p_check" type="object" class="oe_highlight" string="查物料"/> -->
+					<button name="set_recheck" string="重製" type="object" confirm="是否確定生成重製單？" class="oe_highlight" groups="dtsc.group_dtsc_mg" attrs="{'invisible': [('checkout_order_state', 'in', ['cancel', 'waiting_confirmation'])]}"/>
+					<button name="cancel_hebing" string="取消合併" type="object" confirm="是否確取消合併？" class="oe_highlight" groups="dtsc.group_dtsc_mg" attrs="{'invisible': ['|',('checkout_order_state', 'not in', ['finished']),('hebing_type','not in',['1'])]}"/>
+					<button name="button_back" type="object" class="oe_highlight" string="返回" groups="dtsc.group_dtsc_gly" attrs="{'invisible': [('checkout_order_state', 'in', ['waiting_confirmation'])]}"/>
+					<!-- <button name="button_back" type="object" class="oe_highlight" string="返回" attrs="{'invisible':[('checkout_order_state','not in',['receivable_assigned'])]}" groups="dtsc.group_dtsc_gly"/> -->
+					<field name="checkout_order_state" widget="statusbar" statusbar_visible="draft,quoting,producing,finished,price_review_done,receivable_assigned,closed,cancel"/>
+				
+					<field name="is_delivery" readonly="1" invisible="1"/>
+				</header>
+				<sheet class="w3000">
+					
+					<widget name="web_ribbon" title="被合併" bg_color="bg-danger" attrs="{'invisible': [('hebing_type', 'not in', ['2'])]}"/>
+					<widget name="web_ribbon" title="合併單" bg_color="bg-success" attrs="{'invisible': [('hebing_type', 'not in', ['1'])]}"/>
+					<div class="oe_title">
+						<h2>大圖訂單編號</h2>
+						<h1>
+							<!-- <field name="name" /> -->
+							<field name="name" readonly="1"/>
+						</h1>
+						<h3>
+							<field name="project_name" readonly="0"/>
+							<field name="hebing_type" invisible="1"/>
+						</h3>
+					</div>
+					
+					<group col="6">
+						<group string="訂購人基本資訊" colspan="3">
+							<!-- <field name="work_first"/> -->
+							<!-- <field name="customer_id" 
+							   string="客戶" 
+							   options="{'no_create': True, 'no_create_edit': True}" 
+							   attrs="{'invisible': [('checkout_order_state', '=', 'waiting_confirmation')], 
+									   'required': [('checkout_order_state', '!=', 'waiting_confirmation')]}"/> -->
+							<field name="is_new_partner" invisible="1"/>
+							<field name="customer_id" string="客戶" options="{'no_create': True, 'no_create_edit': True}" attrs="{'required': [('is_new_partner', '!=', True)], 'invisible': [('is_new_partner', '=', True)]}"/>
+							<field name="customer_bianhao" readonly="1" attrs="{'invisible': [('is_new_partner', '=', True)]}"/> 
+							<field name="customer_class_id" string="客戶分類"  options="{'no_create': True, 'no_create_edit': True}" attrs="{'invisible': [('is_new_partner', '=', True)]}"/>
+							<field name="comment" placeholder="客戶之特殊要求..."/>
+							<field name="comment_factory"/>
+							<!-- <field name="payment_first" string="先收款再製作" attrs="{'readonly':[('checkout_order_state','not in',['draft'])]}"/> -->
+							<field name="is_recheck" invisible="1"/>
+							<field name="is_online" invisible="1"/>
+							<field name="is_copy" attrs="{'invisible': [('is_copy', '=', False)]}" readonly="1"/>
+							<field name="sale_order_id" readonly="1" invisible="1"/> 
+							<field name="source_name" attrs="{'invisible': [('is_recheck', '=', False),('is_copy', '=', False),('is_online', '=', False)]}" readonly="1"/>
+							<field name="recheck_user" options="{'no_create': True, 'no_create_edit': True}" widget="many2many_tags"  attrs="{'invisible': [('is_recheck', '=', False)]}" />
+							<field name="recheck_groups" widget="many2many_tags"  attrs="{'invisible': [('is_recheck', '=', False)]}" />
+							<field name="del_reason" attrs="{'invisible': [('checkout_order_state', 'not in', 'cancel')]}" />
+							<field name="hebing_comment" readonly="1" attrs="{'invisible': [('hebing_type', 'not in', ['1','2'])]}"/>
+							<!-- <field name="account_payment_id" readonly="1" attrs="{'invisible':[('payment_first','=',False)]}"/> -->
+							<!-- <field name="prepaid" string="客戶應付訂金" attrs="{'invisible':[('payment_first','=',False)],'readonly':[('checkout_order_state','not in',['draft'])]}"/> -->
+						</group>
+						<group string="訂單資訊" colspan="3">
+                            <field name="is_in_by_mg" invisible="1"/>
+                            <field name="is_in_by_yw" invisible="1"/>
+                            <field name="is_in_by_kj" invisible="1"/>
+                            <field name="is_in_by_sc" invisible="1"/>
+							<field name="is_dayang" attrs="{'invisible': [('name', '=', False)]}" />
+							<field name="create_date" readonly="1" string="建立日期"/>
+							<!-- <field name="check_product_state" invisible="1"/> -->
+							<field name="quantity" invisible="1"/>
+							<!-- <field name="delivery_price" readonly="1"/> -->
+							<!-- <field name="delivery_carrier" invisible="1" attrs="{'readonly':['|', ('checkout_order_state','not in',['draft', 'quoting']), ('is_in_by_mg', '=', False)]}"/> -->
+							<!-- <field name="delivery_carrier_char" attrs="{'readonly':[('checkout_order_state','not in',['draft', 'quoting', 'receivable', 'producing', 'shipping', 'partial_shipping'])]}"/> -->
+							<!-- <field name="estimated_date" attrs="{'readonly': ['|', ('checkout_order_state', 'not in', ['draft', 'quoting', 'producing', 'finished']), ('is_in_by_mg', '=', False)]}"/> -->
+							<!-- <field name="estimated_date" attrs="{'readonly': ['|', ('checkout_order_state', 'not in', ['draft', 'quoting', 'producing', 'finished']), '&amp;', ('is_in_by_mg', '=', False), ('is_in_by_sc', '=', False)]}"/> -->
+							<field name="estimated_date" attrs="{'readonly': [('checkout_order_state', 'in', ['price_review_done'])]}"/>
+							
+							<!-- <field name="delivery_time" attrs="{'readonly':[('checkout_order_state','not in',['draft', 'quoting', 'receivable', 'producing', 'shipping', 'partial_shipping'])]}"/> -->
+							
+							<!-- <field name="delivery_carrier" string="運送方式" attrs="{'readonly': [('is_in_by_mg', '=', False)]}"/> -->
+							<field name="delivery_carrier" 
+							   string="交貨方式" 
+							   attrs="{'required': [('checkout_order_state', '!=', 'waiting_confirmation')]}"/>
+							<field name="create_id" string="訂單建立者"  invisible="1" attrs="{'readonly': [('is_in_by_mg', '=', False)]}"/>
+							<field name="kaidan" options="{'no_create': True, 'no_create_edit': True}" attrs="{'required': [('checkout_order_state', '!=', 'waiting_confirmation')]}"/>
+							<field name="recheck_comment"  attrs="{'invisible': [('is_recheck', '=', False)]}" />
+							<field name="is_current_user"  invisible="1" />
+							<field name="user_id" options="{'no_create': True, 'no_create_edit': True}" groups="dtsc.group_dtsc_gly"  />
+							<field name="is_open_full_checkoutorder" invisible="1" />
+						</group> 
+					</group>
+					<notebook>
+                            <page string="產品清單">
+								
+                                	<button string="全選施工" type="object" name="set_boolean_field_true"   style="margin-right:20px" help="全選施工" groups="dtsc.group_dtsc_mg"/>
+									<button string="取消施工" type="object" name="set_boolean_field_false"  help="取消施工" groups="dtsc.group_dtsc_mg"/>									
+									<button string="複製最後一條" type="object" name="copy_last_record" groups="dtsc.group_dtsc_mg"/>															
+								
+								<field name="product_ids" >
+                                    <!-- <tree create="false" delete="false" editable="bottom"> -->
+                                    <tree  editable="bottom" class="my_custom_class"  limit="100">
+										<!-- <header> -->
+										<!-- </header> -->
+										
+										<field name="is_selected" attrs="{'readonly': [('parent.is_in_by_mg', '=', False)]}" />										
+                                        <!-- <field name="is_in_by_mg" invisible="1"/>
+                                        <field name="is_in_by_yw" invisible="1"/>
+                                        <field name="is_in_by_kj" invisible="1"/> -->
+										<!-- <field name="is_purchse" attrs="{'readonly': [('parent.is_in_by_mg', '=', False)],'column_invisible':[('parent.is_open_full_checkoutorder', '=', False)]}" />								 -->
+										<field name="is_purchse" attrs="{'readonly': [('parent.is_in_by_mg', '=', False)]}" />								
+										<field name="is_install" attrs="{'readonly': [('parent.is_in_by_mg', '=', False)]}" />
+										<field name="small_image"   widget="image" class="w100" optional="hide" />
+										<field name="sequence" style="text-align: center;" />
+										<field name="project_product_name" />
+										<field name="product_id"  options="{'no_create': True, 'no_create_edit': True}">
+											<tree>
+												<field name="name"/>
+											</tree>
+										</field>
+										<field name="product_width" attrs="{'readonly': [('parent.is_in_by_mg', '=', False)]}" />	
+										<field name="product_height" attrs="{'readonly': [('parent.is_in_by_mg', '=', False)]}" />	
+										<field name="machine_id"  options="{'no_create': True, 'no_create_edit': True}"/>
+										<field name="product_atts"  options="{'no_create': True, 'no_create_edit': True}" widget="many2many_tags" domain="[('id' , 'in' , allowed_product_atts )]"/> 
+										<button name="new_aftermake" string="後"  type="object" class="btn-primary"/>
+										<field name="multi_chose_ids" style="width:100px;white-space: normal;" />
+										<field name="install_price" attrs="{'invisible': [('parent.checkout_order_state', 'not in', ['waiting_confirmation'])]}" />
+										<field name="quantity" sum="數量" />
+										<field name="quantity_peijian" />
+										<field name="single_units" />
+										<field name="total_units" />
+										<field name="mergecai" attrs="{'readonly': [('parent.is_in_by_mg', '=', False)]}" />	
+										<field name="jijiamoshi" attrs="{'readonly': [('parent.is_in_by_yw', '=', False)]}" groups="dtsc.group_dtsc_yw,dtsc.group_dtsc_kj"/> 
+										
+										<!-- <field name="name" /> -->
+										<!-- <field name="project_name" /> -->
+										<field name="product_details"  optional="hide" />
+										<field name="comment" optional="hide"/>
+										<!-- <field name="product_name" /> -->
+										<field name="allowed_product_atts" invisible="1" />
+										<!-- <field name="product_atts" widget="many2many_tags"/>  -->
+										<!-- <field name="output_mark" /> -->
+										<field name="peijian_price" attrs="{'readonly': [('parent.is_in_by_yw', '=', False)] ,'column_invisible':['|','|',('parent.is_current_user', '=', False),('parent.is_recheck','=',True),('parent.is_dayang','=',True)]}" groups="dtsc.group_dtsc_yw,dtsc.group_dtsc_kj"/> 										
+										<field name="units_price" attrs="{'readonly': ['|',('parent.is_in_by_yw', '=', False),('parent.checkout_order_state','in',['receivable_assigned'])] ,'column_invisible':['|','|',('parent.is_current_user', '=', False),('parent.is_recheck','=',True),('parent.is_dayang','=',True)]}" groups="dtsc.group_dtsc_yw,dtsc.group_dtsc_kj"/> 
+										<button name="open_price_popup" string="選擇" attrs="{'invisible':['|','|',('parent.is_current_user', '=', False),('parent.is_recheck','=',True),('parent.is_dayang','=',True)]}" type="object" class="btn-primary" /> 
+										<field name="recheck_id_name" attrs="{'column_invisible':[('parent.is_recheck','!=',True)]}"/>
+										
+										<field name="product_total_price" sum="輸出金額" attrs="{'readonly': ['|',('parent.is_in_by_yw', '=', False),('parent.checkout_order_state','in',['receivable_assigned'])] ,'column_invisible':['|','|',('parent.is_current_user', '=', False),('parent.is_recheck','=',True),('parent.is_dayang','=',True)]}" groups="dtsc.group_dtsc_yw,dtsc.group_dtsc_kj"/> 
+										
+										<field name="total_make_price" sum="加工總價" attrs="{'readonly': ['|',('parent.is_in_by_yw', '=', False),('parent.checkout_order_state','in',['receivable_assigned'])] ,'column_invisible':['|','|',('parent.is_current_user', '=', False),('parent.is_recheck','=',True),('parent.is_dayang','=',True)]}" groups="dtsc.group_dtsc_yw,dtsc.group_dtsc_kj"/> 
+										<field name="price" sum="價錢" attrs="{'readonly': ['|',('parent.is_in_by_yw', '=', False),('parent.checkout_order_state','in',['receivable_assigned'])] ,'column_invisible':['|','|',('parent.is_current_user', '=', False),('parent.is_recheck','=',True),('parent.is_dayang','=',True)]}" groups="dtsc.group_dtsc_yw,dtsc.group_dtsc_kj"/> 
+									</tree>
+								</field>
+								<group col="6">
+                                    <!-- <group colspan="2" string="訂單備註"> -->
+                                        <!-- <field name="comment" nolabel="1" placeholder="客戶之特殊要求..."/> -->
+                                    <!-- </group> -->
+                                    <group colspan="3" string="訂單資訊">
+                                        <field name="unit_all" widget="integer" string="訂單總才數"/>
+                                        <!-- <field name="another_price_content" string="其他費用內容"/> -->
+                                        <!-- <field name="stock_valuation_value" string="成本"/> -->
+                                        <!-- <field name="gross_profit" string="毛利"/> -->
+                                    </group>
+                                    <group colspan="3" string="訂單價格" attrs="{'invisible': ['|','|',('is_recheck', '=', True),('is_dayang','=',True),('checkout_order_state', 'in', ['waiting_confirmation'])]}">
+                                        <field name="is_in_by_mg" invisible="1"/>
+                                        <field name="is_in_by_yw" invisible="1"/>
+                                        <field name="is_in_by_kj" invisible="1"/>
+                                        <field name="record_price" readonly="1" attrs="{'invisible': [ ('is_in_by_yw', '=', False), ('is_in_by_kj', '=', False)]}" />
+                                        <field name="construction_charge_price" readonly="1" attrs="{'invisible': [ ('is_in_by_yw', '=', False), ('is_in_by_kj', '=', False)]}" />
+                                        <field name="record_price_and_construction_charge" readonly="1" string="小計" attrs="{'invisible': [ ('is_in_by_yw', '=', False), ('is_in_by_kj', '=', False)]}" />
+                                        <field name="tax_of_price" widget="integer" attrs="{'invisible': [ ('is_in_by_yw', '=', False), ('is_in_by_kj', '=', False)]}" />
+                                        <div class="oe_subtotal_footer_separator oe_inline o_td_label">
+                                            <label for="total_price_added_tax"/>
+                                        </div>
+                                        <field name="total_price_added_tax" nolabel="1" class="oe_subtotal_footer_separator" widget="integer" attrs="{'invisible': [ ('is_in_by_yw', '=', False), ('is_in_by_kj', '=', False)]}" />
+                                    </group>
+									
+                                    <group colspan="3" string="訂單價格" attrs="{'invisible': [('checkout_order_state', 'not in', ['waiting_confirmation'])]}">
+                                        <field name="record_price" readonly="1" attrs="{'invisible': [ ('is_in_by_yw', '=', False), ('is_in_by_kj', '=', False)]}" />
+                                        <field name="construction_charge_price_crm" readonly="1" attrs="{'invisible': [ ('is_in_by_yw', '=', False), ('is_in_by_kj', '=', False)]}" />
+                                        <field name="record_price_and_construction_charge_crm" readonly="1" string="小計" attrs="{'invisible': [ ('is_in_by_yw', '=', False), ('is_in_by_kj', '=', False)]}" />
+                                        <field name="tax_of_price_crm" widget="integer" attrs="{'invisible': [ ('is_in_by_yw', '=', False), ('is_in_by_kj', '=', False)]}" />
+                                        <div class="oe_subtotal_footer_separator oe_inline o_td_label">
+                                            <label for="total_price_added_tax"/>
+                                        </div>
+                                        <field name="total_price_added_tax_crm" nolabel="1" class="oe_subtotal_footer_separator" widget="integer" attrs="{'invisible': [ ('is_in_by_yw', '=', False), ('is_in_by_kj', '=', False)]}" />
+                                    </group>
+                                </group>
+								
+							</page>
+							<page string="施工單">
+								<field name="installproduct_ids" >
+									<tree create="false" delete="false" editable="bottom" decoration-danger="sjsf == 0" decoration-success="sjsf &gt; 0" domain="[('install_state', '!=', 'cancel')]">									
+										
+										<field name="name" attrs="{'invisible': [ ('install_state', '==', 'cancel')]}"/>
+										<field name="checkout_order_state" invisible="1"/>
+										<field name="cb" attrs="{'invisible': [ ('install_state', '==', 'cancel')],'readonly':[('checkout_order_state','in',['receivable_assigned'])]}"/>
+										<field name="cb_other" attrs="{'invisible': [ ('install_state', '==', 'cancel')],'readonly':[('checkout_order_state','in',['receivable_assigned'])]}"/>
+										<field name="cb_total" attrs="{'invisible': [ ('install_state', '==', 'cancel')],'readonly':[('checkout_order_state','in',['receivable_assigned'])]}"/>
+										<field name="sjsf" attrs="{'invisible': [ ('install_state', '==', 'cancel')],'readonly':[('checkout_order_state','in',['receivable_assigned'])]}"/>
+										<field name="install_state" attrs="{'invisible': [ ('install_state', '==', 'cancel')]}"/>
+										<button name="linkToInstall" string="鏈接"  attrs="{'invisible': [ ('install_state', '==', 'cancel')]}" type="object" class="btn-primary"/>
+										
+									</tree>
+									 
+								</field>
+								<h3></h3>
+							</page>
+							<page string="報價單備注" attrs="{'invisible': [('checkout_order_state', 'not in', ['waiting_confirmation'])]}">
+								<field name="checkoutcomment_ids">
+									<tree   editable="bottom" default_order="sequence">									
+										<field name="sequence"/>
+										<field name="name"/>										
+									</tree>									 
+								</field>
+							</page>
+							<!-- <page string="物料清單"> -->
+								<!-- <field name="product_check_ids"> -->
+									<!-- <tree create="false" delete="false" editable="bottom" decoration-danger="now_stock &lt; now_use" decoration-success="now_stock >= now_use">									 -->
+										
+										<!-- <field name="product_id_formake" invisible="1"/> -->
+										<!-- <field name="product_product_id" domain="[('product_tmpl_id' , '=' , product_id_formake )]" /> -->
+										<!-- <field name="attr_name"/> -->
+										<!-- <field name="product_id"/> -->
+										<!-- <field name="uom_id"/> -->
+										<!-- <field name="now_stock"/> -->
+										<!-- <field name="now_use"/> -->
+									<!-- </tree> -->
+									 
+								<!-- </field> -->
+								<!-- <h3>列出的物料清單為預計可能會使用的所有物料的庫存狀況，最終扣料項與數量以最終扣料表為准</h3> -->
+							<!-- </page> -->
+					</notebook>
+						<!-- <field name="name" string="單號" readonly="1"/> -->
+						<!-- <field name="customer_id" string="客戶" readonly="1"/> -->
+						<!-- <field name="project_name" string="案件摘要" readonly="1"/> -->
+						<!-- <field name="delivery_carrier" string="送件" invisible="1"/> -->
+						<!-- <field name="delivery_carrier_char" string="送件"/> -->
+						<!-- <field name="estimated_date"/> -->
+						<!-- <field name="customer_class_id" invisible="1"/> -->
+						<!-- <field name="quantity" widget="integer"/> -->
+						<!-- <field name="unit_all" widget="integer" string="總才數"/> -->
+						<!-- <field name="total_price" widget="integer"/> -->
+						<!-- <field name="user_id"/> -->
+						<!-- <field name="create_date" string="進單日"/> -->
+					
+				</sheet>
+			</form>
+		</field>	
+	</record>
+	
+	<record id="product_template_search_view" model="ir.ui.view">
+    <field name="name">product.template.search</field>
+    <field name="model">product.template</field>
+    <field name="arch" type="xml">
+			<search>
+				<field name="name"/>
+				<!-- 在搜索视图中仅显示 name 字段 -->
+			</search>
+		</field>
+	</record>
+		
+	<record id="action_checkoutlineaftermakepricelist_form" model="ir.actions.act_window">
+		<field name="name">Add After Make Price</field>
+		<field name="res_model">dtsc.checkoutlineaftermakepricelist</field>
+		<field name="view_mode">tree,form</field>
+		<field name="context">{'default_checkoutline_id': active_id}</field>
+		<!-- <field name="target">new</field> -->
+		<!-- <field name="view_id" ref="view_checkoutlineaftermakepricelist_tree"/> -->
+	</record>
+	
+	
+	<record id="view_checkoutlineaftermakepricelist_tree" model="ir.ui.view">
+		<field name="name">dtsc.checkoutlineaftermakepricelist.tree</field>
+		<field name="model">dtsc.checkoutlineaftermakepricelist</field>
+		<field name="arch" type="xml">
+
+
+			<tree editable="bottom" delete="true">
+				<field name="customer_class_id" invisible="1"/>
+				<field name="aftermakepricelist_id" domain="[('customer_class_id', '=', customer_class_id)]" options="{'no_create': True, 'no_create_edit': True}"/>
+           
+				<field name="checkoutline_id" invisible="1"/> 
+				<!-- <field name="unit_char"/> -->
+				<field name="price" groups="dtsc.group_dtsc_yw,dtsc.group_dtsc_kj"/>
+				<field name="price_base" groups="dtsc.group_dtsc_yw,dtsc.group_dtsc_kj"/>
+				<field name="total_price" groups="dtsc.group_dtsc_yw,dtsc.group_dtsc_kj"/>
+				<field name="qty"/>
+				<button name="action_delete_record" type="object" class="oe_stat_button" icon="fa-trash"/>
+			</tree>
+
+		</field>	
+	</record>
+	
+	<record id="search_checkout" model="ir.ui.view">
+		<field name="name">dtsc.checkout.search</field>
+		<field name="model">dtsc.checkout</field>
+		<field name="arch" type="xml">
+			<search>
+				<searchpanel>
+                    <field name="checkout_order_state" string="大圖訂單狀態"/>
+                    <field name="report_year" string="年"  select="multi"/>
+                    <field name="report_month" string="月" context="{'group_by': 'report_year'}" select="multi"/>
+                </searchpanel>
+				
+				<field name="search_line_namee" string="所有訊息"/>
+				<field name="customer_id" string="客戶名稱"/>
+				
+				<separator/>
+				<!-- <filter name="今日" string="今日" domain="[('date_labels.name', '=', '今日')]"/> -->
+                <!-- <filter name="10日内" string="10日内" domain="[('date_labels.name', '=', '10日内')]"/> -->
+                <!-- <filter name="本月" string="本月" domain="[('date_labels.name', '=', '本月')]"/> -->
+                <!-- <filter name="前月" string="前月" domain="[('date_labels.name', '=', '前月')]"/> -->
+                <!-- <filter name="其他" string="其他" domain="[('date_labels.name', '=', '其他')]"/>  -->
+				
+				<filter name="進單日-明日" string="進單日-明日" domain="[('date_labels.name', '=', '進單日-明日')]"/>
+				<filter name="進單日-今日" string="進單日-今日" domain="[('date_labels.name', '=', '進單日-今日')]"/>
+				<filter name="進單日-本周" string="進單日-本周" domain="[('date_labels.name', '=', '進單日-本周')]"/>
+                <filter name="進單日-10日内" string="進單日-10日内" domain="[('date_labels.name', '=', '進單日-10日内')]"/>
+                <filter name="進單日-本月" string="進單日-本月" domain="[('date_labels.name', '=', '進單日-本月')]"/>
+                <filter name="進單日-前月" string="進單日-前月" domain="[('date_labels.name', '=', '進單日-前月')]"/>
+                <!-- <filter name="進單日-其他" string="進單日-其他" domain="[('date_labels.name', '=', '進單日-其他')]"/> -->
+				
+				<separator/>
+				<filter name="出貨日-明日" string="出貨日-明日" domain="[('date_labels.name', '=', '出貨日-明日')]"/>
+				<filter name="出貨日-今日" string="出貨日-今日" domain="[('date_labels.name', '=', '出貨日-今日')]"/>
+				<filter name="出貨日-本周" string="出貨日-本周" domain="[('date_labels.name', '=', '出貨日-本周')]"/>
+                <filter name="出貨日-10日内" string="出貨日-10日内" domain="[('date_labels.name', '=', '出貨日-10日内')]"/>
+                <filter name="出貨日-本月" string="出貨日-本月" domain="[('date_labels.name', '=', '出貨日-本月')]"/>
+                <filter name="出貨日-前月" string="出貨日-前月" domain="[('date_labels.name', '=', '出貨日-前月')]"/>
+                <!-- <filter name="出貨日-其他" string="出貨日-其他" domain="[('date_labels.name', '=', '出貨日-其他')]"/> -->
+                
+				<filter string="客戶分組" name="group_by_customer_id" domain="[]" context="{'group_by': 'customer_id'}"/>       
+				<filter string="交貨方式分組" name="group_by_delivery_carrier" domain="[]" context="{'group_by': 'delivery_carrier'}"/>       
+				<filter string="進單日分組" name="group_by_create_date" domain="[]" context="{'group_by': 'create_date'}"/>       
+				<filter string="發貨日分組" name="group_by_estimated_date" domain="[]" context="{'group_by': 'estimated_date'}"/>       
+				<filter string="銷售人員分組" name="group_by_user_id" domain="[]" context="{'group_by': 'user_id'}"/>       
+				<filter string="開單人員分組" name="group_by_kaidan" domain="[]" context="{'group_by': 'kaidan'}"/>       
+			</search>
+		</field>		
+	</record>
+	
+	
+    <record id="ir_cron_your_computation" model="ir.cron">
+        <field name="name">Every Minute Computation Job</field>
+        <field name="model_id" ref="model_dtsc_checkout"/>
+        <field name="state">code</field>
+        <field name="code">model.everyday_set()</field> 
+        <field name="interval_number">5</field> 
+        <field name="interval_type">minutes</field>
+        <field name="numbercall">-1</field>
+        <field name="nextcall" eval="(datetime.now() + timedelta(minutes=5)).strftime('%Y-%m-%d %H:%M:%S')"/>
+    </record>
+	
+	<record id="view_price_popup_form" model="ir.ui.view">
+		<field name="name">Price Popup Form</field>
+		<field name="model">dtsc.checkoutline</field>
+		<field name="arch" type="xml">
+			<form string="查看">
+				<group>
+					<field name="units_price" />
+					<field name="same_material" string="同材質" />
+				</group>
+				<footer>
+                <button string="更新" type="object" name="update_price" class="btn-primary"/>
+                <button string="關閉" class="btn-secondary" special="cancel"/>
+            </footer>
+			</form>
+		</field>
+	</record>
+
+	<!-- <record id="ir_cron_your_computation" model="ir.cron"> -->
+        <!-- <field name="name">Every Hour Computation Job</field> -->
+        <!-- <field name="model_id" ref="model_dtsc_checkout"/>  -->
+        <!-- <field name="state">code</field> -->
+        <!-- <field name="code">model.everyday_set()</field>  -->
+        <!-- <field name="interval_number">12</field>  -->
+        <!-- <field name="interval_type">hours</field> -->
+        <!-- <field name="numbercall">-1</field>   -->
+        <!-- <field name="nextcall" eval="(datetime.now() + timedelta(hours=12)).strftime('%Y-%m-%d %H:%M:%S')"/> -->
+     <!-- </record> -->
+	 
+	<!-- <template id="report_res_partner_age"> -->
+        <!-- <t t-call="web.html_container"> -->
+            <!-- <table class="table"> -->
+                <!-- <tr> -->
+                    <!-- <th>Name</th> -->
+                    <!-- <th>Age</th> -->
+                    <!-- <th/> -->
+                <!-- </tr> -->
+					
+			<!-- </table> -->
+        <!-- </t> -->
+    <!-- </template> -->
+	
+	<!-- <record id="res_partner_report" model="ir.actions.report"> -->
+		<!-- <field name="name">res.partner.report</field> -->
+		<!-- <field name="model">res.partner</field> -->
+		<!-- <field name="report_type">qweb-pdf</field> -->
+		<!-- <field name="report_name">dtsc.report_res_partner_age</field> -->
+		<!-- <field name="binding_model_id" ref="base.model_res_partner"/> -->
+		<!-- <field name="binding_type">report</field> -->
+	<!-- </record> -->
+
+	
+</odoo>

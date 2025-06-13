@@ -25,12 +25,24 @@ class DeliveryCarrier(models.Model):
         
         # 检查是否选择了大图运费规则
         if self.delivery_type == 'datu_rule':
+            # 新增：检查是否包含特殊商品，若有则运费为0
+            # special_keywords = ['保麗龍', '壓克力字', 'logo', '卡典']
+            # for line in order.order_line:
+                # product_name = line.product_id.name
+                # if any(keyword in product_name for keyword in special_keywords):
+                    # logger.info('订单包含特殊商品（保麗龍/壓克力字/logo/卡典），运费设为0，仅限自取')
+                    # return {
+                        # 'success': True,
+                        # 'price': 0,
+                        # 'error_message': False,
+                        # 'warning_message': '订单包含特殊商品，仅限自取，运费为0'
+                    # }
             # 初始化运费
             total_shipping = 0
             special_items_shipping = 0  # 特殊商品组合运费
             poster_total_quantity = 0   # 海报类商品总数量
             acrylic_stand_quantity = 0  # 压克力人形立牌和钥匙圈的总数量
-            acrylic_word_quantity = 0   # 压克力字的总数量
+            # acrylic_word_quantity = 0   # 压克力字的总数量
 
             for line in order.order_line:
                 product_name = line.product_id.name
@@ -42,7 +54,7 @@ class DeliveryCarrier(models.Model):
                 
                 # 人形立牌运费计算
                 elif product_name.find('客製化人形立牌') >= 0:
-                    special_items_shipping += 250 * ceil(quantity)
+                    special_items_shipping += 350 * ceil(quantity/ 2)
                 # 海报、手拿板、水晶贴纸运费计算（每10件250元）
                 elif (product_name.find('海報') >= 0 or 
                       product_name.find('手拿') >= 0 or 
@@ -51,11 +63,14 @@ class DeliveryCarrier(models.Model):
                 
                 # 易拉展运费计算
                 elif product_name.find('易拉展') >= 0:
-                    special_items_shipping += 250 * ceil(quantity / 250)
+                    special_items_shipping += 250 * ceil(quantity / 10)
                 
-                # 壓克力立牌、壓克力鑰匙运费计算
-                elif product_name.find('壓克力字') >= 0:
-                    acrylic_word_quantity += quantity
+                # 壓字运费计算
+                # elif (product_name.find('保麗龍') >= 0 or 
+                #       product_name.find('壓克力字') >= 0 or 
+                #       product_name.find('logo') >= 0 or 
+                #       product_name.find('卡典') >= 0):
+                #     acrylic_word_quantity += quantity
                 
                 elif (product_name.find('壓克力人形立牌') >= 0 or 
                       product_name.find('壓克力鑰匙圈') >= 0):
@@ -63,15 +78,16 @@ class DeliveryCarrier(models.Model):
 
             # 计算海报类商品的运费
             if poster_total_quantity > 0:
-                special_items_shipping += 250 * ceil(poster_total_quantity / 10)
+                # special_items_shipping += 250 * ceil(poster_total_quantity / 10)
+                special_items_shipping += 250 
 
             # 计算压克力字的运费
-            if acrylic_word_quantity > 0:
-                total_shipping += 250 * ceil(acrylic_word_quantity / 500)
+            # if acrylic_word_quantity > 0:
+                # total_shipping += 250 * ceil(acrylic_word_quantity / 500)
 
             # 计算压克力人形立牌和钥匙圈的运费
             if acrylic_stand_quantity > 0:
-                total_shipping += 250 * ceil(acrylic_stand_quantity / 500)
+                total_shipping += 200 * ceil(acrylic_stand_quantity / 300)
 
             # 处理特殊商品组合运费上限
             if special_items_shipping > 1000:

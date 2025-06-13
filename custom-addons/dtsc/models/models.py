@@ -361,7 +361,7 @@ class StockPicking(models.Model):
                     if not quant:
                         raise UserError(f"{move.product_id.display_name} 的序號 {move.lot_id.name} 在來源倉庫中沒有可用庫存")
                     # _logger.warning(f"========{quant.quantity}=========")
-                    move.quantity_done = quant.quantity  # 设置为调拨数量或自定义的数量
+                    # move.quantity_done = quant.quantity  # 设置为调拨数量或自定义的数量
                     # 建立 move_line，使用選中的 lot_id
                     self.env['stock.move.line'].create({
                         'reference' : "調撥", 
@@ -379,7 +379,7 @@ class StockPicking(models.Model):
 
                 else:
                     # 一般產品直接完成
-                    move.quantity_done = move.product_uom_qty  # 设置为调拨数量或自定义的数量
+                    # move.quantity_done = move.product_uom_qty  # 设置为调拨数量或自定义的数量
                     self.env['stock.move.line'].create({
                         'reference' : "調撥", 
                         'move_id': move.id,

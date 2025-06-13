@@ -87,7 +87,7 @@
 	<template id="order_not_found" name="Order Details">
 		<t t-call="website.layout">
 			<div class="container">
-				您所提供的链接有误！请联系科影客服处理！
+				您所提供的链接有误！请联系客服处理！
 			</div>
 		</t>
 	</template>		

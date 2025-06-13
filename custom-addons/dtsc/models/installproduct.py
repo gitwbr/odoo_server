@@ -367,8 +367,11 @@ class Installproduct(models.Model):
         if self.address:
             details += "地址：" + self.address + "\n"
             
-            
-        mailstring = "<p>科影提示您有一項施工需要注意，點擊下方鏈接加入行事曆！</p>"
+        company_id = self.env["res.company"].search([],limit=1)   
+        if company_id:
+            mailstring = f"<p>{company_id.name}提示您有一項施工需要注意，點擊下方鏈接加入行事曆！</p>"
+        else:
+            mailstring = "<p>提示您有一項施工需要注意，點擊下方鏈接加入行事曆！</p>"
         
         in_date = self.in_date
         in_date_end = self.in_date_end
@@ -598,7 +601,10 @@ class Installproduct(models.Model):
             pdf_data = pdf_file.read()
         
         pdf_base64 = base64.b64encode(pdf_data).decode('utf-8')
-        subject = "科影"
+        if company_id and company_id.name:
+            subject = company_id.name
+        else:
+            subject = ""
         if self.custom_init_name:
             subject += "-" + str(self.custom_init_name)
         if self.project_name:

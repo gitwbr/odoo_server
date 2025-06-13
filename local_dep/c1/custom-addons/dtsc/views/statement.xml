@@ -1,0 +1,43 @@
+<odoo>
+
+	<!-- <record model="ir.actions.act_window" id="dtsc.action_window_statement">
+		<field name="name">每月對賬單</field>
+		<field name="res_model">account.move</field>
+		<field name="view_mode">tree,form</field>
+		<field name="context">{'group_by': ['partner_id', 'invoice_date:month']}</field>
+	</record>
+	<record model="ir.ui.view" id="dtsc.list_account_move">
+		<field name="name">account.move.list</field>
+		<field name="model">account.move</field>
+		<field name="arch" type="xml">
+			<tree>
+				<field name="partner_id"/>
+				<field name="invoice_date"/>
+				<field name="amount_total"/>
+			</tree>
+		</field>
+	</record> -->
+	<record model="ir.actions.act_window" id="dtsc.action_window_statement">
+		<field name="name">每月對賬單</field>
+		<field name="res_model">account.move</field>
+		<field name="view_mode">tree,form</field>
+		<field name="context">{'group_by': ['partner_id', 'invoice_date_due:month']}</field>
+		<field name="domain">[('move_type', '=', 'out_invoice')]</field>
+	</record>
+	<record model="ir.ui.view" id="dtsc.list_account_move">
+		<field name="name">account.move.list</field>
+		<field name="model">account.move</field>
+		<field name="arch" type="xml">
+			<tree>
+				<field name="partner_id"/>
+				<field name="invoice_date_due"/>
+				<field name="name"/>
+				<field name="amount_untaxed"/>
+				<field name="amount_tax"/>
+				<field name="amount_total"/>
+			</tree>
+		</field>
+	</record>
+
+
+</odoo>
