@@ -163,5 +163,29 @@
 		</xpath>
 	</template>
 	
- 
+	<template id="dtsc_payment_delivery_text_only" inherit_id="website_sale_delivery.payment_delivery">
+		<xpath expr="//div[@id='delivery_method']" position="before">
+			<div t-if="delivery_nb == 1" class="card border-0" id="delivery_method_custom">
+				<ul class="list-group">
+					<t t-foreach="deliveries" t-as="delivery">
+						<li class="list-group-item o_delivery_carrier_select" style="pointer-events: none; user-select: none;">
+							<span t-esc="delivery.name"/>
+							<span class="badge text-bg-secondary float-end">免費</span>
+						</li>
+					</t>
+				</ul>
+			</div>
+		</xpath>
+		<xpath expr="//div[@id='delivery_method']" position="replace">
+			<div t-if="delivery_nb &gt; 1" class="card border-0" id="delivery_method">
+				<ul class="list-group">
+					<t t-foreach="deliveries" t-as="delivery">
+						<li class="list-group-item o_delivery_carrier_select">
+							<t t-call="website_sale_delivery.payment_delivery_methods"/>
+						</li>
+					</t>
+				</ul>
+			</div>
+		</xpath>
+	</template>
 </odoo>
