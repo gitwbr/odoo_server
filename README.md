@@ -98,7 +98,7 @@
    docker run --rm custom-odoo:16.0.1 pip list --format=freeze
    docker run --rm b22e7cb89f65 pip list --format=freeze
 
-   # 清楚所有none镜像
+   # 清除所有none镜像
    docker system prune -f
 
    # 删除所有已停止的容器
@@ -1038,3 +1038,9 @@ docker stop $(docker ps  --filter "name=^client" --format "{{.Names}}")
 
 # 查询
 docker ps  --filter "name=^client" --format "{{.Names}}"
+
+## curl测试
+curl http://localhost:8003/web/database/manager
+
+## 远端端口测试
+nc -zv 35.201.156.77 5432

@@ -89,8 +89,8 @@ services:
   # Client3 服務
   web3:
     image: custom-odoo:16.0.1
-    depends_on:
-      - db3
+    #depends_on:
+    #  - db3
     volumes:
       - ./client3/config:/etc/odoo
       - ./client3/data:/var/lib/odoo/client3
@@ -104,6 +104,11 @@ services:
     environment:
       - LANG=zh_TW.UTF-8
       - TZ=Asia/Taipei
+      - DB_HOST=35.201.156.77
+      - DB_PORT=5432
+      - DB_USER=odoo3
+      - DB_PASSWORD=odoo3
+      - DB_NAME=postgres
     command:
       - -u
       - dtsc,dtsc_custom

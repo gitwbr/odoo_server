@@ -875,10 +875,14 @@ class Checkout(models.Model):
                 tax_ids = [(6, 0, [tax.id])]
             else:
                 tax_ids = [] 
-                
+            
+            install_product_product_obj = self.env["product.product"].search([('name',"=","施工費")], limit=1)
+            
             for install_line in record.installproduct_ids:
                 if install_line.install_state == "cancel":
                     continue
+                if not install_product_product_obj:
+                    raise UserError('您還未創建‘施工費’產品。請先去產品中創建！')
                 invoice_line = InvoiceLine.create({
                     'account_id':1,
                     'move_id' : invoice.id,
@@ -897,7 +901,7 @@ class Checkout(models.Model):
                     "price" : install_line.sjsf,
                     # 'product_width' : line.product_width,                  #寬
                     # 'product_height' : line.product_height,                #高
-                    'product_id' : 103,                      #產品在PRODUCT.PRODUCT中的id 施工費用就是574 如果有更改要修改
+                    'product_id' : install_product_product_obj.id,#103,                      #產品在PRODUCT.PRODUCT中的id 施工費用就是574 如果有更改要修改
                     "currency_id": 135,        #台幣
                     "tax_ids" : tax_ids,
                     })

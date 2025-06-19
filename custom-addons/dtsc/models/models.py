@@ -1218,13 +1218,13 @@ class IrUiMenu(models.Model):
     def _get_visibility_on_config_parameter(self, menu_xml_id, config_param):
         param = config.get(config_param)
         menu = self.env.ref(menu_xml_id, raise_if_not_found=False)
-        _logger.warning("=================")
-        _logger.warning(menu)
-        _logger.warning(menu_xml_id)
-        _logger.warning(config.get('is_open_crm'))
-        _logger.warning("=================")
+        # _logger.warning("=================")
+        # _logger.warning(menu)
+        # _logger.warning(menu_xml_id)
+        # _logger.warning(config.get('is_open_crm'))
+        # _logger.warning("=================")
         if menu: 
-            _logger.warning("========invisible=========")
+            # _logger.warning("========invisible=========") 
             menu.active = bool(param) 
 
     @api.model

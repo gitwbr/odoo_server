@@ -163,7 +163,7 @@
 		</xpath>
 	</template>
 	
-	<template id="dtsc_payment_delivery_text_only" inherit_id="website_sale_delivery.payment_delivery">
+	<!-- <template id="dtsc_payment_delivery_text_only" inherit_id="website_sale_delivery.payment_delivery">
 		<xpath expr="//div[@id='delivery_method']" position="before">
 			<div t-if="delivery_nb == 1" class="card border-0" id="delivery_method_custom">
 				<ul class="list-group">
@@ -187,5 +187,5 @@
 				</ul>
 			</div>
 		</xpath>
-	</template>
+	</template> -->
 </odoo>

@@ -20,7 +20,7 @@ print_warning() {
 # 检查参数
 if [ $# -ne 3 ]; then
     print_error "使用方法: $0 <客户端编号> <数据库名称> <备份文件路径>"
-    print_info "示例: $0 2 default ./backup/default_db.dump"
+    print_info "示例: $0 2 default ./backup/DB/default_db.dump"
     exit 1
 fi
 
@@ -177,6 +177,7 @@ fi
 
 # 在恢复数据库之前，确保 filestore 目录存在并有正确权限
 print_info "准备 filestore 目录..."
+
 # 删除旧的 filestore
 docker exec $CONTAINER_NAME rm -rf /var/lib/odoo/client${CLIENT_NUM}/filestore/${DB_NAME}
 
@@ -186,6 +187,7 @@ docker exec $CONTAINER_NAME mkdir -p /var/lib/odoo/client${CLIENT_NUM}/filestore
 # 复制 filestore
 print_info "复制 filestore..."
 FILESTORE_PATH=$(dirname "$BACKUP_FILE")/filestore_${DB_NAME}
+print_info "Filestore路径: $FILESTORE_PATH"
 if [ -d "$FILESTORE_PATH" ]; then
     docker cp "$FILESTORE_PATH/." "$WEB_CONTAINER:/var/lib/odoo/client${CLIENT_NUM}/filestore/${DB_NAME}/"
     print_success "Filestore 复制成功"
