@@ -132,15 +132,46 @@ odoo.define('dtsc.checkout', function (require) {
 				var fileName_original = file ? file.name : "";  // 使用文件的原始名称
 
                 if (file) {
-                    // 检查文件名格式
-                    const pattern = /(\d+(?:\.\d+)?)\s*[x×]\s*(\d+(?:\.\d+)?)\s*(?:cm|mm)/i;
-					debugLog("fileName_original:", fileName_original);
-                    if (!fileName_original.match(pattern)) {
-                        var $uploadStatusDiv = $fileInput.siblings('.upload-status');
-                        $uploadStatusDiv.text('文件名必须包含尺寸信息，格式如：100x200cm 或 100x200mm').css('color', 'red').removeClass('d-none');
+                    // 新的文件名格式校验和栏位比对
+                    // 文件名格式：案件摘要-檔名-寬x高cmx數量.xxx
+                    // 允许x、×、*，cm可有可无
+                    const newPattern = /^(.+)-(.+)-(\d+)[x×*](\d+)(cm)?[x×*](\d+)/i;
+                    debugLog("fileName_original:", fileName_original);
+                    var $uploadStatusDiv = $fileInput.siblings('.upload-status');
+                    var match = fileName_original.replace(/\.[^/.]+$/, "").match(newPattern); // 去掉扩展名再匹配
+                    if (!match) {
+                        $uploadStatusDiv.text('文件名格式错误，需为"案件摘要-檔案名稱-寬x高cmx數量"，如：專案A-橫幅-100x200cmx3').css('color', 'red').removeClass('d-none');
                         reject('文件名格式不正确');
                         return;
                     }
+                    // 获取栏位值
+                    var projectName = $("input[name='project_name']").val().trim();
+                    var fileNameField = $table.find('#project_product_name').val().trim();
+                    var param1 = $table.find('#param1').val().trim();
+                    var param2 = $table.find('#param2').val().trim();
+                    var quantity = $table.find('#quantity').val().trim();
+                    // 比对
+                    var mismatchMessages = [];
+					if (match[1] !== projectName) {
+						mismatchMessages.push(`案件摘要不一致，表單值：「${projectName}」，檔案值：「${match[1]}」，請修改一致。`);
+					}
+					if (match[2] !== fileNameField) {
+						mismatchMessages.push(`檔案名稱不一致，表單值：「${fileNameField}」，檔案值：「${match[2]}」，請修改一致。`);
+					}
+					if (match[3] !== param1) {
+						mismatchMessages.push(`寬度不一致，表單值：「${param1}」，檔案值：「${match[3]}」，請修改一致。`);
+					}
+					if (match[4] !== param2) {
+						mismatchMessages.push(`高度不一致，表單值：「${param2}」，檔案值：「${match[4]}」，請修改一致。`);
+					}
+					if (match[6] !== quantity) {
+						mismatchMessages.push(`數量不一致，表單值：「${quantity}」，檔案值：「${match[6]}」，請修改一致。`);
+					}
+					if (mismatchMessages.length > 0) {
+						$uploadStatusDiv.html(mismatchMessages.join('<br>')).css('color', 'red').removeClass('d-none');
+						reject('文件名与表单栏位不一致');
+						return;
+					}
 
                     var formData = new FormData();
                     formData.append('custom_file', file);

@@ -77,7 +77,7 @@
 
 ## 镜像真实处理（dockerfile）
    # 查看容器中的依赖
-   docker exec -it odoo_my_odoo_1 pip list --format=freeze > requirements.txt
+   docker exec -it client103-web103-1 pip list --format=freeze > requirements.txt
       # 进入容器
       docker run -it --rm odoo16-web3-1 bash
       docker exec -it odoo_my_odoo_1 /bin/bash
@@ -95,8 +95,9 @@
    docker commit client129-web129-1 custom-odoo:16.0.1
 
    # 查看镜像中的Python包
-   docker run --rm custom-odoo:16.0.1 pip list --format=freeze
-   docker run --rm b22e7cb89f65 pip list --format=freeze
+   docker run --rm custom-odoo:16.0.1 pip list --format=freeze > requirements.txt
+   docker run --rm custom-odoo-web_default:latest pip list --format=freeze > requirements.txt
+   docker run --rm b22e7cb89f65 pip list --format=freeze 
 
    # 清除所有none镜像
    docker system prune -f
@@ -121,7 +122,7 @@ docker load < /tmp/custom-postgres-db_default.tar
 1. 安装图片处理相关依赖：
 ```bash
 docker-compose exec -u root web3 pip3 install --no-cache-dir --force-reinstall pymupdf
-docker-compose exec -u root web129 pip3 install --no-cache-dir --force-reinstall workalendar
+docker-compose exec -u root web103 pip3 install --no-cache-dir --force-reinstall workalendar
 # 查看状态
    docker-compose exec web5 python3 -c "import fitz; print('PyMuPDF installed successfully')"
 docker-compose exec -u root web3 pip3 install --no-cache-dir svglib>=1.5.1 PyMuPDF>=1.23.7 Pillow>=10.0.0

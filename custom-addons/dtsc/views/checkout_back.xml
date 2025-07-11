@@ -307,8 +307,8 @@
 							<!-- <field name="delivery_carrier_char" attrs="{'readonly':[('checkout_order_state','not in',['draft', 'quoting', 'receivable', 'producing', 'shipping', 'partial_shipping'])]}"/> -->
 							<!-- <field name="estimated_date" attrs="{'readonly': ['|', ('checkout_order_state', 'not in', ['draft', 'quoting', 'producing', 'finished']), ('is_in_by_mg', '=', False)]}"/> -->
 							<!-- <field name="estimated_date" attrs="{'readonly': ['|', ('checkout_order_state', 'not in', ['draft', 'quoting', 'producing', 'finished']), '&amp;', ('is_in_by_mg', '=', False), ('is_in_by_sc', '=', False)]}"/> -->
-							<field name="estimated_date" attrs="{'readonly': [('checkout_order_state', 'in', ['price_review_done'])]}"/>
-							
+
+							<field name="estimated_date" attrs="{'readonly': ['|',('checkout_order_state', 'in', ['price_review_done']),('is_delivery','=',True)]}"/>
 							<!-- <field name="delivery_time" attrs="{'readonly':[('checkout_order_state','not in',['draft', 'quoting', 'receivable', 'producing', 'shipping', 'partial_shipping'])]}"/> -->
 							
 							<!-- <field name="delivery_carrier" string="運送方式" attrs="{'readonly': [('is_in_by_mg', '=', False)]}"/> -->
@@ -344,6 +344,7 @@
 										<field name="is_purchse" attrs="{'readonly': [('parent.is_in_by_mg', '=', False)]}" />								
 										<field name="is_install" attrs="{'readonly': [('parent.is_in_by_mg', '=', False)]}" />
 										<field name="small_image"   widget="image" class="w100" optional="hide" />
+										<field name="origin_checkout_name" attrs="{'column_invisible':[('parent.hebing_type','!=','1')]}" />
 										<field name="sequence" style="text-align: center;" />
 										<field name="project_product_name" />
 										<field name="product_id"  options="{'no_create': True, 'no_create_edit': True}">

@@ -1,4 +1,885 @@
 <odoo>
+	<template id="liff_system_page" name="管理系统">
+		<script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+		<style>
+			.loading-wrapper {
+				display: flex;
+				justify-content: center;
+				align-items: center;
+				height: 100vh;
+				background-color: #FFFFFF;
+				flex-direction: column;
+			}
+
+			.spinner {
+				border: 8px solid #f3f3f3;
+				border-top: 8px solid #00C300; /* LINE 綠色 */
+				border-radius: 50%;
+				width: 60px;
+				height: 60px;
+				animation: spin 1s linear infinite;
+				margin-bottom: 16px;
+			}
+
+			@keyframes spin {
+				0% { transform: rotate(0deg); }
+				100% { transform: rotate(360deg); }
+			}
+
+			.loading-text {
+				color: #00C300;
+				font-size: 20px;
+				font-weight: bold;
+			}
+		</style>
+
+		<div class="loading-wrapper">
+			<div class="spinner"></div>
+			<div class="loading-text">登入中，請稍候...</div>
+		</div>
+		<script>
+		document.addEventListener("DOMContentLoaded", async function () {
+			const queryString = window.location.search;
+				const decodedQueryString = decodeURIComponent(queryString);
+				const regex = /liffid=([a-zA-Z0-9\-]+)/;
+				const match = decodedQueryString.match(regex);
+				const liffId = match ? match[1] : null;
+				if (!liffId) return;
+
+				liff.init({ liffId: liffId }).then(() => {
+					liff.getProfile().then(function (profile) {
+						const lineId = profile.userId;
+						//window.location.href = `/line/login?line_user_id=${lineId}`;
+						liff.getProfile().then(function (profile) {
+							const lineId = profile.userId;
+							
+							fetch('/line/login', {
+								method: 'POST',
+								headers: { 'Content-Type': 'application/json' },
+								body: JSON.stringify({ line_id: lineId })
+							})
+							.then(response => response.json())
+							.then(data => {
+								window.location.href = data.redirect;
+							});
+						});
+					});
+				
+				})
+			
+		});
+		</script>
+	</template>
+	<template id="liff_leave_page" name="請假系統">
+		<script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+		<style>
+			body {
+				font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+				background-color: #f9f9f9;
+				color: #333;
+				font-size: 20px; /* 整體更大 */
+				padding: 16px;
+				line-height: 1.6;
+			}
+
+			h2 {
+				color: #00C300;
+				font-size: 36px;
+				font-weight: bold;
+				margin-bottom: 36px;
+				text-align: center;
+			}
+
+			.form-label {
+				font-size: 22px;
+				color: #333;
+			}
+
+			input[type="date"] {
+				font-size: 20px;
+				padding: 16px 14px;
+				border: 1px solid #ccc;
+				border-radius: 10px;
+				width: 100%;
+			}
+
+			.line-green-btn {
+				background-color: #00C300;
+				color: white;
+				border: none;
+				padding: 28px 60px; /* 調大內距 */
+				font-size: 28px;     /* 調大字體 */
+				border-radius: 16px; /* 調大圓角 */
+				transition: background-color 0.3s ease;
+				cursor: pointer;
+			}
+			.line-green-btn:hover {
+				background-color: #00a800;
+			}
+			.line-green-td-btn {
+				background-color: #00C300;
+				color: white;
+				border: none;
+				padding: 10px 20px;
+				font-size: 16px;
+				border-radius: 12px;
+				transition: background-color 0.3s ease;
+				cursor: pointer;
+			}
+			.line-green-td-btn:hover {
+				background-color: #00a800;
+			}
+
+			table {
+				width: 100%;
+				border-collapse: collapse;
+				margin-top: 24px;
+				font-size: 20px;
+			}
+
+			th {
+				background-color: #00C300;
+				color: white;
+				padding: 16px;
+				text-align: center;
+				border: 1px solid #ddd;
+				font-size: 22px;
+			}
+
+			td {
+				padding: 16px;
+				text-align: center;
+				border: 1px solid #ddd;
+				background-color: #fff;
+				font-size: 20px;
+			}
+
+			tr:nth-child(even) td {
+				background-color: #f2f2f2;
+			}
+
+			#result h5 {
+				font-size: 24px;
+				color: #00C300;
+				margin-top: 28px;
+				margin-bottom: 16px;
+				text-align: center;
+			}
+
+			.status-group {
+				display: flex;
+				flex-wrap: wrap;
+				justify-content: center;
+				gap: 30px;
+				margin-bottom: 24px;
+			}
+
+			.status-group label {
+				font-size: 22px;
+				display: flex;
+				align-items: center;
+				gap: 10px;
+			}
+
+			.status-group input[type="checkbox"] {
+				transform: scale(1.8);
+				cursor: pointer;
+			}
+
+			.center-btn-wrapper {
+				display: flex;
+				justify-content: center;
+				margin-bottom: 36px;
+			}
+			.form-group {
+				display: flex;
+				flex-direction: column;
+				margin-bottom: 24px;
+			}
+		</style>
+		<div class="container mt-5" style="padding: 20px;">
+			<h2 class="text-center mb-4">請假系統</h2>
+
+			<!-- 日期範圍選擇器 -->
+			<div class="row justify-content-center mb-3" style="display: flex; justify-content: center; gap: 20px;">
+				<div style="flex: 1; max-width: 200px;">
+					<label for="start_date" class="form-label">起始日期</label>
+					<input type="date" id="start_date" class="form-control"/>
+				</div>
+				<div style="flex: 1; max-width: 200px;">
+					<label for="end_date" class="form-label">結束日期</label>
+					<input type="date" id="end_date" class="form-control"/>
+				</div>
+			</div>
+			<div class="text-center mb-3" style="margin-top:20px">
+				<div class="status-group">
+					<label><input type="checkbox" class="status-checkbox" value="all"/> 所有</label>
+					<label><input type="checkbox" class="status-checkbox" value="to_approved"/> 簽核中</label>
+					<label><input type="checkbox" class="status-checkbox" value="approved"/> 已通過</label>
+					<label><input type="checkbox" class="status-checkbox" value="rejected"/> 未通過</label>
+				</div>
+			</div>
+			<!-- 查詢按鈕 -->
+			<div class="center-btn-wrapper">
+				<button id="query_btn" class="line-green-btn" style="margin-right:20px">查詢</button>
+				<button id="do_btn" class="line-green-btn" style="margin-left:20px">申請</button>
+			</div>
+			
+			<div id="leave_balances_display" style="font-size: 20px; text-align: center; margin-top: 20px;"></div>
+			
+			
+			<!-- 查詢結果 -->
+			<div id="result" class="mt-4 text-center">
+				<p class="text-muted">請選擇日期範圍後查詢。</p>
+			</div>
+		</div>
+		<!-- <div id="fixModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%;  -->
+			<!-- background:rgba(0,0,0,0.5); z-index:9999; justify-content:center; align-items:center;"> -->
+			<!-- <div style="background:white; padding:24px; border-radius:12px; max-width:90%; width:360px;"> -->
+				<!-- <h3 style="text-align:center; margin-bottom:16px;">請假資訊</h3> -->
+				
+				<!-- <label style="font-size:18px;">請假類型：</label> -->
+				<!-- <select id="fixType" style="width:100%; padding:10px; font-size:18px; margin-bottom:16px;"> -->
+					<!-- <option value="tx">特休</option> -->
+					<!-- <option value="bj">病假</option> -->
+					<!-- <option value="sj">事假</option> -->
+					<!-- <option value="slj">生理假</option> -->
+					<!-- <option value="jtzgj">家庭照顧假</option> -->
+					<!-- <option value="gj">公假</option> -->
+					<!-- <option value="hj">婚假</option> -->
+					<!-- <option value="saj">喪假</option> -->
+					<!-- <option value="cj">產假</option> -->
+					<!-- <option value="cjj">產檢假</option> -->
+				<!-- </select> -->
+
+				<!-- <label style="font-size:18px;">請假時間：</label> -->
+				<!-- <div style="display:flex; gap:10px; margin-bottom:16px;"> -->
+					<!-- <select id="StartTime" style="flex:1; padding:10px; font-size:18px;"></select> -->
+					<!-- <select id="EndTime" style="flex:1; padding:10px; font-size:18px;"></select> -->
+				<!-- </div> -->
+
+				<!-- <label style="font-size:18px;">請假說明：</label> -->
+				<!-- <textarea id="fixNote" rows="2" style="width:100%; padding:10px; font-size:16px; margin-bottom:16px;"></textarea> -->
+
+				<!-- <div style="text-align:center;"> -->
+					<!-- <button id="submitFixBtn" class="line-green-btn" style="width:100%;">提交</button> -->
+					<!-- <br/><br/> -->
+					<!-- <button onclick="document.getElementById('fixModal').style.display='none'" style="margin-top:10px;">取消</button> -->
+				<!-- </div> -->
+			<!-- </div> -->
+		<!-- </div> -->
+		<div id="leaveModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; 
+			background:rgba(0,0,0,0.5); z-index:9999; justify-content:center; align-items:center;">
+			<div style="background:white; padding:24px; border-radius:12px; max-width:90%; width:600px;">
+				<h5 style="text-align:center; margin-bottom:16px;">請假申請</h5>
+				
+				<div class="form-group" style="display:flex; flex-direction:column; margin-bottom:24px;">
+					<label style="font-size:32px;">請假類型：</label>
+					<select id="leave_type" style="width:100%; padding:10px; font-size:32px; margin-bottom:16px;">
+						<option value="tx">特休</option>
+						<option value="bj">病假</option>
+						<option value="sj">事假</option>
+						<option value="slj">生理假</option>
+						<option value="jtzgj">家庭照顧假</option>
+						<option value="gj">公假</option>
+						<option value="hj">婚假</option>
+						<option value="saj">喪假</option>
+						<option value="cj">產假</option>
+						<option value="cjj">產檢假</option>
+
+					</select>
+				</div>
+				
+				<div class="form-group" style="display:flex; flex-direction:column; margin-bottom:24px;">
+					<label style="font-size:32px;">起始時間：</label>
+					<input type="datetime-local" id="leave_start" style="width:100%; padding:10px; font-size:32px; margin-bottom:16px;"/>
+				</div>
+				<div class="form-group" style="display:flex; flex-direction:column; margin-bottom:24px;">
+					<label style="font-size:32px;">結束時間：</label>
+					<input type="datetime-local" id="leave_end" style="width:100%; padding:10px; font-size:32px; margin-bottom:16px;"/>
+				</div>
+				<div class="form-group" style="display:flex; flex-direction:column; margin-bottom:24px;">
+					<label style="font-size:32px;">備註：</label>
+					<textarea id="leave_note" rows="2" style="width:100%; padding:10px; font-size:16px; margin-bottom:16px;"></textarea>
+				</div>
+				
+				<div class="form-group" style="display:flex; flex-direction:column; margin-bottom:24px;">
+					<label style="font-size:32px;">上傳證明（選填）：</label>
+					<input type="file" id="leave_file" accept="image/*,.pdf" style="width:100%; padding:10px; font-size:32px; margin-bottom:16px;"/>
+				</div>
+				<div style="text-align:center;">
+					<button id="submitLeaveBtn" class="line-green-btn" style="width:100%;">送出</button>
+					<br/><br/>
+					<button onclick="document.getElementById('leaveModal').style.display='none'" style="font-size:32px;margin-top:10px;">取消</button>
+				</div>
+			</div>
+		</div>
+		<script type="text/javascript">
+			<![CDATA[
+			function convertUTCToLocal(utcString) {
+				if (!utcString) return '';
+				const utcDate = new Date(utcString + 'Z'); // 確保它是 UTC
+				return utcDate.toLocaleString('zh-TW', {
+					timeZone: 'Asia/Taipei',
+					year: 'numeric',
+					month: '2-digit',
+					day: '2-digit',
+					hour: '2-digit',
+					minute: '2-digit',
+					hour12: false
+				});
+			}
+			function submitLeaveRequest(lineId, leaveType, start, end, reason, fileData) {
+				fetch('/apply_leave', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({
+						line_id: lineId,
+						leave_type: leaveType,
+						start_time: start,
+						end_time: end,
+						reason: reason,
+						file: fileData
+					})
+				})
+				.then(response => response.json())
+				.then(data => {
+					alert(data.message || "✅ 請假已送出！");
+					document.getElementById("leaveModal").style.display = "none";
+				})
+				.catch(err => {
+					console.error(err);
+					alert("❌ 提交失敗，請稍後再試");
+				});
+			}
+			
+			function searchLeaveData(stime, etime, lineId, statusFilters = []) {
+				fetch('/searchleave', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ stime: stime, etime: etime, line_id: lineId, status_filter: statusFilters })
+				})
+				.then(response => response.json())
+				.then(data => {
+					const resultDiv = document.getElementById("result");
+					if (data.data && data.data.length > 0) {
+						const employeeName = data.data[0].employee_name || '';
+						let html = `
+							<h5>員工姓名：${employeeName}</h5>
+							<table>
+								<thead>
+									<tr>
+										<th>開始時間</th>
+										<th>結束時間</th>
+										<th>類型</th>
+										<th>原因</th>
+									</tr>
+								</thead>
+								<tbody>
+						`;
+
+						data.data.forEach((rec, index) => {
+							html += `
+								<tr>
+									<td>${convertUTCToLocal(rec.start_time) || ''}</td>
+									<td>${convertUTCToLocal(rec.end_time) || ''}</td>
+									<td>${rec.state || ''}</td>
+									<td>${rec.reason || ''}</td>								
+								</tr>
+							`;
+						});
+
+						html += `
+								</tbody>
+							</table>
+						`;
+
+						resultDiv.innerHTML = html;
+					} else {
+						resultDiv.innerHTML = `<p class="text-muted">查無資料</p>`;
+					}
+				})
+				.catch((error) => {
+					console.error('Error:', error);
+					document.getElementById("result").innerHTML = `<p class="text-danger">查詢失敗，請稍後再試</p>`;
+				});
+			}
+			
+			document.addEventListener("DOMContentLoaded", function () {
+				const queryString = window.location.search;
+				const decodedQueryString = decodeURIComponent(queryString);
+				const regex = /liffid=([a-zA-Z0-9\-]+)/;
+				const match = decodedQueryString.match(regex);
+				const liffId = match ? match[1] : null;
+				if (!liffId) return;
+
+				liff.init({ liffId: liffId }).then(() => {
+					const endDate = new Date();
+					const startDate = new Date();
+					startDate.setDate(endDate.getDate() - 6);
+
+					const toInputString = (date) => date.toISOString().split("T")[0];
+					
+					// 查詢假期餘額
+					liff.getProfile().then(function (profile) {
+						const lineId = profile.userId;
+
+						// 查詢假期餘額
+						fetch('/get_leave_balances', {
+							method: 'POST',
+							headers: { 'Content-Type': 'application/json' },
+							body: JSON.stringify({ line_id: lineId })
+						})
+						.then(response => response.json())
+						.then(data => {
+							if (data.data) {
+								const labelMap = {
+									tx: "特休",
+									bj: "病假",
+									sj: "事假",
+									slj: "生理假",
+									jtzgj: "家庭照顧假"
+								};
+
+								const displayText = Object.entries(data.data)
+									.map(([k, v]) => `${labelMap[k] || k}：${v} 小时`)
+									.join('｜');
+
+								document.getElementById("leave_balances_display").innerText = `🌿 可用假期｜${displayText}`;
+							}
+						});
+					});
+					
+					document.getElementById("start_date").value = toInputString(startDate);
+					document.getElementById("end_date").value = toInputString(endDate);
+			
+					document.getElementById("do_btn").addEventListener("click", function () {
+						document.getElementById("leaveModal").style.display = "flex";
+					});
+					
+					document.getElementById("query_btn").addEventListener("click", () => {
+						const sDate = document.getElementById("start_date").value;
+						const eDate = document.getElementById("end_date").value;
+						if (!sDate || !eDate) {
+							alert("請選擇起始與結束日期！");
+							return;
+						}
+						const checkedStatuses = Array.from(document.querySelectorAll(".status-checkbox"))
+							.filter(cb => cb.checked)
+							.map(cb => cb.value);
+						liff.getProfile().then(function (profile) {
+							const lineId = profile.userId;
+							searchLeaveData(sDate, eDate, lineId, checkedStatuses);
+						});
+
+						document.getElementById("result").innerHTML = `
+							<p class="text-muted">查詢 ${sDate} 到 ${eDate} 的請假資料中...</p>
+						`;
+					});
+					
+					
+					document.getElementById("submitLeaveBtn").addEventListener("click", function () {
+						const leaveType = document.getElementById("leave_type").value;
+						const leaveStart = document.getElementById("leave_start").value;
+						const leaveEnd = document.getElementById("leave_end").value;
+						const note = document.getElementById("leave_note").value;
+						const fileInput = document.getElementById("leave_file");
+						const file = fileInput.files[0];
+
+						if (!leaveStart || !leaveEnd) {
+							alert("請選擇完整的起始與結束時間！");
+							return;
+						}
+
+						liff.getProfile().then(function (profile) {
+							const lineId = profile.userId;
+							const userName = profile.displayName;
+
+							if (file) {
+								const reader = new FileReader();
+								reader.onload = function () {
+									const base64file = reader.result.split(',')[1];  // 去除 data:xxx;base64, 前綴
+
+									submitLeaveRequest(lineId, leaveType, leaveStart, leaveEnd, note, base64file);
+								};
+								reader.readAsDataURL(file);
+							} else {
+								submitLeaveRequest(lineId, leaveType, leaveStart, leaveEnd, note, null);
+							}
+						});
+					});					
+					
+				});
+			});
+			]]>
+		</script>
+	</template>
+	
+	<template id="liff_attendance_query_page" name="考勤紀錄查詢">
+		<script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+
+		<style>
+			body {
+				font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+				background-color: #f9f9f9;
+				color: #333;
+				font-size: 20px; /* 整體更大 */
+				padding: 16px;
+				line-height: 1.6;
+			}
+
+			h2 {
+				color: #00C300;
+				font-size: 36px;
+				font-weight: bold;
+				margin-bottom: 36px;
+				text-align: center;
+			}
+
+			.form-label {
+				font-size: 22px;
+				color: #333;
+			}
+
+			input[type="date"] {
+				font-size: 20px;
+				padding: 16px 14px;
+				border: 1px solid #ccc;
+				border-radius: 10px;
+				width: 100%;
+			}
+
+			.line-green-btn {
+				background-color: #00C300;
+				color: white;
+				border: none;
+				padding: 20px 40px;
+				font-size: 24px;
+				border-radius: 12px;
+				transition: background-color 0.3s ease;
+				cursor: pointer;
+			}
+			.line-green-btn:hover {
+				background-color: #00a800;
+			}
+			.line-green-td-btn {
+				background-color: #00C300;
+				color: white;
+				border: none;
+				padding: 10px 20px;
+				font-size: 16px;
+				border-radius: 12px;
+				transition: background-color 0.3s ease;
+				cursor: pointer;
+			}
+			.line-green-td-btn:hover {
+				background-color: #00a800;
+			}
+
+			table {
+				width: 100%;
+				border-collapse: collapse;
+				margin-top: 24px;
+				font-size: 20px;
+			}
+
+			th {
+				background-color: #00C300;
+				color: white;
+				padding: 16px;
+				text-align: center;
+				border: 1px solid #ddd;
+				font-size: 22px;
+			}
+
+			td {
+				padding: 16px;
+				text-align: center;
+				border: 1px solid #ddd;
+				background-color: #fff;
+				font-size: 20px;
+			}
+
+			tr:nth-child(even) td {
+				background-color: #f2f2f2;
+			}
+
+			#result h5 {
+				font-size: 24px;
+				color: #00C300;
+				margin-top: 28px;
+				margin-bottom: 16px;
+				text-align: center;
+			}
+
+			.status-group {
+				display: flex;
+				flex-wrap: wrap;
+				justify-content: center;
+				gap: 30px;
+				margin-bottom: 24px;
+			}
+
+			.status-group label {
+				font-size: 22px;
+				display: flex;
+				align-items: center;
+				gap: 10px;
+			}
+
+			.status-group input[type="checkbox"] {
+				transform: scale(1.8);
+				cursor: pointer;
+			}
+
+			.center-btn-wrapper {
+				display: flex;
+				justify-content: center;
+				margin-bottom: 36px;
+			}
+		</style>
+
+		<div class="container mt-5" style="padding: 20px;">
+			<h2 class="text-center mb-4">考勤紀錄查詢</h2>
+
+			<!-- 日期範圍選擇器 -->
+			<div class="row justify-content-center mb-3" style="display: flex; justify-content: center; gap: 20px;">
+				<div style="flex: 1; max-width: 200px;">
+					<label for="start_date" class="form-label">起始日期</label>
+					<input type="date" id="start_date" class="form-control"/>
+				</div>
+				<div style="flex: 1; max-width: 200px;">
+					<label for="end_date" class="form-label">結束日期</label>
+					<input type="date" id="end_date" class="form-control"/>
+				</div>
+			</div>
+			<div class="text-center mb-3" style="margin-top:20px">
+				<div class="status-group">
+					<label><input type="checkbox" class="status-checkbox" value="cd"/> 遲到</label>
+					<label><input type="checkbox" class="status-checkbox" value="zt"/> 早退</label>
+					<label><input type="checkbox" class="status-checkbox" value="qk"/> 缺卡</label>
+					<label><input type="checkbox" class="status-checkbox" value="bk"/> 補卡</label>
+				</div>
+			</div>
+			<!-- 查詢按鈕 -->
+			<div class="center-btn-wrapper">
+				<button id="query_btn" class="line-green-btn">查詢</button>
+			</div>
+
+			<!-- 查詢結果 -->
+			<div id="result" class="mt-4 text-center">
+				<p class="text-muted">請選擇日期範圍後查詢。</p>
+			</div>
+		</div>
+		<div id="fixModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; 
+			background:rgba(0,0,0,0.5); z-index:9999; justify-content:center; align-items:center;">
+			<div style="background:white; padding:24px; border-radius:12px; max-width:90%; width:360px;">
+				<h3 style="text-align:center; margin-bottom:16px;">補卡資訊</h3>
+				
+				<label style="font-size:18px;">補卡類型：</label>
+				<select id="fixType" style="width:100%; padding:10px; font-size:18px; margin-bottom:16px;">
+					<option value="in">上班</option>
+					<option value="out">下班</option>
+				</select>
+
+				<label style="font-size:18px;">補卡時間：</label>
+				<div style="display:flex; gap:10px; margin-bottom:16px;">
+					<select id="fixHour" style="flex:1; padding:10px; font-size:18px;"></select>
+					<select id="fixMinute" style="flex:1; padding:10px; font-size:18px;"></select>
+				</div>
+
+				<label style="font-size:18px;">補卡說明：</label>
+				<textarea id="fixNote" rows="2" style="width:100%; padding:10px; font-size:16px; margin-bottom:16px;"></textarea>
+
+				<div style="text-align:center;">
+					<button id="submitFixBtn" class="line-green-btn" style="width:100%;">提交</button>
+					<br/><br/>
+					<button onclick="document.getElementById('fixModal').style.display='none'" style="margin-top:10px;">取消</button>
+				</div>
+			</div>
+		</div>
+		<script type="text/javascript">
+			<![CDATA[
+			function convertUTCToLocal(utcString) {
+				if (!utcString) return '';
+				const utcDate = new Date(utcString + 'Z'); // 確保它是 UTC
+				return utcDate.toLocaleString('zh-TW', {
+					timeZone: 'Asia/Taipei',
+					year: 'numeric',
+					month: '2-digit',
+					day: '2-digit',
+					hour: '2-digit',
+					minute: '2-digit',
+					hour12: false
+				});
+			}
+			
+			function buka(type,hour,minute,rowIndex,lineId,note){
+				fetch('/action_buka', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ type: type, hour: hour, minute: minute, rowIndex: rowIndex, line_id: lineId ,comment:note })
+				})
+				.then(response => response.json())
+				.then(data => {
+					const resultDiv = document.getElementById("result");
+					if (data.data && data.data.length > 0) {
+						
+					} 
+				})
+				.catch((error) => {
+					console.error('Error:', error);
+					
+				});
+			
+			}
+			function searchDakaData(stime, etime, lineId, statusFilters = []) {
+				fetch('/searchdaka', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ stime: stime, etime: etime, line_id: lineId, status_filter: statusFilters })
+				})
+				.then(response => response.json())
+				.then(data => {
+					const resultDiv = document.getElementById("result");
+					if (data.data && data.data.length > 0) {
+						const employeeName = data.data[0].employee_name || '';
+						let html = `
+							<h5>員工姓名：${employeeName}</h5>
+							<table>
+								<thead>
+									<tr>
+										<th>上班時間</th>
+										<th>下班時間</th>
+										<th>上班狀態</th>
+										<th>下班狀態</th>
+										<th>上班位置</th>
+										<th>下班位置</th>
+										<th>操作</th>
+									</tr>
+								</thead>
+								<tbody>
+						`;
+
+						data.data.forEach((rec, index) => {
+							const abnormal = ["遲到", "早退", "缺卡",""];
+							const needFix = abnormal.includes(rec.in_status) || abnormal.includes(rec.out_status);
+							const inNeedsFix = abnormal.includes(rec.in_status);
+							const outNeedsFix = abnormal.includes(rec.out_status);
+							html += `
+								<tr>
+									<td>${convertUTCToLocal(rec.in_time) || ''}</td>
+									<td>${convertUTCToLocal(rec.out_time) || ''}</td>
+									<td>${rec.in_status || ''}</td>
+									<td>${rec.out_status || ''}</td>
+									<td>${rec.is_in_place || ''}</td>
+									<td>${rec.is_out_place || ''}</td>
+									<td>
+										${inNeedsFix ? `<button class="line-green-td-btn fix-btn" data-type="in" data-index="${rec.daka_id}">補上</button>` : ''}
+										${outNeedsFix ? `<button class="line-green-td-btn fix-btn fix-out" data-type="out" data-index="${rec.daka_id}">補下</button>` : ''}
+									</td>
+								</tr>
+							`;
+						});
+
+						html += `
+								</tbody>
+							</table>
+						`;
+
+						resultDiv.innerHTML = html;
+					} else {
+						resultDiv.innerHTML = `<p class="text-muted">查無資料</p>`;
+					}
+				})
+				.catch((error) => {
+					console.error('Error:', error);
+					document.getElementById("result").innerHTML = `<p class="text-danger">查詢失敗，請稍後再試</p>`;
+				});
+			}
+
+			document.addEventListener("DOMContentLoaded", function () {
+				const queryString = window.location.search;
+				const decodedQueryString = decodeURIComponent(queryString);
+				const regex = /liffid=([a-zA-Z0-9\-]+)/;
+				const match = decodedQueryString.match(regex);
+				const liffId = match ? match[1] : null;
+				if (!liffId) return;
+
+				liff.init({ liffId: liffId }).then(() => {
+					const endDate = new Date();
+					const startDate = new Date();
+					startDate.setDate(endDate.getDate() - 6);
+
+					const toInputString = (date) => date.toISOString().split("T")[0];
+					
+					const hourSelect = document.getElementById("fixHour");
+					const minuteSelect = document.getElementById("fixMinute");
+					for (let h = 0; h < 24; h++) {
+						const val = h.toString().padStart(2, '0');
+						hourSelect.innerHTML += `<option value="${val}">${val} 時</option>`;
+					}
+					for (let m = 0; m < 60; m += 5) {
+						const val = m.toString().padStart(2, '0');
+						minuteSelect.innerHTML += `<option value="${val}">${val} 分</option>`;
+					}
+					
+					document.getElementById("start_date").value = toInputString(startDate);
+					document.getElementById("end_date").value = toInputString(endDate);
+			
+					document.getElementById("query_btn").addEventListener("click", () => {
+						const sDate = document.getElementById("start_date").value;
+						const eDate = document.getElementById("end_date").value;
+						if (!sDate || !eDate) {
+							alert("請選擇起始與結束日期！");
+							return;
+						}
+						const checkedStatuses = Array.from(document.querySelectorAll(".status-checkbox"))
+							.filter(cb => cb.checked)
+							.map(cb => cb.value);
+						liff.getProfile().then(function (profile) {
+							const lineId = profile.userId;
+							searchDakaData(sDate, eDate, lineId, checkedStatuses);
+						});
+
+						document.getElementById("result").innerHTML = `
+							<p class="text-muted">查詢 ${sDate} 到 ${eDate} 的考勤資料中...</p>
+						`;
+					});
+					
+					document.addEventListener("click", function (e) {
+						if (e.target.classList.contains("fix-btn")) {
+							const rowIndex = e.target.getAttribute("data-index");
+							document.getElementById("fixModal").style.display = "flex";
+							document.getElementById("submitFixBtn").setAttribute("data-index", rowIndex);
+						}
+					});
+
+					document.getElementById("submitFixBtn").addEventListener("click", function () {
+						const type = document.getElementById("fixType").value;
+						const hour = document.getElementById("fixHour").value;
+						const minute = document.getElementById("fixMinute").value;
+						const note = document.getElementById("fixNote").value;
+						const rowIndex = this.getAttribute("data-index");
+
+						// 模拟送出：实际应替换为 POST 请求
+						alert(`補卡資料\n類型：${type}\n時間：${hour}:${minute}\n說明：${note}\n`);
+						liff.getProfile().then(function (profile) {
+							const lineId = profile.userId;
+							buka(type,hour,minute,rowIndex, lineId,note)
+						});
+						
+						// 清空 & 關閉 modal
+						document.getElementById("fixModal").style.display = "none";
+						document.getElementById("fixNote").value = "";
+					});
+				});
+			});
+			]]>
+		</script>
+	</template>
+	
+	
 	<template id="liff_checkin_page" name="LIFF Check-in Page">
 		  <!-- <t t-call="website.layout"> -->
 		<script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
@@ -114,17 +995,17 @@
 				  var now = new Date();
 				  document.getElementById("current-time").innerText = "打卡時間：" + now.toLocaleTimeString();
 			  }
-			  function sendCheckInData(lat, lng, lineId) {
+			  function sendCheckInData(lat, lng, lineId,type) {
 				  fetch('/incheck', {
 					  method: 'POST',
 					  headers: {
 						  'Content-Type': 'application/json',
 					  },
-					  body: JSON.stringify({latitude: lat, longitude: lng, line_id: lineId})
+					  body: JSON.stringify({latitude: lat, longitude: lng, line_id: lineId,type:type})
 				  })
 				  .then(response => response.json())
 				  .then(data => {
-					  alert("打卡成功！");
+					  alert(data.data);
 				  })
 				  .catch((error) => {
 					  console.error('Error:', error);
@@ -134,14 +1015,20 @@
 				//const liffId = "2006957760-wVrpD4em";
 				
 				const queryString = window.location.search;
-				//alert("Query String: " + queryString);
+																	//alert("Query String: " + queryString);
 				const decodedQueryString = decodeURIComponent(queryString);
-				//alert("Decoded Query String: " + decodedQueryString);
+																	//alert("Decoded Query String: " + decodedQueryString);
+				
+				let daka_type = "in";  
+				if (decodedQueryString.indexOf("daka_type=out") >= 0) {
+					daka_type = "out";
+				}
+				
 				const regex = /liffid=([a-zA-Z0-9\-]+)/; // Matches 'liffid=' followed by any alphanumeric or dash
 				const match = decodedQueryString.match(regex);
 				const liffId = match[1];
 				//alert(liffId)
-				//const liffId = "2006957760-wVrpD4em";
+																//const liffId = "2006957760-wVrpD4em";
 				liff.init({
 						liffId: liffId
 					}).then(() => {
@@ -156,7 +1043,7 @@
 						.then(function(profile) {
 						  const lineId = profile.userId;
 						  navigator.geolocation.getCurrentPosition(function(position) {
-							  sendCheckInData(position.coords.latitude, position.coords.longitude, lineId);
+							  sendCheckInData(position.coords.latitude, position.coords.longitude, lineId,daka_type);
 						  });
 						});
 						
@@ -171,19 +1058,151 @@
 			</script>
 		  <!-- </t> -->
 		</template>
+		
+		<template id="liff_checkin_page_nogps" name="LIFF Check-in Page">
+		  <!-- <t t-call="website.layout"> -->
+		<script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+		<style>
+            /* Custom styles */
+            .center-block {
+                display: block;
+                margin-left: auto;
+                margin-right: auto;
+                text-align: center; /* Center align text inside the button */
+            }
+            .btn-centered {
+                width: 300px; /* Increased width */
+                height: 50px; /* Increased height */
+                font-size: 18px; /* Larger font size for better readability */
+                line-height: 50px; /* Align the text vertically */
+            }
+            #map {
+                margin: 10px auto; /* Adds margin around the map */
+                height: 500px; /* Increased height */
+                width: 95%; /* Adjust width with some margin */
+                border: 1px solid #ddd;
+            }
+            .text-center h2, .text-center p {
+                text-align: center;
+            }
+			#current-time {
+                font-size: 24px; /* Increased font size for "打卡时间" */
+                font-weight: bold; /* Make the font weight bold for better visibility */
+            }
+        </style>
+			<div class="container mt-5">
+            <!-- Display Check-in Time -->
+            <div class="row">
+                <div class="col-12 text-center">
+                    <p id="current-time" class="lead">當前時間：--:--:--</p>
+                </div>
+            </div>
+            <!-- Check-in Button -->
+            <div class="row mt-4">
+                <div class="col-12 text-center">
+                    <button id="checkin-btn" class="btn btn-primary btn-lg btn-centered center-block">打卡</button>
+                </div>
+            </div>
+            <!-- Display Location Info -->
 
+        </div>
+			
+			<!-- 前端 JavaScript -->
+			<script type="text/javascript">
+			  
+			  
+			  // 實時更新打卡時間
+			  function updateTime() {
+				  var now = new Date();
+				  document.getElementById("current-time").innerText = "打卡時間：" + now.toLocaleTimeString();
+			  }
+			  function sendCheckInData(lineId,type) {
+				  fetch('/incheck', {
+					  method: 'POST',
+					  headers: {
+						  'Content-Type': 'application/json',
+					  },
+					  body: JSON.stringify({latitude: "", longitude: "",line_id: lineId,type:type})
+				  })
+				  .then(response => response.json())
+				  .then(data => {
+					  alert(data.data);
+				  })
+				  .catch((error) => {
+					  console.error('Error:', error);
+				  });
+			  }
+			document.addEventListener("DOMContentLoaded", function() {
+				//const liffId = "2006957760-wVrpD4em";
+				
+				const queryString = window.location.search;
+																	//alert("Query String: " + queryString);
+				const decodedQueryString = decodeURIComponent(queryString);
+																	//alert("Decoded Query String: " + decodedQueryString);
+				
+				let daka_type = "in";  
+				if (decodedQueryString.indexOf("daka_type=out") >= 0) {
+					daka_type = "out";
+				}
+				
+				const regex = /liffid=([a-zA-Z0-9\-]+)/; // Matches 'liffid=' followed by any alphanumeric or dash
+				const match = decodedQueryString.match(regex);
+				const liffId = match[1];
+				//alert(liffId)
+																//const liffId = "2006957760-wVrpD4em";
+				liff.init({
+						liffId: liffId
+					}).then(() => {
+						//alert("準備好了")
+						updateTime();
+						setInterval(updateTime, 1000);						
+						document.getElementById("checkin-btn").addEventListener("click", function() {
+						//alert("打卡按钮被点击");  检查按钮点击事件是否触发
+						liff.getProfile()
+						.then(function(profile) {
+						  const lineId = profile.userId;
+						  sendCheckInData(lineId,daka_type);
+						});
+						
+					  });
+						
+					});
+				  
+				  
+				  // 打卡按鈕事件處理
+				  
+			  });
+			</script>
+		  <!-- </t> -->
+		</template>
 
+	<record id="action_printexcel_attendance_list" model="ir.actions.server">
+		<field name="name">考勤表轉Excel</field>
+		<field name="model_id" ref="model_dtsc_attendance"/>
+		<field name="state">code</field>
+		<field name="code">
+			action = env['dtsc.attendance'].with_context(env.context).action_printexcel_attendance()
+		</field>
+		<field name="binding_model_id" ref="model_dtsc_attendance"/>
+		<field name="binding_type">action</field>
+		<field name="binding_view_types">list</field>
+	</record>
 
 	<record id="view_attendance_tree" model="ir.ui.view">
         <field name="name">dtsc.attendance.tree</field>
         <field name="model">dtsc.attendance</field>
         <field name="arch" type="xml">
-            <tree create="false" editable="bottom">
+            <tree create="false" editable="bottom" default_order="work_date desc">
+				<field name="work_date" />
+				<field name="department"/>
 				<field name="name" />
+				<field name="work_id" />
 				<field name="in_time" />
-				<field name="in_status" decoration-danger="in_status == 'cd'" decoration-success="in_status == 'zc'" />
+				<field name="in_status_show" decoration-danger="in_status == 'cd'" decoration-success="in_status == 'zc'" />
+				<field name="in_status" invisible="1" decoration-danger="in_status == 'cd'" decoration-success="in_status == 'zc'" />
 				<field name="out_time" />
-				<field name="out_status" decoration-danger="out_status == 'zt'" decoration-success="out_status == 'zc'" />
+				<field name="out_status_show" decoration-danger="out_status == 'zt'" decoration-success="out_status == 'zc'" />
+				<field name="out_status" invisible="1" decoration-danger="out_status == 'zt'" decoration-success="out_status == 'zc'" />
 				<field name="work_time" />
 				<!-- <field name="line_user_id" /> -->
 				<!-- <field name="lat_in" /> -->
@@ -192,10 +1211,33 @@
 				<!-- <field name="lat_out" /> -->
 				<!-- <field name="lang_out" /> -->
 				<field name="is_out_place" decoration-danger="is_out_place == 'bzfw'" decoration-success="is_out_place == 'zc'"/>
+				<field name="is_buka_in"/>
+				<field name="comment_in"/>
+				<field name="is_buka_out"/>
+				<field name="comment_out"/>
+				
+				<!-- <field name="att_ip"/> -->
+				<!-- <field name="att_ip_out"/> -->
             </tree>
         </field>
     </record>
-
+	<record id="search_attendance" model="ir.ui.view">
+		<field name="name">dtsc.attendance.attendance</field>
+		<field name="model">dtsc.attendance</field>
+		<field name="type">search</field>
+		<field name="arch" type="xml">
+			<search>
+				
+				<searchpanel>
+					<field name="name" string="員工"/>
+					<field name="report_year" string="年"  select="multi"/>
+					<field name="report_month" string="月" context="{'group_by': 'report_year'}" select="multi"/>
+				</searchpanel>
+				<filter string="日期分組" name="group_by_work_date" domain="[]" context="{'group_by': 'work_date'}"/>       
+				<filter string="員工分組" name="group_by_work_employee" domain="[]" context="{'group_by': 'work_date'}"/>       
+			</search>
+		</field>		
+	</record>
 	<record id="view_linebot_tree" model="ir.ui.view">
         <field name="name">dtsc.linebot.tree</field>
         <field name="model">dtsc.linebot</field>
@@ -216,6 +1258,9 @@
 				<header>
 					<button name="update_menu" type="object" class="oe_highlight" string="更新菜單" confirm="是否確認需要更新菜單？"  />
 					<button name="create_liff" type="object" class="oe_highlight" string="自動創建打卡頁面" confirm="是否確認需要創建打卡頁面？"  />
+					<button name="create_search_liff" type="object" class="oe_highlight" string="自動創建查詢考勤頁面" confirm="是否確認需要創建查詢考勤頁面？"  />
+					<button name="create_leave_liff" type="object" class="oe_highlight" string="自動創建請假頁面" confirm="是否確認需要創建請假頁面？"  />
+					<button name="create_sys_liff" type="object" class="oe_highlight" string="自動創建後臺頁面" confirm="是否確認需要創建後臺頁面？"  />
 				</header>
 				<sheet class="w3000">
 					<div class="oe_title">
@@ -231,6 +1276,8 @@
 							<field name="menu_id" readonly="1"/>
 							<field name="liff_id" readonly="1"/>
 							<field name="liff_url" readonly="1"/>
+							<field name="liff_leave" readonly="1"/>
+							<field name="liff_sys" readonly="1"/>
 							<field name="liff_access_token" readonly="1"/>
 							<field name="liff_channel_id"/>
 							<field name="liff_secret"/>
@@ -244,17 +1291,41 @@
 					</group>						
 					<group col="12">
 						<group colspan="4">
-							<field name="is_tanxing"/>
-							<field name="work_time"/>
+							<!-- <field name="is_tanxing"/> -->
+							<!-- <field name="work_time"/> -->
 							<field name="start_time"/>
 							<field name="end_time"/>
+							<field name="use_type"/>
 						</group>
 						<group colspan="8"> 
-							<field name="latlang_range"/>							
-							<field name="lat_lang" widget="geo_location"/>
+							<!-- <field name="latlang_range"/>							 -->
+							<!-- <field name="lat_lang" widget="geo_location"/> -->
 						</group>
 					</group>						
 							
+					<group col="12" string="打卡點設定">
+						<group colspan="12">
+						<field name="location_ids">
+							<tree editable="bottom">
+								<field name="name"/>
+								<!-- <field name="address_daka"/> -->
+								<field name="lat_lang" widget="geo_location"/>
+								<field name="latlang_range"/>
+							</tree>
+						</field>
+						</group>
+					</group>
+							
+					<group col="12" string="打卡IP設定">
+						<group colspan="12">
+						<field name="linebotip_ids">
+							<tree editable="bottom">
+								<field name="name"/>
+								<field name="address_ip"/>
+							</tree>
+						</field>
+						</group>
+					</group>
 					<group col="12" string="菜單功能設定">
 						<group colspan="2">
 							<field name="menu_type_1" />
@@ -282,8 +1353,80 @@
 						</group>
 						
 					</group>
+					
+					<group col="12" string="請假時效表">
+							<group colspan="6">
+								<field name="bj_day" />
+								<field name="sj_day" />
+							</group>
+							<group colspan="6">
+								<field name="slj_day" />
+								<field name="jtzgj_day" />
+							</group>
+						<group colspan="12">
+						<field name="specialleave_ids">
+							<tree editable="bottom">
+								<field name="days"/>
+								<field name="hours"/>
+							</tree>
+						</field>
+						</group>
+					</group>
 				</sheet> 
             </form>
         </field>
     </record>
+	
+	
+	<record id="view_leave_tree" model="ir.ui.view">
+        <field name="name">dtsc.leave.tree</field>
+        <field name="model">dtsc.leave</field>
+        <field name="arch" type="xml">
+            <tree editable="bottom" default_order="start_time desc">
+				<field name="employee_id" />
+				<field name="start_time" />
+				<field name="end_time" />
+				<field name="leave_hours" />
+				<field name="leave_type" />				
+				<field name="reason" />
+				<field name="leave_file" widget="image" />
+				<field name="state" />
+            </tree>
+        </field>
+    </record>
+	
+	<record id="view_leave_form" model="ir.ui.view">
+        <field name="name">dtsc.leave.form</field>
+        <field name="model">dtsc.leave</field>
+        <field name="arch" type="xml">
+            <form>
+				<head>
+					<field name="state" widget="statusbar" statusbar_visible="draft,to_approved,approved,rejected"/>				
+				</head>
+				<sheet>
+					<group>
+						<field name="employee_id" />
+						<field name="start_time" />
+						<field name="end_time" />
+						<field name="leave_type" />
+					</group>
+				</sheet>
+            </form>
+        </field>
+    </record>
+	
+
+	
+	<record id="cron_attendance_qk_check" model="ir.cron">
+		<field name="name">自動考勤缺卡檢查</field>
+		<field name="model_id" ref="model_dtsc_attendance"/>
+		<field name="state">code</field>
+		<field name="code">model._auto_check_missing_attendance()</field>
+		<field name="interval_number">1</field>
+		<field name="interval_type">days</field>
+		<field name="numbercall">-1</field>
+		<field name="active">True</field>
+		<field name="doall">True</field>
+		<field name="nextcall" eval="(datetime.utcnow() + relativedelta(hour=15, minute=30, second=0)).strftime('%Y-%m-%d %H:%M:%S')"/>
+	</record>
 </odoo>

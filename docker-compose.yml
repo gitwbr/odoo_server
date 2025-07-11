@@ -150,7 +150,10 @@ services:
     environment:
       - LANG=zh_TW.UTF-8
       - TZ=Asia/Taipei
+      - DEV_MODE=1
     command:
+      - --dev=reload,qweb,werkzeug,xml,JavaScript,css
+      - --workers=0
       - -u
       - dtsc,dtsc_custom
     networks:

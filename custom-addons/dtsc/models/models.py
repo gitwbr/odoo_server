@@ -27,6 +27,7 @@ from odoo.http import request
 from odoo.modules import get_module_resource
 from odoo.osv import expression
 from odoo.tools import config
+from odoo.tools.misc import clean_context, OrderedSet, groupby
 class UoMCategory(models.Model):
     _inherit = "uom.category"
     
@@ -220,7 +221,10 @@ class Billdate(models.TransientModel):
 
         for order in records:
             if order.invoice_status != 'to invoice':
-                raise UserError("%s 還不能轉應付賬單！請檢查！" %order.name)
+                if order.my_state != "3":
+                    raise UserError("%s 還不能轉應付賬單！請檢查！" %order.name)
+                else:
+                    order.write({'invoice_status': 'to invoice'})  
 
             order = order.with_company(order.company_id)
             invoice_vals = order._prepare_invoice()
@@ -274,7 +278,143 @@ class StockMoveLine(models.Model):
     now_stock = fields.Char(string='庫存',compute = '_compute_now_stock' ,readonly=True)
     lot_id = fields.Many2one('stock.lot',string="產品序號", store=True)
     
+    
+    @api.depends('product_id', 'product_qty', 'picking_type_id', 'reserved_availability', 'priority', 'state', 'product_uom_qty', 'location_id')
+    def _compute_forecast_information(self):
+        for move in self:
+            move.forecast_availability = move.product_qty  # 或者 False 或 99999 之類隨意你想顯示的
+            move.forecast_expected_date = False
+    
+    #修改退貨時如果數量小於1也允許進行退貨
+    def _action_assign(self, force_qty=False):
+        """ Reserve stock moves by creating their stock move lines. A stock move is
+        considered reserved once the sum of `reserved_qty` for all its move lines is
+        equal to its `product_qty`. If it is less, the stock move is considered
+        partially available.
+        """
+        StockMove = self.env['stock.move']
+        assigned_moves_ids = OrderedSet()
+        partially_available_moves_ids = OrderedSet()
+        # Read the `reserved_availability` field of the moves out of the loop to prevent unwanted
+        # cache invalidation when actually reserving the move.
+        reserved_availability = {move: move.reserved_availability for move in self}
+        roundings = {move: move.product_id.uom_id.rounding for move in self}
+        move_line_vals_list = []
+        # Once the quantities are assigned, we want to find a better destination location thanks
+        # to the putaway rules. This redirection will be applied on moves of `moves_to_redirect`.
+        moves_to_redirect = OrderedSet()
+        moves_to_assign = self
+        if not force_qty:
+            moves_to_assign = self.filtered(lambda m: m.state in ['confirmed', 'waiting', 'partially_available'])
+        for move in moves_to_assign:
+            rounding = roundings[move]
+            if not force_qty:
+                missing_reserved_uom_quantity = move.product_uom_qty
+            else:
+                missing_reserved_uom_quantity = force_qty
+            missing_reserved_uom_quantity -= reserved_availability[move]
+            missing_reserved_quantity = move.product_uom._compute_quantity(missing_reserved_uom_quantity, move.product_id.uom_id, rounding_method='HALF-UP')
+            if move._should_bypass_reservation():
+                # create the move line(s) but do not impact quants
+                if move.move_orig_ids:
+                    available_move_lines = move._get_available_move_lines(assigned_moves_ids, partially_available_moves_ids)
+                    for (location_id, lot_id, package_id, owner_id), quantity in available_move_lines.items():
+                        qty_added = min(missing_reserved_quantity, quantity)
+                        move_line_vals = move._prepare_move_line_vals(qty_added)
+                        move_line_vals.update({
+                            'location_id': location_id.id,
+                            'lot_id': lot_id.id,
+                            'lot_name': lot_id.name,
+                            'owner_id': owner_id.id,
+                            'package_id': package_id.id,
+                        })
+                        move_line_vals_list.append(move_line_vals)
+                        missing_reserved_quantity -= qty_added
+                        if float_is_zero(missing_reserved_quantity, precision_rounding=move.product_id.uom_id.rounding):
+                            break
 
+                if missing_reserved_quantity and move.product_id.tracking == 'serial' and (move.picking_type_id.use_create_lots or move.picking_type_id.use_existing_lots):
+                    for i in range(0, int(missing_reserved_quantity)):
+                        move_line_vals_list.append(move._prepare_move_line_vals(quantity=1))
+                elif missing_reserved_quantity:
+                    to_update = move.move_line_ids.filtered(lambda ml: ml.product_uom_id == move.product_uom and
+                                                            ml.location_id == move.location_id and
+                                                            ml.location_dest_id == move.location_dest_id and
+                                                            ml.picking_id == move.picking_id and
+                                                            not ml.lot_id and
+                                                            not ml.package_id and
+                                                            not ml.owner_id)
+                    if to_update:
+                        to_update[0].reserved_uom_qty += move.product_id.uom_id._compute_quantity(
+                            missing_reserved_quantity, move.product_uom, rounding_method='HALF-UP')
+                    else:
+                        move_line_vals_list.append(move._prepare_move_line_vals(quantity=missing_reserved_quantity))
+                assigned_moves_ids.add(move.id)
+                moves_to_redirect.add(move.id)
+            else:
+                if float_is_zero(move.product_uom_qty, precision_rounding=move.product_uom.rounding):
+                    assigned_moves_ids.add(move.id)
+                elif not move.move_orig_ids:
+                    if move.procure_method == 'make_to_order':
+                        continue
+                    # If we don't need any quantity, consider the move assigned.
+                    need = missing_reserved_quantity
+                    if float_is_zero(need, precision_rounding=rounding):
+                        assigned_moves_ids.add(move.id)
+                        continue
+                    # Reserve new quants and create move lines accordingly.
+                    forced_package_id = move.package_level_id.package_id or None
+                    available_quantity = move._get_available_quantity(move.location_id, package_id=forced_package_id)
+                    if available_quantity <= 0:
+                        continue
+                    taken_quantity = move._update_reserved_quantity(need, available_quantity, move.location_id, package_id=forced_package_id, strict=False)
+                    if float_is_zero(taken_quantity, precision_rounding=rounding):
+                        continue
+                    moves_to_redirect.add(move.id)
+                    if float_compare(need, taken_quantity, precision_rounding=rounding) == 0:
+                        assigned_moves_ids.add(move.id)
+                    else:
+                        partially_available_moves_ids.add(move.id)
+                else:
+                    # Check what our parents brought and what our siblings took in order to
+                    # determine what we can distribute.
+                    # `qty_done` is in `ml.product_uom_id` and, as we will later increase
+                    # the reserved quantity on the quants, convert it here in
+                    # `product_id.uom_id` (the UOM of the quants is the UOM of the product).
+                    available_move_lines = move._get_available_move_lines(assigned_moves_ids, partially_available_moves_ids)
+                    if not available_move_lines:
+                        continue
+                    for move_line in move.move_line_ids.filtered(lambda m: m.reserved_qty):
+                        if available_move_lines.get((move_line.location_id, move_line.lot_id, move_line.result_package_id, move_line.owner_id)):
+                            available_move_lines[(move_line.location_id, move_line.lot_id, move_line.result_package_id, move_line.owner_id)] -= move_line.reserved_qty
+                    for (location_id, lot_id, package_id, owner_id), quantity in available_move_lines.items():
+                        need = move.product_qty - sum(move.move_line_ids.mapped('reserved_qty'))
+                        # `quantity` is what is brought by chained done move lines. We double check
+                        # here this quantity is available on the quants themselves. If not, this
+                        # could be the result of an inventory adjustment that removed totally of
+                        # partially `quantity`. When this happens, we chose to reserve the maximum
+                        # still available. This situation could not happen on MTS move, because in
+                        # this case `quantity` is directly the quantity on the quants themselves.
+                        available_quantity = move._get_available_quantity(location_id, lot_id=lot_id, package_id=package_id, owner_id=owner_id, strict=True)
+                        if float_is_zero(available_quantity, precision_rounding=rounding):
+                            continue
+                        taken_quantity = move._update_reserved_quantity(need, min(quantity, available_quantity), location_id, lot_id, package_id, owner_id)
+                        if float_is_zero(taken_quantity, precision_rounding=rounding):
+                            continue
+                        moves_to_redirect.add(move.id)
+                        if float_is_zero(need - taken_quantity, precision_rounding=rounding):
+                            assigned_moves_ids.add(move.id)
+                            break
+                        partially_available_moves_ids.add(move.id)
+            if move.product_id.tracking == 'serial':
+                move.next_serial_count = move.product_uom_qty
+
+        self.env['stock.move.line'].create(move_line_vals_list)
+        StockMove.browse(partially_available_moves_ids).write({'state': 'partially_available'})
+        StockMove.browse(assigned_moves_ids).write({'state': 'assigned'})
+        if not self.env.context.get('bypass_entire_pack'):
+            self.picking_id._check_entire_pack()
+        StockMove.browse(moves_to_redirect).move_line_ids._apply_putaway_strategy()
     '''    
     @api.onchange('product_id', 'picking_id.location_id')
     def _onchange_product_id_or_location(self):
@@ -333,6 +473,7 @@ class StockPicking(models.Model):
             order = self.env["purchase.order"].search([('name' ,"=" ,self.origin)])
             if order:
                 order.write({'my_state': '3'})
+                order.write({'invoice_status': 'to invoice'})
 
         return super_result
     
@@ -420,6 +561,58 @@ class PurchaseOrderLine(models.Model):
     taxes_id = fields.Many2many('account.tax', string='Taxes', compute="_compute_taxes_id", domain=['|', ('active', '=', False), ('active', '=', True)])
     
     
+    def _create_or_update_picking(self):
+        for line in self:
+            if line.product_id and line.product_id.type in ('product', 'consu'):
+                # Prevent decreasing below received quantity
+                if float_compare(line.product_qty, line.qty_received, line.product_uom.rounding) < 0:
+                    raise UserError(_('You cannot decrease the ordered quantity below the received quantity.\n'
+                                      'Create a return first.'))
+
+                if float_compare(line.product_qty, line.qty_invoiced, line.product_uom.rounding) == -1:
+                    # If the quantity is now below the invoiced quantity, create an activity on the vendor bill
+                    # inviting the user to create a refund.
+                    line.invoice_lines[0].move_id.activity_schedule(
+                        'mail.mail_activity_data_warning',
+                        note=_('The quantities on your purchase order indicate less than billed. You should ask for a refund.'))
+
+                # If the user increased quantity of existing line or created a new line
+                pickings = line.order_id.picking_ids.filtered(lambda x: x.state not in ('done', 'cancel') and x.location_dest_id.usage in ('internal', 'transit', 'customer'))
+                picking = pickings and pickings[0] or False
+                if not picking:
+                    res = line.order_id._prepare_picking()
+                    picking = self.env['stock.picking'].create(res)
+
+                moves = line._create_stock_moves(picking)
+                # moves._action_confirm()._action_assign()
+                moves._action_confirm()
+                moves.write({'state': 'assigned'})
+    
+    def _create_or_update_picking(self):
+        for line in self:
+            if line.product_id and line.product_id.type in ('product', 'consu'):
+                # Prevent decreasing below received quantity
+                if float_compare(line.product_qty, line.qty_received, line.product_uom.rounding) < 0:
+                    raise UserError(_('You cannot decrease the ordered quantity below the received quantity.\n'
+                                      'Create a return first.'))
+
+                if float_compare(line.product_qty, line.qty_invoiced, line.product_uom.rounding) == -1:
+                    # If the quantity is now below the invoiced quantity, create an activity on the vendor bill
+                    # inviting the user to create a refund.
+                    line.invoice_lines[0].move_id.activity_schedule(
+                        'mail.mail_activity_data_warning',
+                        note=_('The quantities on your purchase order indicate less than billed. You should ask for a refund.'))
+
+                # If the user increased quantity of existing line or created a new line
+                pickings = line.order_id.picking_ids.filtered(lambda x: x.state not in ('done', 'cancel') and x.location_dest_id.usage in ('internal', 'transit', 'customer'))
+                picking = pickings and pickings[0] or False
+                if not picking:
+                    res = line.order_id._prepare_picking()
+                    picking = self.env['stock.picking'].create(res)
+
+                moves = line._create_stock_moves(picking)
+                moves._action_confirm().with_context(force_assign_negative=True)._action_assign()
+                
     @api.model
     def create(self, vals):
         # 获取 purchase.order 的 is_return_goods 字段值
@@ -813,7 +1006,7 @@ class PurchaseOrder(models.Model):
             else:
                 if order.partner_id and order.partner_id.is_sign_mode:
                     order.is_sign = 'no' #未簽核
-                    self.push_line_sign()
+                    self.push_line_sign() #發送line簽核推送信息
                     
             if order.state not in ['draft', 'sent']:
                 continue
@@ -924,71 +1117,72 @@ class PurchaseOrder(models.Model):
    
     def go_to_zuofei(self):
         
-        picking_id = self.env['stock.picking'].search([('origin', '=', self.name)])
-        if picking_id and picking_id.state == 'done':
-            reverse_picking_vals = {
-                'picking_type_id': picking_id.picking_type_id.id,
-                'origin': '退回 ' + self.name,
-            }
-            reverse_picking = self.env['stock.picking'].create(reverse_picking_vals)
-            for move in picking_id.move_ids:
-                _logger.warning(f"========={move.product_uom_qty}==={move.quantity_done}=====")
-                if move.product_id.product_tmpl_id.tracking == "serial":
-                    reverse_move_vals = {
-                        'name': move.name,
-                        'reference': "退回" + self.name,
-                        'origin' : self.name,
-                        'product_id': move.product_id.id,
-                        'product_uom_qty': move.quantity_done,
-                        # 'quantity_done': move.quantity_done,
-                        'product_uom': move.product_uom.id,
-                        'picking_id': reverse_picking.id,
-                        'location_id': move.location_dest_id.id,
-                        'location_dest_id': move.location_id.id,
-                    }
-                    
-                else:
-                    reverse_move_vals = {
-                        'name': move.name,
-                        'reference': "退回" + self.name,
-                        'origin' : self.name,
-                        'product_id': move.product_id.id,
-                        'product_uom_qty': move.quantity_done,
-                        'quantity_done': move.quantity_done,
-                        'product_uom': move.product_uom.id,
-                        'picking_id': reverse_picking.id,
-                        'location_id': move.location_dest_id.id,
-                        'location_dest_id': move.location_id.id,
-                    }
-                reverse_move = self.env['stock.move'].create(reverse_move_vals)
-                # print(line.id)  
-                # 处理序列号
-                for move_line in move.move_line_ids:
-                    if move_line.lot_id:
-                        _logger.warning(f"-------{move_line.qty_done}-----")
-                        # print(move_line.qty_done)
-                        reverse_move_line_vals = {
-                            'reference' : "退回"+self.name, 
+        picking_ids = self.env['stock.picking'].search([('origin', '=', self.name)])
+        for picking_id in picking_ids:
+            if picking_id and picking_id.state == 'done':
+                reverse_picking_vals = {
+                    'picking_type_id': picking_id.picking_type_id.id,
+                    'origin': '退回 ' + self.name,
+                }
+                reverse_picking = self.env['stock.picking'].create(reverse_picking_vals)
+                for move in picking_id.move_ids:
+                    _logger.warning(f"========={move.product_uom_qty}==={move.quantity_done}=====")
+                    if move.product_id.product_tmpl_id.tracking == "serial":
+                        reverse_move_vals = {
+                            'name': move.name,
+                            'reference': "退回" + self.name,
                             'origin' : self.name,
-                            'move_id': reverse_move.id,
-                            'product_id': move_line.product_id.id,
-                            'product_uom_id': move_line.product_uom_id.id,
+                            'product_id': move.product_id.id,
+                            'product_uom_qty': move.quantity_done,
+                            # 'quantity_done': move.quantity_done,
+                            'product_uom': move.product_uom.id,
                             'picking_id': reverse_picking.id,
-                            'reserved_uom_qty': move_line.qty_done,
-                            'qty_done': move_line.qty_done,
-                            'lot_id': move_line.lot_id.id,  # 指定序列号
-                            'location_id': move_line.location_dest_id.id,
-                            'location_dest_id': move_line.location_id.id,
+                            'location_id': move.location_dest_id.id,
+                            'location_dest_id': move.location_id.id,
                         }
-                        moveline  = self.env['stock.move.line'].create(reverse_move_line_vals)
-                        move_line_objs = self.env['stock.move.line'].search([("product_id" , "=" ,move_line.product_id.id ),("lot_id" ,"=" , False ),('picking_id',"=", reverse_picking.id)])
-                        move_line_objs.unlink()
-                
-       
-            # 确认并完成逆向拣货
-            reverse_picking.action_confirm()
-            reverse_picking.action_assign()
-            reverse_picking.button_validate()
+                        
+                    else:
+                        reverse_move_vals = {
+                            'name': move.name,
+                            'reference': "退回" + self.name,
+                            'origin' : self.name,
+                            'product_id': move.product_id.id,
+                            'product_uom_qty': move.quantity_done,
+                            'quantity_done': move.quantity_done,
+                            'product_uom': move.product_uom.id,
+                            'picking_id': reverse_picking.id,
+                            'location_id': move.location_dest_id.id,
+                            'location_dest_id': move.location_id.id,
+                        }
+                    reverse_move = self.env['stock.move'].create(reverse_move_vals)
+                    # print(line.id)  
+                    # 处理序列号
+                    for move_line in move.move_line_ids:
+                        if move_line.lot_id:
+                            _logger.warning(f"-------{move_line.qty_done}-----")
+                            # print(move_line.qty_done)
+                            reverse_move_line_vals = {
+                                'reference' : "退回"+self.name, 
+                                'origin' : self.name,
+                                'move_id': reverse_move.id,
+                                'product_id': move_line.product_id.id,
+                                'product_uom_id': move_line.product_uom_id.id,
+                                'picking_id': reverse_picking.id,
+                                'reserved_uom_qty': move_line.qty_done,
+                                'qty_done': move_line.qty_done,
+                                'lot_id': move_line.lot_id.id,  # 指定序列号
+                                'location_id': move_line.location_dest_id.id,
+                                'location_dest_id': move_line.location_id.id,
+                            }
+                            moveline  = self.env['stock.move.line'].create(reverse_move_line_vals)
+                            move_line_objs = self.env['stock.move.line'].search([("product_id" , "=" ,move_line.product_id.id ),("lot_id" ,"=" , False ),('picking_id',"=", reverse_picking.id)])
+                            move_line_objs.unlink()
+                    
+           
+                # 确认并完成逆向拣货
+                reverse_picking.action_confirm()
+                reverse_picking.action_assign()
+                reverse_picking.button_validate()
     
         self.write({'my_state': '5'})
         
@@ -1241,7 +1435,7 @@ class IrUiMenu(models.Model):
         self._get_visibility_on_config_parameter('dtsc.wnklb', 'is_open_full_checkoutorder')#場内扣料
         self._get_visibility_on_config_parameter('dtsc.jlklb12', 'is_open_full_checkoutorder')#捲料口聊錶目錄
         self._get_visibility_on_config_parameter('website.menu_website_configuration', 'is_pro')#網站
-        self._get_visibility_on_config_parameter('dtsc.qrcode_work', 'is_pro')#員工QRCODE
+        self._get_visibility_on_config_parameter('dtsc.qrcode_work', 'is_open_linebot')#員工QRCODE
         self._get_visibility_on_config_parameter('dtsc.menu_ykl', 'is_pro')#壓克力統計表
         self._get_visibility_on_config_parameter('dtsc.stock_l', 'is_pro')#壓克力統計表
         self._get_visibility_on_config_parameter('dtsc.scanqrcode', 'is_pro')#製作物 

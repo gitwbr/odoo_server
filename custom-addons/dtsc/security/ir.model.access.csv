@@ -27,7 +27,6 @@ access_dtsc_book,dtsc.book,model_dtsc_book,base.group_user,1,1,1,1
 access_dtsc_statement,dtsc.statement,model_dtsc_statement,dtsc.group_dtsc_bs,1,1,0,0
 access_dtsc_quotation,dtsc.quotation,model_dtsc_quotation,base.group_user,1,1,1,1
 access_dtsc_quotationproductattributeprice,dtsc.quotationproductattributeprice,model_dtsc_quotationproductattributeprice,base.group_user,1,1,1,1
-access_dtsc_department,dtsc.department,model_dtsc_department,dtsc.group_dtsc_bs,1,1,0,0
 access_dtsc_accountreportwizard,dtsc.accountreportwizard,model_dtsc_accountreportwizard,dtsc.group_dtsc_bs,1,1,1,1
 access_dtsc_maketypeselection,dtsc.maketypeselection,model_dtsc_maketypeselection,dtsc.group_dtsc_bs,1,1,1,1
 access_dtsc_stockreportwizard,dtsc.stockreportwizard,model_dtsc_stockreportwizard,dtsc.group_dtsc_bs,1,1,1,1
@@ -88,3 +87,8 @@ access_dtsc_yklcommentlocation,dtsc.yklcommentlocation,model_dtsc_yklcommentloca
 access_dtsc_calendar,dtsc.calendar,model_dtsc_calendar,dtsc.group_dtsc_bs,1,1,1,1
 access_dtsc_leave,dtsc.leave,model_dtsc_leave,dtsc.group_dtsc_bs,1,1,1,1
 access_dtsc_checkoutcomment,dtsc.checkoutcomment,model_dtsc_checkoutcomment,dtsc.group_dtsc_bs,1,1,1,1
+access_dtsc_linebotlocation,dtsc.linebotlocation,model_dtsc_linebotlocation,dtsc.group_dtsc_bs,1,1,1,1
+access_dtsc_specialleave,dtsc.specialleave,model_dtsc_specialleave,dtsc.group_dtsc_bs,1,1,1,1
+access_dtsc_leavegrantlog,dtsc.leavegrantlog,model_dtsc_leavegrantlog,dtsc.group_dtsc_bs,1,1,1,1
+access_dtsc_department,dtsc.department,model_dtsc_department,dtsc.group_dtsc_bs,1,1,1,1
+access_dtsc_linebotip,dtsc.linebotip,model_dtsc_linebotip,dtsc.group_dtsc_bs,1,1,1,1

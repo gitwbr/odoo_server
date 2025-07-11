@@ -322,7 +322,7 @@ class Instance:
             docker_compose = f"""version: '3.1'
 services:
   web{instance_id}:
-    image: custom-odoo-web_default:latest
+    image: custom-odoo:16.0.1
     depends_on:
       - {db_host}
     user: "odoo:odoo"

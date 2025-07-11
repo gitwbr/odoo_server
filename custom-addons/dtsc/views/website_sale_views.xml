@@ -81,17 +81,18 @@
 			</t>
         </xpath> -->
 		<xpath expr="//span[@t-esc='order.partner_id']" position="replace">
-			<span t-field="order.partner_id" t-options='{"widget": "contact", "fields": ["address", "name", "phone"], "no_marker": True}' class="address-inline"/>
+			<span t-esc="order.partner_id.contact_address_complete" class="address-inline"/>
 		</xpath>
 		<xpath expr="//span[@t-esc='order.partner_shipping_id']" position="replace">
-			<span t-field="order.partner_shipping_id" t-options='{"widget": "contact", "fields": ["address", "name", "phone"], "no_marker": True}' class="address-inline"/>
+			<span t-esc="order.partner_shipping_id.contact_address_complete" class="address-inline"/>
 		</xpath>
     </template>
 	
 	<template id="dtsc_custom_template_kanban" inherit_id="website_sale.address_kanban">
 		<xpath expr="//t[@t-esc='contact']" position="replace">
 			<t t-esc="contact.name"/> <br/>
-			<span t-field="contact" t-options='{"widget": "contact", "fields": ["address"], "no_marker": True}' class="address-inline"/>
+			<t t-esc="contact.contact_address_complete" class="address-inline"/>
+			<!-- <t t-esc="contact.state_id" class="address-inline"/> -->
 		</xpath>
 	</template>
 	
@@ -113,7 +114,7 @@
                 如果您發現此異常事項，請聯繫網站管理員。
             </div>
         </div>
-        <!-- 如果在限制地区，显示"该地区需要专人服务" -->
+        <!-- 如果在限制地区，显示“该地区需要专人服务” -->
         <div t-else="" class="alert alert-warning">
             <strong>該地區需要專人服務</strong><br/>
         </div>
@@ -156,6 +157,18 @@
 		</xpath>
 	</template>
 	
+    <template id="custom_cart_lines_quantity" inherit_id="website_sale.cart_lines">
+        <!-- 修改表头中的 Quantity 为 數量 -->
+        <!-- <xpath expr="//th[@class='text-center td-qty']/span[normalize-space(text())='Quantity']" position="replace"> -->
+            <!-- <span>數量</span> -->
+        <!-- </xpath> -->
+		<!-- <xpath expr="//th[contains(@class, 'td-qty')]/span[normalize-space(text())='Quantity']" position="replace"> -->
+			<!-- <span>數量</span> -->
+		<!-- </xpath> -->
+		<xpath expr="//th[contains(@class, 'td-qty')]//span[normalize-space(text())='Quantity']" position="replace">
+            <span>數量</span>
+        </xpath>
+    </template>
 	
 	<template id="hide_badge_extra_price" inherit_id="sale.badge_extra_price" name="Hide Badge Extra Price">
 		<xpath expr="//span[@class='badge rounded-pill text-bg-light border']" position="replace">
@@ -163,7 +176,7 @@
 		</xpath>
 	</template>
 	
-	<!-- <template id="dtsc_payment_delivery_text_only" inherit_id="website_sale_delivery.payment_delivery">
+	<template id="dtsc_payment_delivery_text_only" inherit_id="website_sale_delivery.payment_delivery">
 		<xpath expr="//div[@id='delivery_method']" position="before">
 			<div t-if="delivery_nb == 1" class="card border-0" id="delivery_method_custom">
 				<ul class="list-group">
@@ -187,5 +200,14 @@
 				</ul>
 			</div>
 		</xpath>
-	</template> -->
+	</template>
+	
+	<!-- 修改付款完成显示的单号 -->
+	<template id="dtsc_confirmation_inherit" inherit_id="website_sale.confirmation">
+		<xpath expr="//h1/em[@t-field='order.name']" position="replace">
+			<em t-field="order.checkout_id.name" />
+		</xpath>
+	</template>
+	
+
 </odoo>

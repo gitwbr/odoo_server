@@ -403,7 +403,8 @@ class UploadController(http.Controller):
             current_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
             # 生成新的文件名（包含用戶指定的名稱、當前時間戳和文件的實際後綴）
-            new_filename = f"{user_filename}-{current_time}{file_extension}"
+            #new_filename = f"{user_filename}-{current_time}{file_extension}"
+            new_filename = original_filename
             _logger.info('生成新檔案名稱: %s', new_filename)
 
             # 讀取文件內容

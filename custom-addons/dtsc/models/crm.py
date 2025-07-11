@@ -150,6 +150,7 @@ class CheckoutInherit(models.Model):
         for record in self:
             # 1. 複製主體
             new_checkout = record.with_context(from_crm=True).copy(default={})
+            new_checkout.write({"related_checkout_id":False})
 
             # 2. 複製子項
             for line in record.product_ids:

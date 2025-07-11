@@ -275,7 +275,12 @@
       <field name="res_model">dtsc.linebot</field>
       <field name="view_mode">tree,form</field>
 	</record>
-    
+	
+	<record model="ir.actions.act_window" id="dtsc.department_setting">
+      <field name="name">部門</field>
+      <field name="res_model">dtsc.department</field>
+      <field name="view_mode">tree,form</field>
+	</record>
     <!-- <record model="ir.actions.act_window" id="dtsc.bh">
         <field name="name">補貨</field>
         <field name="res_model">stock.warehouse.orderpoint</field>
@@ -470,6 +475,11 @@
 		<field name="res_model">dtsc.attendance</field>
 		<field name="view_mode">tree,form</field>
 	</record>
+	<record model="ir.actions.act_window" id="action_leave">
+		<field name="name">請假表</field>
+		<field name="res_model">dtsc.leave</field>
+		<field name="view_mode">tree,form</field>
+	</record>
 	<record model="ir.actions.act_window" id="action_pettycash1">
 		<field name="name">零用金</field>
 		<field name="res_model">dtsc.pettymanager</field>
@@ -585,17 +595,18 @@
 	<menuitem id="customer_classification" parent="dtsc.menu_setting" name="客戶分類" sequence="4" action="dtsc.customer_template_action" groups="dtsc.group_dtsc_yw"/>
 	<menuitem id="make_type" parent="dtsc.menu_setting" name="後加工方式" sequence="5" action="dtsc.make_type_template_action" groups="dtsc.group_dtsc_mg"/>
 	<menuitem id="machine_price" parent="dtsc.menu_setting" name="機台與變價設定" sequence="6" action="dtsc.machine_price_template_action" groups="dtsc.group_dtsc_mg,dtsc.group_dtsc_yw"/>
-	<menuitem id="worker_name_before" parent="dtsc.menu_setting" name="印前人員" sequence="6" action="dtsc.worker_name_list_before" groups="dtsc.group_dtsc_mg,dtsc.group_dtsc_yw,dtsc.group_dtsc_kj"/>
-	<menuitem id="worker_name" parent="dtsc.menu_setting" name="產線人員" sequence="7" action="dtsc.worker_name_list" groups="dtsc.group_dtsc_mg,dtsc.group_dtsc_yw,dtsc.group_dtsc_kj"/>
-	<menuitem id="re_work_name" parent="dtsc.menu_setting" name="重製人員表" sequence="8" action="dtsc.re_worker_name_list" groups="dtsc.group_dtsc_mg,dtsc.group_dtsc_yw,dtsc.group_dtsc_kj"/>
-	<menuitem id="fenleimuban" parent="dtsc.menu_setting" name="客戶分類模板" sequence="9" action="dtsc.custom_muban" groups="dtsc.group_dtsc_gly"/>
-	<menuitem id="qrcode_work" parent="dtsc.menu_setting" name="員工Qrcode" sequence="10" action="dtsc.qrcode_w" groups="dtsc.group_dtsc_gly"/>
-	<menuitem id="vatl" parent="dtsc.menu_setting" name="統編帳號密碼" sequence="11" action="dtsc.vat_login" groups="dtsc.group_dtsc_gly"/>
-	<menuitem id="gysjgbW" parent="dtsc.menu_setting" name="供應商價格表" sequence="12" action="dtsc.supp_price" groups="dtsc.group_dtsc_gly"/>
-	<menuitem id="linebot" parent="dtsc.menu_setting" name="Line設定" sequence="13" action="dtsc.linesetting" groups="dtsc.group_dtsc_gly"/>
+	<menuitem id="worker_name_before" parent="dtsc.menu_setting" name="印前人員" sequence="7" action="dtsc.worker_name_list_before" groups="dtsc.group_dtsc_mg,dtsc.group_dtsc_yw,dtsc.group_dtsc_kj"/>
+	<menuitem id="worker_name" parent="dtsc.menu_setting" name="產線人員" sequence="8" action="dtsc.worker_name_list" groups="dtsc.group_dtsc_mg,dtsc.group_dtsc_yw,dtsc.group_dtsc_kj"/>
+	<menuitem id="re_work_name" parent="dtsc.menu_setting" name="重製人員表" sequence="9" action="dtsc.re_worker_name_list" groups="dtsc.group_dtsc_mg,dtsc.group_dtsc_yw,dtsc.group_dtsc_kj"/>
+	<menuitem id="fenleimuban" parent="dtsc.menu_setting" name="客戶分類模板" sequence="10" action="dtsc.custom_muban" groups="dtsc.group_dtsc_gly"/>
+	<menuitem id="qrcode_work" parent="dtsc.menu_setting" name="員工Qrcode" sequence="11" action="dtsc.qrcode_w" groups="dtsc.group_dtsc_gly"/>
+	<menuitem id="vatl" parent="dtsc.menu_setting" name="統編帳號密碼" sequence="12" action="dtsc.vat_login" groups="dtsc.group_dtsc_gly"/>
+	<menuitem id="gysjgbW" parent="dtsc.menu_setting" name="供應商價格表" sequence="13" action="dtsc.supp_price" groups="dtsc.group_dtsc_gly"/>
+	<menuitem id="linebot" parent="dtsc.menu_setting" name="Line設定" sequence="14" action="dtsc.linesetting" groups="dtsc.group_dtsc_gly"/>
+	<menuitem id="department_s" parent="dtsc.menu_setting" name="部門" sequence="15" action="dtsc.department_setting"/>
 	
 	
-	
+	 
 	
 	<menuitem id="menu_chart_dashboard_root" parent="dtsc.menu_root" name="報表" sequence="10" action="dtsc.action_server_chart_dashboard2" groups="dtsc.group_dtsc_gly"/>
     <menuitem id="menu_chart_dashboard" name="出貨統計表" parent="menu_chart_dashboard_root" action="action_server_chart_dashboard2" sequence="1" groups="dtsc.group_dtsc_gly"/>
@@ -607,8 +618,9 @@
 	<menuitem id="menu_make_order_preview" name="工單狀況表" parent="menu_chart_dashboard_root" action="action_make_machine_chart_dashboard" sequence="7" groups="dtsc.group_dtsc_gly"/>
 	<menuitem id="menu_work_time" name="員工績效(工時)" parent="menu_chart_dashboard_root" action="action_work_time" sequence="8" groups="dtsc.group_dtsc_gly"/>
 	<menuitem id="menu_daka" name="考勤記錄" parent="menu_chart_dashboard_root" action="action_kaoqing" sequence="9" groups="dtsc.group_dtsc_gly"/>
-	<menuitem id="menu_pettycash" name="零用金" parent="menu_chart_dashboard_root" action="action_pettycash1" sequence="10" groups="dtsc.group_dtsc_gly"/>
-	<menuitem id="menu_calendar" name="日曆" parent="menu_chart_dashboard_root" action="action_calendar_dtsc" sequence="11" groups="dtsc.group_dtsc_gly"/>
+	<menuitem id="menu_leave1" name="請假表" parent="menu_chart_dashboard_root" action="action_leave" sequence="10" />
+	<menuitem id="menu_pettycash" name="零用金" parent="menu_chart_dashboard_root" action="action_pettycash1" sequence="11" groups="dtsc.group_dtsc_gly"/>
+	<menuitem id="menu_calendar" name="日曆" parent="menu_chart_dashboard_root" action="action_calendar_dtsc" sequence="12" groups="dtsc.group_dtsc_gly"/>
 	<!-- <menuitem id="menu_calendar" name="日曆" parent="menu_chart_dashboard_root" action="action_calendar" sequence="12" groups="dtsc.group_dtsc_gly"/> -->
 	<!-- 
 	<menuitem id="submenu1" name="銷售產品" parent="dtsc.action_window_product" action="dtsc.action_window_product"/>

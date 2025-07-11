@@ -42,8 +42,9 @@
 		<field name="name">dtsc.worktime.tree</field>
 		<field name="model">dtsc.worktime</field>
 		<field name="arch" type="xml">
-			<tree>	 			
-				<field name="name"  readonly="1" />
+			<tree default_order="start_time desc">	 			
+				<!-- <field name="name"  readonly="1" /> -->
+				<field name="workqrcode_id"  readonly="1" />
 				<field name="start_time" readonly="1"  />
 				<field name="end_time" readonly="1"  />
 				<field name="seqname" readonly="1"  />
@@ -65,22 +66,98 @@
 				</searchpanel>
 				<filter string="結束時間" name="group_by_end_time" domain="[]" context="{'group_by': 'end_time'}"/>	
 				<filter string="工種類型" name="group_by_in_out_type" domain="[]" context="{'group_by': 'in_out_type'}"/>	
-				<filter string="員工姓名" name="group_by_name" domain="[]" context="{'group_by': 'name'}"/>	
+				<filter string="員工姓名" name="group_by_name" domain="[]" context="{'group_by': 'workqrcode_id'}"/>	
 			</search>
 		</field>		
 	</record>
+	
+	<record id="action_workqrcode_list" model="ir.actions.server">
+		<field name="name">缺卡/假期调整</field>
+		<field name="model_id" ref="model_dtsc_workqrcode"/>
+		<field name="state">code</field>
+		<field name="code">
+			action = env['dtsc.attendance'].with_context(env.context)._auto_check_missing_attendance()
+		</field>
+		<field name="binding_model_id" ref="model_dtsc_workqrcode"/>
+		<field name="binding_type">action</field>
+		<field name="binding_view_types">list</field>
+        <!-- <field name="groups_id" eval="[(4, ref('dtsc.group_dtsc_mg'))]"/> -->
+	</record>
+	
+	<record id="report_department_treee" model="ir.ui.view">
+		<field name="name">dtsc.department.tree</field>
+		<field name="model">dtsc.department</field>
+		<field name="arch" type="xml">
+			<tree editable="bottom">	 			
+				<field name="name"/>
+				<field name="bmzg"/>
+			</tree>  
+		</field>	
+	</record>
+	
 	<record id="report_workqrcode_treee" model="ir.ui.view">
 		<field name="name">dtsc.workqrcode.report.tree</field>
 		<field name="model">dtsc.workqrcode</field>
 		<field name="arch" type="xml">
-			<tree editable="bottom">	 			
+			<tree>	 			
 				<field name="name"  readonly="1"  />
 				<field name="bar_image"  widget="image" readonly="1"  />
-				<field name="is_zg" />
-				<field name="is_qh" />
-				<field name="line_user_id" />
+				<!-- <field name="is_zg" /> -->
+				<!-- <field name="is_qh" /> -->
+				<!-- <field name="in_company_date" /> -->
+				<!-- <field name="tx_locked" /> -->
+				<!-- <field name="tx_days" /> -->
+				<!-- <field name="bj_locked" /> -->
+				<!-- <field name="bj_days" /> -->
+				<!-- <field name="sj_locked" /> -->
+				<!-- <field name="sj_days" /> -->
+				<!-- <field name="slj_locked" /> -->
+				<!-- <field name="slj_days" /> -->
+				<!-- <field name="jtzgj_locked" /> -->
+				<!-- <field name="jtzgj_days" /> -->
+				<!-- <field name="line_user_id" /> -->
 
-			</tree>
+			</tree>  
+		</field>	
+	</record>
+
+	<record id="report_workqrcode_form" model="ir.ui.view">
+		<field name="name">dtsc.workqrcode.report.form</field>
+		<field name="model">dtsc.workqrcode</field>
+		<field name="arch" type="xml">
+			<form>	 		
+				<sheet class="w3000">
+					<group>
+						<field name="name"  />
+						<field name="work_id"  />
+						<field name="is_zg" />
+						<field name="is_qh" />
+						<field name="is_daka_qh" />
+						<field name="in_company_date" />
+						<field name="out_company_date" />
+						<field name="in_time" />
+						<field name="out_time" />
+						<field name="department" options="{'no_create': True, 'no_create_edit': True}"/>
+						<field name="tx_locked" />
+						<field name="tx_days" />
+						<field name="bj_locked" />
+						<field name="bj_days" />
+						<field name="sj_locked" />
+						<field name="sj_days" />
+						<field name="slj_locked" />
+						<field name="slj_days" />
+						<field name="jtzgj_locked" />
+						<field name="jtzgj_days" />
+						<field name="line_user_id" />
+						<field name="userlistbefore_id" />
+						<field name="userlist_id" />
+						<field name="reworklist_id" />
+						<field name="user_id" />
+						<field name="sys_password" password="True" /> 
+						
+					</group>
+				</sheet>
+			</form>
 		</field>	
 	</record>
 
@@ -633,4 +710,26 @@
 				</div>
 			</t>
 		</template>
+	
+		<!-- <template id="makeout_qrcode_label"> -->
+			<!-- <t t-call="web.html_container"> -->
+                <!-- <div style="display: flex; flex-wrap: wrap;"> -->
+                    <!-- <t t-foreach="docs" t-as="x">  -->
+						<!-- <t t-foreach="x.order_ids" t-as="o"> -->
+							
+							<!-- <div style="margin-top: 10px; margin-left: auto; margin-right: auto; width: 100%; text-align: center; box-sizing: border-box; page-break-after: always;"> -->
+								<!-- <t t-if="o.bar_image"> -->
+								<!-- <t t-set="barcode_data" t-value="'data:image/png;base64,' + o.bar_image.decode('utf-8')"/> -->
+								<!-- </t> -->
+								<!-- <t t-else=""> -->
+								<!-- <t t-set="barcode_data" t-value="False"/> -->
+								<!-- </t> -->
+								<!-- <img t-if="barcode_data" t-att-src="barcode_data" alt="Barcode" style="width:35%; height:auto; display: block; margin-left: auto; margin-right: auto; margin-bottom: 10px;"/> -->
+								<!-- <div style="text-align: center;margin-top: 10px;"><span t-esc="o.barcode"/></div> -->
+							<!-- </div> -->
+						<!-- </t> -->
+                    <!-- </t> -->
+                <!-- </div> -->
+            <!-- </t> -->
+    <!-- </template> -->
 </odoo>

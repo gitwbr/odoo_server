@@ -32,7 +32,7 @@ import binascii
 
 _logger = logging.getLogger(__name__)
 
-
+       
 class PaymentTransaction(models.Model):
     _inherit = 'payment.transaction'
 
@@ -53,6 +53,10 @@ class PaymentTransaction(models.Model):
         # return self._newebpay_create_checkout_session(processing_values)
     
 
+    def _create_payment(self, **extra_create_values):
+        return
+
+        
     def _update_sale_order_before_payment(self, reference):
         # 如果 reference 包含 '-'，则分割出订单号和序列号
         sale_order_name = reference.split('-')[0]
@@ -86,8 +90,21 @@ class PaymentTransaction(models.Model):
         webhook_url = urls.url_join(base_url, '/payment/newebpay/webhook/')
         back_url = urls.url_join(base_url, '/payment/newebpay/back/')
         
+        #訂單號ID換成大圖訂單編號
+        # ref_parts = processing_values['reference'].split('-')
+        # print(f"1**********************{ref_parts}**************")
+        # sale_order_name = ref_parts[0]
+        
+        # checkout_name = self.env["sale.order"].search([('name',"=",sale_order_name)],limit=1).checkout_id.name
         ######
         merchant_order_no = processing_values['reference']
+        # merchant_order_no = ""
+        # if len(ref_parts) > 1 and ref_parts[1]:
+            # merchant_order_no = f"{checkout_name}-{ref_parts[1]}"
+        # else:
+            # merchant_order_no = checkout_name
+            
+        # print(f"2**********************{merchant_order_no}**************")
         back_url_params = {'MerchantOrderNo': merchant_order_no}
         back_url = urls.url_join(base_url, '/payment/newebpay/back/') + '?' + urls.url_encode(back_url_params)
         ######
@@ -97,6 +114,7 @@ class PaymentTransaction(models.Model):
             ('TimeStamp', int(time.time())),
             ('Version', '2.0'),
             ('MerchantOrderNo', processing_values['reference'].replace('-', '_')), 
+            # ('MerchantOrderNo', merchant_order_no.replace('-', '_')), 
             ('Amt', int(processing_values['amount'])),
             ('VACC', '0'),
             ('ALIPAY', '0'),
@@ -104,6 +122,7 @@ class PaymentTransaction(models.Model):
             ('CVS', '0'),
             ('CREDIT', '1'),
             ('ItemDesc', 'Order ' + processing_values['reference']),
+            # ('ItemDesc', 'Order ' + checkout_name),
             ('NotifyURL', webhook_url),
             ('ReturnURL', return_url),
             ('ClientBackURL', return_url),
@@ -152,6 +171,7 @@ class PaymentTransaction(models.Model):
 
         return newebpay_post_data
     
+    #金晨修改
     def _get_specific_rendering_values(self, processing_values):
         res = super()._get_specific_rendering_values(processing_values)
         if self.provider_code != 'newebpay_credit':
@@ -162,6 +182,69 @@ class PaymentTransaction(models.Model):
         partner_first_name, partner_last_name = payment_utils.split_partner_name(self.partner_name)
         webhook_url = urls.url_join(base_url, _webhook_url)
         newebpay_post_data = self._newebpay_credit_create_checkout_session(processing_values)
+        #checkout_id   把原先的reference 從銷售訂單中找到對應的大圖訂單帶入流程
+        ref_parts = self.reference.split('-')
+        sale_order_name = ref_parts[0]        
+        checkout_id = self.env["sale.order"].search([('name',"=",sale_order_name)],limit=1).checkout_id
+        checkout_name = checkout_id.name
+        if len(ref_parts) > 1 and ref_parts[1]:
+            aaa = f"{checkout_name}-{ref_parts[1]}"
+        else:
+            aaa = checkout_name
+        checkout_obj = self.env["dtsc.checkout"].browse(checkout_id.id)
+        # 訂購人（主客戶/開單地址）
+        order_partner = self.partner_id
+        order_company = order_partner.name or ''
+        order_vat = order_partner.vat or ''
+        order_state = self.partner_state_id.name or ''
+        order_address = self.partner_address or ''
+        order_zip = self.partner_zip or ''
+        order_email = self.partner_email or ''
+        order_phone = order_partner.phone or ''
+
+        # 收貨人（送貨地址，優先找 type='delivery'）
+        delivery_address = self.env['res.partner'].search([
+            ('parent_id', '=', order_partner.id),
+            ('type', '=', 'delivery')
+        ], limit=1)
+
+        if delivery_address:
+            delivery_name = delivery_address.name or ''
+            delivery_state = delivery_address.state_id.name or ''
+            delivery_address_str = delivery_address.street or ''
+            delivery_zip = delivery_address.zip or ''
+            delivery_email = delivery_address.email or ''
+            delivery_phone = delivery_address.phone or ''
+        else:
+            # 沒有單獨送貨地址就用訂購人資料
+            delivery_name = order_partner.name or ''
+            delivery_state = order_state
+            delivery_address_str = order_address
+            delivery_zip = order_zip
+            delivery_email = order_email
+            delivery_phone = order_phone
+
+        if checkout_obj:
+            comment = (
+                f"訂購人：\n"
+                f"公司名稱：{order_company}\n"
+                f"統一編號：{order_vat}\n"
+                f"地址：{order_state}{order_address}\n"
+                f"郵編：{order_zip}\n"
+                f"電子郵件：{order_email}\n"
+                f"電話：{order_phone}\n\n"
+                f"收貨人：\n"
+                f"姓名：{delivery_name}\n"
+                f"地址：{delivery_state}{delivery_address_str}\n"
+                f"郵編：{delivery_zip}\n"
+                f"電子郵件：{delivery_email}\n"
+                f"電話：{delivery_phone}"
+            )
+            print(comment)
+            checkout_obj.write({"website_comment": comment})
+        # if checkout_obj:
+            # print(f"========================地址：{self.partner_state_id.name}{self.partner_address}，郵編：{self.partner_zip},電子郵件：{self.partner_email}")
+            # checkout_obj.write({ "website_comment" : f"地址：{self.partner_state_id.name}{self.partner_address}，郵編：{self.partner_zip},電子郵件：{self.partner_email}"})
         resultJson = {
             'address1': self.partner_address,
             'amount': self.amount,
@@ -171,9 +254,11 @@ class PaymentTransaction(models.Model):
             'email': self.partner_email,
             'first_name': partner_first_name,
             'handling': self.fees,
-            'MerchantID': self.provider_id._get_newebpay_value().get('MerchantID'),
-            'item_name': f"{self.company_id.name}: {self.reference}",
-            'item_number': self.reference,
+            # 'MerchantID': self.provider_id._get_newebpay_value().get('MerchantID'),
+            # 'item_name': f"{self.company_id.name}: {self.reference}",
+            'item_name': f"{self.company_id.name}: {aaa}",
+            # 'item_number': self.reference,
+            'item_number': aaa,
             'last_name': partner_last_name,
             'lc': self.partner_lang,
             'notify_url': webhook_url,
@@ -239,7 +324,7 @@ class PaymentTransaction(models.Model):
 
         notification_data = {'reference': self.reference, 'simulated_state': 'pending'}
         self._handle_notification_data('newebpay', notification_data)
-    
+    #金晨修改
     def action_newebpay_set_done(self):
     
         """ Set the state of the newebpay transaction to 'done'.
@@ -254,63 +339,85 @@ class PaymentTransaction(models.Model):
         #加入大圖訂單
         # print("-----------------------------------")
         
+        #checkout_id   原先是新增 這裏是修改。在建立saleorder時會同時建立一個相關聯的checkout 這裏是付款成功后 把内容寫進去。并且修改顯示欄位 。未付款成功隱藏
         sale_order_name = self.reference.split('-')[0]
         print(sale_order_name)
         saleorder_obj = self.env["sale.order"].search([('name',"=",self.reference.split('-')[0])],limit=1)
         
-        Checkout = self.env['dtsc.checkout']
+        # Checkout = self.env['dtsc.checkout']
+        Checkout = saleorder_obj.checkout_id
         Checkout_line = self.env['dtsc.checkoutline']
         
-        checkout = Checkout.create({
+        Checkout.write({
             'customer_id':saleorder_obj.partner_id.id,
             'is_online' : True,
             'project_name' : "商城訂單",  
             'sale_order_id': saleorder_obj.id,            
+            'is_invisible': False,            
         })
+        
+        
         for record in saleorder_obj.order_line:
-            # print("======================================")
-            # print(record.product_id.id)
-            
-            
-            
-            
             pricelist_obj = self.env["product.pricelist.item"].search([('product_id',"=",record.product_id.id)],limit=1)
             
             maketype_names = ""
             
             names = [maketype.name for maketype in pricelist_obj.checkout_maketype]
             maketype_names = '-'.join(names)
-                
-            # print(pricelist_obj.checkout_product_id.id)
-            # print("======================================")
             if pricelist_obj.checkout_product_id.id:
                 Checkout_line.create({
                     "project_product_name" : pricelist_obj.product_id.name,
                     "product_id": pricelist_obj.checkout_product_id.id,
                     'product_atts': [(4, att.id) for att in pricelist_obj.checkout_product_atts],
-                    "checkout_product_id" : checkout.id,
+                    "checkout_product_id" : saleorder_obj.checkout_id.id,
                     "quantity" : record.product_uom_qty, 
                     "product_width" : pricelist_obj.checkout_width,
                     "product_height" : pricelist_obj.checkout_height,  
                     "units_price" : pricelist_obj.fixed_price,
-                    "manual_total_make_price":0,
-                    "manual_total_make_price_flag":True,
-                    "multi_chose_ids":maketype_names,                    
+                    "jijiamoshi" : "forshuliang",
+                    "multi_chose_ids":maketype_names,     
+                    "store_product_template_id":record.product_template_id.id,
                 })   
             else:
-                # print("~~~~~~~~~~~~~")
-                # print(record.product_id.id)
-                # print(record.list_price)
                 Checkout_line.create({
                     "product_id": record.product_template_id.id,
-                    "checkout_product_id" : checkout.id,
-                    "quantity" : 1,  
+                    "checkout_product_id" : saleorder_obj.checkout_id.id,
+                    "quantity" : record.product_uom_qty,   
+                    "jijiamoshi" : "forshuliang",
                     "units_price" : record.price_unit,
-                    "manual_total_make_price":0,
-                    "manual_total_make_price_flag":True,
+                    "store_product_template_id":record.product_template_id.id,
                 })   
-            
         
+        #檢查商品最低價格后重組價格列表
+        checkout_lines = Checkout_line.search([('checkout_product_id', '=', saleorder_obj.checkout_id.id)])    
+        # 按 product_template 分組
+        grouped = {}
+        for line in checkout_lines:
+            template = line.store_product_template_id
+            if not template:
+                continue
+            if template not in grouped:
+                grouped[template] = []
+            grouped[template].append(line)
+            
+        for template, lines in grouped.items():
+            min_amount = template.min_purchase_amount or 0
+            if min_amount == 0 or len(lines) == 0:
+                continue
+
+            total = sum(line.units_price * line.quantity for line in lines)
+
+            if total < min_amount:
+                # total_qty = sum(line.quantity for line in lines) or 1.0
+                first_line = lines[0]
+                
+                # 更新第一筆行的單價
+                first_line.price = min_amount
+
+                # 其餘為 0
+                for line in lines[1:]:
+                    line.price = 0.0    
+                
         #加入大圖訂單
         notification_data = {'reference': self.reference, 'simulated_state': 'done'}
         self._handle_notification_data('newebpay', notification_data)
@@ -448,7 +555,7 @@ class PaymentTransaction(models.Model):
         tx = self.search([('reference', '=', reference), ('provider_code', '=', 'newebpay')])
         if not tx:
             raise ValidationError(
-                "NewebPay: " + _("No transaction found matching reference %s.", reference)
+                "NewebPay: " + _("=====No transaction found matching reference %s.", reference)
             )
         return tx
 
@@ -522,3 +629,78 @@ class PaymentTransaction(models.Model):
         _logger.info(
             "Created token with id %s for partner with id %s.", token.id, self.partner_id.id
         )
+    #金晨修改
+    def _get_processing_values(self):
+        """ Return the values used to process the transaction.
+
+        The values are returned as a dict containing entries with the following keys:
+
+        - `provider_id`: The provider handling the transaction, as a `payment.provider` id.
+        - `provider_code`: The code of the provider.
+        - `reference`: The reference of the transaction.
+        - `amount`: The rounded amount of the transaction.
+        - `currency_id`: The currency of the transaction, as a `res.currency` id.
+        - `partner_id`: The partner making the transaction, as a `res.partner` id.
+        - Additional provider-specific entries.
+
+        Note: `self.ensure_one()`
+
+        :return: The processing values.
+        :rtype: dict
+        """
+        self.ensure_one()
+        
+        # sale_order_name = self.reference.split('-')[0]
+        
+        # checkout_name = self.env["sale.order"].search([('name',"=",sale_order_name)],limit=1).checkout_id.name
+        
+        #checkout_id   把原先的reference 從銷售訂單中找到對應的大圖訂單帶入流程
+        ref_parts = self.reference.split('-')
+        sale_order_name = ref_parts[0]
+
+        sale_order = self.env["sale.order"].search([('name', '=', sale_order_name)], limit=1)
+
+        checkout_name = sale_order.checkout_id.name
+
+        if len(ref_parts) > 1 and ref_parts[1]:
+            aaa = f"{checkout_name}-{ref_parts[1]}"
+        else:
+            aaa = checkout_name
+
+        # 同步写回数据库
+        # self.reference = aaa
+
+        processing_values = {
+            'provider_id': self.provider_id.id,
+            'provider_code': self.provider_code,
+            # 'reference': self.reference,
+            'reference': aaa,
+            'amount': self.amount,
+            'currency_id': self.currency_id.id,
+            'partner_id': self.partner_id.id,
+        }
+
+        # Complete generic processing values with provider-specific values.
+        processing_values.update(self._get_specific_processing_values(processing_values))
+        _logger.info(
+            "generic and provider-specific processing values for transaction with reference "
+            "%(ref)s:\n%(values)s",
+            {'ref': self.reference, 'values': pprint.pformat(processing_values)},
+        )
+
+        # Render the html form for the redirect flow if available.
+        if self.operation in ('online_redirect', 'validation'):
+            redirect_form_view = self.provider_id._get_redirect_form_view(
+                is_validation=self.operation == 'validation'
+            )
+            if redirect_form_view:  # Some provider don't need a redirect form.
+                rendering_values = self._get_specific_rendering_values(processing_values)
+                _logger.info(
+                    "provider-specific rendering values for transaction with reference "
+                    "%(ref)s:\n%(values)s",
+                    {'ref': self.reference, 'values': pprint.pformat(rendering_values)},
+                )
+                redirect_form_html = self.env['ir.qweb']._render(redirect_form_view.id, rendering_values)
+                processing_values.update(redirect_form_html=redirect_form_html)
+
+        return processing_values

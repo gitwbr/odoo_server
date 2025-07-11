@@ -142,3 +142,25 @@ odoo.define('dtsc.website_custom', function (require) {
         }, */
     });
 });
+
+// Patch QWeb模板渲染，替换支付状态页面订单号为TEST123
+odoo.define('dtsc.payment_display_tx_list_patch', function (require) {
+    "use strict";
+    var core = require('web.core');
+    var qweb = core.qweb;
+
+    var origRender = qweb.render;
+    qweb.render = function (template, context) {
+        if (template === 'payment.display_tx_list' && context) {
+            ['tx_error', 'tx_done', 'tx_pending', 'tx_authorized', 'tx_draft', 'tx_cancel'].forEach(function (key) {
+                if (context[key] && Array.isArray(context[key])) {
+                    console.log('[dtsc] payment.display_tx_list context[' + key + ']:', context[key]);
+                    context[key].forEach(function (tx, idx) {
+                        console.log('[dtsc] tx in ' + key + ' #' + idx + ':', tx);
+                    });
+                }
+            });
+        }
+        return origRender.apply(this, arguments);
+    };
+});

@@ -213,9 +213,13 @@ class WorkManage(http.Controller):
         employee = request.env['dtsc.workqrcode'].sudo().search([('bar_image_code', '=ilike', qr_code)], limit=1)
         if not employee:
             return {'success': False, 'message': '沒有該員工！','employeename': "無",}
+        if not employee.userlist_id:
+            return {'success': False, 'message': '該員工不是產綫人員！','employeename': "無",}
+        if employee.userlist_id.is_disabled:
+            return {'success': False, 'message': '該產綫工作人員已被禁用！','employeename': "無",}
         return {
                 'success': False, 
                 'message': '有該員工！',
-                'employeename': employee.name,
+                'employeename': employee.userlist_id.name,
             
             }

@@ -1080,7 +1080,7 @@ class Checkout(models.Model):
         active_ids = self._context.get('active_ids')
         records = self.browse(active_ids)
         
-        if not all(record.hebing_type == '0' for record in records):
+        if not all(record.hebing_type in ( False , '' ,'0' ) for record in records):
             raise UserError('已經合併過的單不能再次合併')
         
         partner_ids = set(record.customer_id.id for record in records)
@@ -1103,6 +1103,7 @@ class Checkout(models.Model):
             record.write({'name': record.name.replace("A","M")})
             name_list.append(record.name)
             # target_record.hebing_comment = target_record.hebing_comment + record.name + "-"
+        for record in records:
             for line in record.product_ids:
                 line.write({'origin_checkout_id': line.checkout_product_id.id})
                 line.write({'checkout_product_id': target_record.id})  # 把checkoutline对应到合并单中
@@ -2323,9 +2324,10 @@ class CheckOutlineAfterMakePriceList(models.Model):
            
 class CheckOutLine(models.Model):
     _name = 'dtsc.checkoutline'
-    _order = "sequence"
+    _order = "origin_checkout_name,sequence"
     checkout_product_id = fields.Many2one("dtsc.checkout",ondelete='cascade')
     origin_checkout_id = fields.Many2one('dtsc.checkout', string="原始訂單")
+    origin_checkout_name = fields.Char(related='origin_checkout_id.name', string="原始訂單")
     # checkout_product_wizard_id = fields.Many2one("dtsc.copycheckoutrecord",ondelete='cascade')
     # is_purchse = fields.Char(string='委外')
     is_purchse = fields.Selection([
