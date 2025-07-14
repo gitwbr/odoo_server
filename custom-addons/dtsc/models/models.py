@@ -585,33 +585,9 @@ class PurchaseOrderLine(models.Model):
 
                 moves = line._create_stock_moves(picking)
                 # moves._action_confirm()._action_assign()
-                moves._action_confirm()
-                moves.write({'state': 'assigned'})
-    
-    def _create_or_update_picking(self):
-        for line in self:
-            if line.product_id and line.product_id.type in ('product', 'consu'):
-                # Prevent decreasing below received quantity
-                if float_compare(line.product_qty, line.qty_received, line.product_uom.rounding) < 0:
-                    raise UserError(_('You cannot decrease the ordered quantity below the received quantity.\n'
-                                      'Create a return first.'))
+                moves._action_confirm() 
+                # moves.write({'state': 'assigned'})    
 
-                if float_compare(line.product_qty, line.qty_invoiced, line.product_uom.rounding) == -1:
-                    # If the quantity is now below the invoiced quantity, create an activity on the vendor bill
-                    # inviting the user to create a refund.
-                    line.invoice_lines[0].move_id.activity_schedule(
-                        'mail.mail_activity_data_warning',
-                        note=_('The quantities on your purchase order indicate less than billed. You should ask for a refund.'))
-
-                # If the user increased quantity of existing line or created a new line
-                pickings = line.order_id.picking_ids.filtered(lambda x: x.state not in ('done', 'cancel') and x.location_dest_id.usage in ('internal', 'transit', 'customer'))
-                picking = pickings and pickings[0] or False
-                if not picking:
-                    res = line.order_id._prepare_picking()
-                    picking = self.env['stock.picking'].create(res)
-
-                moves = line._create_stock_moves(picking)
-                moves._action_confirm().with_context(force_assign_negative=True)._action_assign()
                 
     @api.model
     def create(self, vals):

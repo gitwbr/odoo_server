@@ -332,9 +332,11 @@
 								
 								<field name="product_ids" >
                                     <!-- <tree create="false" delete="false" editable="bottom"> -->
-                                    <tree  editable="bottom" class="my_custom_class"  limit="100">
-										<!-- <header> -->
-										<!-- </header> -->
+                                    <tree  editable="bottom" class="my_custom_class"  limit="100" default_order="origin_checkout_name,sequence">
+										<control>
+											<create name="add" string="加入資料行"/>
+											<button string="複製最後一條" type="object" name="copy_last_record"/>		
+										</control>
 										
 										<field name="is_selected" attrs="{'readonly': [('parent.is_in_by_mg', '=', False)]}" />										
                                         <!-- <field name="is_in_by_mg" invisible="1"/>

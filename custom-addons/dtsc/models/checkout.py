@@ -2392,6 +2392,45 @@ class CheckOutLine(models.Model):
     )
     same_material = fields.Boolean(string="同材質")
     install_price = fields.Float("施工費用")
+    
+    def copy_last_record(self):
+        if not self.checkout_product_id:
+            return
+        
+        # 找到主表所有 lines 中最後一筆（按 sequence）
+        all_lines = self.checkout_product_id.product_ids.sorted(lambda r: r.sequence or 0)
+        last_record = all_lines[-1] if all_lines else None
+
+        if last_record:
+            try:
+                # 使用 copy_data 获取最后一条记录的数据
+                new_record_values = last_record.copy_data()[0]
+                
+                # 清理不需要复制的字段，并确保所有关联字段的关系正确
+                new_record_values.pop('id', None)
+                new_record_values['checkout_product_id'] = self.checkout_product_id.id
+                new_record_values['product_atts'] = None
+                new_record_values['is_copy_last'] = 1
+                new_record_values['sequence'] = last_record.sequence + 1
+
+                product_atts_ids = last_record.product_atts.ids
+
+                quotation = self.env["dtsc.quotation"].search([
+                    ("product_id", "=", new_record_values["product_id"]),
+                    ("customer_class_id", "=", self.checkout_product_id.customer_class_id.id)
+                ], limit=1)
+
+                new_line = self.env['dtsc.checkoutline'].create(new_record_values)
+
+                new_line.write({
+                    'product_atts': [(6, 0, product_atts_ids)],
+                    'units_price': quotation.base_price if quotation else 0
+                })
+
+            except Exception as e:
+                _logger.error(f"[checkoutline] copy_last_record error: {str(e)}")
+                raise
+                
     def update_price(self):
         # 如果勾选了“同材質”，则更新同一 checkout 中所有相同 product_id 的行
         if self.same_material:
