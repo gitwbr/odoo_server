@@ -88,6 +88,10 @@ class Checkout(http.Controller):
     @http.route(['/order'], type='http', auth="public", website=True)
     def order(self, **kwargs):
         return http.request.render('dtsc.order_page', {})
+
+    @http.route(['/public_web_order'], type='http', auth="public", website=True)
+    def public_web_order(self, **kwargs):
+        return http.request.render('dtsc.public_web_order_page', {})
     
     @http.route(['/hello', '/hello/<string:name>'], type='http', auth="public")
     #@http.route(['/hello'], type='http', auth="public", website=True)

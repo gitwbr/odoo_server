@@ -39,6 +39,7 @@
         'views/templates.xml',
         'views/checkout.xml',
         'views/order.xml',
+        'views/public_web_order.xml',
         'views/customclass.xml',
         'views/statement.xml',
         'views/res_partner_templates.xml',
@@ -112,6 +113,7 @@
         'web.assets_frontend': [
             'dtsc/static/src/js/checkout.js',
             'dtsc/static/src/js/order.js',
+            'dtsc/static/src/js/public_web_order.js',
             'dtsc/static/src/js/checkout_view.js', 
             'dtsc/static/src/css/custom_styles.css',
             'dtsc/static/src/js/website_custom.js',
