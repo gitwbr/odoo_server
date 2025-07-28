@@ -1,8 +1,17 @@
 from odoo import models, fields, api
 from odoo.exceptions import ValidationError
 
+import logging
 from pprint import pprint
-import requests
+_logger = logging.getLogger(__name__)
+
+import base64
+import xlsxwriter
+from datetime import datetime, timedelta, date
+from odoo.http import request
+from odoo.exceptions import UserError
+import os
+from io import BytesIO
 class BaseImport(models.TransientModel):
     _inherit = 'base_import.import'
 
@@ -352,3 +361,121 @@ class ResPartner(models.Model):
             partner.quotation_count = self.env['product.supplierinfo'].search_count([
                 ('partner_id', '=', partner.id)
             ])
+            
+class ReportExportCenter(models.Model):
+    _name = 'dtsc.reportcenter'
+    _description = '報表查詢'
+
+    name = fields.Char("名稱", default="報表查詢", readonly=True)
+    start_date = fields.Date('開始時間')
+    end_date = fields.Date('結束時間')
+    partner_id = fields.Many2one("res.partner",string="客戶")
+    report_type = fields.Selection([
+        ('partner_history', '歷史交易明細'),
+    ], string='報表類型',default="partner_history")
+    
+    def export_excel(self):
+        start_date = self.start_date
+        end_date = self.end_date
+        
+        dtsc_objs = self.env["dtsc.checkout"].search([
+            ("estimated_date", ">=", start_date),
+            ("estimated_date", "<=", end_date),
+            ("customer_id" ,"=",self.partner_id.id)
+        ])
+        output = BytesIO()
+        workbook = xlsxwriter.Workbook(output, {'in_memory': True})
+        sheet = workbook.add_worksheet('客戶歷史交易明細')
+        
+        border_format = workbook.add_format({'font_size': 9,'border': 1, 'align': 'center', 'bold': True,'valign': 'vcenter'})
+        content_format = workbook.add_format({'font_size': 9,'border': 1, 'align': 'center', 'valign': 'vcenter'})
+        content_format_text_wrap = workbook.add_format({'font_size': 9,'border': 1, 'align': 'center', 'valign': 'vcenter','text_wrap': True})
+        sheet.set_column(0, 0, 12)
+        sheet.set_column(1, 1, 12)
+        sheet.set_column(2, 2, 6)
+        sheet.set_column(3, 3, 20)
+        sheet.set_column(4, 4, 20)
+        sheet.set_column(5, 5, 18)
+        sheet.set_column(6, 6, 10)
+        sheet.set_column(7, 7, 20)
+        sheet.set_column(8, 8, 8)
+        sheet.set_column(9, 9, 8)
+        sheet.set_column(9, 9, 8)
+        sheet.set_column(10, 10, 8)
+        sheet.set_column(11, 11, 10)
+        sheet.set_column(12, 12, 10)
+        sheet.set_column(13, 13, 10)
+        sheet.set_column(14, 14, 14)
+        sheet.set_column(15, 15, 6)
+        
+        sheet.write(0, 0, '出貨日', border_format)
+        sheet.write(0, 1, '單號', border_format)
+        sheet.write(0, 2, '項次', border_format)
+        sheet.write(0, 3, '檔名', border_format)
+        sheet.write(0, 4, '案名', border_format)
+        sheet.write(0, 5, '尺寸', border_format)
+        sheet.write(0, 6, '稅別', border_format)
+        sheet.write(0, 7, '材質', border_format)
+        sheet.write(0, 8, '才數', border_format)
+        sheet.write(0, 9, '數量', border_format)
+        sheet.write(0, 10, '單價', border_format)
+        sheet.write(0, 11, '小計', border_format)
+        sheet.write(0, 12, '輸出額', border_format)
+        sheet.write(0, 13, '加工額', border_format)
+        sheet.write(0, 14, '輸出單', border_format)
+        sheet.write(0, 15, '項', border_format)
+        custom_invoice_form_map = {
+            '21': '三聯式',
+            '22': '二聯式',
+            'other': '其他',
+        }
+        row = 0
+        for line in dtsc_objs:
+            for record in line.product_ids:
+                row += 1
+                sheet.write(row, 0, line.estimated_date.strftime('%Y-%m-%d'), content_format)
+                sheet.write(row, 1, line.name, content_format)
+                sheet.write(row, 2, record.sequence, content_format)
+                sheet.write(row, 3, record.project_product_name if record.project_product_name else '', content_format)
+                sheet.write(row, 4, line.project_name if line.project_name else '', content_format)
+                sheet.write(row, 5, f"{str(record.product_width)}x{str(record.product_height)}({record.single_units})", content_format)
+                sheet.write(row, 6, custom_invoice_form_map.get(self.partner_id.custom_invoice_form, ''), content_format)
+                make_name = ""
+
+                # 追加产品属性名称，假设每个属性都存储在order.product_atts中
+                for attr in record.product_atts:
+                    if make_name:  # 如果make_name非空，添加分隔符
+                        make_name += " / "
+                    make_name += attr.name
+                if record.multi_chose_ids:
+                    if make_name:  # 如果make_name非空，添加分隔符
+                        make_name += " / "
+                    make_name += record.multi_chose_ids    
+                sheet.write(row, 7, make_name, content_format_text_wrap)
+                sheet.write(row, 8, record.total_units, content_format)
+                sheet.write(row, 9, record.quantity, content_format)
+                sheet.write(row, 10, record.units_price, content_format)
+                sheet.write(row, 11, record.price, content_format)
+                sheet.write(row, 12, record.product_total_price, content_format)
+                sheet.write(row, 13, record.total_make_price, content_format)
+                sheet.write(row, 14, record.make_orderid if record.make_orderid else '' , content_format)
+                sheet.write(row, 15, record.sequence if record.make_orderid else '', content_format)
+                
+            
+        
+        workbook.close()
+        output.seek(0) 
+
+        # 创建 Excel 文件并返回
+        attachment = self.env['ir.attachment'].create({
+            'name': self.partner_id.name +"_歷史交易明細.xlsx",
+            'datas': base64.b64encode(output.getvalue()),
+            'res_model': 'dtsc.checkout',
+            'type': 'binary'
+        })
+
+        return {
+            'type': 'ir.actions.act_url',
+            'url': f'/web/content/{attachment.id}?download=true',
+            'target': 'new',
+        }

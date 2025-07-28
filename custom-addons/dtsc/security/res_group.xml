@@ -28,8 +28,8 @@
     
     <!-- 定义组 -->
     <record id="module_category_large_image" model="ir.module.category">
-        <field name="name">大图</field>
-        <field name="description">大图模块分类描述</field>
+        <field name="name">大圖</field>
+        <field name="description">大圖模块分类描述</field>
         <field name="sequence">10</field>
     </record>
 

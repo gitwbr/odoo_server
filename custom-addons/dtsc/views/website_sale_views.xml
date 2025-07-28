@@ -157,18 +157,11 @@
 		</xpath>
 	</template>
 	
-    <template id="custom_cart_lines_quantity" inherit_id="website_sale.cart_lines">
-        <!-- 修改表头中的 Quantity 为 數量 -->
-        <!-- <xpath expr="//th[@class='text-center td-qty']/span[normalize-space(text())='Quantity']" position="replace"> -->
+    <!-- <template id="custom_cart_lines_quantity" inherit_id="website_sale.cart_lines"> -->
+		<!-- <xpath expr="//th[contains(@class, 'td-qty')]//span[normalize-space(text())='Quantity']" position="replace"> -->
             <!-- <span>數量</span> -->
         <!-- </xpath> -->
-		<!-- <xpath expr="//th[contains(@class, 'td-qty')]/span[normalize-space(text())='Quantity']" position="replace"> -->
-			<!-- <span>數量</span> -->
-		<!-- </xpath> -->
-		<xpath expr="//th[contains(@class, 'td-qty')]//span[normalize-space(text())='Quantity']" position="replace">
-            <span>數量</span>
-        </xpath>
-    </template>
+    <!-- </template> --> 
 	
 	<template id="hide_badge_extra_price" inherit_id="sale.badge_extra_price" name="Hide Badge Extra Price">
 		<xpath expr="//span[@class='badge rounded-pill text-bg-light border']" position="replace">

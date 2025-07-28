@@ -92,6 +92,7 @@ class WorkerQRcode(models.Model):
     line_user_id = fields.Char("Line ID")
     user_id = fields.Many2one('res.users', string="對應使用者")
     sys_password = fields.Char(string="對應使用者密碼")
+    
     is_zg = fields.Boolean("請購單確認")
     is_qh = fields.Boolean("請購單簽核")
     is_daka_qh = fields.Boolean("打卡簽核")

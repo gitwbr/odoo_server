@@ -73,7 +73,7 @@ class LineBotController(http.Controller):
         tz = pytz.timezone("Asia/Taipei")
         start = tz.localize(start_dt)
         end = tz.localize(end_dt)
-
+        linebot = request.env["dtsc.linebot"].sudo().search([],limit=1)
         try:
             if employee.in_time:
                 work_start = datetime.strptime(employee.in_time or "09:00", "%H:%M").time()
@@ -121,6 +121,33 @@ class LineBotController(http.Controller):
         return math.ceil(total_hours * 2) / 2
     
     
+    @http.route('/leave/reject_reason', type='http', methods=['POST'], auth='public', csrf=False)
+    def leave_reject_reason(self, **kwargs):
+        data = json.loads(request.httprequest.data)
+        line_id = data.get('line_id')
+        reject_reason = data.get('reject_reason')
+        leave_id = data.get('leave_id')
+        
+        leave = request.env['dtsc.leave'].sudo().browse(int(leave_id))
+        leave.write({'reject_reason': reject_reason})
+        leave.write({'state': 'rejected'})
+        
+        # 發送通知給請假人
+        employee_name = leave.employee_id.name
+        leave_type_display = dict(leave._fields['leave_type'].selection).get(leave.leave_type)
+        tz = pytz.timezone("Asia/Taipei")
+        message = f"您的請假申請已被拒絕\n請假人員：{employee_name}\n請假類型：{leave_type_display}\n開始時間：{leave.start_time.astimezone(tz).strftime('%Y-%m-%d %H:%M')}\n結束時間：{leave.end_time.astimezone(tz).strftime('%Y-%m-%d %H:%M')}\n工時：{leave.leave_hours}\n拒絕理由：{reject_reason}"
+        self.reply_to_line(leave.employee_id.line_user_id, message)
+        
+        # self.reply_to_line(leave.line_user_id, f"您的請假已被拒絕，理由是：{reject_reason}")
+        self.reply_to_line(line_id, f"您已拒絕{leave.employee_id.name}的請假，理由是：{reject_reason}")
+        
+                 
+                       
+                        
+        
+        return json.dumps({"success": True, "message": ""})
+        
     @http.route('/apply_leave', type='http', methods=['POST'], auth='public', csrf=False)
     def apply_leave(self, **kwargs):
         data = json.loads(request.httprequest.data)
@@ -340,6 +367,9 @@ class LineBotController(http.Controller):
         lineObj = request.env["dtsc.linebot"].sudo().search([],limit=1)
         employee = request.env["dtsc.workqrcode"].sudo().search([("line_user_id","=",line_id)],limit=1)
         
+        if not employee:
+            return json.dumps({'success': True, 'data': "您還未進行員工綁定，不能繼續打卡！"})
+            
         start_time_str = lineObj.start_time  # e.g., "09:00"
         end_time_str = lineObj.end_time      # e.g., "18:00"
 
@@ -386,8 +416,8 @@ class LineBotController(http.Controller):
                 else:
                     existing_attendance.sudo().write({
                         'in_time': now_date,
-                        'lat_in': latitude,
-                        'lang_in': longitude,
+                        'lat_out': latitude,
+                        'lang_out': longitude,
                         'att_ip':ip,
                     })
         else:
@@ -396,8 +426,8 @@ class LineBotController(http.Controller):
                 Attendance.sudo().create({
                     'line_user_id': line_id,
                     'out_time': now_date,
-                    'lat_out': latitude,
-                    'lang_out': longitude,
+                    'lat_in': latitude,
+                    'lang_in': longitude,
                     'work_date' : now_date.date(),
                     'att_ip_out':ip,
                 })
@@ -534,7 +564,6 @@ class LineBotController(http.Controller):
                     self.reply_to_line(user_id, reply_message)
             
             elif event['type'] == 'follow':  # 新加入 bot
-                _logger.info("in follow")
                 user_id = event['source']['userId']
                 self.reply_to_line(user_id, "👋 歡迎使用！\n請輸入「綁定+系統名字」來完成 LINE 帳戶綁定。")
             elif event['type'] == 'postback':
@@ -1118,7 +1147,7 @@ class LineBotController(http.Controller):
             alttext = "確認拒絕請假"
             textmsg = "你確定要拒絕這張請假單嗎？"
             postdata = f"action=reject_leave&leave_id={leave.id}"
-        
+        domain = request.httprequest.host
         headers = {
             "Authorization": f"Bearer {LINE_ACCESS_TOKEN}",
             "Content-Type": "application/json"
@@ -1140,9 +1169,11 @@ class LineBotController(http.Controller):
                     {
                       "type": "button",
                       "action": {
-                        "type": "postback",
+                        # "type": "postback",
+                        "type": "uri",
                         "label": "確定",
-                        "data": postdata
+                        # "data": postdata
+                        "uri": f"https://liff.line.me/{lineObj.liff_leave_confirm}?liffid={lineObj.liff_leave_confirm}&leave_id={leave.id}"
                       },
                       "style": "primary",
                       "color": "#00C300"

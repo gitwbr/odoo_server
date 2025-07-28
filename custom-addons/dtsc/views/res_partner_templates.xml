@@ -229,4 +229,31 @@
 			</xpath>
 		</field>
 	</record>
+	
+	<record id="view_report_center_form" model="ir.ui.view">
+		<field name="name">report.center.form</field>
+		<field name="model">dtsc.reportcenter</field>
+		<field name="arch" type="xml">
+			<form string="報表查詢中心">
+					<header>
+						<button name="export_excel" type="object" string="匯出 Excel" class="btn-primary"/> 
+					</header>
+				<sheet>
+				
+					<group>
+						<field name="report_type"/>
+						<field name="start_date"/>
+						<field name="end_date"/>
+						<field name="partner_id" attrs="{'invisible': [('report_type','!=', 'partner_history')]}" domain="[('customer_rank', '>', 0)]" />
+					</group>
+				</sheet>
+			</form>
+		</field>
+	</record>
+	
+	<data>
+		<record id="default_report_center" model="dtsc.reportcenter">
+			<field name="name">報表中心</field>
+		</record>
+	</data>
 </odoo>

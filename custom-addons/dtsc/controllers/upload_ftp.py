@@ -94,7 +94,7 @@ class UploadController(http.Controller):
                         _logger.warning('未檢測到文本對象，建議在Illustrator中確認')
 
             # 檢查文件名中的尺寸格式
-            size_pattern = r'(\d+(?:\.\d+)?)\s*[x×]\s*(\d+(?:\.\d+)?)\s*(?:cm|mm)'
+            size_pattern = r'(\d+(?:\.\d+)?)\s*[x×]\s*(\d+(?:\.\d+)?)(?:\s*(cm|mm))?'
 
             _logger.info('使用的正則表達式: %s', size_pattern)
             _logger.info('檢查的文件名稱: %s', filename)
@@ -105,18 +105,21 @@ class UploadController(http.Controller):
                 _logger.warning('檔案名稱 %s 不包含有效的尺寸格式', filename)
                 return {
                     'success': False,
-                    'error': '檔案名稱必須包含尺寸信息，格式如：100x200cm 或 100x200mm'
+                    'error': '檔案名稱必須包含尺寸信息，格式如：100x200、100x200cm 或 100x200mm'
                 }
             
             # 提取尺寸信息
             width = float(match.group(1))
             height = float(match.group(2))
-            # 從完整匹配中提取單位
-            full_match = match.group(0).lower()
-            unit = 'cm' if 'cm' in full_match else 'mm'
-            
+            # 提取单位，未写时默认cm
+            unit = match.group(3)
+            if not unit:
+                unit = 'cm'
+            else:
+                unit = unit.lower()
+
             _logger.info('成功匹配尺寸信息：寬度=%s, 高度=%s, 單位=%s', width, height, unit)
-            
+
             # 轉換為毫米
             if unit == 'cm':
                 width_mm = width * 10
@@ -124,7 +127,7 @@ class UploadController(http.Controller):
             else:  # 已經是毫米
                 width_mm = width
                 height_mm = height
-                
+            
             _logger.info('檔案名稱中的尺寸: %sx%s%s (轉換為毫米: %sx%smm)', 
                       width, height, unit, width_mm, height_mm)
 
@@ -404,16 +407,17 @@ class UploadController(http.Controller):
 
             # 生成新的文件名（包含用戶指定的名稱、當前時間戳和文件的實際後綴）
             #new_filename = f"{user_filename}-{current_time}{file_extension}"
-            new_filename = original_filename
+            #new_filename = original_filename
+            new_filename = f"{current_time}-{original_filename}"
             _logger.info('生成新檔案名稱: %s', new_filename)
 
             # 讀取文件內容
             file_content = file_content.read()
             
             # 檢查文件尺寸
-            size_info = self.check_image(file_content, file_extension, fileName_original)
-            if not size_info['success']:
-                error_msg = size_info.get('error', '未知錯誤')
+            image_info = self.check_image(file_content, file_extension, fileName_original)
+            if not image_info['success']:
+                error_msg = image_info.get('error', '未知錯誤')
                 _logger.error(error_msg)
                 return Response(json.dumps({
                     'success': False,
@@ -421,12 +425,12 @@ class UploadController(http.Controller):
                     'error': error_msg
                 }), content_type='application/json;charset=utf-8', status=200)
 
-            _logger.info('檔案尺寸信息: %s', size_info)
+            _logger.info('檔案尺寸信息: %s', image_info)
             # 暫時返回
             """ return Response(json.dumps({
                 'success': True,
                 'message': '檔案尺寸檢查通過',
-                'size_info': size_info
+                'image_info': image_info
             }), content_type='application/json;charset=utf-8', status=200) """
             # 執行實際的檔案上傳
             uploader = request.env['upload.model']
@@ -438,14 +442,14 @@ class UploadController(http.Controller):
                     'success': True,
                     'message': 'File uploaded successfully',
                     'filename': new_filename,
-                    'size_info': size_info
+                    'image_info': image_info
                 }), content_type='application/json;charset=utf-8', status=200)
             else:
                 _logger.error('檔案上傳失敗，請檢查FTP連接和權限設置')
                 return Response(json.dumps({
                     'success': False,
                     'message': '檔案上傳失敗，請檢查FTP連接和權限設置',
-                    'size_info': size_info
+                    'image_info': image_info
                 }), content_type='application/json;charset=utf-8', status=200)
         else:
             _logger.warning('沒有收到檔案')

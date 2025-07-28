@@ -577,6 +577,14 @@ class Checkout(models.Model):
             record.search_line_namee = result    
     
     ####权限
+    is_in_by_gly = fields.Boolean(compute='_compute_is_in_by_gly')        
+    @api.depends()
+    def _compute_is_in_by_gly(self):
+        group_dtsc_gly = self.env.ref('dtsc.group_dtsc_gly', raise_if_not_found=False)
+        user = self.env.user
+        self.is_in_by_gly = group_dtsc_gly and user in group_dtsc_gly.users
+    
+    
     is_in_by_mg = fields.Boolean(compute='_compute_is_in_by_mg')        
     @api.depends()
     def _compute_is_in_by_mg(self):
@@ -2192,7 +2200,7 @@ class Checkout(models.Model):
                 # 创建新的子记录
                 new_record =  self.product_ids.create(new_record_values)
                 new_record.write({'product_atts': [(6, 0, product_atts_ids)],
-                              'units_price': quotation.base_price if quotation else 0})
+                              'units_price': last_record.units_price})
             except Exception as e:
                 _logger.error(f"Error copying last record: {str(e)}")
                 raise
@@ -2424,7 +2432,7 @@ class CheckOutLine(models.Model):
 
                 new_line.write({
                     'product_atts': [(6, 0, product_atts_ids)],
-                    'units_price': quotation.base_price if quotation else 0
+                    'units_price': last_record.units_price
                 })
 
             except Exception as e:
@@ -2882,6 +2890,7 @@ class CheckOutLine(models.Model):
                         b = 0
                         
                     record.total_make_price = b + total_after_price
+                    record._compute_price()
                 else:
                     continue
             else:   
@@ -2946,6 +2955,7 @@ class CheckOutLine(models.Model):
                     b = 0
                     
                 record.total_make_price = b + total_after_price
+                record._compute_price()
         # print("end_compute_total_make_price")
     #配件加价
     @api.depends('product_atts',"jijiamoshi","quantity_peijian","checkout_product_id.new_customer_class_id")

@@ -6,8 +6,8 @@ from odoo import _
 import logging
 import math
 import pytz
-from dateutil.relativedelta import relativedelta
 from pytz import timezone
+from dateutil.relativedelta import relativedelta
 from lxml import etree
 from odoo.exceptions import UserError
 from pprint import pprint
@@ -707,7 +707,7 @@ class LineBot(models.Model):
     _name = 'dtsc.linebot'
     
     name = fields.Char("名稱")
-    
+    image_qrcode = fields.Binary(string="Line Qrcode")
     is_tanxing = fields.Boolean("是否彈性上班制")
     work_time = fields.Float("工作時常")
 

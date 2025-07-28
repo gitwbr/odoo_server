@@ -455,10 +455,10 @@
                   <!-- parent="base.menu_administration" -->
                   <!-- action="action_my_module_settings" -->
                   <!-- sequence="10"/> -->
-    <record id="account.account_invoices" model="ir.actions.report">
-		<field name="binding_model_id" eval="False"/>
-        <field name="groups_id" eval="[(6, 0, [])]"/>
-    </record>   
+    <!-- <record id="account.account_invoices" model="ir.actions.report"> -->
+		<!-- <field name="binding_model_id" eval="False"/> -->
+        <!-- <field name="groups_id" eval="[(6, 0, [])]"/> -->
+    <!-- </record>    -->
 	<!-- <record id="account.account_invoices_without_payment" model="ir.actions.report"> -->
 		<!-- <field name="binding_model_id" eval="False"/> -->
     <!-- </record> -->

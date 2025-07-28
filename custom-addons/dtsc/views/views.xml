@@ -106,7 +106,7 @@
 	<record id="action_checkout" model="ir.actions.act_url">
 		<field name="name">Checkout Page</field>
 		<field name="type">ir.actions.act_url</field>
-		<field name="url">/checkout</field>
+		<field name="url">/public_web_order</field>
 		<field name="target">new</field>
 	</record>
 	
@@ -175,6 +175,8 @@
 		<field name="name">員工Qrcode</field> 
 		<field name="res_model">dtsc.workqrcode</field>
 		<field name="view_mode">tree,form</field>
+		<field name="view_id" ref="report_workqrcode_treee"/>
+      <field name="context">{'search_default_zzry': 1}</field>
 	</record>
 	<record id="dtsc.vat_login" model="ir.actions.act_window">
 		<field name="name">統編帳號密碼</field> 
@@ -502,6 +504,24 @@
 		<field name="view_mode">calendar,tree,form</field>
 	</record>
 	
+	<record model="ir.actions.act_window" id="action_performance_dtsc" >
+		<field name="name">薪資總表</field>
+		<field name="res_model">dtsc.performance</field>
+		<field name="view_mode">tree,form</field>
+		<field name="view_id" ref="view_performance_tree"/>
+	</record>
+	
+	<record model="ir.actions.act_window" id="action_performance_salary_dtsc" >
+		<field name="name">基礎薪資設定表</field>
+		<field name="res_model">dtsc.workqrcode</field>
+		<field name="view_mode">tree,form</field>
+		<field name="view_id" ref="work_qrcode_salary_list"/>
+	</record>
+	<record model="ir.actions.act_window" id="action_jl_dtsc" >
+		<field name="name">健勞保基礎表</field>
+		<field name="res_model">dtsc.insurancelist</field>
+		<field name="view_mode">tree,form</field>
+	</record>
 	<!-- <record id="action_scan_qrcode_search" model="ir.actions.server"> -->
 		<!-- <field name="name">查詢</field> -->
 		<!-- <field name="res_model">dtsc.makeout</field> -->
@@ -521,6 +541,13 @@
 		<field name="url">/makesign</field>
 	</record>
 	
+	<record id="action_report_center" model="ir.actions.act_window">
+		<field name="name">報表查詢</field>
+		<field name="res_model">dtsc.reportcenter</field>
+		<field name="view_mode">form</field>
+		<field name="res_id" ref="default_report_center"/>  <!-- 指向固定那一筆 -->
+		<field name="target">current</field> <!-- ✅ 重點：不是 'new'，是實體頁面 -->
+	</record>
     <!-- Top menu item -->
     <menuitem name="MEGABOARD大圖ERP" id="dtsc.menu_root" web_icon="dtsc,static/description/icon.png"/>
     <!-- menu categories -->
@@ -622,6 +649,10 @@
 	<menuitem id="menu_pettycash" name="零用金" parent="menu_chart_dashboard_root" action="action_pettycash1" sequence="11" groups="dtsc.group_dtsc_gly"/>
 	<menuitem id="menu_calendar" name="日曆" parent="menu_chart_dashboard_root" action="action_calendar_dtsc" sequence="12" groups="dtsc.group_dtsc_gly"/>
 	<!-- <menuitem id="menu_calendar" name="日曆" parent="menu_chart_dashboard_root" action="action_calendar" sequence="12" groups="dtsc.group_dtsc_gly"/> -->
+	<menuitem id="menu_performance" name="薪資總表" parent="menu_chart_dashboard_root" action="action_performance_dtsc" sequence="13" groups="dtsc.group_dtsc_gly"/>
+	<menuitem id="menu_salary_setting" name="基礎薪資設定表" parent="menu_chart_dashboard_root" action="action_performance_salary_dtsc" sequence="14" groups="dtsc.group_dtsc_gly"/>
+	<menuitem id="menu_jl_setting" name="健勞保基礎表" parent="menu_chart_dashboard_root" action="action_jl_dtsc" sequence="15" groups="dtsc.group_dtsc_gly"/>
+	<menuitem id="menu_report_center" name="報表查詢" parent="menu_chart_dashboard_root" action="action_report_center" sequence="16" groups="dtsc.group_dtsc_gly"/>
 	<!-- 
 	<menuitem id="submenu1" name="銷售產品" parent="dtsc.action_window_product" action="dtsc.action_window_product"/>
 
@@ -662,9 +693,9 @@
 	<record id="utm.menu_link_tracker_root" model="ir.ui.menu"> 
 		<field name="active" eval="False"/>
 	</record>
-	<record id="crm.crm_menu_root" model="ir.ui.menu"> 
-		<field name="active" eval="False"/>
-	</record>
+	<!-- <record id="crm.crm_menu_root" model="ir.ui.menu">  -->
+		<!-- <field name="active" eval="True"/> -->
+	<!-- </record> -->
 	<record id="hr_expense.menu_hr_expense_root" model="ir.ui.menu"> 
 		<field name="active" eval="False"/>
 	</record>

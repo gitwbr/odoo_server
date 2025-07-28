@@ -1,11 +1,16 @@
 {
-    "reportMissingImports": false,
-    "reportMissingModuleSource": false,
-    "pythonPath": "/usr/bin/python3",
-    "venvPath": ".",
-    "analysis": {
-        "autoImportCompletions": true,
-        "useLibraryCodeForTypes": true,
-        "diagnosticMode": "workspace"
-    }
-} 
+    "typeCheckingMode": "off",
+    "reportMissingImports": "none",
+    "reportUnknownVariableType": "none",
+    "reportUnknownParameterType": "none",
+    "reportUnknownMemberType": "none",
+    "reportUntypedBaseClass": "none",
+    "reportUnannotatedClassAttribute": "none",
+    "reportUnusedImport": "none",
+    "extraPaths": [
+      "odoo16",
+      "odoo16/addons",
+      "odoo16/custom-addons"
+    ]
+  }
+  

@@ -69,7 +69,7 @@
                 
                 <script type="text/javascript" src="/dtsc/static/src/js/public_web_order.js"></script>
 
-                <div class="banner_service_form_checkout">
+                <div class="banner_service_form_public_web_order">
                     <div class="container">
                         <div class="py-5 text-center">
                             <h2>
@@ -77,7 +77,7 @@
                             </h2>
                         </div>
                         <h4>
-                            <b>請輸入客戶關鍵字並選擇客戶</b>
+                            <!-- 客户关键字提示由JS动态插入，仅内部用户显示 -->
                         </h4>
                         <div class="mb-3" id="content">
                             <input name="search" type="text" class="form-control"/>
@@ -109,8 +109,8 @@
                           <h5>2.文字需轉曲線（建立外框），否則將會產生替換文字</h5>
                           <h5>3.滿版印刷檔，請做0.1cm以上出血及裁切線</h5>
                           <h5>4.建議字體粗設定0.1cm以上</h5>
-                          <h5>5.檔案命名方式: 案件摘要-檔案名稱-寬x高cmx數量 </h5>
-                          <h5>   EX：專案A-橫幅-100x200cmx3</h5>
+                          <h5>5.檔案命名方式: 檔案名稱-材質-屬性1-屬性2...屬性n-寬x高【可帶單位cm|mm】x數量 </h5>
+                          <h5>   EX：檔案1-PVC-全透PVC-亮膜-彩白-110x110x1.ai</h5>
                          <h5>
                             <span style="color: rgb(0, 0, 0); font-family: &quot;PingFang TC&quot;;">6.在Adobe illustrator製稿時，所置入的影像檔，最好為「嵌入圖檔」，不然易發生掉圖或連結錯誤狀況<br/>7.印刷品下單時,需在備註正確的輸出尺寸</span>
                             <br/>

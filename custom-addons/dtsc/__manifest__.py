@@ -87,6 +87,7 @@
         'views/linebot.xml',   
         'views/pettycash.xml',  
         'views/calendar.xml', 
+        'views/performance.xml',  
         'views/views.xml',
     ],
 	'assets': {

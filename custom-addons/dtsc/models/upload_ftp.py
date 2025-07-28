@@ -19,11 +19,11 @@ class UploadModel(models.Model):
         _logger.info('FTP連接信息 - 伺服器: %s, 用戶名: %s', ftp_server, ftp_username)
         
         # 本地保存路径
-        local_save_path = self.env['ir.config_parameter'].sudo().get_param('dtsc.ftp_local_path')
+        """ local_save_path = self.env['ir.config_parameter'].sudo().get_param('dtsc.ftp_local_path')
         local_folder_path = os.path.join(local_save_path, folder)
         local_file_path = os.path.join(local_folder_path, filename)
         
-        _logger.info('本地保存路徑: %s', local_file_path)
+        _logger.info('本地保存路徑: %s', local_file_path) """
 
         try: 
             # 本地保存路径

@@ -1,3 +1,99 @@
+/*
+================================================================================
+Odoo16 前端下单页面 public_web_order.js 详细结构与开发说明
+================================================================================
+
+【文件定位与业务场景】
+- 负责Odoo前台下单页面的所有前端交互、动态表单、自动填充、联动、文件上传、后加工方式等复杂逻辑。
+- 典型场景：广告/印刷行业客户自助下单，支持多产品、多属性、多后加工方式、文件自动解析。
+
+--------------------------------------------------------------------------------
+【1. 依赖与工具函数】
+- Widget、rpc：Odoo标准依赖。
+- debugLog(message, data)：调试日志，debugMode控制。
+- rpcQuery/model, method, domain, fields/：通用Odoo RPC调用，返回Promise。
+- rpcQuery2/model, method, domain, data/：带自定义kwargs的RPC调用。
+- waitAndSelectProductTemplate/Variant：辅助等待下拉框渲染并选中，自动填充用。
+
+--------------------------------------------------------------------------------
+【2. 主类 CheckoutWidget】
+- 属性初始化：
+    - 用户信息：partner_id, customer_class_id, custom_init_name, isInternalUser, isFixedCustomerMode
+    - 业务标志：nop（无价格模式）、isSubmitting（下单中）、previewRecordId（预览ID）
+    - 单位换算：conversion_formula, rounding_method
+- 生命周期：
+    - start()：页面入口，拉取用户、单位换算、事件绑定、弹窗初始化
+    - fillCurrentUserInfo()：获取当前用户信息，决定客户/内部模式
+    - fetchUnitConversion()：拉取单位换算公式和取整方式
+
+--------------------------------------------------------------------------------
+【3. 事件绑定与表单交互】
+- bindEvents()：统一入口，调用各类事件绑定
+- bindParamInputEvents()：尺寸输入联动，自动计算才数/数量
+- bindFileInputEvents()：文件上传、自动填充（文件名解析、属性自动选中）
+- bindProductCategoryEvents()：产品类型、模板、属性下拉框联动
+- 其他事件：预览、下单、校验弹窗、删除产品、添加产品等
+- 事件绑定建议用命名空间，防止重复绑定。
+
+--------------------------------------------------------------------------------
+【4. UI渲染与动态表单】
+- createBannerTable(selectedCustomer, categories)：生成每个产品表格（含上传控件、产品选择、属性、备注等tr）
+- renderProductHeaderRow()：生成表头tr（宽度、高度、数量等）
+- renderProductInputRow()：生成输入tr（input/下拉框等）
+- renderPostProcessSection(postProcessList)：生成后加工方式tr（复选框、数量输入）
+- renderCommentRow()：生成备注tr
+- clearDynamicRows($table)：清理所有动态tr，防止重复插入
+- 动态tr class统一：如 .tr_product_attribute_class、.product_attribute_checkboxs.tr_product_attribute_class、.tr_post_process_section、.tr_comment_row
+- 典型tr结构：
+    - 表头tr：<tr class="table-active tr_product_attribute_class">...</tr>
+    - 输入tr：<tr class="product_attribute_class input_row_class tr_product_attribute_class">...</tr>
+    - 后加工tr：<tr class="table-active product_attribute_class tr_product_attribute_class">...</tr> + <tr class="product_attribute_checkboxs tr_product_attribute_class">...</tr>
+    - 备注tr：<tr class="product_attribute_class tr_product_attribute_class">...</tr>
+
+--------------------------------------------------------------------------------
+【5. 自动填充与属性联动】
+- onFileInputChange($fileInput)：文件上传后自动解析文件名，自动选中产品类型、模板、属性、尺寸、数量
+- autoFillFormByFileName($table, fileName)：只设置属性值，不触发change，最后统一判断并触发一次联动
+- waitForAttributeDropdowns($table, expectedCount)：辅助等待所有属性下拉框渲染完毕
+- onAllAttributesSelected($table, selectedProductId)：所有属性选完后，生成后续输入行、后加工方式、备注等
+- 兼容手动流程：手动选择属性时也会触发同样的后续生成逻辑
+- 典型调用链：文件上传change → 自动填充属性 → 检查全部选完 → 只触发一次属性联动 → 生成后续tr
+
+--------------------------------------------------------------------------------
+【6. 业务逻辑与数据处理】
+- collectFormData()：收集所有表单数据，组装成结构化对象
+- validateFormData(formData)：校验表单必填项，返回缺失字段
+- uploadAllFiles()：批量上传所有产品文件，返回Promise
+- uploadFile($table)：单文件上传，含分片、进度条、表单比对
+- submitOrder(orderData)：组装下单数据并提交到后端
+- generateTableContent(formData)：生成预览表格HTML
+- previewOrder()：预览订单明细，校验并弹窗
+- showValidationModal(missingFields)：弹窗显示缺失字段
+- 典型数据流：表单收集 → 校验 → 文件上传 → 组装数据 → 提交下单 → 预览/弹窗
+
+--------------------------------------------------------------------------------
+【7. 入口与页面ready】
+- $(document).ready()：只做一次性实例化CheckoutWidget，挂到window方便全局调用
+
+--------------------------------------------------------------------------------
+【8. 典型异步流程说明】
+- 自动填充时，先设置所有属性值，等待所有下拉框渲染完毕，最后只触发一次属性联动，防止重复插入。
+- 属性联动、后加工方式生成等全部promise化，确保顺序和唯一性。
+- 动态tr插入前先清理，所有tr加统一class，防止页面重复。
+- 文件上传分片、进度条、表单比对、上传状态提示等全部promise化，便于链式调用。
+
+--------------------------------------------------------------------------------
+【9. 常见坑点与维护建议】
+- 自动补全和手动流程要兼容，事件不要多次触发。
+- 动态tr插入、清理要彻底，class统一，插入前先清理。
+- 事件绑定用命名空间，防止重复绑定。
+- 关键函数、变量、流程全部加详细注释，命名规范。
+- 业务逻辑、UI渲染、事件监听彻底分离，便于维护和扩展。
+- 典型bug：属性自动补全时多次触发change导致tr重复，需只在全部选完后统一触发一次。
+- 典型bug：异步race condition导致tr插入顺序错乱，需promise化保证顺序。
+
+================================================================================
+*/
 odoo.define('dtsc.public_web_order', function (require) {
     "use strict";
 	var debugMode = true;
@@ -56,7 +152,182 @@ odoo.define('dtsc.public_web_order', function (require) {
             this.fillCurrentUserInfo();
             this.fetchUnitConversion();
             this.bindParamInputEvents(); 
-			//this.prepareCheckoutData();
+            // 统一注册所有 change 事件代理
+            this.registerGlobalChangeEvents();
+        },
+        registerGlobalChangeEvents: function() {
+            const self = this;
+            // 产品类型
+            $(document).off('change', '.product_category');
+            $(document).on('change', '.product_category', async function() {
+                $(this).closest('table').find('.product_category_2').closest('td').remove();
+                $(this).closest('table').find('.product_variant').closest('td').remove();
+                var selectedCategId = $(this).val();
+                debugLog("initProductCategoryChangeListener=>:selectedCategId:", selectedCategId);
+                $(this).closest('tr').find('td').has('.product_category_2').remove();
+                if (selectedCategId) {
+                    var productCategory2 = $('<select>').addClass('form-control product_category_2');
+                    var newTd = $('<td colspan="3">').css('width', '50%').append(
+                        $('<div>').addClass('form-group').append(productCategory2)
+                    );
+                    $(this).closest('tr').append(newTd);
+                    productCategory2.empty();
+                    productCategory2.append($('<option>').attr({disabled: '1', selected: '1'}).text(' -- 請選擇產品模板 -- '));
+                    try {
+                        const dtsc_products = await rpcQuery('dtsc.quotation', 'search_read', [['customer_class_id', '=', self.customer_class_id]], ['product_id']);
+                        console.table(dtsc_products);
+                        var productIds = dtsc_products.map(item => item.product_id[0]);
+                        const all_products = await rpcQuery('product.template', 'search_read', [['id', 'in', productIds]], ['name', 'categ_id']);
+                        $.each(all_products, function(i, product) {
+                            if (product.categ_id[0] === parseInt(selectedCategId)) {
+                                productCategory2.append($('<option>').val(product.id).text(product.name));
+                            }
+                        });
+                    } catch (error) {
+                        console.error("发生错误：", error);
+                    }
+                }
+            });
+            // 产品模板
+            $(document).off('change', '.product_category_2');
+            $(document).on('change', '.product_category_2', async function() {
+                $(this).closest('table').find('.product_variant').closest('td').remove();
+                var selectedProductId = $(this).val();
+                debugLog("Category2 customer_class_id:", self.customer_class_id);
+                debugLog("Selected Product ID:", selectedProductId);
+                $(this).closest('tr').find('td').has('.product_variant').remove();
+                $(this).closest('tr').find('input[type="hidden"]').remove();
+                if (selectedProductId) {
+                    try {
+                        const quotations = await rpcQuery('dtsc.quotation', 'search_read', [
+                            ['customer_class_id', '=', self.customer_class_id],
+                            ['product_id', '=', parseInt(selectedProductId)]
+                        ], ['id', 'base_price']);
+                        let basePrice = quotations.length > 0 ? quotations[0].base_price : null;
+                        let quotationId = quotations.length > 0 ? quotations[0].id : null;
+                        var basePriceInput = $('<input>').attr({
+                            type: 'hidden',
+                            id: 'base_price',
+                            name: 'base_price',
+                            value: basePrice
+                        });
+                        var quotationIdInput = $('<input>').attr({
+                            type: 'hidden',
+                            id: 'quotation_id',
+                            name: 'quotation_id',
+                            value: quotationId
+                        });
+                        $(this).closest('tr').append(basePriceInput, quotationIdInput);
+                        const attributeLines = await rpcQuery('product.template.attribute.line', 'search_read', [['product_tmpl_id', '=', parseInt(selectedProductId)]], ['attribute_id','sequence']);
+                        attributeLines.sort((a, b) => a.sequence - b.sequence);
+                        debugLog("attributeLines:", attributeLines);
+                        let tdCount = 2;
+                        let currentTr = $(this).closest('tr');
+                        for (let line of attributeLines) {
+                            var attributeId = line.attribute_id[0];
+                            debugLog("attributeId:", attributeId);
+                            const attributeValues = await rpcQuery('product.template.attribute.value', 'search_read', [
+                                ['attribute_id', '=', attributeId],
+                                ['product_tmpl_id', '=', parseInt(selectedProductId)]
+                            ], ['product_attribute_value_id', 'name']);
+                            let filteredValues = [];
+                            for (let value of attributeValues) {
+                                let attributeValueDetail = await rpcQuery('product.attribute.value', 'search_read', [
+                                    ['id', '=', value.product_attribute_value_id[0]]
+                                ], ['sequence', 'is_visible_on_order'], { order: 'sequence ASC, id ASC' });
+                                let nameZhTW;
+                                try {
+                                    const nameObj = JSON.parse(value.name);
+                                    nameZhTW = nameObj['zh_TW'] || value.name;
+                                } catch (error) {
+                                    nameZhTW = value.name;
+                                }
+                                if (attributeValueDetail.length > 0 && attributeValueDetail[0].is_visible_on_order) {
+                                    filteredValues.push({
+                                        id: value.product_attribute_value_id[0],
+                                        name: nameZhTW,
+                                        sequence: attributeValueDetail[0].sequence || 0
+                                    });
+                                }
+                            }
+                            filteredValues.sort((a, b) => a.sequence - b.sequence);
+                            debugLog("Filtered and sorted by sequence attributeValues:", filteredValues);
+                            var variantSelect = $('<select>').addClass('form-control product_variant');
+                            variantSelect.attr('name', line.attribute_id[1]);
+                            var newTd = $('<td colspan="3">').css('width', '50%').append(
+                                $('<div>').addClass('form-group').append(variantSelect)
+                            );
+                            var defaultOptionText = ` -- 請選擇${line.attribute_id[1]}屬性 -- `;
+                            variantSelect.append($('<option>').attr({ disabled: '1', selected: '1' }).text(defaultOptionText));
+                            $.each(filteredValues, function (j, value) {
+                                variantSelect.append($('<option>').val(value.id).text(value.name));
+                            });
+                            if (tdCount >= 2) {
+                                currentTr = $('<tr>');
+                                $(this).closest('table').append(currentTr);
+                                tdCount = 0;
+                            }
+                            currentTr.append(newTd);
+                            tdCount++;
+                        }
+                        var $table = $(this).closest('table');
+                        $table.find('.product_attribute_checkboxs.tr_product_attribute_class, .tr_post_process_section').remove();
+                        const productMakeTypeRelResults = await rpcQuery(
+                            'product.maketype.rel',
+                            'search_read',
+                            [['product_id', '=', parseInt(selectedProductId)]],
+                            ['make_type_id', 'sequence'],
+                            { order: 'sequence ASC, id ASC' }
+                        );
+                        debugLog("productMakeTypeRelResults:", productMakeTypeRelResults);
+                        if (productMakeTypeRelResults && productMakeTypeRelResults.length > 0) {
+                            productMakeTypeRelResults.sort((a, b) => (a.sequence || 0) - (b.sequence || 0));
+                            var headerTr = $('<tr>').addClass('table-active product_attribute_class tr_product_attribute_class tr_post_process_section');
+                            var headerTh = $('<th>').css('text-align','unset').attr('colspan', '6').text('後加工方式, 此區塊估價將由業務人員與您討論後提供');
+                            headerTr.append(headerTh);
+                            $table.append(headerTr);
+                            let currentRow;
+                            for (let i = 0; i < productMakeTypeRelResults.length; i++) {
+                                const postProcess = productMakeTypeRelResults[i];
+                                debugLog("後加工",postProcess.make_type_id[1]);
+                                if (i % 3 === 0) {
+                                    currentRow = $('<tr>').addClass('product_attribute_checkboxs tr_product_attribute_class tr_post_process_section');
+                                    $table.append(currentRow);
+                                }
+                                var newTdCheckbox = $('<td>').attr('colspan', '2');
+                                var newDivCheckbox = $('<div>').css('text-align', 'left').addClass('form-check');
+                                var newLabelCheckbox = $('<label>').addClass('form-check-label');
+                                var newInputCheckbox = $('<input>').css({'margin': '0 10px 0 0'}).attr({ type: 'checkbox', name: 'multiple[]', value: postProcess.make_type_id[0], id: postProcess.id });
+                                var quantityLabel = $('<label>').css({ 'margin-left': '10px', 'margin-right': '5px' }).text('數量:');
+                                var quantityInput = $('<input>')
+                                    .attr({ type: 'text', name: `quantity_${postProcess.make_type_id[0]}`, value: '1' })
+                                    .css({ width: '50px', 'margin-left': '5px' });
+                                newLabelCheckbox.append(newInputCheckbox).append(postProcess.make_type_id[1]);
+                                newDivCheckbox.append(newLabelCheckbox).append(quantityLabel).append(quantityInput);
+                                newTdCheckbox.append(newDivCheckbox);
+                                currentRow.append(newTdCheckbox);
+                            }
+                        }
+                    } catch (error) {
+                        console.error("An error occurred:", error);
+                    }
+                }
+            });
+            // 产品属性
+            $(document).off('change', '.product_variant');
+            $(document).on('change', '.product_variant', function() {
+                debugLog("product_variant选择事件");
+                var acc_value = $(this).closest('table').find("select[name='配件'] option:selected").text();
+                var $inputTd = $(this).closest('table').find('td.accessory-input-td');
+                var $accessoryInput = $inputTd.find('input#accessory_qty');
+                debugLog("acc_value",acc_value)
+                if (acc_value && acc_value !== '不加配件') {
+                    $accessoryInput.prop('disabled', false);
+                    $accessoryInput.val(1);
+                } else {
+                    $accessoryInput.prop('disabled', true).val('');
+                }
+            });
         },
         fillCurrentUserInfo: function () {
             var self = this;
@@ -77,6 +348,10 @@ odoo.define('dtsc.public_web_order', function (require) {
                         self.isInternalUser = true;
                         console.log('[dtsc] 检测到 customer_class_id 无效，自动切换为内部用户模式');
                         self.isFixedCustomerMode = false;
+                        // 内部用户一开始就显示客户关键字提示
+                        $('.internal-user-search-tip').remove();
+                        var tip = $('<h4 class="internal-user-search-tip"><b>請輸入客戶關鍵字並選擇客戶</b></h4>');
+                        $('input[name="search"]').before(tip);
                         self.bindSearchInputEvent();
                         return;
                     }
@@ -85,12 +360,14 @@ odoo.define('dtsc.public_web_order', function (require) {
                     console.log('[dtsc] is_internal_user:', userInfo.is_internal_user);
                     console.log('[dtsc] 当前用户类型:', userInfo.is_internal_user ? '内部用户' : '客户(外部用户)');
                     if (userInfo.is_internal_user) {
-                        // 内部用户：可以搜索客户
                         self.isFixedCustomerMode = false;
                         console.log('[dtsc] 进入内部用户模式，执行bindSearchInputEvent');
+                        // 内部用户一开始就显示客户关键字提示
+                        $('.internal-user-search-tip').remove();
+                        var tip = $('<h4 class="internal-user-search-tip"><b>請輸入客戶關鍵字並選擇客戶</b></h4>');
+                        $('input[name="search"]').before(tip);
                         self.bindSearchInputEvent();
                     } else {
-                        // 客户：只能下自己的单
                         self.isFixedCustomerMode = true;
                         console.log('[dtsc] 进入客户模式，显示自身信息，不执行bindSearchInputEvent');
                         self.showCustomerDetails(userInfo);
@@ -169,6 +446,9 @@ odoo.define('dtsc.public_web_order', function (require) {
         },
 
         uploadFile: function($table) {
+            /* return new Promise((resolve, reject) => {
+                resolve('mock_uploaded_file.pdf'); // 模拟文件名
+            }); */
             return new Promise(async (resolve, reject) => {
                 var uploadedFileName = "";
                 var $fileInput = $table.find("input[type='file']");
@@ -181,7 +461,7 @@ odoo.define('dtsc.public_web_order', function (require) {
                     // 新的文件名格式校验和栏位比对
                     // 文件名格式：案件摘要-檔名-寬x高cmx數量.xxx
                     // 允许x、×、*，cm可有可无
-                    const newPattern = /^(.+)-(.+)-(\d+)[x×*](\d+)(cm)?[x×*](\d+)/i;
+                    /* const newPattern = /^(.+)-(.+)-(\d+)[x×*](\d+)(cm)?[x×*](\d+)/i;
                     debugLog("fileName_original:", fileName_original);
                     var $uploadStatusDiv = $fileInput.siblings('.upload-status');
                     var match = fileName_original.replace(/\.[^/.]+$/, "").match(newPattern); // 去掉扩展名再匹配
@@ -217,7 +497,7 @@ odoo.define('dtsc.public_web_order', function (require) {
 						$uploadStatusDiv.html(mismatchMessages.join('<br>')).css('color', 'red').removeClass('d-none');
 						reject('文件名与表单栏位不一致');
 						return;
-					}
+					} */
 
                     var formData = new FormData();
                     formData.append('custom_file', file);
@@ -253,7 +533,7 @@ odoo.define('dtsc.public_web_order', function (require) {
                                 debugLog('Upload response:', response);
                                 if (response.success) {
                                     // 显示文件尺寸信息
-                                    var sizeInfo = response.size_info;
+                                    var sizeInfo = response.image_info;
                                     var filenameSize = sizeInfo.filename_size;
                                     var actualSize = {
                                         width_mm: sizeInfo.width_mm,
@@ -504,7 +784,9 @@ odoo.define('dtsc.public_web_order', function (require) {
 							break; 
 					}
 					$table.find('input[id="total_units"]').val(result);
-					$table.find('input[id="quantity"]').val(1);
+					if (!$table.find('input[id="quantity"]').val()) {
+						$table.find('input[id="quantity"]').val(1);
+					}
 				}
 			});
 		},
@@ -513,14 +795,12 @@ odoo.define('dtsc.public_web_order', function (require) {
 				alert('未找到可用产品分类，请联系管理员！');
 				return;
 			}
-			
 			var existingTablesCount = $('table#banner_table').length;
 			var nextTableNumber = existingTablesCount + 1;
-			
-			var bannerTable = $('<table>').addClass('table customer-detail banner_table').attr('id', 'banner_table');
+			var bannerTable = $('<table>').addClass('table customer-detail banner_table').attr('id', 'banner_table').css('width', '100%');
 
 			var headerRow = $('<tr>').addClass('table-active').append(
-				 $('<th>').attr('colspan', '5').css({'padding-top': '10px', 'padding-bottom': '10px','text-align':'unset'}).append(  
+				 $('<th>').attr('colspan', '6').css({'padding-top': '10px', 'padding-bottom': '10px','text-align':'unset'}).append(  
 					$('<span>').addClass('product_item_no').text(nextTableNumber + '. 產品選擇')
 				),
 				$('<td>').append(
@@ -528,17 +808,12 @@ odoo.define('dtsc.public_web_order', function (require) {
 						$('<a>').addClass('btn btn-danger btn-sm delete_button d-none').attr('style', 'color: white;').append(
 							$('<i>').addClass('fa fa-close')
 						).on('click', function() {
-							// 删除所在的整个table
 							$(this).closest('table#banner_table').remove();
-
-							// 重设所有table中的產品選擇前的数字
 							var tables = $('table#banner_table');
 							tables.each(function(index, table) {
 								var number = index + 1;
 								$(table).find('.product_item_no').text(number + '. 產品選擇');
 							});
-
-							// 如果只有一个表格，隐藏删除按钮
 							if (tables.length <= 1) {
 								$('table#banner_table').find('.delete_button').addClass('d-none');
 							}
@@ -546,14 +821,103 @@ odoo.define('dtsc.public_web_order', function (require) {
 					)
 				)
 			);
-			
+
+			// 新增表头tr（寬度、高度、每件(才數)、數量(件)、隐藏价格列）
+			var paramHeaderRow = $('<tr>').addClass('table-active product_attribute_class tr_product_attribute_class').css({'padding-top': '7px', 'padding-bottom': '7px'});
+			paramHeaderRow.append($('<th>').text('寬度(公分)').css('width', '16.66%'));
+			paramHeaderRow.append($('<th>').text('高度(公分)').css('width', '16.66%'));
+			paramHeaderRow.append($('<th>').text('每件(才數)').css('width', '16.66%'));
+			paramHeaderRow.append($('<th>').text('數量(件)').css('width', '25%'));
+			paramHeaderRow.append($('<th class="accessory-header-th" style="width:25%;">配件數量</th>'));
+			/* paramHeaderRow.append($('<th>').addClass('d-none').text('產品價格(元)'));
+			paramHeaderRow.append($('<th>').addClass('d-none').text('加工費(元)'));
+			paramHeaderRow.append($('<th>').addClass('d-none').text('估價(元)'));
+ */
+			// 新增输入行（input/校验div），与表头一一对应
+			var paramInputRow = $('<tr>').addClass('product_attribute_class input_row_class tr_product_attribute_class');
+			// 寬度
+			var newTd1 = $('<td>').css('width', '16.66%');
+			var newInput1 = $('<input>').attr({type: 'text', class: 'form-control formula_calculation val_required size_class', id: 'param1', name: 'param1', placeholder: '寬度'}).css('width', '100%').on('input', function(e) {
+				this.value = this.value.replace(/[^0-9.]/g, '').replace(/(\..*?)\..*/g, '$1');
+			});
+			var newDiv1 = $('<div>').addClass('invalid-feedback').text('必填');
+			newTd1.append(newInput1).append(newDiv1);
+			// 高度
+			var newTd2 = $('<td>').css('width', '16.66%');
+			var newInput2 = $('<input>').attr({type: 'text', class: 'form-control formula_calculation val_required size_class', id: 'param2', name: 'param2', placeholder: '高度'}).css('width', '100%').on('input', function(e) {
+				this.value = this.value.replace(/[^0-9.]/g, '').replace(/(\..*?)\..*/g, '$1');
+			});
+			var newDiv2 = $('<div>').addClass('invalid-feedback').text('必填');
+			newTd2.append(newInput2).append(newDiv2);
+			// 每件(才數)
+			var newTd3 = $('<td>').css('width', '16.66%').attr({'data-name': 'total_units'});
+			var newInput3 = $('<input>').attr({type: 'text', readonly: '1', id: 'total_units', name: 'total_units', class: 'form-control formula_calculation val_required size_class', placeholder: '自動計算'}).css('width', '100%').on('input', function(e) {
+				this.value = this.value.replace(/[^0-9]/g, '');
+			});
+			newTd3.append(newInput3);
+			// 數量(件)
+			var newTd4 = $('<td>').css('width', '25%').attr({'data-name': 'quantity'});
+			var newInput4 = $('<input>').attr({type: 'text', class: 'form-control formula_calculation val_required quantity_class', id: 'quantity', name: 'quantity', placeholder: '數量'}).css('width', '100%').on('input', function(e) {
+				this.value = this.value.replace(/[^0-9]/g, '');
+			});
+			var newDiv4 = $('<div>').addClass('invalid-feedback').text('請輸入數量');
+			newTd4.append(newInput4).append(newDiv4);
+			// 配件數量（动态显示/隐藏）
+			var newTd5 = $('<td class="accessory-input-td" style="width:25%;" data-name="accessory_qty"></td>');
+			var accessoryInput = $('<input>').attr({type: 'text', class: 'form-control formula_calculation quantity_class', id: 'accessory_qty', name: 'accessory_qty', disabled: true}).css('width', '100%');
+			var accessoryDiv = $('<div>').addClass('invalid-feedback').text('請輸入配件數量');
+			newTd5.append(accessoryInput).append(accessoryDiv);
+			// 其余隐藏列
+			/* var newTd6 = $('<td>').attr({'data-name': 'base_price', class: 'd-none'});
+			var newInput6 = $('<input>').attr({type: 'text', readonly: '1', id: 'base_price', name: 'base_price', class: 'form-control-plaintext'});
+			newTd6.append(newInput6);
+			var newTd7 = $('<td>').attr({'data-name': 'product_cost', class: 'd-none'});
+			var newInput7 = $('<input>').attr({type: 'text', readonly: '1', id: 'product_cost', name: 'product_cost', class: 'form-control-plaintext'});
+			newTd7.append(newInput7);
+			var newTd8 = $('<td>').attr({'data-name': 'processing_cost', class: 'd-none'});
+			var newInput8 = $('<input>').attr({type: 'text', readonly: '1', id: 'processing_cost', name: 'processing_cost', class: 'form-control-plaintext'});
+			newTd8.append(newInput8);
+			var newTd9 = $('<td>').attr({'data-name': 'total_price', class: 'd-none'});
+			var newInput9 = $('<input>').attr({type: 'text', readonly: '1', id: 'price', name: 'price', class: 'form-control-plaintext'});
+			newTd9.append(newInput9); */
+			// 组装输入行
+			//paramInputRow.append(newTd1).append(newTd2).append(newTd3).append(newTd4).append(newTd5).append(newTd6).append(newTd7).append(newTd8).append(newTd9);
+			paramInputRow.append(newTd1).append(newTd2).append(newTd3).append(newTd4).append(newTd5);
+
 			var fileNameRow = $('<tr>').append(
 				$('<td>').attr('colspan', '6').css('width', '100%').append(
 					$('<div>').addClass('form-group').append(
 						$('<input>').addClass('form-control').attr({type: 'text', name: 'project_product_name', id: 'project_product_name', placeholder: '檔案名稱'})
 					)
 				),
-				$('<td>') // 这个是占位的td，可以考虑移除或留着
+				$('<td>')
+			);
+
+            // 备注输入行，插入到檔案名稱下方
+            var commentRow = $('<tr>').addClass('product_attribute_class tr_product_attribute_class');
+            var commentTd = $('<td>').attr('colspan', '6');
+            var commentDiv = $('<div>').addClass('form-group');
+            var commentInput = $('<input>').attr({type: 'text', class: 'form-control', name: 'comment', placeholder: '備註'});
+            commentDiv.append(commentInput);
+            var hiddenCommentLabel = $('<label>').addClass('sr-only').attr('for', 'comment').text('備註');
+            commentDiv.prepend(hiddenCommentLabel);
+            commentTd.append(commentDiv);
+            commentRow.append(commentTd);
+
+			var uploadRow = $('<tr>').append(
+				$('<td>').attr('colspan', '10').attr('style', 'text-align:left;').append(
+					$('<div>').addClass('custom-file mb-3').css('margin-left', '0').append(
+						$('<input>').attr({type: 'file', id: 'custom_file', name: 'custom_file', class: 'custom-file-input'}),
+						$('<label>').addClass('custom-file-label').attr('for', 'custom_file')
+							.html('限制500M，超過請聯繫管理員<br>'),
+						$('<br>'),
+						$('<label>').css({'font-size': '12px', 'color': '#888'}).html('自動匹配的文件名格式:檔案名稱-材質-屬性1-屬性2...屬性n-寬x高【可帶單位cm|mm】x數量 EX:檔案1-PVC-全透PVC-亮膜-彩白-110x110x1.ai'),
+						$('<div>').addClass('invalid-feedback').text('請選擇需要上傳的檔案'),
+						$('<input>').attr({type: 'text', class: 'custom_file_status d-none', name: 'custom_file_status', value: ''}),
+						$('<div>').addClass('upload-status d-none').css({'color': 'green', 'font-weight': 'bold'}),
+						$('<progress>').attr({class: 'uploadProgressBar', value: '0', max: '100'}).css({'width': '100%', 'display': 'none'})
+					)
+				)
 			);
 
 			var productSelectRow = $('<tr>').append(
@@ -570,11 +934,11 @@ odoo.define('dtsc.public_web_order', function (require) {
 				),
 				$('<td>').addClass('d-none').attr('id', 'product_template')
 			);
-			
-			bannerTable.append(headerRow, fileNameRow, productSelectRow);
 
+			// 原顺序：bannerTable.append(headerRow, paramHeaderRow, paramInputRow, uploadRow, fileNameRow, productSelectRow);
+			// 新顺序如下：
+			bannerTable.append(headerRow, uploadRow, fileNameRow, commentRow, paramHeaderRow, paramInputRow, productSelectRow);
 			$('#add_product_table').parent().before(bannerTable);
-			this.initProductCategoryChangeListener(selectedCustomer.customclass_id[0]); 
 			this.fetchSaleProductCategories(selectedCustomer.customclass_id[0]);
 		},
 
@@ -619,17 +983,6 @@ odoo.define('dtsc.public_web_order', function (require) {
         bindSearchInputEvent: function() {
             $('input[name="search"]').on('input', this.onSearchInput.bind(this));
         },
-		checkAllSelected: function() {
-			var allSelected = true;
-			$(".product_variant").each(function() {
-				if ($(this).val() === null || $(this).val() === "") {
-					allSelected = false;
-					return false; // 跳出循环
-				}
-			});
-			return allSelected;
-		},
-		
 		generateTableContent: function() {
             // 预览弹框内容
             var self = this;
@@ -871,418 +1224,6 @@ odoo.define('dtsc.public_web_order', function (require) {
         },
 
 		
-		initProductVariantChangeListener: function(selectedProductId) {//產品變體選擇事件
-			const outerSelf = this;
-            debugLog("initProductVariantChangeListener->selectedProductId", selectedProductId);
-			$(document).off('change', '.product_variant');
-			$(document).on('change', '.product_variant', async function() {
-				$(this).closest('table').find('.tr_product_attribute_class').closest('tr').remove();
-				/* $(".tr_product_attribute_class").closest("tr").remove(); */
-				if(outerSelf.checkAllSelected())
-				{
-                    
-                    var accessory = false; 
-                    let acc_value = $("select[name='配件'] option:selected").text();
-                    debugLog("accessory:", acc_value);
-                    if (acc_value && acc_value !== '不加配件') { 
-                        accessory = true;
-                    }
-					var newTr1 = $('<tr>').addClass('table-active product_attribute_class tr_product_attribute_class').css({'padding-top': '7px', 'padding-bottom': '7px'});
-					newTr1.append($('<th>').text('寬度(公分)'));
-					newTr1.append($('<th>').text('高度(公分)'));
-					newTr1.append($('<th>').text('每件(才數)'));
-					newTr1.append($('<th>').text('數量(件)'));
-                    if(accessory)
-					{
-                        newTr1.append($('<th>').text('配件數量'));
-                    }
-					else
-					{
-						newTr1.append($('<th>').text(''));
-					}
-					
-					newTr1.append($('<th>').addClass('d-none').text('產品價格(元)'));
-					newTr1.append($('<th>').addClass('d-none').text('加工費(元)'));
-					newTr1.append($('<th>').addClass('d-none').text('估價(元)'));
-					newTr1.append($('<th>').text('上傳檔案'));
-					// ...更多的 <th> 或 <td>
-					 $(this).closest('table').append(newTr1);
-					
-					// 创建第二个 <tr> 元素并添加到表格中
-					var newTr2 = $('<tr>').addClass('product_attribute_class input_row_class tr_product_attribute_class');
-
-					// 第一个 <td>
-					var newTd1 = $('<td>');
-					var newInput1 = $('<input>').attr({type: 'text', class: 'form-control formula_calculation val_required size_class', id: 'param1', name: 'param1'}).on('input', function(e) {
-                        this.value = this.value.replace(/[^0-9.]/g, '').replace(/(\..*?)\..*/g, '$1');
-                    });
-					var newDiv1 = $('<div>').addClass('invalid-feedback').text('必填');
-					newTd1.append(newInput1).append(newDiv1);
-
-					// 第二个 <td>
-					var newTd2 = $('<td>');
-					var newInput2 = $('<input>').attr({type: 'text', class: 'form-control formula_calculation val_required size_class', id: 'param2', name: 'param2'}).on('input', function(e) {
-                        this.value = this.value.replace(/[^0-9.]/g, '').replace(/(\..*?)\..*/g, '$1');
-                    });
-					var newDiv2 = $('<div>').addClass('invalid-feedback').text('必填');
-					newTd2.append(newInput2).append(newDiv2);
-
-					// 第三个 <td>
-					var newTd3 = $('<td>').attr({'data-name': 'total_units'});
-					var newInput3 = $('<input>').attr({type: 'text', readonly: '1', id: 'total_units', name: 'total_units', class: 'form-control formula_calculation val_required size_class'}).on('input', function(e) {
-                        this.value = this.value.replace(/[^0-9]/g, '');
-                    });
-					newTd3.append(newInput3);
-
-					// 第四个 <td>
-                    var newTd4 = "";
-                    if(accessory)
-                    {
-                        newTd4 = $('<td>').attr({'data-name': 'accessory_qty'});
-                        var newInput4 = $('<input>').attr({type: 'text', class: 'form-control formula_calculation val_required quantity_class', id: 'accessory_qty', name: 'accessory_qty', value: '0'}).on('input', function(e) {
-                        this.value = this.value.replace(/[^0-9]/g, '');
-                        });
-                        var newDiv4 = $('<div>').addClass('invalid-feedback').css('display', 'none').text('請輸入數量');
-                        newTd4.append(newInput4).append(newDiv4);
-                    }
-					else
-					{
-						newTd4 = $('<td>').attr({'data-name': 'accessory_qty'});
-					}
-
-					// 第五个 <td>
-					var newTd5 = $('<td>').attr({'data-name': 'quantity'});
-					var newInput5 = $('<input>').attr({type: 'text', class: 'form-control formula_calculation val_required quantity_class', id: 'quantity', name: 'quantity', placeholder: ''}).on('input', function(e) {
-                        this.value = this.value.replace(/[^0-9]/g, '');
-                        });
-					var newDiv5 = $('<div>').addClass('invalid-feedback').text('請輸入數量');
-					newTd5.append(newInput5).append(newDiv5);
-
-					// 第六个 <td>
-                    var newTd6 = $('<td>').attr({'data-name': 'base_price', class: 'd-none'});
-					var newInput6 = $('<input>').attr({type: 'text', readonly: '1', id: 'base_price', name: 'base_price', class: 'form-control-plaintext'});
-					newTd6.append(newInput6);
-
-					// 第七个 <td>
-					var newTd7 = $('<td>').attr({'data-name': 'product_cost', class: 'd-none'});
-					var newInput7 = $('<input>').attr({type: 'text', readonly: '1', id: 'product_cost', name: 'product_cost', class: 'form-control-plaintext'});
-					newTd7.append(newInput7);
-
-					// 第八个 <td>
-					var newTd8 = $('<td>').attr({'data-name': 'processing_cost', class: 'd-none'});
-					var newInput8 = $('<input>').attr({type: 'text', readonly: '1', id: 'processing_cost', name: 'processing_cost', class: 'form-control-plaintext'});
-					newTd8.append(newInput8);
-
-					// 第九个 <td>
-					var newTd9 = $('<td>').attr({'data-name': 'total_price', class: 'd-none'});
-					var newInput9 = $('<input>').attr({type: 'text', readonly: '1', id: 'price', name: 'price', class: 'form-control-plaintext'});
-					newTd9.append(newInput9);
-
-					// 第十个 <td>
-					var newTd10 = $('<td>').attr({'data-name': 'file'});
-					var newDiv10 = $('<div>').addClass('custom-file mb-3');
-					var newInput10 = $('<input>').attr({type: 'file', id: 'custom_file', name: 'custom_file', class: 'custom-file-input'});
-					var newLabel10 = $('<label>')
-					.addClass('custom-file-label')
-					.attr('for', 'custom_file')
-					.html('&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;限制500M，超過請聯繫管理員');
-					var newDiv10_2 = $('<div>').addClass('invalid-feedback').text('請選擇需要上傳的檔案');
-					var newInput10_2 = $('<input>').attr({type: 'text', class: 'custom_file_status d-none', name: 'custom_file_status', value: ''});
-					newDiv10.append(newInput10).append(newLabel10).append(newDiv10_2).append(newInput10_2);
-					newTd10.append(newDiv10); 
-                    
-                    //进度条
-                    var uploadStatusDiv = $('<div>').addClass('upload-status d-none').css({'color': 'green', 'font-weight': 'bold'});
-                    var progressBar = $('<progress>').attr({class: 'uploadProgressBar', value: '0', max: '100'}).css({'width': '100%', 'display': 'none'});
-                    newDiv10.append(newInput10).append(newLabel10).append(newDiv10_2).append(uploadStatusDiv).append(progressBar);
-
-                    newTd10.append(newDiv10);
-
-					// 将所有的 <td> 元素添加到 <tr> 中
-					newTr2.append(newTd1).append(newTd2).append(newTd3).append(newTd5).append(newTd4).append(newTd6).append(newTd7).append(newTd8).append(newTd9).append(newTd10);
-					//newTr2.append(newTd1).append(newTd2).append(newTd3).append(newTd4).append(newTd5).append(newTd6).append(newTd7).append(newTd8).append(newTd9);
-					
-					 $(this).closest('table').append(newTr2);
-					///
-					debugLog("Selected Product ID:", selectedProductId);
-					if (selectedProductId) {
-						try {
-							const productMakeTypeRelResults = await rpcQuery(
-								'product.maketype.rel', 
-								'search_read', 
-								[['product_id', '=', parseInt(selectedProductId)]], 
-								['make_type_id', 'sequence'], 
-								{ order: 'sequence ASC, id ASC' } // 添加排序条件
-							);
-							debugLog("productMakeTypeRelResults:", productMakeTypeRelResults);
-							if (!productMakeTypeRelResults) {
-								console.error("无法获取 product_maketype_rel 数据"); 
-							}
-							if (productMakeTypeRelResults && productMakeTypeRelResults.length > 0) {
-								productMakeTypeRelResults.sort((a, b) => (a.sequence || 0) - (b.sequence || 0));
-								// 添加标题行
-								var headerTr = $('<tr>').addClass('table-active product_attribute_class tr_product_attribute_class');
-								var headerTh = $('<th>').css('text-align','unset').attr('colspan', '6').text('後加工方式, 此區塊估價將由業務人員與您討論後提供');
-								headerTr.append(headerTh);
-								 $(this).closest('table').append(headerTr);
-								let currentRow;
-								for (let i = 0; i < productMakeTypeRelResults.length; i++) {
-									const postProcess = productMakeTypeRelResults[i];
-									debugLog("後加工",postProcess.make_type_id[1]);
-									
-									if (i % 3 === 0) {
-										currentRow = $('<tr>').addClass('product_attribute_checkboxs tr_product_attribute_class');
-										$(this).closest('table').append(currentRow);
-									}
-									
-									var newTdCheckbox = $('<td>').attr('colspan', '2');
-									var newDivCheckbox = $('<div>').css('text-align', 'left').addClass('form-check');
-									var newLabelCheckbox = $('<label>').addClass('form-check-label');
-									var newInputCheckbox = $('<input>').css({'margin': '0 10px 0 0'}).attr({ type: 'checkbox', name: 'multiple[]', value: postProcess.make_type_id[0], id: postProcess.id });
-
-									var quantityLabel = $('<label>').css({ 'margin-left': '10px', 'margin-right': '5px' }).text('數量:');
-									var quantityInput = $('<input>')
-										.attr({ type: 'text', name: `quantity_${postProcess.make_type_id[0]}`, value: '1' })
-										.css({ width: '50px', 'margin-left': '5px' });
-									
-									newLabelCheckbox.append(newInputCheckbox).append(postProcess.make_type_id[1]);
-									newDivCheckbox.append(newLabelCheckbox).append(quantityLabel).append(quantityInput);
-									newTdCheckbox.append(newDivCheckbox);
-									currentRow.append(newTdCheckbox);
-								}
-							}
-						}catch (error) {
-							console.error("An error occurred:", error);
-						}
-					}
-					var newCommentRow = $('<tr>').addClass('product_attribute_class tr_product_attribute_class');
-					var newCommentTd = $('<td>').attr('colspan', '6');
-					var newCommentDiv = $('<div>').addClass('form-group');
-					var newCommentInput = $('<input>').attr({type: 'text', class: 'form-control', name: 'comment', placeholder: '備註'});
-					newCommentDiv.append(newCommentInput);
-					///
-					// 为 param1 创建隐藏的标签
-					var hiddenLabel1 = $('<label>').addClass('sr-only').attr('for', 'param1').text('寬度(公分)');
-					newTd1.prepend(hiddenLabel1);
-
-					// 为 param2 创建隐藏的标签
-					var hiddenLabel2 = $('<label>').addClass('sr-only').attr('for', 'param2').text('高度(公分)');
-					newTd2.prepend(hiddenLabel2);
-
-					// 为 accessory_qty 创建隐藏的标签
-                    if(accessory)
-                    {
-                        var hiddenLabel4 = $('<label>').addClass('sr-only').attr('for', 'accessory_qty').text('配件數量');
-                        newTd4.prepend(hiddenLabel4);
-                    }
-					else
-					{
-						var hiddenLabel4 = $('<label>').addClass('sr-only').attr('for', 'accessory_qty').text('');
-                        newTd4.prepend(hiddenLabel4);
-					}
-					
-
-					// 为 quantity 创建隐藏的标签
-					var hiddenLabel5 = $('<label>').addClass('sr-only').attr('for', 'quantity').text('數量(件)');
-					newTd5.prepend(hiddenLabel5);
-
-					// 为 comment 创建隐藏的标签
-					var hiddenCommentLabel = $('<label>').addClass('sr-only').attr('for', 'comment').text('備註');
-					newCommentDiv.prepend(hiddenCommentLabel);
-					///
-					newCommentTd.append(newCommentDiv);
-					newCommentRow.append(newCommentTd);
-					
-					// 将新行添加到表格
-					 $(this).closest('table').append(newCommentRow); 
-				}
-			});
-		},
-		
-		initProductCategory2ChangeListener: function(selectedCustomerClassId) {
-            const outerSelf = this;
-            $(document).off('change', '.product_category_2');
-            $(document).on('change', '.product_category_2', async function() {
-                $(this).closest('table').find('.product_variant').closest('td').remove();
-                $(this).closest('table').find('.tr_product_attribute_class').closest('tr').remove();
-
-                var selectedProductId = $(this).val();
-                debugLog("Selected Product ID:", selectedProductId);
-
-                // 清除当前行中已有的变体下拉框
-                $(this).closest('tr').find('td').has('.product_variant').remove();
-                $(this).closest('tr').find('input[type="hidden"]').remove();
-
-                if (selectedProductId) {
-                    try {
-                        // 查询 dtsc.quotation 中 base_price 和 id 栏位
-                        const quotations = await rpcQuery('dtsc.quotation', 'search_read', [
-                            ['customer_class_id', '=', selectedCustomerClassId],
-                            ['product_id', '=', parseInt(selectedProductId)]
-                        ], ['id', 'base_price']);
-
-                        let basePrice = quotations.length > 0 ? quotations[0].base_price : null;
-                        let quotationId = quotations.length > 0 ? quotations[0].id : null;
-                        
-
-                        // 新增两个隐藏的控件来记录 base_price 和 id
-                        var basePriceInput = $('<input>').attr({
-                            type: 'hidden',
-                            id: 'base_price',
-                            name: 'base_price',
-                            value: basePrice
-                        });
-
-                        var quotationIdInput = $('<input>').attr({
-                            type: 'hidden',
-                            id: 'quotation_id',
-                            name: 'quotation_id',
-                            value: quotationId
-                        });
-
-                        $(this).closest('tr').append(basePriceInput, quotationIdInput);
-                        
-                        
-                        const attributeLines = await rpcQuery('product.template.attribute.line', 'search_read', [['product_tmpl_id', '=', parseInt(selectedProductId)]], ['attribute_id','sequence']);
-                        attributeLines.sort((a, b) => a.sequence - b.sequence);
-                        debugLog("attributeLines:", attributeLines);
-
-						let tdCount = 2; // 每行 td 计数
-						let currentTr = $(this).closest('tr'); // 当前的 tr
-
-                        for (let line of attributeLines) {
-							var attributeId = line.attribute_id[0];
-							debugLog("attributeId:", attributeId);
-
-							// 获取过滤后的属性值
-							const attributeValues = await rpcQuery('product.template.attribute.value', 'search_read', [
-								['attribute_id', '=', attributeId],
-								['product_tmpl_id', '=', parseInt(selectedProductId)]
-							], ['product_attribute_value_id', 'name']);
-
-							let filteredValues = [];
-							for (let value of attributeValues) {
-								let attributeValueDetail = await rpcQuery('product.attribute.value', 'search_read', [
-									['id', '=', value.product_attribute_value_id[0]]
-								], ['sequence', 'is_visible_on_order'], { order: 'sequence ASC, id ASC' });
-
-								// 解析 JSON 并提取 zh_TW
-								let nameZhTW;
-								try {
-									const nameObj = JSON.parse(value.name);
-									nameZhTW = nameObj['zh_TW'] || value.name; // 如果有 zh_TW 则使用，没有则保留原值
-								} catch (error) {
-									// 如果解析失败，直接使用原始值
-									nameZhTW = value.name;
-								}
-
-								// 仅保留 is_visible_on_order 为 true 的值
-								if (attributeValueDetail.length > 0 && attributeValueDetail[0].is_visible_on_order) {
-									filteredValues.push({
-										id: value.product_attribute_value_id[0],
-										name: nameZhTW,
-										sequence: attributeValueDetail[0].sequence || 0 // 默认为 0 防止未定义
-									});
-								}
-							}
-
-							// 按照 sequence 升序排序
-							filteredValues.sort((a, b) => a.sequence - b.sequence);
-
-							debugLog("Filtered and sorted by sequence attributeValues:", filteredValues);
-
-							// 新增 variant 下拉框
-							var variantSelect = $('<select>').addClass('form-control product_variant');
-							variantSelect.attr('name', line.attribute_id[1]);
-
-							var newTd = $('<td colspan="3">').css('width', '50%').append(
-								$('<div>').addClass('form-group').append(variantSelect)
-							);
-
-							// 默认选项
-							var defaultOptionText = ` -- 請選擇${line.attribute_id[1]}屬性 -- `;
-							variantSelect.append($('<option>').attr({ disabled: '1', selected: '1' }).text(defaultOptionText));
-
-							// 添加选项到下拉框
-							$.each(filteredValues, function (j, value) {
-								variantSelect.append($('<option>').val(value.id).text(value.name)); // 使用解析后的 zh_TW 值
-							});
-
-							// 如果当前行的 td 已经达到 3，换行并添加新的 tr
-							if (tdCount >= 2) {
-								currentTr = $('<tr>'); // 创建新 tr
-								$(this).closest('table').append(currentTr); // 添加到表格
-								tdCount = 0; // 重置计数
-							}
-
-							currentTr.append(newTd); // 在当前行添加 td
-							tdCount++; // 计数 +1
-
-							outerSelf.initProductVariantChangeListener(selectedProductId);
-						}
-
-                    } catch (error) {
-                        console.error("An error occurred:", error);
-                    }
-                }
-            });
-        },
-
-
-		
-		initProductCategoryChangeListener: function(selectedCustomerClassId) {//產品類別選擇事件
-			const self = this;
-			$(document).off('change', '.product_category');
-			$(document).on('change', '.product_category', async function() {
-				$(this).closest('table').find('.product_category_2').closest('td').remove();
-				$(this).closest('table').find('.product_variant').closest('td').remove();
-				$(this).closest('table').find('.tr_product_attribute_class').closest('tr').remove();
-				/* $(".product_category_2").closest("td").remove();
-				$(".product_variant").closest("td").remove();
-				$(".tr_product_attribute_class").closest("tr").remove(); */
-				var selectedCategId = $(this).val();
-				// ...（其他代码保持不变）
-				debugLog("initProductCategoryChangeListener=>:selectedCategId:", selectedCategId);
-				$(this).closest('tr').find('td').has('.product_category_2').remove();
-				if (selectedCategId) {
-					// 创建新的下拉框
-					var productCategory2 = $('<select>').addClass('form-control product_category_2');
-		
-					// 创建新的td元素来容纳新的下拉框
-					var newTd = $('<td colspan="3">').css('width', '50%').append(
-						$('<div>').addClass('form-group').append(productCategory2)
-					);
-		
-					// 将新的td元素添加到产品选择的同一行
-					$(this).closest('tr').append(newTd);
-		
-					// 清空现有的 product_category_2 下拉列表
-					productCategory2.empty();
-					productCategory2.append($('<option>').attr({disabled: '1', selected: '1'}).text(' -- 請選擇產品模板 -- '));
-					try {
-						// 第一步：从 dtsc_quotation 获取所有相关的 product_id
-						const dtsc_products = await rpcQuery('dtsc.quotation', 'search_read', [['customer_class_id', '=', selectedCustomerClassId]], ['product_id']);
-                        console.table(dtsc_products);
-						var productIds = dtsc_products.map(item => item.product_id[0]);  // 假设 product_id 是一个 (id, name) 元组
-                        
-						// 第二步：使用这些 product_id 去查询 product.template 表，找到匹配的 categ_id
-						const all_products = await rpcQuery('product.template', 'search_read', [['id', 'in', productIds]], ['name', 'categ_id']);
-						
-						// 第三步：检查 categ_id，如果匹配就添加到 product_category_2 的选项中
-						$.each(all_products, function(i, product) {
-							if (product.categ_id[0] === parseInt(selectedCategId)) {
-								productCategory2.append($('<option>').val(product.id).text(product.name));
-							}
-						});                        
-						self.initProductCategory2ChangeListener(selectedCustomerClassId);
-					} catch (error) {
-						console.error("发生错误：", error);
-					}
-				}
-			});
-		},
-
-		
 		fetchSaleProductCategories: async function() {
 			debugLog("选择的客户类别ID:", this.customer_class_id);
 			if (!this.customer_class_id || this.customer_class_id === false || this.customer_class_id === 0) {
@@ -1325,6 +1266,11 @@ odoo.define('dtsc.public_web_order', function (require) {
             debugLog('nop',this.nop);
             var self= this;
             $('.customer-detail').remove(); 
+            debugLog('isInternalUser',self.isInternalUser);
+            /* if (self.isInternalUser) {
+                var tip = $('<h4 class="internal-user-search-tip"><b>請輸入客戶關鍵字並選擇客戶</b></h4>');
+                $('input[name="search"]').before(tip);
+            } */
             $('input[name="search"]').val(`${selectedCustomer.name}   ${selectedCustomer.mobile || ''}   ${selectedCustomer.phone || ''}`);
             // 在搜索框下方显示标签
             var nameLabel = $('<span class="detail-label">').text('姓名');
@@ -1509,10 +1455,27 @@ odoo.define('dtsc.public_web_order', function (require) {
 
             // 确认订购按钮事件
             $(document).off('click', '#ModelOrderLine .btn_checkout').on('click', '#ModelOrderLine .btn_checkout', function() {
+                
+                
                 if (self.isSubmitting) {
                     return; // 如果正在提交中，直接返回
                 }
-                
+                // 檢查是否有文件正在上傳
+                var uploading = false;
+                $('.banner_table').each(function() {
+                    var $progressBar = $(this).find('.uploadProgressBar');
+                    if ($progressBar.length > 0) {
+                        $progressBar.each(function() {
+                            var val = Number($(this).val());
+                            if (val < 100) {
+                                uploading = true;
+                            }
+                        });
+                    }
+                });
+                if (uploading) {
+                    alert('正在上傳文件，請耐心等待');
+                }
                 // 禁用按钮并改变文字
                 var $submitBtn = $(this);
                 $submitBtn.prop('disabled', true).text('訂單提交中...');
@@ -1584,7 +1547,7 @@ odoo.define('dtsc.public_web_order', function (require) {
                     $('input[name="search"]').after(customerList);
                 });
             }
-        }
+        },
     });
 	
 	
@@ -1619,21 +1582,199 @@ odoo.define('dtsc.public_web_order', function (require) {
     } */
 
     $(document).ready(function() {
-        if ($(".banner_service_form_checkout").length > 0) {
-            var checkoutWidget = new CheckoutWidget();
-            checkoutWidget.appendTo($(".banner_service_form_checkout"));
+        // 页面加载时强制清空搜索框，防止刷新后残留
+        $('input[name="search"]').val('');
+        // 辅助函数定义，必须在最外层
+        function waitAndSelectProductTemplate($table, productId, callback, retry = 0) {
+            var $select = $table.find('.product_category_2');
+            if ($select.length && $select.find('option[value="' + productId + '"]').length) {
+                $select.val(productId).trigger('change');
+                if (callback) callback();
+            } else if (retry < 20) {
+                setTimeout(function() {
+                    waitAndSelectProductTemplate($table, productId, callback, retry + 1);
+                }, 100);
+            }
         }
+        function waitAndSelectProductVariant($table, attrName, valueId, retry = 0) {
+            var $select = $table.find('select.product_variant[name="' + attrName + '"]');
+            if ($select.length && $select.find('option[value="' + valueId + '"]').length) {
+                $select.val(valueId).trigger('change');
+                // 已移除属性全选相关逻辑
+            } else if (retry < 20) {
+                setTimeout(function() {
+                    waitAndSelectProductVariant($table, attrName, valueId, retry + 1);
+                }, 100);
+            }
+        }
+        if ($(".banner_service_form_public_web_order").length > 0) {
+            var checkoutWidget = new CheckoutWidget();
+            checkoutWidget.appendTo($(".banner_service_form_public_web_order"));
+        }
+        // 修正版：监听每个表格的文件选择，自动解析文件名并填充栏位
+        $(document).on('change', '.custom-file-input', async function() {
+            var $fileInput = $(this);
+            // 健壮性判断，防止未选文件时报错
+            if (!this.files || !this.files[0]) return;
+            var fileName = this.files[0].name ? this.files[0].name.replace(/\.[^/.]+$/, "") : '';
+            if (!fileName) return;
+            console.log('文件已选择', fileName);
+            var $table = $fileInput.closest('table');
+            // 清空同一表格下的相关栏位
+            $table.find('.product_category').each(function() {
+                // 选中第一个disabled的option作为默认
+                $(this).val($(this).find('option:disabled').first().val()).trigger('change');
+            });
+            $table.find('.product_category_2').val('').trigger('change');
+            $table.find('select.product_variant').val('').trigger('change');
+            $table.find('#param1').val('');
+            $table.find('#param2').val('');
+            $table.find('#total_units').val('');
+            $table.find('#quantity').val('');
+            $table.find('#project_product_name').val('');
+           
+            // 文件名格式：支持宽高任意一项带单位，如110x25cmx15、110cmx25x15、110cmx25cmx15、110x25x15
+            var parts = fileName.split('-');
+            if (parts.length < 4) return;
+            var projectProductName = parts[0];
+            var productTemplateName = parts[1];
+            var attributes = parts.slice(2, parts.length - 1); // 属性数组
+            // 修正 sizePart，去除空格和扩展名
+            var sizePart = parts[parts.length - 1].replace(/\s*\.[^/.]+$/, '').replace(/\s+$/, '');
+            debugLog('sizePart:', sizePart);
+            // 解析尺寸、数量，支持宽高分别带单位，单位推断逻辑优化
+            var sizeMatch = sizePart.match(/([0-9.]+)\s*(cm|mm)?[x×*]([0-9.]+)\s*(cm|mm)?[x×*]([0-9]+)/i);
+            debugLog('sizeMatch:', sizeMatch);
+            var quantityMatch = sizePart.match(/(\d+)張/i);
+            debugLog('quantityMatch:', quantityMatch);
+            var width = '', height = '', quantity = '';
+            if (sizeMatch) {
+                width = parseFloat(sizeMatch[1]);
+                var widthUnit = sizeMatch[2] ? sizeMatch[2].toLowerCase() : null;
+                height = parseFloat(sizeMatch[3]);
+                var heightUnit = sizeMatch[4] ? sizeMatch[4].toLowerCase() : null;
+                quantity = sizeMatch[5];
+                // 单位推断逻辑
+                let finalUnit = 'cm';
+                if (widthUnit && !heightUnit) finalUnit = widthUnit;
+                else if (!widthUnit && heightUnit) finalUnit = heightUnit;
+                else if (widthUnit && heightUnit) finalUnit = widthUnit; // 若都写且不同，优先宽的
+                // 统一转换
+                if (finalUnit === 'mm') {
+                    width = width / 10;
+                    height = height / 10;
+                }
+                width = parseFloat(width.toFixed(1));
+                height = parseFloat(height.toFixed(1));
+                console.log('解析到 width:', width, 'height:', height, 'quantity:', quantity, '单位:', finalUnit);
+            } else if (quantityMatch) {
+                // 兼容"4130x75x1張"格式
+                var sizeParts = sizePart.split(/[x×*]/i);
+                if (sizeParts.length >= 3) {
+                    width = sizeParts[0];
+                    height = sizeParts[1];
+                    quantity = sizeParts[2].replace(/[^\d]/g, '');
+                    console.log('兼容模式解析到 width:', width, 'height:', height, 'quantity:', quantity);
+                }
+            }
+            // 1. 檔案名稱
+            $table.find('#project_product_name').val(projectProductName);
+            // 2. 先在所有模板中模糊查找产品模板，反查出产品类型
+            const all_products = await rpcQuery('product.template', 'search_read', [], ['id', 'name', 'categ_id']);
+            // 优先全字匹配，其次前缀匹配，最后包含匹配，忽略空格和大小写
+            let normName = (s) => (s || '').replace(/\s+/g, '').toLowerCase();
+            let normTarget = normName(productTemplateName);
+            let matchedProduct = all_products.find(p => normName(p.name) === normTarget);
+            if (!matchedProduct) {
+                matchedProduct = all_products.find(p => normName(p.name).startsWith(normTarget));
+            }
+            if (!matchedProduct) {
+                matchedProduct = all_products.find(p => normName(p.name).indexOf(normTarget) !== -1);
+            }
+            if (matchedProduct) {
+                let categoryId = matchedProduct.categ_id[0];
+                // 自动选中产品类型
+                $table.find('.product_category').val(categoryId).trigger('change');
+                // 等待产品模板下拉框渲染并选中
+                waitAndSelectProductTemplate($table, matchedProduct.id, function() {
+                    setTimeout(async function() {
+                        // 查询该模板的属性
+                        const attributeLines = await rpcQuery('product.template.attribute.line', 'search_read', [['product_tmpl_id', '=', matchedProduct.id]], ['attribute_id','sequence']);
+                        attributeLines.sort((a, b) => a.sequence - b.sequence);
+                        
+                        debugLog('文件名中的属性:', attributes);
+                        debugLog('数据库中的属性行:', attributeLines.map(line => line.attribute_id[1]));
+                        
+                        // 为每个属性找到最佳匹配
+                        for (let k = 0; k < attributeLines.length; k++) {
+                            let attrName = attributeLines[k].attribute_id[1];
+                            const attributeValues = await rpcQuery('product.template.attribute.value', 'search_read', [
+                                ['attribute_id', '=', attributeLines[k].attribute_id[0]],
+                                ['product_tmpl_id', '=', matchedProduct.id]
+                            ], ['product_attribute_value_id', 'name']);
+                            
+                            debugLog(`属性 "${attrName}" 的所有值:`, attributeValues.map(v => v.name));
+                            
+                            let matchedValue = null;
+                            let matchedAttribute = null;
+                            
+                            // 遍历文件名中的所有属性，找到最佳匹配
+                            for (let attrIdx = 0; attrIdx < attributes.length; attrIdx++) {
+                                for (let v = 0; v < attributeValues.length; v++) {
+                                    let valueName = attributeValues[v].name;
+                                    try {
+                                        const nameObj = JSON.parse(valueName);
+                                        valueName = nameObj['zh_TW'] || valueName;
+                                    } catch (e) {}
+                                    
+                                    if (valueName.indexOf(attributes[attrIdx]) !== -1) {
+                                        matchedValue = attributeValues[v].product_attribute_value_id[0];
+                                        matchedAttribute = attributes[attrIdx];
+                                        debugLog(`找到匹配: 属性 "${attrName}" 的值 "${valueName}" 匹配文件名中的 "${matchedAttribute}"`);
+                                        break;
+                                    }
+                                }
+                                if (matchedValue) break;
+                            }
+                            
+                            if (matchedValue) {
+                                // 自动填充属性时，确保触发change事件
+                                waitAndSelectProductVariant($table, attrName, matchedValue);
+                            } else {
+                                debugLog(`属性 "${attrName}" 未找到匹配的值`);
+                            }
+                        }
+                        // 填充尺寸和数量
+                        if (width) $table.find('#param1').val(width);
+                        if (height) $table.find('#param2').val(height);
+                        if (quantity) $table.find('#quantity').val(quantity);
+                        // 自动计算每件(才數)
+                        if (width && height) {
+                            $table.find('#param1').trigger('input');
+                        }
+                        debugLog('自动填充完成:', {projectProductName, productTemplateName, attributes, width, height, quantity});
+                    }, 2000);
+                });
+            } else {
+                debugLog('未能根据文件名自动匹配产品模板，请手动选择');
+            }
+        }); 
+        // 原有文件大小校验
         $(document).on('change', '.custom-file-input', function() {
+            if (!this.files || !this.files[0]) return;
             var fileSize = this.files[0].size / 1024 / 1024; // 转换为MB
             if (fileSize > 500) {
                 alert('文件超過500M限制，請選擇其它文件或者聯繫管理員上傳。');
                 this.value = ''; // 重置文件输入
-                /* $(this).next('.upload-status').addClass('d-none'); // 隐藏上传状态
-                $(this).nextAll('.uploadProgressBar').hide(); // 隐藏进度条 */
             } else {
-                /* $(this).next('.upload-status').removeClass('d-none').text('文件大小合适，可以上传。'); // 显示上传状态
-                $(this).nextAll('.uploadProgressBar').show(); // 显示进度条 */
+                // ...
             }
+        });
+        // 新增：点击文件输入控件时清空 upload-status
+        $(document).on('click', '.custom-file-input', function() {
+            var $fileInput = $(this);
+            var $table = $fileInput.closest('table');
+            $table.find('.upload-status').html('').addClass('d-none').css({color: '', 'font-weight': ''});
         });
     });
 

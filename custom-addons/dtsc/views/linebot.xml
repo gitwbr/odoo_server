@@ -1246,6 +1246,7 @@
 				<field name="name" />
 				<field name="line_channel_secret" />
 				<field name="line_access_token" />
+				<field name="image_qrcode" widget="image" class="w200"/>
             </tree>
         </field>
     </record>
@@ -1371,6 +1372,9 @@
 							</tree>
 						</field>
 						</group>
+					</group>
+					<group string="Line Qrcode">
+						<field name="image_qrcode" widget="image" class="w200"/>
 					</group>
 				</sheet> 
             </form>

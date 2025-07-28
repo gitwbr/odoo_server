@@ -99,26 +99,23 @@
 		<field name="name">dtsc.workqrcode.report.tree</field>
 		<field name="model">dtsc.workqrcode</field>
 		<field name="arch" type="xml">
-			<tree>	 			
+			<tree decoration-danger="out_company_date">	 			
 				<field name="name"  readonly="1"  />
-				<field name="bar_image"  widget="image" readonly="1"  />
-				<!-- <field name="is_zg" /> -->
-				<!-- <field name="is_qh" /> -->
-				<!-- <field name="in_company_date" /> -->
-				<!-- <field name="tx_locked" /> -->
-				<!-- <field name="tx_days" /> -->
-				<!-- <field name="bj_locked" /> -->
-				<!-- <field name="bj_days" /> -->
-				<!-- <field name="sj_locked" /> -->
-				<!-- <field name="sj_days" /> -->
-				<!-- <field name="slj_locked" /> -->
-				<!-- <field name="slj_days" /> -->
-				<!-- <field name="jtzgj_locked" /> -->
-				<!-- <field name="jtzgj_days" /> -->
-				<!-- <field name="line_user_id" /> -->
+				<field name="bar_image"  widget="image" readonly="1" attrs="{'invisible':[('out_company_date','!=',False)]}" />
+				<field name="out_company_date" invisible="1"/>
 
 			</tree>  
 		</field>	
+	</record>
+
+	<record id="search_workqrcode" model="ir.ui.view">
+		<field name="name">dtsc.workqrcode.search</field>
+		<field name="model">dtsc.workqrcode</field>
+		<field name="arch" type="xml">
+			<search>
+				<filter string="在職人員" name="zzry" domain="[('out_company_date', '=', False)]"/> 
+			</search>
+		</field>		
 	</record>
 
 	<record id="report_workqrcode_form" model="ir.ui.view">
@@ -408,7 +405,7 @@
 				</h2>
 				<t t-if="coin_can_cust">
 					<button type="button"
-							onclick="location.href='/order'"
+							onclick="location.href='/public_web_order'"
 							style="position: absolute; right: 0; top: 50%; transform: translateY(-50%);
 								   padding: 10px 20px; background-color: #007bff; color: white;
 								   border: none; border-radius: 5px; cursor: pointer;">
