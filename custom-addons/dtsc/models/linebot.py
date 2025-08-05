@@ -6,8 +6,8 @@ from odoo import _
 import logging
 import math
 import pytz
-from pytz import timezone
 from dateutil.relativedelta import relativedelta
+from pytz import timezone
 from lxml import etree
 from odoo.exceptions import UserError
 from pprint import pprint
@@ -22,6 +22,47 @@ from workalendar.asia import Taiwan
 from io import BytesIO
 from PIL import Image
 import xlsxwriter
+class PartnerLineBind(models.Model):
+    _name = "dtsc.partnerlinebind"
+    
+    name = fields.Char("Line 昵稱")
+    line_user_id = fields.Char('LINE ID')
+    comment = fields.Char('備註')
+    is_active = fields.Boolean("激活")
+    partner_id = fields.Many2one("res.partner",string="客戶")
+    
+    
+
+    
+    def reply_to_line_for_customer(self, user_id, message):
+        """ 發送回覆給 LINE 使用者 """
+        lineObj = request.env["dtsc.linebot"].sudo().search([("linebot_type","=","for_customer")],limit=1)
+        if not lineObj or not lineObj.line_access_token:
+            return False
+        LINE_ACCESS_TOKEN = lineObj.line_access_token
+        headers = {
+            "Authorization": f"Bearer {LINE_ACCESS_TOKEN}",
+            "Content-Type": "application/json"
+        }
+        data = {
+            "to": user_id,
+            "messages": [{"type": "text", "text": message}]
+        }
+        requests.post("https://api.line.me/v2/bot/message/push", headers=headers, json=data)
+    
+    @api.onchange('is_active')
+    def _onchange_is_active(self):
+        for record in self:
+            if record.is_active:
+                self.reply_to_line_for_customer(record.line_user_id, "您的客戶推送已經激活！")
+            else:
+                self.reply_to_line_for_customer(record.line_user_id, "您的客戶推送已被禁用！")
+    
+class ResPartner(models.Model):
+    _inherit = "res.partner"
+    
+    partnerlinebind_ids = fields.One2many("dtsc.partnerlinebind","partner_id",string="Line名稱")
+
 class DtscLeave(models.Model):
     _name = 'dtsc.leave'
     _description = '請假記錄'
@@ -47,6 +88,7 @@ class DtscLeave(models.Model):
         ('cjj', '產檢假'),
     ], string='請假類型')
     reason = fields.Text('請假原因')
+    reject_reason = fields.Text('拒絕原因')
     leave_file = fields.Binary(string='上傳檔案')
     leave_hours = fields.Float("請假工時")
     state = fields.Selection([
@@ -148,7 +190,7 @@ class Attendance(models.Model):
         _logger.info(f"今天 {today} 檢測缺卡~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~。")
         all_users = self.env['dtsc.workqrcode'].search([("line_user_id", "!=" ,False)])
         calendar = Taiwan()        
-        settingObj = self.env['dtsc.linebot'].search([], limit=1)
+        settingObj = self.env['dtsc.linebot'].search([("linebot_type","=","for_worker")], limit=1)
         specialleave_model = self.env['dtsc.specialleave']
         grantlog_model = self.env['dtsc.leavegrantlog']        
 
@@ -258,7 +300,7 @@ class Attendance(models.Model):
     
     @api.depends("in_status", "in_time")
     def _compute_in_status_show(self):
-        settingObj = self.env['dtsc.linebot'].search([], limit=1)
+        settingObj = self.env['dtsc.linebot'].search([("linebot_type","=","for_worker")], limit=1)
         tz = pytz.timezone("Asia/Taipei")
         for record in self:
             record.in_status_show = ""
@@ -298,7 +340,7 @@ class Attendance(models.Model):
     
     @api.depends("out_status", "out_time")
     def _compute_out_status_show(self):
-        settingObj = self.env['dtsc.linebot'].search([], limit=1)
+        settingObj = self.env['dtsc.linebot'].search([("linebot_type","=","for_worker")], limit=1)
         tz = pytz.timezone("Asia/Taipei")
         for record in self:
             record.out_status_show = ""
@@ -333,7 +375,7 @@ class Attendance(models.Model):
     
     @api.depends("lat_in", "lang_in","att_ip")
     def _compute_is_in_place(self):
-        settingObj = self.env['dtsc.linebot'].search([], limit=1)
+        settingObj = self.env['dtsc.linebot'].search([("linebot_type","=","for_worker")], limit=1)
         for record in self:
             record.is_in_place = 'wqy'  # 預設為「未啟用」            
 
@@ -385,7 +427,7 @@ class Attendance(models.Model):
     
     @api.depends("lat_out", "lang_out","att_ip_out")
     def _compute_is_out_place(self):
-        settingObj = self.env['dtsc.linebot'].search([], limit=1)
+        settingObj = self.env['dtsc.linebot'].search([("linebot_type","=","for_worker")], limit=1)
         for record in self:
             record.is_out_place = 'wqy'  # 注意這裡要用 is_out_place
 
@@ -453,7 +495,7 @@ class Attendance(models.Model):
     @api.depends("in_time")
     def _compute_in_status(self):
         for record in self:
-            time_range = self.env['dtsc.linebot'].search([], limit=1)
+            time_range = self.env['dtsc.linebot'].search([("linebot_type","=","for_worker")], limit=1)
             if time_range and time_range.start_time:
                 if record.name.in_time:
                     standard_time = datetime.strptime(record.name.in_time, '%H:%M').time()
@@ -495,7 +537,7 @@ class Attendance(models.Model):
     @api.depends("out_time")
     def _compute_out_status(self):
         for record in self:
-            time_range = self.env['dtsc.linebot'].search([], limit=1)
+            time_range = self.env['dtsc.linebot'].search([("linebot_type","=","for_worker")], limit=1)
             if time_range and time_range.end_time:
                 if record.name.out_time:
                     standard_time = datetime.strptime(record.name.out_time, '%H:%M').time()
@@ -538,7 +580,7 @@ class Attendance(models.Model):
     @api.depends("out_time")
     def _compute_out_status(self):
         for record in self:
-            time_range = self.env['dtsc.linebot'].search([], limit=1)
+            time_range = self.env['dtsc.linebot'].search([("linebot_type","=","for_worker")], limit=1)
             if time_range and time_range.end_time and record.out_time:
                 standard_time = datetime.strptime(time_range.end_time, '%H:%M').time()
                 user_tz = self.env.user.tz or 'UTC'  # 获取用户时区或默认为UTC
@@ -558,7 +600,7 @@ class Attendance(models.Model):
     @api.depends("in_time")
     def _compute_in_status(self):
         for record in self:
-            time_range = self.env['dtsc.linebot'].search([], limit=1)
+            time_range = self.env['dtsc.linebot'].search([("linebot_type","=","for_worker")], limit=1)
             if time_range and time_range.start_time and record.in_time:
                 standard_time = datetime.strptime(time_range.start_time, '%H:%M').time()
                 user_tz = self.env.user.tz or 'UTC'  # 获取用户时区或默认为UTC
@@ -731,6 +773,7 @@ class LineBot(models.Model):
     liff_url = fields.Char("LIFF ID 補卡")  
     liff_leave = fields.Char("LIFF ID 請假")  
     liff_sys = fields.Char("LIFF ID 後臺")  
+    liff_leave_confirm = fields.Char("LIFF 請假確認")
     liff_channel_id = fields.Char("LIFF channel ID")  # 存儲 LIFF ID
     liff_secret = fields.Char("LIFF secret")  # 存儲 LIFF 網址
     liff_access_token = fields.Char("LIFF Access Token")
@@ -809,8 +852,14 @@ class LineBot(models.Model):
     bj_day = fields.Integer(string="病假(小時/年)")
     sj_day = fields.Integer(string="事假(小時/年)")
     slj_day = fields.Integer(string="生理假(小時/年)")
-    jtzgj_day = fields.Integer(string="生理假(小時/年)")
+    jtzgj_day = fields.Integer(string="家庭照顧假(小時/年)")
     specialleave_ids = fields.One2many('dtsc.specialleave', 'linebot_id', string="特休假時間表")
+    
+    linebot_type = fields.Selection([
+        ('for_worker', '員工用'),
+        ('for_customer', '客戶用'),
+    ], string="類型")
+    
     
     def create_sys_liff(self):
         if not self.liff_channel_id or not self.liff_secret:
@@ -870,6 +919,35 @@ class LineBot(models.Model):
         else:
             return {"status": "error", "message": response.text}
     
+    def _create_single_liff_app(self, path, description):
+        domain = request.httprequest.host
+        liff_url = f"https://{domain}/{path}"
+
+        data = {
+            "view": {
+                "type": "tall",
+                "url": liff_url,
+            },
+            "description": description,
+            "features": {
+                "qrCode": True
+            },
+            "permanentLinkPattern": "concat",
+            "scope": ["profile"],
+            "botPrompt": "none"
+        }
+
+        headers = {
+            "Authorization": f"Bearer {self.liff_access_token}",
+            "Content-Type": "application/json"
+        }
+
+        response = requests.post("https://api.line.me/liff/v1/apps", headers=headers, json=data)
+        if response.status_code == 200:
+            return response.json().get("liffId")
+        else:
+            raise UserError(f"建立 {description} 頁面失敗：{response.text}")
+    
     def create_leave_liff(self):
         if not self.liff_channel_id or not self.liff_secret:
             raise UserError("需要填寫liff channel和id")
@@ -892,6 +970,8 @@ class LineBot(models.Model):
             access_token_data = response.json()
             liff_access_token = access_token_data.get("access_token")
             self.write({'liff_access_token': liff_access_token})
+            
+            confirm_liff_id = self._create_single_liff_app("liff_leave_confirm_page", "審核請假頁面")
             
             # Step 2: Create LIFF App
             create_liff_url = "https://api.line.me/liff/v1/apps"
@@ -920,7 +1000,8 @@ class LineBot(models.Model):
                 result = create_response.json()
                 liff_id = result.get("liffId")
                 self.write({
-                    'liff_leave': f"https://liff.line.me/{liff_id}?liffid={liff_id}" #用来存放查询的liffid
+                    'liff_leave': f"https://liff.line.me/{liff_id}?liffid={liff_id}", #用来存放查询的liffid
+                    'liff_leave_confirm': confirm_liff_id #用来存放查询的liffid
                 })
                 return {"status": "success", "message": "LIFF App created successfully", "liff_id": liff_id}
             else:

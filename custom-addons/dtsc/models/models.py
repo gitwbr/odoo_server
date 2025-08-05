@@ -189,11 +189,12 @@ class Billdate(models.TransientModel):
         # 計算應該的到期日
         # 如果計算出的日期是 5 號之前，則取當月 5 號
         # 如果計算出的日期是 5 號之後，則取下個月 5 號
-        if target_date.day <= 5:
-            pay_date_due = target_date.replace(day=5)
+        pay_due_date = self.env['ir.config_parameter'].sudo().get_param('dtsc.pay_due_date')
+        if target_date.day <= int(pay_due_date):
+            pay_date_due = target_date.replace(day=int(pay_due_date))
         else:
             # 如果超過5號，則設置為下個月5號
-            pay_date_due = (target_date + relativedelta(months=1)).replace(day=5)
+            pay_date_due = (target_date + relativedelta(months=1)).replace(day=int(pay_due_date))
 
         supp_bank_id = False
         if partner_id.bank_ids:
@@ -668,7 +669,7 @@ class PurchaseOrder(models.Model):
 
     def button_confirm_dtsc(self):
         access_token = ''
-        lineObj = self.env["dtsc.linebot"].sudo().search([], limit=1)
+        lineObj = self.env["dtsc.linebot"].sudo().search([("linebot_type","=","for_worker")], limit=1)
         if lineObj and lineObj.line_access_token:
             access_token = lineObj.line_access_token
             user_line_ids = self.env["dtsc.workqrcode"].search([("is_zg", "=", True)])
@@ -795,7 +796,7 @@ class PurchaseOrder(models.Model):
     
     def push_line_sign(self):
         access_token = ''
-        lineObj = self.env["dtsc.linebot"].sudo().search([], limit=1)
+        lineObj = self.env["dtsc.linebot"].sudo().search([("linebot_type","=","for_worker")], limit=1)
         if lineObj and lineObj.line_access_token:
             access_token = lineObj.line_access_token
             user_line_ids = self.env["dtsc.workqrcode"].search([("is_qh", "=", True)])
@@ -1317,7 +1318,8 @@ class AccountMove(models.Model):
 class DtscConfigSettings(models.TransientModel):
     _inherit = 'res.config.settings'
 
-    invoice_due_date = fields.Integer(string="賬單日")
+    invoice_due_date = fields.Integer(string="帳單日")
+    pay_due_date = fields.Integer(string="付款日")
     
     ftp_server = fields.Char("FTP地址")
     ftp_user = fields.Char("FTP用戶名")
@@ -1355,6 +1357,7 @@ class DtscConfigSettings(models.TransientModel):
         get_param = self.env['ir.config_parameter'].sudo().get_param
         res.update(
             invoice_due_date=get_param('dtsc.invoice_due_date', default='25'),
+            pay_due_date=get_param('dtsc.pay_due_date', default='5'),
             is_open_makein_qrcode=get_param('dtsc.is_open_makein_qrcode',default=True),
             is_open_full_checkoutorder=get_param('dtsc.is_open_full_checkoutorder',default=False),
             is_open_crm=get_param('dtsc.is_open_crm',default=False),
@@ -1371,6 +1374,7 @@ class DtscConfigSettings(models.TransientModel):
         super(DtscConfigSettings, self).set_values()
         set_param = self.env['ir.config_parameter'].sudo().set_param
         set_param('dtsc.invoice_due_date', self.invoice_due_date)
+        set_param('dtsc.pay_due_date', self.pay_due_date)
         set_param('dtsc.is_open_makein_qrcode', self.is_open_makein_qrcode)
         set_param('dtsc.is_open_full_checkoutorder', self.is_open_full_checkoutorder)
         set_param('dtsc.is_open_linebot', self.is_open_linebot)

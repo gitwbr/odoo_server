@@ -235,7 +235,7 @@
 					
 					
 					
-					<button name="in_re_check" type="object" class="oe_highlight" string="内部工單重發" attrs="{'invisible':['|',('is_open_full_checkoutorder','=',False),('checkout_order_state','not in',['producing'])]}" groups="dtsc.group_dtsc_mg" />
+					<button name="in_re_check" type="object" class="oe_highlight" string="内部工單重發" attrs="{'invisible':[('checkout_order_state','not in',['producing'])]}" groups="dtsc.group_dtsc_mg" />
 					<button name="out_re_check" type="object" class="oe_highlight" string="委外工單重發" attrs="{'invisible':[('checkout_order_state','not in',['producing'])]}" groups="dtsc.group_dtsc_mg" />
 					<button name="install_re_check" type="object" class="oe_highlight" string="生成施工單" attrs="{'invisible':[('checkout_order_state','not in',['producing','finished','price_review_done','receivable_assigned'])]}" groups="dtsc.group_dtsc_mg" />
 					<button name="chuhuo_re_check" type="object" class="oe_highlight" string="轉出貨單" confirm="確定發貨日期後點擊確定生成出貨單！" attrs="{'invisible':['|',('checkout_order_state','not in',['finished']),('is_delivery','!=',False)]}" groups="dtsc.group_dtsc_mg,dtsc.group_dtsc_sc" />

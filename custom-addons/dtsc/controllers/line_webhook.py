@@ -73,7 +73,7 @@ class LineBotController(http.Controller):
         tz = pytz.timezone("Asia/Taipei")
         start = tz.localize(start_dt)
         end = tz.localize(end_dt)
-        linebot = request.env["dtsc.linebot"].sudo().search([],limit=1)
+        linebot = request.env["dtsc.linebot"].sudo().search([("linebot_type","=","for_worker")],limit=1)
         try:
             if employee.in_time:
                 work_start = datetime.strptime(employee.in_time or "09:00", "%H:%M").time()
@@ -364,7 +364,7 @@ class LineBotController(http.Controller):
             ('work_date', '>=', today)
         ], limit=1)
         
-        lineObj = request.env["dtsc.linebot"].sudo().search([],limit=1)
+        lineObj = request.env["dtsc.linebot"].sudo().search([("linebot_type","=","for_worker")],limit=1)
         employee = request.env["dtsc.workqrcode"].sudo().search([("line_user_id","=",line_id)],limit=1)
         
         if not employee:
@@ -473,7 +473,7 @@ class LineBotController(http.Controller):
             message = f"{date_str} { '上班' if daka_type == 'in' else '下班' }打卡完成"
 
         # 發送 LINE 訊息
-        lineObj = request.env["dtsc.linebot"].sudo().search([], limit=1)
+        lineObj = request.env["dtsc.linebot"].sudo().search([("linebot_type","=","for_worker")], limit=1)
         if not lineObj or not lineObj.line_access_token:
             return False
         LINE_ACCESS_TOKEN = lineObj.line_access_token
@@ -493,7 +493,7 @@ class LineBotController(http.Controller):
     @http.route('/liff_checkin', type='http', auth="public", website=True)
     def liff_checkin(self, **kw):
         request.session.logout()
-        lineObj = request.env["dtsc.linebot"].sudo().search([], limit=1)
+        lineObj = request.env["dtsc.linebot"].sudo().search([("linebot_type","=","for_worker")], limit=1)
         if lineObj.use_type == "gps":
             return request.render("dtsc.liff_checkin_page")
         else:
@@ -514,7 +514,76 @@ class LineBotController(http.Controller):
         _logger.warning("##################")
         request.session.logout()
         return request.render("dtsc.liff_system_page")
+
+    #請假確認頁面    
+    @http.route('/liff_leave_confirm_page', type='http', auth="public", website=True)
+    def liff_leave_confirm_page(self, **kw):
+        return request.render("dtsc.liff_leave_confirm_page")
+    
+    
+    def get_user_display_name(self,user_id, access_token):
+        url = f"https://api.line.me/v2/bot/profile/{user_id}"
+        headers = {
+            "Authorization": f"Bearer {access_token}"
+        }
+        response = requests.get(url, headers=headers)
         
+        if response.status_code == 200:
+            profile = response.json()
+            display_name = profile.get('displayName', '')
+            return display_name
+        else:
+            return None
+    
+    @http.route('/line/webhook_for_partner', type='json', auth='public', methods=['POST'], csrf=False)
+    def line_webhook_for_partner(self, **kwargs):
+        # 获取请求头 & 请求体
+        signature = request.httprequest.headers.get("X-Line-Signature")  # LINE 发送的签名
+        body = request.httprequest.data  # 请求的原始 JSON 数据
+
+        # 校验请求是否合法
+        if not self.verify_signature_for_partner(body, signature):
+            return json.dumps({"status": "error", "message": "Invalid signature"}), 403
+        
+        # 解析 JSON 数据
+        data = json.loads(body.decode("utf-8"))
+        print(data)
+        events = data.get('events', [])
+
+        for event in events:
+            if event['type'] == 'message' and 'text' in event['message']:
+                user_id = event['source']['userId']
+                text = event['message']['text']
+                print(text)
+                # 处理打卡逻辑
+                if text.startswith("綁定"):
+                    print("in customer bangding")
+                    employee_raw = text.split("綁定")[1].strip()
+                    vat_name = re.sub(r"^[\s\+\-]+", "", employee_raw)
+                    print(f"VAT Name: '{vat_name}'") 
+                    partner = request.env["dtsc.vatlogin"].sudo().search([("vat", "=", "53421698")],limit = 1)
+                    print(partner)
+                    if partner:
+                        linepartner = request.env["dtsc.partnerlinebind"].sudo().search([("line_user_id", "=", user_id)])
+                        if not linepartner:
+                            lineObj = request.env["dtsc.linebot"].sudo().search([("linebot_type","=","for_customer")],limit=1)
+                            display_name = self.get_user_display_name(user_id, lineObj.line_access_token)
+                            print(display_name)
+
+                            request.env["dtsc.partnerlinebind"].sudo().create({
+                                "name":display_name,
+                                "line_user_id":user_id,
+                                "partner_id": partner.partner_id.id,
+                            })
+                            
+                            reply_message = "綁定成功， LINE 帳戶已與客戶名稱 " + partner.partner_id.name + " 綁定！請聯係管理員激活！"
+                        else:
+                            reply_message = "您已與 " + partner.partner_id.name +" 綁定，請聯係管理員！"
+                    else:
+                        reply_message = "請按格式輸入 綁定+統編進行綁定！"
+                    self.reply_to_line_for_customer(user_id, reply_message)
+        return json.dumps({"status": "ok"})
+    
     @http.route('/line/webhook', type='json', auth='public', methods=['POST'], csrf=False)
     def line_webhook(self, **kwargs):
         """ 处理来自 LINE Bot 的 Webhook，请求校验 """
@@ -744,9 +813,19 @@ class LineBotController(http.Controller):
 
         return json.dumps({"status": "ok"})
 
+    def verify_signature_for_partner(self, body, signature):
+        """ 校验 LINE Webhook 请求的合法性 """
+        lineObj = request.env["dtsc.linebot"].sudo().search([("linebot_type","=","for_customer")],limit=1)
+        if not lineObj or not lineObj.line_channel_secret:
+            return False
+        LINE_CHANNEL_SECRET = lineObj.line_channel_secret
+        hash_value = hmac.new(LINE_CHANNEL_SECRET.encode('utf-8'), body, hashlib.sha256).digest()
+        expected_signature = base64.b64encode(hash_value).decode('utf-8')
+        return hmac.compare_digest(expected_signature, signature)
+
     def verify_signature(self, body, signature):
         """ 校验 LINE Webhook 请求的合法性 """
-        lineObj = request.env["dtsc.linebot"].sudo().search([],limit=1)
+        lineObj = request.env["dtsc.linebot"].sudo().search([("linebot_type","=","for_worker")],limit=1)
         if not lineObj or not lineObj.line_channel_secret:
             return False
         LINE_CHANNEL_SECRET = lineObj.line_channel_secret
@@ -767,7 +846,7 @@ class LineBotController(http.Controller):
         
     def reply_message(self, user_id, message):
         """ 发送消息给 LINE 用户 """
-        lineObj = request.env["dtsc.linebot"].sudo().search([],limit=1)
+        lineObj = request.env["dtsc.linebot"].sudo().search([("linebot_type","=","for_worker")],limit=1)
         if not lineObj or not lineObj.line_access_token:
             return False
         LINE_ACCESS_TOKEN = lineObj.line_access_token
@@ -778,9 +857,25 @@ class LineBotController(http.Controller):
         }
         requests.post("https://api.line.me/v2/bot/message/push", headers=headers, json=data)
 
+    def reply_to_line_for_customer(self, user_id, message):
+        """ 發送回覆給 LINE 使用者 """
+        lineObj = request.env["dtsc.linebot"].sudo().search([("linebot_type","=","for_customer")],limit=1)
+        if not lineObj or not lineObj.line_access_token:
+            return False
+        LINE_ACCESS_TOKEN = lineObj.line_access_token
+        headers = {
+            "Authorization": f"Bearer {LINE_ACCESS_TOKEN}",
+            "Content-Type": "application/json"
+        }
+        data = {
+            "to": user_id,
+            "messages": [{"type": "text", "text": message}]
+        }
+        requests.post("https://api.line.me/v2/bot/message/push", headers=headers, json=data)
+        
     def reply_to_line(self, user_id, message):
         """ 發送回覆給 LINE 使用者 """
-        lineObj = request.env["dtsc.linebot"].sudo().search([],limit=1)
+        lineObj = request.env["dtsc.linebot"].sudo().search([("linebot_type","=","for_worker")],limit=1)
         if not lineObj or not lineObj.line_access_token:
             return False
         LINE_ACCESS_TOKEN = lineObj.line_access_token
@@ -825,7 +920,7 @@ class LineBotController(http.Controller):
             return leave_key, new_leave
             
     def send_daka_flex(self,user_id):
-        lineObj = request.env["dtsc.linebot"].sudo().search([], limit=1)
+        lineObj = request.env["dtsc.linebot"].sudo().search([("linebot_type","=","for_worker")], limit=1)
         if not lineObj or not lineObj.line_access_token:
             return False
         LINE_ACCESS_TOKEN = lineObj.line_access_token
@@ -899,7 +994,7 @@ class LineBotController(http.Controller):
         
     def send_leave_flex(self, user_id, leave_key):
         """ 發送請假用 Flex Message（含選類型 + 選時間），全部帶上 leave_key """
-        lineObj = request.env["dtsc.linebot"].sudo().search([], limit=1)
+        lineObj = request.env["dtsc.linebot"].sudo().search([("linebot_type","=","for_worker")], limit=1)
         if not lineObj or not lineObj.line_access_token:
             return False
         LINE_ACCESS_TOKEN = lineObj.line_access_token
@@ -1069,7 +1164,7 @@ class LineBotController(http.Controller):
             _logger.warning(f"找不到符合條件的請假單: user_id={user_id}, leave_key={leave_key}")
             
     def confirm_buka(self,buka_id,mode,user_id,buka_type):        
-        lineObj = request.env["dtsc.linebot"].sudo().search([], limit=1)
+        lineObj = request.env["dtsc.linebot"].sudo().search([("linebot_type","=","for_worker")], limit=1)
         if not lineObj or not lineObj.line_access_token:
             return False
         LINE_ACCESS_TOKEN = lineObj.line_access_token
@@ -1135,7 +1230,7 @@ class LineBotController(http.Controller):
     def confirm_leave(self,leave_id,mode,user_id):
         leave = request.env['dtsc.leave'].sudo().browse(int(leave_id))
         
-        lineObj = request.env["dtsc.linebot"].sudo().search([], limit=1)
+        lineObj = request.env["dtsc.linebot"].sudo().search([("linebot_type","=","for_worker")], limit=1)
         if not lineObj or not lineObj.line_access_token:
             return False
         LINE_ACCESS_TOKEN = lineObj.line_access_token
@@ -1143,10 +1238,20 @@ class LineBotController(http.Controller):
             alttext = "確認同意請假"
             textmsg = "你確定要同意這張請假單嗎？"
             postdata = f"action=approve_leave&leave_id={leave.id}"
+            confirm_action = {
+                "type": "postback",
+                "label": "確定",
+                "data": postdata
+              }
         else:
             alttext = "確認拒絕請假"
             textmsg = "你確定要拒絕這張請假單嗎？"
             postdata = f"action=reject_leave&leave_id={leave.id}"
+            confirm_action = {
+                "type": "uri",
+                "label": "確定",
+                "uri": f"https://liff.line.me/{lineObj.liff_leave_confirm}?liffid={lineObj.liff_leave_confirm}&leave_id={leave.id}"
+              }
         domain = request.httprequest.host
         headers = {
             "Authorization": f"Bearer {LINE_ACCESS_TOKEN}",
@@ -1168,13 +1273,7 @@ class LineBotController(http.Controller):
                   "contents": [
                     {
                       "type": "button",
-                      "action": {
-                        # "type": "postback",
-                        "type": "uri",
-                        "label": "確定",
-                        # "data": postdata
-                        "uri": f"https://liff.line.me/{lineObj.liff_leave_confirm}?liffid={lineObj.liff_leave_confirm}&leave_id={leave.id}"
-                      },
+                      "action": confirm_action,
                       "style": "primary",
                       "color": "#00C300"
                     },
@@ -1220,7 +1319,7 @@ class LineBotController(http.Controller):
         # 取得請假人姓名、請假類型
         employee_name = recordObj.employee_id.name or "未知"
 
-        lineObj = request.env["dtsc.linebot"].sudo().search([], limit=1)
+        lineObj = request.env["dtsc.linebot"].sudo().search([("linebot_type","=","for_worker")], limit=1)
         if not lineObj or not lineObj.line_access_token:
             return False
         LINE_ACCESS_TOKEN = lineObj.line_access_token
@@ -1311,7 +1410,7 @@ class LineBotController(http.Controller):
             buka_type = "下班補卡"
             
 
-        lineObj = request.env["dtsc.linebot"].sudo().search([], limit=1)
+        lineObj = request.env["dtsc.linebot"].sudo().search([("linebot_type","=","for_worker")], limit=1)
         if not lineObj or not lineObj.line_access_token:
             return False
         LINE_ACCESS_TOKEN = lineObj.line_access_token
@@ -1394,7 +1493,7 @@ class LineBotController(http.Controller):
         employee_name = leave.employee_id.name or "未知"
         leave_type = dict(leave._fields['leave_type'].selection).get(leave.leave_type, '未知')
 
-        lineObj = request.env["dtsc.linebot"].sudo().search([], limit=1)
+        lineObj = request.env["dtsc.linebot"].sudo().search([("linebot_type","=","for_worker")], limit=1)
         if not lineObj or not lineObj.line_access_token:
             return False
         LINE_ACCESS_TOKEN = lineObj.line_access_token

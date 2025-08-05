@@ -29,7 +29,7 @@ if [ $# -lt 8 ]; then
     print_error "使用方法: $0 <DB容器名> <Web容器名> <数据库名> <数据库用户名> <数据库密码> <数据库备份文件路径> <filestore源目录> <filestore目标目录> [--filestore-only]"
     print_info "示例: $0 odoo16-db2-1 odoo16-web2-1 default odoo2 odoo2 ./backup/DB/default.dump.gz ./backup/DB/filestore_default ./client2/data/filestore/default"
     print_info "示例: $0 odoo16-db2-1 odoo16-web2-1 default odoo2 odoo2 ./instances/client103/backup/default_20250615_171041.dump.gz ./instances/client103/data/filestore/default ./client2/data/filestore/default"
-    print_info "示例: $0 client131-db131-1 client131-web131-1 default odoo131 odoo131 ./instances/client103/backup/default_20250710_145023.dump.gz ./instances/client103/data/filestore/default ./instances/client131/data/filestore/default "
+    print_info "示例: $0 client135-db135-1 client135-web135-1 default odoo135 odoo135 ./instances/client104/backup/default_20250730_111758.dump.gz ./instances/client104/data/filestore/default ./instances/client135/data/filestore/default"
     print_info "示例(只恢复filestore): $0 odoo16-db2-1 odoo16-web2-1 default odoo2 odoo2 ./dummy.dump.gz ./backup/DB/filestore_default ./client2/data/filestore/default --filestore-only"
     exit 1
 fi

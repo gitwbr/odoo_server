@@ -65,7 +65,7 @@ class YklComment(models.Model):
                 if record.hou == "0":
                     record.name = record.color
                 else:
-                    record.name = record.color+record.hou+"mm"
+                    record.name = f"{record.color}{('%g' % record.hou)}mm"
             else:
                 record.name = ""
                 

@@ -332,6 +332,10 @@
 								<label for="invoice_due_date" string="帳單日："/>
                                 <field name="invoice_due_date"/>
 							</div>
+                            <div class="col-12 col-lg-6 o_setting_box">
+								<label for="pay_due_date" string="付款日："/>
+                                <field name="pay_due_date"/>
+							</div>
                             <div class="col-12 col-lg-6 o_setting_box">	
 								<label for="ftp_server" string="FTP地址："/>
                                 <field name="ftp_server"/>

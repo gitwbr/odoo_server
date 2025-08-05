@@ -1,4 +1,116 @@
 <odoo>
+	<template id="liff_leave_confirm_page" name="請假審核理由填寫">
+		<script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+	  <style>
+		body {
+		  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+		  background-color: #f9f9f9;
+		  color: #333;
+		  font-size: 20px;
+		  padding: 16px;
+		  line-height: 1.6;
+		}
+		h2 {
+		  color: #FF5551;
+		  font-size: 36px;
+		  font-weight: bold;
+		  margin-bottom: 36px;
+		  text-align: center;
+		}
+		.form-label {
+		  font-size: 22px;
+		  color: #333;
+		}
+		textarea {
+		  font-size: 20px;
+		  padding: 16px;
+		  border: 1px solid #ccc;
+		  border-radius: 10px;
+		  width: 100%;
+		  box-sizing: border-box;
+		}
+		.line-red-btn {
+		  background-color: #FF5551;
+		  color: white;
+		  border: none;
+		  padding: 20px 40px;
+		  font-size: 24px;
+		  border-radius: 12px;
+		  transition: background-color 0.3s ease;
+		  cursor: pointer;
+		  display: block;
+		  margin: 30px auto 0 auto;
+		}
+		.line-red-btn:hover {
+		  background-color: #cc0000;
+		}
+	  </style>
+
+	  <div class="container mt-5">
+		<h2>填寫拒絕理由</h2>
+		<div>
+		  <label for="reject_reason" class="form-label">請填寫拒絕理由：</label>
+		  <textarea id="reject_reason" rows="5" placeholder="請輸入拒絕原因..."></textarea>
+		  <button class="line-red-btn" id="submit_btn">確定送出</button>
+		</div>
+	  </div>
+
+	  <script>
+		document.addEventListener("DOMContentLoaded", function () {
+		  const queryString = window.location.search;
+
+			const decodedQueryString = decodeURIComponent(queryString);
+			const regexleave_id = /leave_id=([a-zA-Z0-9\-]+)/
+			let leaveIdddd = decodedQueryString.match(regexleave_id);
+			const leaveId = leaveIdddd[1]
+			<!-- alert(leaveId) -->
+			  if (!leaveId) {
+				alert("找不到請假單 ID");
+				return;
+			  }
+			const regex = /liffid=([a-zA-Z0-9\-]+)/; // Matches 'liffid=' followed by any alphanumeric or dash
+			const match = decodedQueryString.match(regex);
+			const liffId = match[1];
+			<!-- alert(liffId) -->
+			<!-- alert(leaveId) -->
+		  liff.init({ liffId: liffId }).then(() => {
+			  document.getElementById("submit_btn").addEventListener("click", function () {
+				let reason = document.getElementById("reject_reason").value.trim();
+				if (!reason) {
+					alert("請填寫理由後再送出！");
+					return;
+				}
+
+				liff.getProfile().then(function (profile) {
+					
+				//alert(liffId)
+					<!-- alert(leaveId) -->
+					<!-- alert(reason) -->
+					<!-- alert(profile.userId) -->
+					fetch("/leave/reject_reason", {
+					method: "POST",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify({
+					  leave_id: leaveId,
+					  reject_reason: reason,
+					  line_id: profile.userId
+					})
+					})
+					.then(res => res.json())
+					.then(data => {
+						alert(data.message || "✅ 已送出！");
+						liff.closeWindow();
+					})
+					.catch(err => {
+						console.error(err);
+						alert("❌ 發送失敗，請稍後再試");
+					});
+				});
+			  });
+			});
+		});
+	  </script>
+	</template>
 	<template id="liff_system_page" name="管理系统">
 		<script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 		<style>
@@ -677,7 +789,7 @@
 				<h3 style="text-align:center; margin-bottom:16px;">補卡資訊</h3>
 				
 				<label style="font-size:18px;">補卡類型：</label>
-				<select id="fixType" style="width:100%; padding:10px; font-size:18px; margin-bottom:16px;">
+				<select id="fixType" style="width:100%; padding:10px; font-size:18px; margin-bottom:16px;" disabled="disabled">
 					<option value="in">上班</option>
 					<option value="out">下班</option>
 				</select>
@@ -850,6 +962,9 @@
 					document.addEventListener("click", function (e) {
 						if (e.target.classList.contains("fix-btn")) {
 							const rowIndex = e.target.getAttribute("data-index");
+							const fixType = e.target.getAttribute("data-type");
+							
+							document.getElementById("fixType").value = fixType;
 							document.getElementById("fixModal").style.display = "flex";
 							document.getElementById("submitFixBtn").setAttribute("data-index", rowIndex);
 						}
@@ -1224,15 +1339,15 @@
 	<record id="search_attendance" model="ir.ui.view">
 		<field name="name">dtsc.attendance.attendance</field>
 		<field name="model">dtsc.attendance</field>
-		<field name="type">search</field>
 		<field name="arch" type="xml">
 			<search>
-				
 				<searchpanel>
-					<field name="name" string="員工"/>
-					<field name="report_year" string="年"  select="multi"/>
-					<field name="report_month" string="月" context="{'group_by': 'report_year'}" select="multi"/>
-				</searchpanel>
+                    <field name="name" string="員工"/>
+                    <field name="report_year" string="年"  select="multi"/>
+                    <field name="report_month" string="月" context="{'group_by': 'report_year'}" select="multi"/>
+                </searchpanel>
+				
+				
 				<filter string="日期分組" name="group_by_work_date" domain="[]" context="{'group_by': 'work_date'}"/>       
 				<filter string="員工分組" name="group_by_work_employee" domain="[]" context="{'group_by': 'work_date'}"/>       
 			</search>
@@ -1246,6 +1361,7 @@
 				<field name="name" />
 				<field name="line_channel_secret" />
 				<field name="line_access_token" />
+				<field name="linebot_type" />
 				<field name="image_qrcode" widget="image" class="w200"/>
             </tree>
         </field>
@@ -1274,14 +1390,16 @@
 					</div>
 					<group col="12" string="基礎設定">
 						<group colspan="6">
+							<field name="linebot_type" />
 							<field name="menu_id" readonly="1"/>
-							<field name="liff_id" readonly="1"/>
-							<field name="liff_url" readonly="1"/>
-							<field name="liff_leave" readonly="1"/>
-							<field name="liff_sys" readonly="1"/>
-							<field name="liff_access_token" readonly="1"/>
-							<field name="liff_channel_id"/>
-							<field name="liff_secret"/>
+							<field name="liff_id" readonly="1" attrs="{'invisible':[('linebot_type','=','for_customer')]}"/>
+							<field name="liff_url" readonly="1" attrs="{'invisible':[('linebot_type','=','for_customer')]}"/>
+							<field name="liff_leave" readonly="1" attrs="{'invisible':[('linebot_type','=','for_customer')]}"/>
+							<field name="liff_sys" readonly="1" attrs="{'invisible':[('linebot_type','=','for_customer')]}"/>
+							<field name="liff_leave_confirm" readonly="1" attrs="{'invisible':[('linebot_type','=','for_customer')]}"/>
+							<field name="liff_access_token" readonly="1" attrs="{'invisible':[('linebot_type','=','for_customer')]}"/>
+							<field name="liff_channel_id" attrs="{'invisible':[('linebot_type','=','for_customer')]}"/>
+							<field name="liff_secret" attrs="{'invisible':[('linebot_type','=','for_customer')]}"/>
 							<field name="line_channel_secret" />
 							<field name="line_access_token" />
 						</group>
@@ -1290,7 +1408,7 @@
 							<field name="image"  widget="image" class="w200"/>
 						</group>
 					</group>						
-					<group col="12">
+					<group col="12" attrs="{'invisible':[('linebot_type','=','for_customer')]}">
 						<group colspan="4">
 							<!-- <field name="is_tanxing"/> -->
 							<!-- <field name="work_time"/> -->
@@ -1304,7 +1422,7 @@
 						</group>
 					</group>						
 							
-					<group col="12" string="打卡點設定">
+					<group col="12" string="打卡點設定" attrs="{'invisible':[('linebot_type','=','for_customer')]}">
 						<group colspan="12">
 						<field name="location_ids">
 							<tree editable="bottom">
@@ -1317,7 +1435,7 @@
 						</group>
 					</group>
 							
-					<group col="12" string="打卡IP設定">
+					<group col="12" string="打卡IP設定" attrs="{'invisible':[('linebot_type','=','for_customer')]}">
 						<group colspan="12">
 						<field name="linebotip_ids">
 							<tree editable="bottom">
@@ -1355,7 +1473,7 @@
 						
 					</group>
 					
-					<group col="12" string="請假時效表">
+					<group col="12" string="請假時效表" attrs="{'invisible':[('linebot_type','=','for_customer')]}">
 							<group colspan="6">
 								<field name="bj_day" />
 								<field name="sj_day" />
@@ -1393,6 +1511,7 @@
 				<field name="leave_hours" />
 				<field name="leave_type" />				
 				<field name="reason" />
+				<field name="reject_reason" />
 				<field name="leave_file" widget="image" />
 				<field name="state" />
             </tree>

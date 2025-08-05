@@ -65,13 +65,14 @@
 				<xpath expr="//header" position="inside">
 					<!-- 添加确认按钮，仅在"待確認"状态下显示 -->
 					<field name="related_checkout_id" invisible="1" />
+					<field name="crm_lead_id" invisible="1" />
 					<button name="action_confirm_to_draft"
 							string="訂單成立"
 							type="object"
 							class="oe_highlight"
 							attrs="{'invisible': ['|',('related_checkout_id', '!=', False),('checkout_order_state', '!=', 'waiting_confirmation')]}"/>
 					
-					<button name="go_datu" type="object" class="oe_highlight" string="查看關聯大圖訂單" attrs="{'invisible': [('related_checkout_id', '=', False)]}" />		
+					<button name="go_datu" type="object" class="oe_highlight" string="查看關聯大圖訂單" attrs="{'invisible': ['|',('related_checkout_id', '=', False),('crm_lead_id','=',False)]}" />	
 					<button name="action_copy_checkout"
 							string="複製"
 							type="object"

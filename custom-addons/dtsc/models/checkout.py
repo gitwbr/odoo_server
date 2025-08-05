@@ -19,6 +19,7 @@ import json
 import hashlib
 _logger = logging.getLogger(__name__)
 from odoo.http import request 
+from odoo.tools import config
 class Department(models.Model):
     _name = 'dtsc.department'
     
@@ -51,6 +52,7 @@ class DelDelreason(models.TransientModel):
             
         record.write({"checkout_order_state":"cancel"})
         record.write({"del_reason":self.del_reason})
+        record.related_checkout_id.write({"related_checkout_id":False})
 
 class yingShouDate(models.TransientModel):
     _name = 'dtsc.yinshoudate'
@@ -95,6 +97,115 @@ class YourWizard(models.TransientModel):
 
     selected_date = fields.Datetime(string='出貨日期')
     
+    def send_push_status_flex(self,partner_id,checkout_id):
+        lineObj = request.env["dtsc.linebot"].sudo().search([("linebot_type","=","for_customer")], limit=1)
+        if not lineObj or not lineObj.line_access_token:
+            return False
+        LINE_ACCESS_TOKEN = lineObj.line_access_token
+        
+        
+            
+        headers = {
+            "Authorization": f"Bearer {LINE_ACCESS_TOKEN}",
+            "Content-Type": "application/json"
+        }
+        
+        flex_message = {
+            "type": "flex",
+            "altText": "您的訂單狀態更新",
+            "contents": {
+                "type": "bubble",
+                "body": {
+                    "type": "box",
+                    "layout": "vertical",
+                    "contents": [
+                        {
+                            "type": "text",
+                            "text": partner_id.name,
+                            "weight": "bold",
+                            "size": "xl",
+                            "align": "center",
+                            "margin": "md"
+                        },
+                        {
+                            "type": "box",
+                            "layout": "horizontal",
+                            "contents": [
+                                {
+                                    "type": "text",
+                                    "text": "訂單號",
+                                    "size": "sm",
+                                    "color": "#333333",
+                                    "flex": 1
+                                },
+                                {
+                                    "type": "text",
+                                    "text": checkout_id.name,
+                                    "size": "sm",
+                                    "align": "end",
+                                    "color": "#4CAF50",
+                                    "weight": "bold"
+                                }
+                            ]
+                        },
+                        {
+                            "type": "box",
+                            "layout": "horizontal",
+                            "contents": [
+                                {
+                                    "type": "text",
+                                    "text": "訂單狀態",
+                                    "size": "sm",
+                                    "color": "#333333",
+                                    "flex": 1
+                                },
+                                {
+                                    "type": "text",
+                                    "text": "已出貨",
+                                    "size": "sm",
+                                    "align": "end",
+                                    "color": "#4CAF50",
+                                    "weight": "bold"
+                                }
+                            ]
+                        },
+                        {
+                            "type": "box",
+                            "layout": "horizontal",
+                            "contents": [
+                                {
+                                    "type": "text",
+                                    "text": "案名",
+                                    "size": "sm",
+                                    "color": "#333333",
+                                    "flex": 1
+                                },
+                                {
+                                    "type": "text",
+                                    "text": checkout_id.project_name,
+                                    "size": "sm",
+                                    "wrap": True,  # 允许换行
+                                    "align": "start",  # 左对齐
+                                    "color": "#4CAF50",
+                                    "weight": "bold"
+                                }
+                            ]
+                        }
+                    ]
+                }
+            }
+        }
+        
+        for user in partner_id.partnerlinebind_ids:
+            if user.is_active:
+                data = {
+                    "to": user.line_user_id,
+                    "messages": [flex_message]
+                }
+
+                requests.post("https://api.line.me/v2/bot/message/push", headers=headers, json=data)
+    
+    
     def action_confirm(self):
         active_ids = self._context.get('active_ids')
         # print(active_ids)
@@ -138,6 +249,7 @@ class YourWizard(models.TransientModel):
             checkout_ids.append(record.id)
             record.is_delivery = True
             record.delivery_order = new_name
+            # record.estimated_date = self.selected_date
             if combined_comments:
                 if record.comment:
                     combined_comments += "/" + record.comment
@@ -179,6 +291,10 @@ class YourWizard(models.TransientModel):
             'comment' : combined_comments,
             'project_name' : project_name,        
         }) 
+        
+        for record in records:  
+            self.send_push_status_flex(record.customer_id,record)
+            
         return {
             'type': 'ir.actions.act_window',
             'name': '出貨單',
@@ -335,7 +451,7 @@ class Checkout(models.Model):
     @api.depends()
     def _compute_is_open_full_checkoutorder(self):
         for record in self:
-            record.is_open_full_checkoutorder = self.env['ir.config_parameter'].sudo().get_param('dtsc.is_open_full_checkoutorder')
+            record.is_open_full_checkoutorder = config.get('is_open_full_checkoutorder')
     
     def _inverse_estimated_date(self):
         for record in self:
@@ -884,7 +1000,7 @@ class Checkout(models.Model):
             else:
                 tax_ids = [] 
             
-            install_product_product_obj = self.env["product.product"].search([('name',"=","施工費")], limit=1)
+            install_product_product_obj = self.env["product.product"].search([('name',"=","施工費用")], limit=1)
             
             for install_line in record.installproduct_ids:
                 if install_line.install_state == "cancel":

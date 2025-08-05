@@ -288,6 +288,7 @@ class CheckoutInherit(models.Model):
                 line_data = line.copy_data()[0]
                 line_data.pop('id', None)
                 line_data['checkout_product_id'] = new_checkout.id
+                line_data['sequence'] = line.sequence
                 product_atts_ids = line.product_atts.ids  # 如果是 One2many 就改成 line.product_atts.copy_data()
                 line_data.pop('product_atts', None)
                 # 建立新的 checkoutline
@@ -392,6 +393,7 @@ class CheckoutInherit(models.Model):
             # self.env.cr.execute(query, (datetime.now(), new_checkout.id))
             # self.env.cr.commit()
             record.related_checkout_id = new_checkout.id
+            new_checkout.related_checkout_id = record.id
             new_checkout.crm_lead_id = False
             
             new_checkout.checkoutcomment_ids.unlink()

@@ -214,7 +214,7 @@ class Performance(models.Model):
                 qk_num = len(set(att.work_date for att in attendances if att.in_status == 'qk' or att.out_status == 'qk'))
                 #計算餐補
                 taiwan_tz = pytz.timezone("Asia/Taipei")
-                linebot = self.env["dtsc.linebot"].sudo().search([],limit=1)
+                linebot = self.env["dtsc.linebot"].sudo().search([("linebot_type","=","for_worker")],limit=1)
                 meal_allowance_given = 0
                 hsjt = 0
                 for attendance in attendances:
