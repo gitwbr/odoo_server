@@ -388,6 +388,9 @@ odoo.define('dtsc.public_web_order', function (require) {
                 var file = $fileInput[0].files[0];
 
                 if (file) {
+                    // 生成新的文件名
+                    var newFileName = this.generateCustomFileName($table, file);
+                    debugLog('分片上传生成的自定义文件名:', newFileName);
                     var chunkSize = 100 * 1024 * 1024; // 分片大小，例如 100MB
                     var totalChunks = Math.ceil(file.size / chunkSize);
 
@@ -399,7 +402,7 @@ odoo.define('dtsc.public_web_order', function (require) {
                         var chunk = file.slice(start, end);
 
                         try {
-                            let response = await this.uploadChunk(chunk, index, totalChunks, fileName, folder, file_extension);
+                            let response = await this.uploadChunk(chunk, index, totalChunks, newFileName, folder, file_extension);
                             if (!response.success) {
                                 throw new Error(response.message || 'Upload failed');
                             }
@@ -445,6 +448,69 @@ odoo.define('dtsc.public_web_order', function (require) {
             });
         },
 
+        generateCustomFileName: function($table, file) {
+            // 檔案名稱-材質-屬性1-屬性2...屬性n-寬x高x數量.擴展名
+            var parts = [];
+            
+            // 1. 檔案名稱
+            var fileName = $table.find('#project_product_name').val();
+            if (fileName && fileName.trim()) {
+                parts.push(fileName.trim());
+            } else {
+                parts.push('unnamed');
+            }
+            
+            // 2. 材質 (產品模板名稱)
+            var materialName = $table.find('.product_category_2 option:selected').text();
+            if (materialName && materialName !== ' -- 請選擇產品模板 -- ' && !materialName.includes('請選擇')) {
+                parts.push(materialName.trim());
+            }
+            
+            // 3. 所有屬性值（按照select順序）
+            $table.find('select.product_variant').each(function() {
+                var selectedText = $(this).find('option:selected').text();
+                if (selectedText && selectedText !== '無' && !selectedText.includes('請選擇') && selectedText.trim()) {
+                    parts.push(selectedText.trim());
+                }
+            });
+            
+            // 4. 尺寸和數量
+            var width = $table.find('#param1').val();
+            var height = $table.find('#param2').val();
+            var quantity = $table.find('#quantity').val();
+            
+            if (width && height && quantity) {
+                parts.push(`${width}x${height}x${quantity}`);
+            }
+            
+            // 5. 獲取原始文件擴展名
+            var originalName = file.name;
+            var extension = '';
+            if (originalName && originalName.includes('.')) {
+                extension = originalName.substring(originalName.lastIndexOf('.'));
+            } else {
+                extension = '.unknown';
+            }
+            
+            // 組合文件名
+            var customFileName = parts.join('-') + extension;
+            
+            // 清理文件名中的特殊字符，替換為下劃線
+            customFileName = customFileName.replace(/[<>:"/\\|?*\s]/g, '_');
+            
+            // 避免文件名過長
+            if (customFileName.length > 200) {
+                var nameWithoutExt = customFileName.substring(0, customFileName.lastIndexOf('.'));
+                nameWithoutExt = nameWithoutExt.substring(0, 200 - extension.length);
+                customFileName = nameWithoutExt + extension;
+            }
+            
+            debugLog('生成的文件名各部分:', parts);
+            debugLog('最終文件名:', customFileName);
+            
+            return customFileName;
+        },
+
         uploadFile: function($table) {
             /* return new Promise((resolve, reject) => {
                 resolve('mock_uploaded_file.pdf'); // 模拟文件名
@@ -458,6 +524,9 @@ odoo.define('dtsc.public_web_order', function (require) {
 				var fileName_original = file ? file.name : "";  // 使用文件的原始名称
 
                 if (file) {
+                    // 生成新的文件名：檔案名稱-材質-屬性1-屬性2...屬性n-寬x高x數量
+                    var newFileName = this.generateCustomFileName($table, file);
+                    debugLog('生成的自定义文件名:', newFileName);
                     // 新的文件名格式校验和栏位比对
                     // 文件名格式：案件摘要-檔名-寬x高cmx數量.xxx
                     // 允许x、×、*，cm可有可无
@@ -501,7 +570,7 @@ odoo.define('dtsc.public_web_order', function (require) {
 
                     var formData = new FormData();
                     formData.append('custom_file', file);
-                    formData.append('filename', fileName);
+                    formData.append('filename', newFileName);
                     formData.append('fileName_original', fileName_original);
                     formData.append('folder', folder);
 

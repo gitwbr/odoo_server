@@ -309,6 +309,16 @@ class DtscDateLabel(models.Model):
     _description = 'Dtsc Date Label'
 
     name = fields.Char(string='日期範圍', required=True)
+
+class CheckoutOrderStateHistory(models.Model):
+    _name = 'dtsc.checkoutstatehistory'
+    _description = "訂單狀態變更記錄"
+
+    checkout_id = fields.Many2one('dtsc.checkout', string="訂單")
+    old_state = fields.Char(string="原狀態")
+    new_state = fields.Char(string="新狀態")
+    user_id = fields.Many2one('res.users', string="操作人")
+    change_date = fields.Datetime(string="變更時間", default=fields.Datetime.now)
     
 class Checkout(models.Model):
 
@@ -351,8 +361,10 @@ class Checkout(models.Model):
     
     
     product_ids = fields.One2many("dtsc.checkoutline","checkout_product_id",limit=100)
-    product_check_ids = fields.One2many("dtsc.purchasecheck","purchase_product_id") 
+    product_check_ids = fields.One2many("dtsc.purchasecheck","purchase_product_id")     
     
+    checkoutstatehistory_ids = fields.One2many("dtsc.checkoutstatehistory","checkout_id") 
+
     payment_first = fields.Boolean("先收款再製作")
     is_invisible = fields.Boolean(string="是否隐藏", default=False)
     create_id = fields.Many2one('res.users',string="創建者", default=lambda self: self.env.user)
@@ -428,6 +440,16 @@ class Checkout(models.Model):
                     vals["name"] = "F" + name[1:]
                 elif not is_dayang and name.startswith("F"):
                     vals["name"] = "A" + name[1:]
+            
+            if 'checkout_order_state' in vals:
+                selection_dict = dict(self.fields_get(['checkout_order_state'])['checkout_order_state']['selection'])
+
+                self.env['dtsc.checkoutstatehistory'].create({
+                    'checkout_id': rec.id,
+                    'old_state': selection_dict.get(rec.checkout_order_state, rec.checkout_order_state),
+                    'new_state': selection_dict.get(vals['checkout_order_state'], vals['checkout_order_state']),
+                    'user_id': self.env.user.id
+                })
         return super().write(vals)
     
     @api.onchange('is_dayang')

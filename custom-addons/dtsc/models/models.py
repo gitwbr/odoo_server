@@ -1422,9 +1422,9 @@ class IrUiMenu(models.Model):
         self._get_visibility_on_config_parameter('dtsc.wngd', 'is_pro')#製作物 
         self._get_visibility_on_config_parameter('dtsc.menu_work_time', 'is_pro')#员工绩效 
         self._get_visibility_on_config_parameter('dtsc.yinshou_id', 'is_pro')#应收子目录 
-        self._get_visibility_on_config_parameter('dtsc.menu_performance', 'is_pro')#薪资表
-        self._get_visibility_on_config_parameter('dtsc.menu_salary_setting', 'is_pro')#薪资表 
-        self._get_visibility_on_config_parameter('dtsc.menu_jl_setting', 'is_pro')#薪资表 
+        self._get_visibility_on_config_parameter('dtsc.menu_performance', 'is_open_linebot')#薪资表
+        self._get_visibility_on_config_parameter('dtsc.menu_salary_setting', 'is_open_linebot')#薪资表 
+        self._get_visibility_on_config_parameter('dtsc.menu_jl_setting', 'is_open_linebot')#薪资表 
         # print("Custom logic applied")
         return menus
 

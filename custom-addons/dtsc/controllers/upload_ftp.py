@@ -328,12 +328,18 @@ class UploadController(http.Controller):
             # 獲取或創建唯一的文件名
             filename_storage_file = os.path.join(temp_folder, user_filename + "_filename")
             if chunk_index == 0:
-                # 對於第一個分片，創建並儲存唯一的文件名
-                current_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                new_filename = f"{user_filename}-{current_time}.{file_extension}"
+                # 對於第一個分片，直接使用前端传递的文件名
+                if user_filename and user_filename.strip():
+                    new_filename = user_filename.strip()
+                    _logger.info('使用前端自定义檔案名稱: %s', new_filename)
+                else:
+                    # 备用方案
+                    current_time = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+                    new_filename = f"{current_time}.{file_extension}"
+                    _logger.info('使用備用檔案名稱: %s', new_filename)
+                
                 with open(filename_storage_file, "w") as f:
                     f.write(new_filename)
-                _logger.info('創建新檔案名稱: %s', new_filename)
             else:
                 # 讀取儲存的文件名
                 with open(filename_storage_file, "r") as f:
@@ -402,14 +408,16 @@ class UploadController(http.Controller):
             if folder == "false":
                 folder = "其它"
 
-            # 獲取當前時間
-            current_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-            # 生成新的文件名（包含用戶指定的名稱、當前時間戳和文件的實際後綴）
-            #new_filename = f"{user_filename}-{current_time}{file_extension}"
-            #new_filename = original_filename
-            new_filename = f"{current_time}-{original_filename}"
-            _logger.info('生成新檔案名稱: %s', new_filename)
+            current_time = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+            # 直接使用前端传递的自定义文件名，不再重新生成
+            if user_filename and user_filename.strip():
+                new_filename = f"{current_time}-{user_filename.strip()}"
+                _logger.info('使用前端自定义檔案名稱: %s', new_filename)
+            else:
+                # 备用方案：如果前端没有传递文件名，使用原始文件名
+                
+                new_filename = f"{current_time}-{original_filename}"
+                _logger.info('使用備用檔案名稱: %s', new_filename)
 
             # 讀取文件內容
             file_content = file_content.read()
@@ -481,11 +489,15 @@ class UploadController(http.Controller):
             if folder == "false":
                 folder = "其它"
 
-            # 獲取當前時間
-            current_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-            # 生成新的文件名（包含用戶指定的名稱、當前時間戳和文件的實際後綴）
-            new_filename = f"{user_filename}-{current_time}{file_extension}"
+            # 直接使用前端传递的自定义文件名，不再重新生成
+            if user_filename and user_filename.strip():
+                new_filename = user_filename.strip()
+                print(f'使用前端自定义檔案名稱: {new_filename}')
+            else:
+                # 备用方案：如果前端没有传递文件名，使用原始文件名
+                current_time = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+                new_filename = f"{current_time}-{original_filename}"
+                print(f'使用備用檔案名稱: {new_filename}')
 
             # 讀取文件內容
             file_content = file_content.read()

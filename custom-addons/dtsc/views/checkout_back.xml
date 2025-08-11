@@ -451,6 +451,19 @@
 									</tree>									 
 								</field>
 							</page>
+							
+							
+							<page string="狀態變更記錄">
+								<field name="checkoutstatehistory_ids">
+									<tree  create="false" delete="false" editable="bottom">									
+										<field name="old_state" readonly="1"/>								
+										<field name="new_state" readonly="1"/>										
+										<field name="user_id" readonly="1"/>										
+										<field name="change_date" readonly="1"/>										
+									</tree>									 
+								</field>
+							</page>
+							
 							<!-- <page string="物料清單"> -->
 								<!-- <field name="product_check_ids"> -->
 									<!-- <tree create="false" delete="false" editable="bottom" decoration-danger="now_stock &lt; now_use" decoration-success="now_stock >= now_use">									 -->
