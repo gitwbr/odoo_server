@@ -276,20 +276,21 @@ class AccountReportWizard(models.TransientModel):
             # 公司名称
             worksheet.write(row, 0, move.partner_id.name+"("+move.partner_id.custom_id+")" if move.partner_id.custom_id else move.partner_id.name, cell_format)           
             # 付款方式
-            worksheet.write(row, 1, move.partner_id.supp_pay_type.name or "", cell_format)
-            # 付款条件
             if move.pay_mode == '1':
-                payment_term_text = '附回郵'
+                payment_term_text = '現金'
             elif move.pay_mode == '2':
-                payment_term_text = '匯款'
+                payment_term_text = '支票'
             elif move.pay_mode == '3':
-                payment_term_text = '業務收款'
+                payment_term_text = '匯款'
             elif move.pay_mode == '4':
                 payment_term_text = '其他'
             else:
-                payment_term_text = '其他' 
+                payment_term_text = '其他方式' 
 
-            worksheet.write(row, 2, payment_term_text, cell_format)
+            worksheet.write(row, 1, payment_term_text, cell_format)
+            # 付款条件
+            
+            worksheet.write(row, 2, move.partner_id.supp_pay_type.name or "", cell_format)
             
             # 到期日
             worksheet.write_datetime(row, 3, move.pay_date_due, date_format) if move.pay_date_due else worksheet.write(row, 3, "", cell_format)

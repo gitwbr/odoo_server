@@ -1418,8 +1418,7 @@ class IrUiMenu(models.Model):
         self._get_visibility_on_config_parameter('dtsc.qrcode_work', 'is_open_linebot')#員工QRCODE
         self._get_visibility_on_config_parameter('dtsc.menu_ykl', 'is_pro')#壓克力統計表
         self._get_visibility_on_config_parameter('dtsc.stock_l', 'is_pro')#壓克力統計表
-        self._get_visibility_on_config_parameter('dtsc.scanqrcode', 'is_pro')#製作物 
-        self._get_visibility_on_config_parameter('dtsc.wngd', 'is_pro')#製作物 
+        self._get_visibility_on_config_parameter('dtsc.scanqrcode', 'is_pro')#製作物
         self._get_visibility_on_config_parameter('dtsc.menu_work_time', 'is_pro')#员工绩效 
         self._get_visibility_on_config_parameter('dtsc.yinshou_id', 'is_pro')#应收子目录 
         self._get_visibility_on_config_parameter('dtsc.menu_performance', 'is_open_linebot')#薪资表

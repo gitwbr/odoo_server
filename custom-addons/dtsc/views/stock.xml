@@ -222,6 +222,7 @@
 				<field name="description"/>		 
 			</xpath>
 			<xpath expr="//field[@name='qty_done']" position="before">
+				<field name="location_ori" string="倉庫"/>				
 				<field name="move_before_quantity"/>		 
 				<field name="move_after_quantity"/>		 
 			</xpath>

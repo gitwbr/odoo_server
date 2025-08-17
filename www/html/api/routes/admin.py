@@ -56,13 +56,15 @@ def upgrade_instance(instance_id):
                 'is_open_crm': 'True',
                 'is_open_linebot': 'True',
                 'is_open_full_checkoutorder': 'False',
-                'is_open_makein_qrcode': 'False'
+                'is_open_makein_qrcode': 'False',
+                'is_pro': 'False',
             },
             3: {
                 'is_open_crm': 'True',
                 'is_open_linebot': 'True',
                 'is_open_full_checkoutorder': 'True',
-                'is_open_makein_qrcode': 'True'
+                'is_open_makein_qrcode': 'True',
+                'is_pro': 'True'
             }
         }
 

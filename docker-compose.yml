@@ -176,6 +176,47 @@ services:
     restart: unless-stopped
     command: postgres -c 'max_connections=100'
 
+
+  # Client6 服務
+  web6:
+    image: odoo:16.0
+    depends_on:
+      - db6
+    volumes:
+      - ./client6/config:/etc/odoo
+      - ./client6/data:/var/lib/odoo/client6
+      - ./client6/logs:/var/log/odoo
+      - ./addons:/mnt/addons
+      - ./custom-addons-rlzy:/mnt/custom-addons
+      - ./client6/custom-addons-client-rlzy:/mnt/custom-addons-client
+    ports:
+      - "8006:8069"
+    environment:
+      - LANG=zh_TW.UTF-8
+      - TZ=Asia/Taipei
+    command:
+      - -u
+      - rlzy,rlzy_custom
+    networks:
+      - odoo_net
+    restart: unless-stopped
+
+  db6:
+    image: postgres:15
+    environment:
+      - POSTGRES_DB=postgres
+      - POSTGRES_PASSWORD=odoo6
+      - POSTGRES_USER=odoo6
+      - PGDATA=/var/lib/postgresql/data/pgdata
+    volumes:
+      - ./client6/postgresql:/var/lib/postgresql/data
+    ports:
+      - "5406:5432"
+    networks:
+      - odoo_net
+    restart: unless-stopped
+    command: postgres -c 'max_connections=100'
+
 networks:
   odoo_net:
     driver: bridge

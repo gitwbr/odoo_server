@@ -292,9 +292,9 @@
 												<tr>
 													<td style="width: 10%;"><strong>付款方式:</strong></td> 
 													<td style="width: 30%;">
-														<t t-if="o['pay_mode'] == '1'">附回郵</t>
-														<t t-elif="o['pay_mode'] == '2'">匯款</t>
-														<t t-elif="o['pay_mode'] == '3'">業務收款</t>
+														<t t-if="o['pay_mode'] == '1'">現金</t>
+														<t t-elif="o['pay_mode'] == '2'">支票</t>
+														<t t-elif="o['pay_mode'] == '3'">匯款</t>
 														<t t-elif="o['pay_mode'] == '4'">其他</t>
 														<t t-else="1">其他</t>
 													 </td>

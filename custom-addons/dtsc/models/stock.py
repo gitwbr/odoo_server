@@ -892,6 +892,10 @@ class Mpr(models.Model):
         
         
     def confirm_btn(self):
+        if not self.mprline_ids:
+            self.write({"state": "succ"})
+            return
+            
         for record in self.mprline_ids:
             if record.product_product_id.product_tmpl_id.tracking == "serial": #如果這個產品設定的是有唯一序列號的 則需要選擇序號
                 if not record.product_lot:
@@ -1148,7 +1152,7 @@ class StockMoveLine(models.Model):
     description = fields.Text(string="採購描述" , related="move_id.purchase_line_id.name")
     move_before_quantity = fields.Float("移動前")
     move_after_quantity = fields.Float("移動後",compute="_compute_move_after_quantity",store=True)
-    
+    location_ori = fields.Many2one("stock.location",compute="_compute_move_after_quantity",store=True)    
     report_year = fields.Many2one("dtsc.year",string="年",compute="_compute_year_month",store=True)
     report_month = fields.Many2one("dtsc.month",string="月",compute="_compute_year_month",store=True) 
     
@@ -1249,13 +1253,16 @@ class StockMoveLine(models.Model):
                         obj = self.env["stock.quant"].search([('product_id','=',record.product_id.id),('location_id','=',record.location_id.id),("lot_id","=",record.lot_id.id)],limit=1)
                     else:
                         obj = self.env["stock.quant"].search([('product_id','=',record.product_id.id),('location_id','=',record.location_id.id)],limit=1)
+                    record.location_ori = record.location_id
                 elif record.location_usage not in ["internal","transit"] and record.location_dest_usage in ['internal','transit']:
                     if record.lot_id:
                         obj = self.env["stock.quant"].search([('product_id','=',record.product_id.id),('location_id','=',record.location_dest_id.id),("lot_id","=",record.lot_id.id)],limit=1)
                     else:
                         obj = self.env["stock.quant"].search([('product_id','=',record.product_id.id),('location_id','=',record.location_dest_id.id)],limit=1)
+                    record.location_ori = record.location_dest_id
                 elif record.location_usage in ["internal", "transit"] and record.location_dest_usage in ["internal", "transit"]:
                     # 調撥情境：看來源倉庫剩餘量 
+                    record.location_ori = record.location_id
                     if record.lot_id:
                         obj = self.env["stock.quant"].search([
                             ('product_id', '=', record.product_id.id),
