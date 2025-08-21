@@ -110,7 +110,7 @@ class UploadController(http.Controller):
                         total_count += count
 
                 if total_count > 0:
-                    error_message = "檢測到未轉換為輪廓的文本對象！\n"
+                    error_message = "檢測到文字未轉外框！\n"
                     
                     return {
                         'success': False,
@@ -160,13 +160,13 @@ class UploadController(http.Controller):
 
             def check_dimensions(width_actual, height_actual, width_expected, height_expected):
                 """檢查尺寸是否符合要求"""
-                # 先乘後除計算等比例高度，並四捨五入到小數點後1位
-                height_actual_scaled = round(height_actual * width_expected / width_actual, 1)
+                # 先乘後除計算等比例高度，並四捨五入到毫米整數位
+                height_actual_scaled = round(height_actual * width_expected / width_actual)
                 _logger.info('等比例縮放後的高度: %s', height_actual_scaled)
                 
-                # 將預期高度也四捨五入到小數點後1位
-                height_expected_rounded = round(height_expected, 1)
-                _logger.info('要求的的高度: %s', height_expected_rounded)
+                # 將預期高度也四捨五入到毫米整數位
+                height_expected_rounded = round(height_expected)
+                _logger.info('要求的高度: %s', height_expected_rounded)
                 # 轉換為字符串比較，避免浮點數精度問題
                 if str(height_actual_scaled) != str(height_expected_rounded):
                     if height_actual_scaled < height_expected_rounded:
@@ -211,7 +211,7 @@ class UploadController(http.Controller):
                                 } """
                             return {
                                     'success': False,
-                                    'error': f'等比例處理後檔案實際尺寸({width_mm_actual:.2f}x{height_mm_actual:.2f}mm)不符合要求尺寸({width_mm:.2f}x{height_mm:.2f}mm)'
+                                    'error': f'等比例處理後檔案實際尺寸({round(width_mm_actual)}x{round(height_mm_actual)}mm)不符合要求尺寸({round(width_mm)}x{round(height_mm)}mm)'
                                 }
                         
                         return {
@@ -260,12 +260,12 @@ class UploadController(http.Controller):
                             if reason == "smaller":
                                 return {
                                     'success': False,
-                                    'error': f'檔案實際尺寸({width_mm_actual:.2f}x{height_mm_actual:.2f}mm)小於要求尺寸({width_mm:.2f}x{height_mm:.2f}mm)'
+                                    'error': f'檔案實際尺寸({round(width_mm_actual)}x{round(height_mm_actual)}mm)小於要求尺寸({round(width_mm)}x{round(height_mm)}mm)'
                                 }
                             else:
                                 return {
                                     'success': False,
-                                    'error': f'檔案實際尺寸({width_mm_actual:.2f}x{height_mm_actual:.2f}mm)超過要求尺寸({width_mm:.2f}x{height_mm:.2f}mm)5mm以上'
+                                    'error': f'檔案實際尺寸({round(width_mm_actual)}x{round(height_mm_actual)}mm)超過要求尺寸({round(width_mm)}x{round(height_mm)}mm)5mm以上'
                                 }
                         
                         return {
@@ -296,12 +296,12 @@ class UploadController(http.Controller):
                         if reason == "smaller":
                             return {
                                 'success': False,
-                                'error': f'檔案實際尺寸({width_mm_actual:.2f}x{height_mm_actual:.2f}mm)小於要求尺寸({width_mm:.2f}x{height_mm:.2f}mm)'
+                                'error': f'檔案實際尺寸({round(width_mm_actual)}x{round(height_mm_actual)}mm)小於要求尺寸({round(width_mm)}x{round(height_mm)}mm)'
                             }
                         else:
                             return {
                                 'success': False,
-                                'error': f'檔案實際尺寸({width_mm_actual:.2f}x{height_mm_actual:.2f}mm)超過要求尺寸({width_mm:.2f}x{height_mm:.2f}mm)5mm以上'
+                                'error': f'檔案實際尺寸({round(width_mm_actual)}x{round(height_mm_actual)}mm)超過要求尺寸({round(width_mm)}x{round(height_mm)}mm)5mm以上'
                             }
                     
                     return {
