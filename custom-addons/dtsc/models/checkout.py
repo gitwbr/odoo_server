@@ -326,6 +326,7 @@ class Checkout(models.Model):
     _description = "大圖訂單"
     _order = "create_date desc"
     name = fields.Char(string='單號')
+    outside_order_name = fields.Char(string="外部訂單號")
     # customer_id = fields.Many2one("res.partner" , string="客戶" ,domain=[('customer_rank',">",0), ('coin_can_cust', '=', True)]) 
     customer_id = fields.Many2one("res.partner" , string="客戶" ,domain=lambda self: self._get_customer_domain()) 
     customer_bianhao = fields.Char(related="customer_id.custom_id" ,string="客戶編號")
@@ -2471,6 +2472,8 @@ class CheckOutlineAfterMakePriceList(models.Model):
 class CheckOutLine(models.Model):
     _name = 'dtsc.checkoutline'
     _order = "origin_checkout_name,sequence"
+    
+    outside_comment = fields.Text(string="站外訂單備註")
     checkout_product_id = fields.Many2one("dtsc.checkout",ondelete='cascade')
     origin_checkout_id = fields.Many2one('dtsc.checkout', string="原始訂單")
     origin_checkout_name = fields.Char(related='origin_checkout_id.name', string="原始訂單")

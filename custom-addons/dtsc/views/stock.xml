@@ -68,7 +68,8 @@
 				<attribute name="invisible">1</attribute>	
 			</xpath>
 			<xpath expr="//field[@name='qty_available']" position="before">
-				<field name="average_price" />
+				<field name="average_price" groups="dtsc.group_dtsc_gly,dtsc.group_dtsc_cg"/>
+				<field name="total_value"  groups="dtsc.group_dtsc_gly,dtsc.group_dtsc_cg" sum="總計" />
 			</xpath>
 			
 		</field>

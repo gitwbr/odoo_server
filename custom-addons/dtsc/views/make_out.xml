@@ -44,6 +44,7 @@
             <form>
                 <header>
 					<button name="send_install_list" type="object" class="oe_highlight" string="派單" attrs="{'invisible': [('install_state', 'not in', ['draft'])]}" groups="dtsc.group_dtsc_mg"/>
+					<button name="outgoing_send" type="object" class="oe_highlight" string="外站下單" attrs="{'invisible': [('install_state', 'not in', ['draft'])]}"/>
 					<button name="btn_send" type="object" class="oe_highlight" string="完成" attrs="{'invisible': [('install_state', 'not in', ['installing'])]}" groups="dtsc.group_dtsc_sc"/>
 					<button name="del_install_list" type="object" class="oe_highlight" string="作廢"  confirm="是否確定作廢此工單？" attrs="{'invisible': [('install_state', 'in', ['cancel'])]}" groups="dtsc.group_dtsc_mg"/>
 					<field name="install_state" widget="statusbar" statusbar_visible="draft,installing,succ,cancel"/>

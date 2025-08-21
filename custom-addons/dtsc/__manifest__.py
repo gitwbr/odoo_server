@@ -88,6 +88,7 @@
         'views/pettycash.xml',  
         'views/calendar.xml', 
         'views/performance.xml',  
+        'views/interoperate.xml',  
         'views/views.xml',
     ],
 	'assets': {

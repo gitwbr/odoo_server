@@ -100,3 +100,5 @@ access_dtsc_labor_insurance_grade,dtsc.labor_insurance_grade,model_dtsc_labor_in
 access_dtsc_health_insurance_grade,dtsc.health_insurance_grade,model_dtsc_health_insurance_grade,dtsc.group_dtsc_bs,1,1,1,1
 access_dtsc_partnerlinebind,dtsc.partnerlinebind,model_dtsc_partnerlinebind,dtsc.group_dtsc_bs,1,1,1,1
 access_dtsc_checkoutstatehistory,dtsc.checkoutstatehistory,model_dtsc_checkoutstatehistory,dtsc.group_dtsc_bs,1,1,1,1
+
+access_dtsc_interoperate,dtsc.interoperate,model_dtsc_interoperate,dtsc.group_dtsc_bs,1,1,1,1

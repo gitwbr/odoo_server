@@ -258,6 +258,7 @@
 						<h1>
 							<!-- <field name="name" /> -->
 							<field name="name" readonly="1"/>
+							<field name="outside_order_name" invisible="1"/>
 						</h1>
 						<h3>
 							<field name="project_name" readonly="0"/>
@@ -349,6 +350,8 @@
 										<field name="small_image"   widget="image" class="w100" optional="hide" />
 										<field name="origin_checkout_name" attrs="{'column_invisible':[('parent.hebing_type','!=','1')]}" />
 										<field name="sequence" style="text-align: center;" />
+										
+										<field name="outside_comment"  attrs="{'column_invisible':[('parent.outside_order_name','=','False')]}"/>
 										<field name="project_product_name" />
 										<field name="product_id"  options="{'no_create': True, 'no_create_edit': True}">
 											<tree>

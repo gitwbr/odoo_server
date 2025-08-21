@@ -746,7 +746,7 @@ class Productproduct(models.Model):
     
     sec_uom_id = fields.Many2one("uom.uom")
     average_price = fields.Float("平均采購價格" , compute="_compute_average_price")
-    # total_value = fields.Float("成本" , compute="_compute_average_price")
+    total_value = fields.Float("總計金額" , compute="_compute_average_price")
     
     @api.depends('qty_available','standard_price')
     def _compute_average_price(self):
@@ -784,7 +784,7 @@ class Productproduct(models.Model):
                 average_price = total_value / qty_consumed if qty_consumed > 0 else 0.0
         
             record.average_price = average_price
-                # record.total_value = total_value
+            record.total_value = average_price * record.qty_available
     
     
     

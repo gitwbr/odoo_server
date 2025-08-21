@@ -283,6 +283,12 @@
       <field name="res_model">dtsc.department</field>
       <field name="view_mode">tree,form</field>
 	</record>
+	
+	<record model="ir.actions.act_window" id="dtsc.interoperate_setting">
+      <field name="name">系統互聯</field>
+      <field name="res_model">dtsc.interoperate</field>
+      <field name="view_mode">tree,form</field>
+	</record>
     <!-- <record model="ir.actions.act_window" id="dtsc.bh">
         <field name="name">補貨</field>
         <field name="res_model">stock.warehouse.orderpoint</field>
@@ -631,6 +637,7 @@
 	<menuitem id="gysjgbW" parent="dtsc.menu_setting" name="供應商價格表" sequence="13" action="dtsc.supp_price" groups="dtsc.group_dtsc_gly"/>
 	<menuitem id="linebot" parent="dtsc.menu_setting" name="Line設定" sequence="14" action="dtsc.linesetting" groups="dtsc.group_dtsc_gly"/>
 	<menuitem id="department_s" parent="dtsc.menu_setting" name="部門" sequence="15" action="dtsc.department_setting"/>
+	<menuitem id="xthl" parent="dtsc.menu_setting" name="系統互連設定" sequence="15" action="dtsc.interoperate_setting"/>
 	
 	
 	 
