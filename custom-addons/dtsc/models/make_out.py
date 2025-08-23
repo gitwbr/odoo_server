@@ -42,6 +42,7 @@ class MakeOut(models.Model):
     recheck_groups = fields.Many2many(related="checkout_id.recheck_groups",string="重製相關部門") 
     
     delivery_date = fields.Datetime(related="checkout_id.estimated_date" ,string='發貨日期' ,store=True,readonly=False,inverse='_inverse_delivery_date')
+    out_side_delivery_date = fields.Datetime(string='站外發貨日期')
     delivery_date_show = fields.Datetime(string='發貨日期', compute="_compute_delivery_date_show",store=True)
     checkout_order_date = fields.Datetime(string='大圖訂單時間')
     speed_type = fields.Selection([

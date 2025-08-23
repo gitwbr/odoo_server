@@ -327,6 +327,7 @@ class Checkout(models.Model):
     _order = "create_date desc"
     name = fields.Char(string='單號')
     outside_order_name = fields.Char(string="外部訂單號")
+    is_outside_order = fields.Boolean(string="是否外部訂單",store=True,compute="_compute_is_outside_order")
     # customer_id = fields.Many2one("res.partner" , string="客戶" ,domain=[('customer_rank',">",0), ('coin_can_cust', '=', True)]) 
     customer_id = fields.Many2one("res.partner" , string="客戶" ,domain=lambda self: self._get_customer_domain()) 
     customer_bianhao = fields.Char(related="customer_id.custom_id" ,string="客戶編號")
@@ -430,6 +431,14 @@ class Checkout(models.Model):
     is_open_full_checkoutorder = fields.Boolean(string="簡易流程",compute="_compute_is_open_full_checkoutorder")
     is_dayang = fields.Boolean('打樣')
     lock_price = fields.Boolean('價格鎖定')
+    
+    @api.depends("outside_order_name")
+    def _compute_is_outside_order(self):
+        for rec in self:
+            if not rec.outside_order_name:
+                rec.is_outside_order = False
+            else:
+                rec.is_outside_order = True
     
     def write(self, vals):
         for rec in self:
@@ -765,8 +774,8 @@ class Checkout(models.Model):
         """计算默认的 estimated_date"""
         if not self.checkout_order_state:
             self.checkout_order_state = 'draft'
-        print("======")
-        print(self.checkout_order_state)
+        # print("======")
+        # print(self.checkout_order_state)
         base_datetime = fields.Datetime.now()
         weekday = base_datetime.weekday()
         next_day = base_datetime + timedelta(days=1)

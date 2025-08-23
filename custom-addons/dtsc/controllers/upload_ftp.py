@@ -121,7 +121,10 @@ class UploadController(http.Controller):
                         _logger.warning('未檢測到文本對象，建議在Illustrator中確認')
 
             # 檢查文件名中的尺寸格式
-            size_pattern = r'(\d+(?:\.\d+)?)\s*[x×]\s*(\d+(?:\.\d+)?)(?:\s*(cm|mm))?'
+            # 原来的正则表达式（用于原始文件名）
+            # size_pattern = r'(\d+(?:\.\d+)?)\s*[x×]\s*(\d+(?:\.\d+)?)(?:\s*(cm|mm))?'
+            # 新的正则表达式（用于自定义文件名格式：檔案名稱-材質-屬性1-屬性2...屬性n-寬x高x數量.擴展名）
+            size_pattern = r'(\d+(?:\.\d+)?)\s*[x×]\s*(\d+(?:\.\d+)?)\s*[x×]\s*(\d+)'
 
             _logger.info('使用的正則表達式: %s', size_pattern)
             _logger.info('檢查的文件名稱: %s', filename)
@@ -132,20 +135,31 @@ class UploadController(http.Controller):
                 _logger.warning('檔案名稱 %s 不包含有效的尺寸格式', filename)
                 return {
                     'success': False,
-                    'error': '檔案名稱必須包含尺寸信息，格式如：100x200、100x200cm 或 100x200mm'
+                    # 原来的错误信息（用于原始文件名）
+                    # 'error': '檔案名稱必須包含尺寸信息，格式如：100x200、100x200cm 或 100x200mm'
+                    # 新的错误信息（用于自定义文件名）
+                    'error': '檔案名稱必須包含尺寸信息，格式如：檔案名稱-材質-屬性-寬x高x數量.擴展名'
                 }
             
             # 提取尺寸信息
+            # 原来的提取逻辑（用于原始文件名）
+            # width = float(match.group(1))
+            # height = float(match.group(2))
+            # # 提取单位，未写时默认cm
+            # unit = match.group(3)
+            # if not unit:
+            #     unit = 'cm'
+            # else:
+            #     unit = unit.lower()
+            
+            # 新的提取逻辑（用于自定义文件名）
             width = float(match.group(1))
             height = float(match.group(2))
-            # 提取单位，未写时默认cm
-            unit = match.group(3)
-            if not unit:
-                unit = 'cm'
-            else:
-                unit = unit.lower()
+            quantity = int(match.group(3))  # 新增：提取数量
+            # 新的文件名格式不包含单位，默认使用cm
+            unit = 'cm'
 
-            _logger.info('成功匹配尺寸信息：寬度=%s, 高度=%s, 單位=%s', width, height, unit)
+            _logger.info('成功匹配尺寸信息：寬度=%s, 高度=%s, 數量=%s, 單位=%s', width, height, quantity, unit)
 
             # 轉換為毫米
             if unit == 'cm':
@@ -328,7 +342,7 @@ class UploadController(http.Controller):
                 'error': str(e)
             }
 
-    @http.route('/dtsc/upload_file_chunk', type='http', auth='user', methods=['POST'], csrf=False)
+    """ @http.route('/dtsc/upload_file_chunk', type='http', auth='user', methods=['POST'], csrf=False)
     def upload_file_chunk(self):
         _logger.info('開始處理檔案分片上傳')
 
@@ -410,7 +424,7 @@ class UploadController(http.Controller):
                 return Response(json.dumps({'success': True, 'message': 'Chunk uploaded successfully'}), content_type='application/json;charset=utf-8', status=200)
         else:
             _logger.warning('沒有收到檔案分片')
-            return Response(json.dumps({'success': False, 'message': 'No file chunk provided'}), content_type='application/json;charset=utf-8', status=400) 
+            return Response(json.dumps({'success': False, 'message': 'No file chunk provided'}), content_type='application/json;charset=utf-8', status=400)  """
 
     @http.route('/_internal/check_re', type='http', auth='none', methods=['POST'], csrf=False)
     def check_re(self, **kw):
@@ -503,7 +517,10 @@ class UploadController(http.Controller):
             file_content = file_content.read()
             
             # 檢查文件尺寸
-            image_info = self.check_image(file_content, file_extension, fileName_original)
+            # 原来使用原始文件名检查尺寸
+            # image_info = self.check_image(file_content, file_extension, fileName_original)
+            # 现在使用新的自定义文件名检查尺寸
+            image_info = self.check_image(file_content, file_extension, new_filename)
             if not image_info['success']:
                 error_msg = image_info.get('error', '未知錯誤')
                 _logger.error(error_msg)

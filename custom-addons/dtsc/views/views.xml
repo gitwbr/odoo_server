@@ -285,7 +285,7 @@
 	</record>
 	
 	<record model="ir.actions.act_window" id="dtsc.interoperate_setting">
-      <field name="name">系統互聯</field>
+      <field name="name">系統互連</field>
       <field name="res_model">dtsc.interoperate</field>
       <field name="view_mode">tree,form</field>
 	</record>

@@ -3,6 +3,7 @@ from odoo.http import request
 import json
 import logging
 _logger = logging.getLogger(__name__)
+from odoo import fields
 class InteropAPI(http.Controller):
     @http.route('/interop/verify', type='http', auth='none', methods=['POST'], csrf=False)
     def verify(self, **kw):
@@ -33,6 +34,7 @@ class InteropAPI(http.Controller):
         code  = (data.get('code') or '').strip()
         alias = (data.get('alias') or '').strip()
         key   = (data.get('api_key') or '').strip()
+        
         if not (code and alias and key):
             return json.dumps({"ok": False, "error": "缺少參數"})
 
@@ -51,7 +53,11 @@ class InteropAPI(http.Controller):
         local_id          = order.get('local_id')          # 可回填用
         project_name      = order.get('project_name')      # 案名
         outside_order_name= order.get('outside_order_name')# 對方單號（你前面示例裡有帶這個）
-
+        date_s = (order.get('out_side_delivery_date') or '').strip()
+        _logger.warning(f"=========={date_s}===============")
+        out_side_delivery_date = fields.Datetime.to_datetime(date_s)
+            
+        _logger.warning(f"=========={out_side_delivery_date}===============")
         # 防重
         if outside_order_name:
             existed = request.env['dtsc.checkout'].sudo().search([
@@ -64,6 +70,7 @@ class InteropAPI(http.Controller):
             'project_name'       : project_name or '',
             'customer_id'        : interoperate_id.name.id,
             'outside_order_name' : outside_order_name or '',
+            "estimated_date"       : out_side_delivery_date,
         })
 
         lines = order.get('lines') or []
@@ -88,6 +95,7 @@ class InteropAPI(http.Controller):
             multi_chose_ids = ln.get('multi_chose_ids') or ''
             attrs_in       = ln.get('attributes') or []
             quantity       = ln.get('quantity') or ''
+            
             note.append(f"產品名：{product_name}")
             for pair in attrs_in:
                 attr = (pair.get('attr') or '').strip()

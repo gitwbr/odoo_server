@@ -36,6 +36,8 @@ class Makeout(models.Model):
         for record in self:
             interoperate_id = self.env["dtsc.interoperate"].search([("name","=",record.supplier_id.id)], limit=1)
             
+            if not record.out_side_delivery_date:
+                raise ValidationError(f"請設置站外發貨日期！")
             if not interoperate_id:                
                 raise ValidationError(f"{record.supplier_id.name}還未進行站外派單設定，請先去設置-系統互聯設定中進行設定！")
             
@@ -94,6 +96,7 @@ class Makeout(models.Model):
                     "project_name": record.project_name,      # 讓對方原樣帶回，便於對應
                     "outside_order_name": record.name,      # 讓對方原樣帶回，便於對應
                     "lines": lines,
+                    "out_side_delivery_date":  (fields.Datetime.to_string(record.out_side_delivery_date) if record.out_side_delivery_date else ""),            # 到貨時間
                 }
             }
             
@@ -138,12 +141,12 @@ class Interoperate(models.Model):
     alias = fields.Char(related="name.custom_init_name",store=True)
     code = fields.Char(related="name.custom_id",store=True)
     outgoing_name = fields.Char("對方公司域名")
-    outgoing_api_key = fields.Char("出站密码")
+    outgoing_api_key = fields.Char("出站密碼")
     outgoing_state = fields.Char("狀態",readonly=True)
     outgoing_bianhao = fields.Char("本公司在對方平臺編號")
     outgoing_jianchen = fields.Char("本公司在對方平臺簡稱")
     
-    incoming_api_key = fields.Char("入站密码")
+    incoming_api_key = fields.Char("入站密碼")
     incoming_state = fields.Char("狀態")
     
     def action_verify_connection(self):
@@ -168,7 +171,7 @@ class Interoperate(models.Model):
                 r.raise_for_status()
                 res = r.json()
                 if res.get('ok'):
-                    message = "对接验证成功"
+                    message = "連線驗證成功"
                 else:
                     message = f"对接失败：{res.get('error')}"
             except Exception as e:

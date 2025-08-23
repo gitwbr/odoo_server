@@ -258,7 +258,6 @@
 						<h1>
 							<!-- <field name="name" /> -->
 							<field name="name" readonly="1"/>
-							<field name="outside_order_name" invisible="1"/>
 						</h1>
 						<h3>
 							<field name="project_name" readonly="0"/>
@@ -275,6 +274,8 @@
 							   attrs="{'invisible': [('checkout_order_state', '=', 'waiting_confirmation')], 
 									   'required': [('checkout_order_state', '!=', 'waiting_confirmation')]}"/> -->
 							<field name="is_new_partner" invisible="1"/>
+							<field name="outside_order_name" invisible="1"/>
+							<field name="is_outside_order" invisible="1"/>
 							<field name="customer_id" string="客戶" options="{'no_create': True, 'no_create_edit': True}" attrs="{'required': [('is_new_partner', '!=', True)], 'invisible': [('is_new_partner', '=', True)]}"/>
 							<field name="customer_bianhao" readonly="1" attrs="{'invisible': [('is_new_partner', '=', True)]}"/> 
 							<field name="customer_class_id" string="客戶分類"  options="{'no_create': True, 'no_create_edit': True}" attrs="{'invisible': [('is_new_partner', '=', True)]}"/>
@@ -351,7 +352,7 @@
 										<field name="origin_checkout_name" attrs="{'column_invisible':[('parent.hebing_type','!=','1')]}" />
 										<field name="sequence" style="text-align: center;" />
 										
-										<field name="outside_comment"  attrs="{'column_invisible':[('parent.outside_order_name','=','False')]}"/>
+										<field name="outside_comment"  attrs="{'column_invisible':[('parent.is_outside_order','=',False)]}"/>
 										<field name="project_product_name" />
 										<field name="product_id"  options="{'no_create': True, 'no_create_edit': True}">
 											<tree>
