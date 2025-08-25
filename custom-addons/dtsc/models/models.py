@@ -47,6 +47,7 @@ class Book(models.Model):
     name = fields.Char('名称', help="书名")
     price = fields.Float("定价", help="定价")
     
+    
 class UserType(models.Model):
 
     _name = 'dtsc.usertype'
@@ -1390,16 +1391,45 @@ class IrUiMenu(models.Model):
 
     @api.model
     def _get_visibility_on_config_parameter(self, menu_xml_id, config_param):
-        param = config.get(config_param)
-        menu = self.env.ref(menu_xml_id, raise_if_not_found=False)
-        # _logger.warning("=================")
-        # _logger.warning(menu)
-        # _logger.warning(menu_xml_id)
-        # _logger.warning(config.get('is_open_crm'))
-        # _logger.warning("=================")
-        if menu: 
-            # _logger.warning("========invisible=========") 
-            menu.active = bool(param) 
+        if config_param == "is_des":
+            param = config.get(config_param)
+            if bool(param) == True:
+                makein = self.env.ref("dtsc.makein", raise_if_not_found=False)
+                if makein: 
+                    makein.active = False 
+                    
+                menu_stock = self.env.ref("dtsc.menu_stock", raise_if_not_found=False)
+                if menu_stock: 
+                    menu_stock.active = False 
+                menu_machine_chart_dashboard = self.env.ref("dtsc.menu_machine_chart_dashboard", raise_if_not_found=False)
+                if menu_machine_chart_dashboard: 
+                    menu_machine_chart_dashboard.active = False 
+                menu_product_chart_dashboard = self.env.ref("dtsc.menu_product_chart_dashboard", raise_if_not_found=False)
+                if menu_product_chart_dashboard: 
+                    menu_product_chart_dashboard.active = False 
+                menu_daka = self.env.ref("dtsc.menu_daka", raise_if_not_found=False)
+                if menu_daka: 
+                    menu_daka.active = False 
+                menu_leave1 = self.env.ref("dtsc.menu_leave1", raise_if_not_found=False)
+                if menu_leave1: 
+                    menu_leave1.active = False 
+                menu_performance = self.env.ref("dtsc.menu_performance", raise_if_not_found=False)
+                if menu_performance: 
+                    menu_performance.active = False 
+                menu_salary_setting = self.env.ref("dtsc.menu_salary_setting", raise_if_not_found=False)
+                if menu_salary_setting: 
+                    menu_salary_setting.active = False 
+                menu_jl_setting = self.env.ref("dtsc.menu_jl_setting", raise_if_not_found=False)
+                if menu_jl_setting: 
+                    menu_jl_setting.active = False 
+                menu_report_center = self.env.ref("dtsc.menu_report_center", raise_if_not_found=False)
+                if menu_report_center: 
+                    menu_report_center.active = False 
+        else:            
+            param = config.get(config_param)
+            menu = self.env.ref(menu_xml_id, raise_if_not_found=False)
+            if menu: 
+                menu.active = bool(param) 
 
     @api.model
     @tools.ormcache_context('self._uid', 'debug', keys=('lang',))
@@ -1424,14 +1454,14 @@ class IrUiMenu(models.Model):
         self._get_visibility_on_config_parameter('dtsc.menu_performance', 'is_open_linebot')#薪资表
         self._get_visibility_on_config_parameter('dtsc.menu_salary_setting', 'is_open_linebot')#薪资表 
         self._get_visibility_on_config_parameter('dtsc.menu_jl_setting', 'is_open_linebot')#薪资表 
+        self._get_visibility_on_config_parameter('', 'is_des')#设计公司单独 
         # print("Custom logic applied")
         return menus
 
 class ResUsers(models.Model):
-    _inherit = "res.users"
-
-    # allowed_ip = fields.Char(string="允许登录的IP", help="设置允许该用户登录的IP地址")
-
+    _inherit = "res.users"       
+        
+        
     @classmethod
     def authenticate(cls, db, login, password, user_agent_env):
         """扩展 Odoo 的登录验证逻辑"""

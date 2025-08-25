@@ -1391,6 +1391,7 @@
 					<group col="12" string="基礎設定">
 						<group colspan="6">
 							<field name="linebot_type" />
+							<field name="welcome_string"/>
 							<field name="menu_id" readonly="1"/>
 							<field name="liff_id" readonly="1" attrs="{'invisible':[('linebot_type','=','for_customer')]}"/>
 							<field name="liff_url" readonly="1" attrs="{'invisible':[('linebot_type','=','for_customer')]}"/>

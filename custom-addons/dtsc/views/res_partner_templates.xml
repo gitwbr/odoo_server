@@ -251,6 +251,19 @@
 		</field>
 	</record>
 	
+	
+	<record id="view_res_company_form_inherit_uom" model="ir.ui.view">
+		<field name="name">res.company.form.inherit.uom</field>
+		<field name="model">res.company</field>
+		<field name="inherit_id" ref="base.view_company_form"/>
+		<field name="arch" type="xml">
+			<xpath expr="//field[@name='favicon']" position="after">
+				<field name="image_sign"  widget="image"/>
+				<field name="crm_report_account"/>
+			</xpath>
+		</field>
+	</record>
+	
 	<data>
 		<record id="default_report_center" model="dtsc.reportcenter">
 			<field name="name">報表中心</field>

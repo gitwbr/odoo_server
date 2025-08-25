@@ -561,7 +561,7 @@ class LineBotController(http.Controller):
                     employee_raw = text.split("綁定")[1].strip()
                     vat_name = re.sub(r"^[\s\+\-]+", "", employee_raw)
                     print(f"VAT Name: '{vat_name}'") 
-                    partner = request.env["dtsc.vatlogin"].sudo().search([("vat", "=", "53421698")],limit = 1)
+                    partner = request.env["dtsc.vatlogin"].sudo().search([("vat", "=", vat_name)],limit = 1)
                     print(partner)
                     if partner:
                         linepartner = request.env["dtsc.partnerlinebind"].sudo().search([("line_user_id", "=", user_id)])
@@ -582,6 +582,12 @@ class LineBotController(http.Controller):
                     else:
                         reply_message = "請按格式輸入 綁定+統編進行綁定！"
                     self.reply_to_line_for_customer(user_id, reply_message)
+            
+            elif event['type'] == 'follow':  # 新加入 bot
+                lineObj = request.env["dtsc.linebot"].sudo().search([("linebot_type","=","for_customer")],limit=1)
+                user_id = event['source']['userId']
+                # self.reply_to_line(user_id, "👋 歡迎使用！\n請輸入「綁定+系統名字」來完成 LINE 帳戶綁定。")
+                self.reply_to_line_for_customer(user_id, lineObj.welcome_string)
         return json.dumps({"status": "ok"})
     
     @http.route('/line/webhook', type='json', auth='public', methods=['POST'], csrf=False)
@@ -633,8 +639,10 @@ class LineBotController(http.Controller):
                     self.reply_to_line(user_id, reply_message)
             
             elif event['type'] == 'follow':  # 新加入 bot
+                lineObj = request.env["dtsc.linebot"].sudo().search([("linebot_type","=","for_worker")],limit=1)
                 user_id = event['source']['userId']
-                self.reply_to_line(user_id, "👋 歡迎使用！\n請輸入「綁定+系統名字」來完成 LINE 帳戶綁定。")
+                # self.reply_to_line(user_id, "👋 歡迎使用！\n請輸入「綁定+系統名字」來完成 LINE 帳戶綁定。")
+                self.reply_to_line(user_id, lineObj.welcome_string)
             elif event['type'] == 'postback':
                 _logger.info("in postback")
                 _logger.info(event)

@@ -12,6 +12,22 @@ from odoo.http import request
 from odoo.exceptions import UserError
 import os
 from io import BytesIO
+class ResCompany(models.Model):
+    _inherit = "res.company"
+    
+    crm_report_account = fields.Char("報價單付款賬號") 
+    image_sign = fields.Binary(string="簽章圖片")  
+    
+    @api.model
+    def create(self, vals):
+        raise UserError("禁止創建新公司！")
+        return super(ResCompany, self).create(vals)
+
+    def unlink(self):
+        raise UserError("禁止刪除公司！")
+        return super(ResCompany, self).unlink()
+    
+
 class BaseImport(models.TransientModel):
     _inherit = 'base_import.import'
 
@@ -361,6 +377,7 @@ class ResPartner(models.Model):
             partner.quotation_count = self.env['product.supplierinfo'].search_count([
                 ('partner_id', '=', partner.id)
             ])
+
             
 class ReportExportCenter(models.Model):
     _name = 'dtsc.reportcenter'

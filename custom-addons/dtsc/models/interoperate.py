@@ -173,8 +173,10 @@ class Interoperate(models.Model):
                 if res.get('ok'):
                     message = "連線驗證成功"
                 else:
-                    message = f"对接失败：{res.get('error')}"
+                    # message = f"連線失敗：{res.get('error')}"
+                    message = f"連線失敗"
             except Exception as e:
-                message = f"请求异常：{e}"
+                message = f"請求異常"
+                # message = f"請求異常：{e}"
             # 给用户一个反馈
             rec.outgoing_state = message

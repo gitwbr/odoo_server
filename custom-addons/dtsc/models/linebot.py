@@ -860,6 +860,7 @@ class LineBot(models.Model):
         ('for_customer', '客戶用'),
     ], string="類型")
     
+    welcome_string = fields.Text(string="歡迎詞")
     
     def create_sys_liff(self):
         if not self.liff_channel_id or not self.liff_secret:

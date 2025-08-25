@@ -84,7 +84,7 @@ class InteropAPI(http.Controller):
         # PTAV：模板-属性值关联（可用来更稳地校验）
         PTAV    = request.env['product.template.attribute.value'].sudo()
         AMPL = request.env['dtsc.aftermakepricelist'].sudo()
-        fallback_tmpl = Tmpl.search([('name', '=', '其它')], limit=1)
+        fallback_tmpl = Tmpl.search([('name', '=', '其他')], limit=1)
 
         for ln in lines:
             note = []

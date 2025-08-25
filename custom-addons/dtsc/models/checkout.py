@@ -1799,6 +1799,7 @@ class Checkout(models.Model):
             # install_name = install_name + "-E"
         product_values_list = []
         sequence_number = 1
+        
         for record in self.product_ids:
             if record.is_purchse == 'make_in':
                 if record.product_id.can_be_expensed == True:
@@ -1878,8 +1879,10 @@ class Checkout(models.Model):
         product_values_list = []
         sequence_number = 1
         is_open_full_checkoutorder = self.env['ir.config_parameter'].sudo().get_param('dtsc.is_open_full_checkoutorder')
+        
+        is_des = config.get("is_des")
         for record in self.product_ids:
-            if record.is_purchse == 'make_out':#簡易流程全部走外部工單邏輯 
+            if record.is_purchse == 'make_out' or is_des == True:#设计公司流程全走委外
                 if record.product_id.can_be_expensed == True:
                     continue                
                 product_value = {
@@ -2283,13 +2286,12 @@ class Checkout(models.Model):
         # _logger.info("=======")
         #簡易流程
         is_open_full_checkoutorder = self.env['ir.config_parameter'].sudo().get_param('dtsc.is_open_full_checkoutorder')
-        # _logger.info("111")
+        #设计公司流程        
+        is_des = config.get("is_des")
         self.install_check()
-        # _logger.info("222")
         self.out_check()
-        # _logger.info("333")
-        # if is_open_full_checkoutorder:
-        self.in_check()
+        if is_des != True:
+            self.in_check()
             
         # _logger.info("444")
         self.create_sale_order()
