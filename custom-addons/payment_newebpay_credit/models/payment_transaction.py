@@ -412,11 +412,11 @@ class PaymentTransaction(models.Model):
                 first_line = lines[0]
                 
                 # 更新第一筆行的單價
-                first_line.price = min_amount
+                first_line.write({'price':min_amount})
 
                 # 其餘為 0
                 for line in lines[1:]:
-                    line.price = 0.0    
+                    line.write({'price':0.0})#price = 0.0  
                 
         #加入大圖訂單
         notification_data = {'reference': self.reference, 'simulated_state': 'done'}

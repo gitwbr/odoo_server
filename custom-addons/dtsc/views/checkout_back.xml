@@ -142,7 +142,21 @@
 		<field name="binding_view_types">list</field>
         <field name="groups_id" eval="[(4, ref('dtsc.group_dtsc_mg')), (4, ref('dtsc.group_dtsc_yw'))]"/>
 	</record>	
-	
+		    <record id="view_dtsc_yinshoudate_form" model="ir.ui.view">
+        <field name="name">dtsc.yinshoudate.form</field>
+        <field name="model">dtsc.yinshoudate</field>
+        <field name="arch" type="xml">
+            <form string="請確認應收單日期">
+                <group>
+                    <field name="selected_date"/>
+                </group>
+                <footer>
+                    <button string="確認" type="object" name="action_confirm" class="btn-primary"/>
+                    <button string="取消" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
 	
     <record id="view_dtsc_deliverydate_form" model="ir.ui.view">
         <field name="name">dtsc.deliverydate.form</field>
@@ -151,6 +165,7 @@
             <form string="請確認出貨日期">
                 <group>
                     <field name="selected_date"/>
+                    <field name="is_send_line"/> 
                 </group>
                 <footer>
                     <button string="確認" type="object" name="action_confirm" class="btn-primary"/>
@@ -200,7 +215,9 @@
 				<field name="kaidan"/>
 				<field name="create_date_str" string="進單日"/>
 				<field name="create_date" string="進單日" widget="remaining_days"/>
+				<field name="succ_date" string="完成日" optional="hide"/>
 				<field name="is_online" invisible="1"/>
+				<field name="checkout_order_type" invisible="1"/>
 				<!-- <field name="report_year"/> -->
 				<!-- <field name="report_month"/> -->
 				<!-- <field name="is_delivery"/> -->
@@ -237,6 +254,7 @@
 					
 					<button name="in_re_check" type="object" class="oe_highlight" string="内部工單重發" attrs="{'invisible':[('checkout_order_state','not in',['producing'])]}" groups="dtsc.group_dtsc_mg" />
 					<button name="out_re_check" type="object" class="oe_highlight" string="委外工單重發" attrs="{'invisible':[('checkout_order_state','not in',['producing'])]}" groups="dtsc.group_dtsc_mg" />
+					<button name="om_re_check" type="object" class="oe_highlight" string="代工單重發" attrs="{'invisible':[('checkout_order_state','not in',['producing'])]}" groups="dtsc.group_dtsc_mg" />
 					<button name="install_re_check" type="object" class="oe_highlight" string="生成施工單" attrs="{'invisible':[('checkout_order_state','not in',['producing','finished','price_review_done','receivable_assigned'])]}" groups="dtsc.group_dtsc_mg" />
 					<button name="chuhuo_re_check" type="object" class="oe_highlight" string="轉出貨單" confirm="確定發貨日期後點擊確定生成出貨單！" attrs="{'invisible':['|',('checkout_order_state','not in',['finished']),('is_delivery','!=',False)]}" groups="dtsc.group_dtsc_mg,dtsc.group_dtsc_sc" />
 					<button name="button_del" type="object" class="oe_highlight" string="作廢"  attrs="{'invisible': [('checkout_order_state', 'not in', ['draft','quoting','producing','finished'])]}" groups="dtsc.group_dtsc_mg"/>
@@ -332,6 +350,7 @@
                                 	<button string="全選施工" type="object" name="set_boolean_field_true"   style="margin-right:20px" help="全選施工" groups="dtsc.group_dtsc_mg"/>
 									<button string="取消施工" type="object" name="set_boolean_field_false"  help="取消施工" groups="dtsc.group_dtsc_mg"/>									
 									<button string="複製最後一條" type="object" name="copy_last_record" groups="dtsc.group_dtsc_mg"/>															
+									<button string="項次序號整理" type="object" name="seq_reset" attrs="{'invisible': [('checkout_order_state', 'not in', ['waiting_confirmation','draft','quoting'])]}" />															
 								
 								<field name="product_ids" >
                                     <!-- <tree create="false" delete="false" editable="bottom"> -->
@@ -348,7 +367,8 @@
 										<!-- <field name="is_purchse" attrs="{'readonly': [('parent.is_in_by_mg', '=', False)],'column_invisible':[('parent.is_open_full_checkoutorder', '=', False)]}" />								 -->
 										<field name="is_purchse" attrs="{'readonly': [('parent.is_in_by_mg', '=', False)]}" />								
 										<field name="is_install" attrs="{'readonly': [('parent.is_in_by_mg', '=', False)]}" />
-										<field name="small_image"   widget="image" class="w100" optional="hide" />
+										<!-- <field name="small_image"   widget="image" class="w100" optional="hide" /> -->
+										<field name="small_image_new"   widget="image" class="w100" optional="hide" /> 
 										<field name="origin_checkout_name" attrs="{'column_invisible':[('parent.hebing_type','!=','1')]}" />
 										<field name="sequence" style="text-align: center;" />
 										
@@ -553,6 +573,7 @@
 			<search>
 				<searchpanel>
                     <field name="checkout_order_state" string="大圖訂單狀態"/>
+                    <field name="checkout_order_type" string="大圖訂單類別"/>
                     <field name="report_year" string="年"  select="multi"/>
                     <field name="report_month" string="月" context="{'group_by': 'report_year'}" select="multi"/>
                 </searchpanel>
@@ -587,7 +608,8 @@
 				<filter string="客戶分組" name="group_by_customer_id" domain="[]" context="{'group_by': 'customer_id'}"/>       
 				<filter string="交貨方式分組" name="group_by_delivery_carrier" domain="[]" context="{'group_by': 'delivery_carrier'}"/>       
 				<filter string="進單日分組" name="group_by_create_date" domain="[]" context="{'group_by': 'create_date'}"/>       
-				<filter string="發貨日分組" name="group_by_estimated_date" domain="[]" context="{'group_by': 'estimated_date'}"/>       
+				<filter string="發貨日分組" name="group_by_estimated_date" domain="[]" context="{'group_by': 'estimated_date'}"/>      
+				<filter string="完成日分組" name="group_by_succ_date" domain="[]" context="{'group_by': 'succ_date'}"/>           
 				<filter string="銷售人員分組" name="group_by_user_id" domain="[]" context="{'group_by': 'user_id'}"/>       
 				<filter string="開單人員分組" name="group_by_kaidan" domain="[]" context="{'group_by': 'kaidan'}"/>       
 			</search>

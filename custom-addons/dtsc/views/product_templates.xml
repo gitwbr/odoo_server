@@ -98,6 +98,9 @@
 				<field name="uom_po_id" options="{'no_create': True, 'no_create_edit': True}"/>
 			</xpath>
 			
+			<xpath expr="//field[@name='uom_po_id']" position="attributes">
+				<attribute name="string">採購計量單位</attribute>	
+			</xpath>
 			<xpath expr="//notebook/page/field[@name='attribute_line_ids']" position="after">
 				<group>
 					<field name="is_add_mode"/>

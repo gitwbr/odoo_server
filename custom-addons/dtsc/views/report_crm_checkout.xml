@@ -57,7 +57,7 @@
 									<t t-if="doc.is_new_partner"><td>行動電話： <span t-field="doc.new_mobile" /></td></t>
 									<t t-else="1"><td>行動電話： <span t-field="doc.customer_id.mobile" /></td></t>
 									<!-- <td>行動電話:<span t-field="doc.customer_id.mobile" /></td> -->
-									<td>有效期限： 一個月</td>
+									<td>有效期限： <span t-field="doc.crm_effective_date" /></td>
                                 </tr>
                             </tbody>
                         </table>	
@@ -116,26 +116,26 @@
 									<t t-if="doc.is_show_price">
 										<div class="col text-center" style="flex: 1;">
 											<!-- <span t-field="order.total_units" /> -->
-											<span t-esc="'{:,.0f}'.format(abs(order.total_units))" />
+											<span t-esc="'{:,.0f}'.format((order.total_units))" />
 										</div>
 									</t>
 									<div class="col text-center" style="flex: 1;">
 										<!-- <span t-field="order.quantity" /> -->
-										<span t-esc="'{:,.0f}'.format(abs(order.quantity))" />
+										<span t-esc="'{:,.0f}'.format((order.quantity))" />
 									</div>
 									
 									<t t-if="doc.is_show_price">
 										<div class="col text-center" style="flex: 1;">
 											<!-- <span t-field="order.units_price" /> -->
-											<span t-esc="'{:,.0f}'.format(abs(order.units_price))" />
+											<span t-esc="'{:,.0f}'.format((order.units_price))" />
 										</div>
 										<div class="col text-center" style="flex: 1;">
 											<!-- <span t-esc="order.total_make_price + order.peijian_price"/> -->
-											<span t-esc="'{:,.0f}'.format(abs(order.total_make_price + order.peijian_price))" />
+											<span t-esc="'{:,.0f}'.format((order.total_make_price + order.peijian_price))" />
 										</div>
 									</t>
 									<div class="col text-center" style="flex: 1;">
-										<span t-esc="'{:,.0f}'.format(abs(order.price))" />
+										<span t-esc="'{:,.0f}'.format((order.price))" />
 										<!-- <span t-field="order.price" /> -->
 									</div>
 								</div>
@@ -248,5 +248,12 @@
         <field name="report_file">dtsc.report_crm_checkout_template</field>
         <field name="binding_model_id" ref="model_dtsc_checkout"/>
         <field name="binding_type">report</field>
+		<field name="print_report_name">
+		  '%s-%s-報價單' % (
+			(object.name or '報價單'),
+			(object.is_new_partner and (object.new_partner or '客戶')
+			 or (object.customer_id and object.customer_id.name) or '客戶')
+		  )
+		</field>
     </record>
 </odoo>

@@ -219,9 +219,9 @@ class LineBotController(http.Controller):
         if not attendance.exists():
             return json.dumps({"success": False, "message": "找不到資料"})
         if fix_type == "in":
-            original_date = attendance.in_time.date() if attendance.in_time else datetime.today().date()
+            original_date = attendance.work_date
         elif fix_type == "out":
-            original_date = attendance.out_time.date() if attendance.out_time else datetime.today().date()
+            original_date = attendance.work_date
         else:
             return json.dumps({"success": False, "message": "補卡類型錯誤"})
                     # 更新補卡時間與狀態
@@ -261,6 +261,7 @@ class LineBotController(http.Controller):
         stime = data.get('stime')
         etime = data.get('etime')
         line_id = data.get('line_id')
+        _logger.warning(f"========searchleave========{line_id}====")
         status_filter = data.get('status_filter', []) 
         
         if not line_id or not stime or not etime:
@@ -306,6 +307,7 @@ class LineBotController(http.Controller):
         line_id = data.get('line_id')
         status_filter = data.get('status_filter', []) 
         # print(status_filter)
+        _logger.warning(f"========search_daka========{line_id}====")
         if not line_id or not stime or not etime:
             return {'error': '缺少必要參數'}
 
@@ -320,10 +322,11 @@ class LineBotController(http.Controller):
             
         records = request.env['dtsc.attendance'].sudo().search([
             ('line_user_id', '=', line_id),
-            ('in_time', '>=', start_dt),
-            ('in_time', '<', end_dt)
-        ], order="in_time asc")
+            ('work_date', '>=', start_dt),
+            ('work_date', '<', end_dt)
+        ], order="work_date asc")
         
+        _logger.warning(f"========search_daka========{records}====")
         result = []
         for rec in records:
             if status_filter:
@@ -331,6 +334,7 @@ class LineBotController(http.Controller):
                     continue  # 跳過不符合的
             result.append({
                 'employee_name':rec.name.name,
+                'work_date': rec.work_date.strftime('%Y-%m-%d') if rec.work_date else '',
                 'in_time': rec.in_time.strftime('%Y-%m-%d %H:%M') if rec.in_time else '',
                 'out_time': rec.out_time.strftime('%Y-%m-%d %H:%M') if rec.out_time else '',
                 'in_status': dict(rec._fields['in_status'].selection).get(rec.in_status, ''),
@@ -339,7 +343,7 @@ class LineBotController(http.Controller):
                 'is_out_place': dict(rec._fields['is_out_place'].selection).get(rec.is_out_place, ''),
                 'daka_id': rec.id,
             })
-        # print(result)
+        _logger.warning(f"========search_daka========{result}====")
         return json.dumps({'success': True, 'data': result}) #{'success': True, 'data': result} 
         
     #打卡信息处理
@@ -560,34 +564,46 @@ class LineBotController(http.Controller):
                     print("in customer bangding")
                     employee_raw = text.split("綁定")[1].strip()
                     vat_name = re.sub(r"^[\s\+\-]+", "", employee_raw)
-                    print(f"VAT Name: '{vat_name}'") 
-                    partner = request.env["dtsc.vatlogin"].sudo().search([("vat", "=", vat_name)],limit = 1)
-                    print(partner)
-                    if partner:
-                        linepartner = request.env["dtsc.partnerlinebind"].sudo().search([("line_user_id", "=", user_id)])
+                    # partners = request.env["res.partner"].sudo().search([("vat", "=", vat_name)])
+
+                    cr = request.env.cr
+
+                    cr.execute("""
+                        SELECT id, name, vat
+                        FROM res_partner
+                        WHERE vat = %s
+                        LIMIT 20
+                    """, (vat_name,))     # ← 一定要用參數化，且用你定義的 vat_name
+                    # ids = [r[0] for r in cr.fetchall()]
+                    rows = cr.fetchall()
+                    is_binding = False
+                    for rid, name, *_ in rows:
+                        is_binding = True
+                        linepartner = request.env["dtsc.partnerlinebind"].sudo().search([("line_user_id", "=", user_id),("partner_id","=",rid)])
                         if not linepartner:
                             lineObj = request.env["dtsc.linebot"].sudo().search([("linebot_type","=","for_customer")],limit=1)
                             display_name = self.get_user_display_name(user_id, lineObj.line_access_token)
-                            print(display_name)
-
                             request.env["dtsc.partnerlinebind"].sudo().create({
                                 "name":display_name,
                                 "line_user_id":user_id,
-                                "partner_id": partner.partner_id.id,
-                            })
-                            
-                            reply_message = "綁定成功， LINE 帳戶已與客戶名稱 " + partner.partner_id.name + " 綁定！請聯係管理員激活！"
+                                "partner_id": rid,
+                            })                            
+                            reply_message = "綁定成功， LINE 帳戶已與客戶名稱 " + name + " 綁定！請聯係管理員激活！"
+                            self.reply_to_line_for_customer(user_id, reply_message)
                         else:
-                            reply_message = "您已與 " + partner.partner_id.name +" 綁定，請聯係管理員！"
-                    else:
+                            reply_message = "您已與 " + name +" 綁定，請聯係管理員！"
+                            self.reply_to_line_for_customer(user_id, reply_message)
+                            
+                    if is_binding == False:
                         reply_message = "請按格式輸入 綁定+統編進行綁定！"
-                    self.reply_to_line_for_customer(user_id, reply_message)
+                        self.reply_to_line_for_customer(user_id, reply_message)
             
             elif event['type'] == 'follow':  # 新加入 bot
                 lineObj = request.env["dtsc.linebot"].sudo().search([("linebot_type","=","for_customer")],limit=1)
                 user_id = event['source']['userId']
-                # self.reply_to_line(user_id, "👋 歡迎使用！\n請輸入「綁定+系統名字」來完成 LINE 帳戶綁定。")
-                self.reply_to_line_for_customer(user_id, lineObj.welcome_string)
+                display_name = self.get_user_display_name(user_id, lineObj.line_access_token)
+                welcomestring = lineObj.welcome_string.replace("{name}",display_name)
+                self.reply_to_line_for_customer(user_id, welcomestring)
         return json.dumps({"status": "ok"})
     
     @http.route('/line/webhook', type='json', auth='public', methods=['POST'], csrf=False)
@@ -642,7 +658,9 @@ class LineBotController(http.Controller):
                 lineObj = request.env["dtsc.linebot"].sudo().search([("linebot_type","=","for_worker")],limit=1)
                 user_id = event['source']['userId']
                 # self.reply_to_line(user_id, "👋 歡迎使用！\n請輸入「綁定+系統名字」來完成 LINE 帳戶綁定。")
-                self.reply_to_line(user_id, lineObj.welcome_string)
+                display_name = self.get_user_display_name(user_id, lineObj.line_access_token)
+                welcomestring = lineObj.welcome_string.replace("{name}",display_name)
+                self.reply_to_line(user_id, welcomestring)
             elif event['type'] == 'postback':
                 _logger.info("in postback")
                 _logger.info(event)
@@ -716,6 +734,32 @@ class LineBotController(http.Controller):
                         leave_type_display = dict(leave._fields['leave_type'].selection).get(leave.leave_type)
                         message = f"您的請假申請已經被批准\n請假人員：{employee_name}\n請假類型：{leave_type_display}\n開始時間：{leave.start_time.astimezone(tz).strftime('%Y-%m-%d %H:%M')}\n結束時間：{leave.end_time.astimezone(tz).strftime('%Y-%m-%d %H:%M')}\n工時：{leave.leave_hours}"
                         employee = leave.employee_id
+                        
+                        # === 額度內/額度外切分（扣帳前快照） ===
+                        # 僅對有「年度額度」的假別切分，其它假別(公/婚/喪/產/產檢…)設為 0
+                        quota_field_map = {
+                            'tx': 'tx_days',     # 特休
+                            'bj': 'bj_days',     # 病假
+                            'sj': 'sj_days',     # 事假
+                            'slj': 'slj_days',   # 生理假
+                            'jtzgj': 'jtzgj_days',  # 家庭照顧假
+                        }
+                        hours = float(leave.leave_hours or 0.0)
+                        in_h = out_h = 0.0
+                        qfld = quota_field_map.get(leave.leave_type)
+                        if qfld:
+                            # 扣減前的剩餘額度（可能為負，負則視為 0 可用）
+                            before_remain = float(getattr(employee, qfld) or 0.0)
+                            usable = max(before_remain, 0.0)
+                            in_h = min(usable, hours)
+                            out_h = max(hours - in_h, 0.0)
+
+                        # 寫回本張請假單的快照
+                        leave.sudo().write({
+                            'in_quota_hours':  round(in_h, 2),
+                            'out_quota_hours': round(out_h, 2),
+                        })
+                        
                         if leave.leave_type == 'tx':  # 特休
                             employee.tx_days = employee.tx_days - leave.leave_hours
                         elif leave.leave_type == 'bj':  # 病假

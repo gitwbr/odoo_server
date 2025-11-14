@@ -16,6 +16,8 @@
 				</form>
 			</field>
 		</record>
+
+
     <template id="report_install_template">
         <t t-call="web.html_container">
             <t t-foreach="docs" t-as="doc">
@@ -100,16 +102,25 @@
 											施工説明:<br/><span t-field="order.install_note"/>
 										</div>
 										<div class="col text-center" style="flex: 1;">
-											<img t-if="order.image_yt" t-att-src="'data:image/png;base64,' + order.image_yt.decode('utf-8')" t-att-alt="'原圖'" style="width: 150px; max-height:150px"/>
-											<br/>原圖
+											<!-- <img t-if="order.image_yt" t-att-src="'data:image/png;base64,' + order.image_yt.decode('utf-8')" t-att-alt="'原圖'" style="width: 150px; max-height:150px"/> -->
+											<t t-if="order.image_yt_new">
+												<img t-if="order.image_yt_new" t-att-src="image_data_uri(order.image_yt_new)"  style="width:150px; max-height:150px"/>
+												<br/>原圖
+											</t>
 										</div>
 										<div class="col text-center" style="flex: 1;">
-											<img t-if="order.image_sgq" t-att-src="'data:image/png;base64,' + order.image_sgq.decode('utf-8')" t-att-alt="'施工前'" style="width: 150px; max-height:150px"/>
+											<!-- <img t-if="order.image_sgq" t-att-src="'data:image/png;base64,' + order.image_sgq.decode('utf-8')" t-att-alt="'施工前'" style="width: 150px; max-height:150px"/> -->
+											<t t-if="order.image_sgq_new">
+											<img t-if="order.image_sgq_new" t-att-src="image_data_uri(order.image_sgq_new)"  style="width:150px; max-height:150px"/>
 											<br/>施工前
+											</t>
 										</div>
 										<div class="col text-center" style="flex: 1;">
-											<img t-if="order.image_wgt" t-att-src="'data:image/png;base64,' + order.image_wgt.decode('utf-8')" t-att-alt="'完工圖'" style="width: 150px; max-height:150px"/>
+											<t t-if="order.image_wgt_new">
+											<!-- <img t-if="order.image_wgt" t-att-src="'data:image/png;base64,' + order.image_wgt.decode('utf-8')" t-att-alt="'完工圖'" style="width: 150px; max-height:150px"/> -->
+											<img t-if="order.image_wgt_new" t-att-src="image_data_uri(order.image_wgt_new)"  style="width:150px; max-height:150px"/>
 											<br/>完工圖
+											</t>
 										</div>
 									</div>
 									
@@ -120,16 +131,25 @@
 												施工説明:<br/><span t-field="image.install_note"/>
 											</div>
 											<div class="col text-center" style="flex: 1;">
-												<img t-if="image.image_yt" t-att-src="'data:image/png;base64,' + image.image_yt.decode('utf-8')" t-att-alt="'原圖'" style="width: 150px; max-height:150px"/>
+												<t t-if="order.image_yt_new">
+												<!-- <img t-if="image.image_yt" t-att-src="'data:image/png;base64,' + image.image_yt.decode('utf-8')" t-att-alt="'原圖'" style="width: 150px; max-height:150px"/> -->
+												<img t-if="image.image_yt_new" t-att-src="image_data_uri(image.image_yt_new)"  style="width:150px; max-height:150px"/>
 												<br/>原圖
+											</t>
 											</div>
 											<div class="col text-center" style="flex: 1;">
-												<img t-if="image.image_sgq" t-att-src="'data:image/png;base64,' + image.image_sgq.decode('utf-8')" t-att-alt="'施工前'" style="width: 150px; max-height:150px"/>
+												<t t-if="order.image_sgq_new">
+												<!-- <img t-if="image.image_sgq" t-att-src="'data:image/png;base64,' + image.image_sgq.decode('utf-8')" t-att-alt="'施工前'" style="width: 150px; max-height:150px"/> -->
+												<img t-if="image.image_sgq_new" t-att-src="image_data_uri(image.image_sgq_new)"  style="width:150px; max-height:150px"/>
 												<br/>施工前
+											</t>
 											</div>
 											<div class="col text-center" style="flex: 1;">
-												<img t-if="image.image_wgt" t-att-src="'data:image/png;base64,' + image.image_wgt.decode('utf-8')" t-att-alt="'完工圖'" style="width: 150px; max-height:150px"/>
+												<t t-if="order.image_wgt_new">
+												<!-- <img t-if="image.image_wgt" t-att-src="'data:image/png;base64,' + image.image_wgt.decode('utf-8')" t-att-alt="'完工圖'" style="width: 150px; max-height:150px"/> -->
+												<img t-if="image.image_wgt_new" t-att-src="image_data_uri(image.image_wgt_new)"  style="width:150px; max-height:150px"/>
 												<br/>完工圖
+											</t>
 											</div>
 										</div>
 									</t>
@@ -202,7 +222,6 @@
         </t>
     </template>
 	
-	
 	<template id="report_succ_install_template">
         <t t-call="web.html_container">
             <t t-foreach="docs" t-as="doc">
@@ -224,7 +243,7 @@
                         </div>
                         <hr style="border-top: 2px solid #333; opacity: 1;"/>
                         <!-- Main Information -->
-                        <table class="table table-condensed">
+                        <table class="table table-condensed">                     
                             <tbody>
                                 <tr>
                                     <td style="width: 13%;"><strong>客戶:</strong></td>
@@ -269,16 +288,25 @@
 											施工説明:<br/><span t-field="order.install_note"/>
 										</div>
 										<div class="col text-center" style="flex: 1;">
-											<img t-if="order.image_yt" t-att-src="'data:image/png;base64,' + order.image_yt.decode('utf-8')" t-att-alt="'原圖'" style="width: 150px; max-height:150px"/>
+												<t t-if="order.image_yt_new">
+											<!-- <img t-if="order.image_yt" t-att-src="'data:image/png;base64,' + order.image_yt.decode('utf-8')" t-att-alt="'原圖'" style="width: 150px; max-height:150px"/> -->
+											<img t-if="order.image_yt_new" t-att-src="image_data_uri(order.image_yt_new)"  style="width:150px; max-height:150px"/>
 											<br/>原圖
+											</t>
 										</div>
 										<div class="col text-center" style="flex: 1;">
-											<img t-if="order.image_sgq" t-att-src="'data:image/png;base64,' + order.image_sgq.decode('utf-8')" t-att-alt="'施工前'" style="width: 150px; max-height:150px"/>
+												<t t-if="order.image_sgq_new">
+											<!-- <img t-if="order.image_sgq" t-att-src="'data:image/png;base64,' + order.image_sgq.decode('utf-8')" t-att-alt="'施工前'" style="width: 150px; max-height:150px"/> -->
+											<img t-if="order.image_sgq_new" t-att-src="image_data_uri(order.image_sgq_new)"  style="width:150px; max-height:150px"/>
 											<br/>施工前
+											</t>
 										</div>
 										<div class="col text-center" style="flex: 1;">
-											<img t-if="order.image_wgt" t-att-src="'data:image/png;base64,' + order.image_wgt.decode('utf-8')" t-att-alt="'完工圖'" style="width: 150px; max-height:150px"/>
+												<t t-if="order.image_wgt_new">
+											<!-- <img t-if="order.image_wgt" t-att-src="'data:image/png;base64,' + order.image_wgt.decode('utf-8')" t-att-alt="'完工圖'" style="width: 150px; max-height:150px"/> -->
+											<img t-if="order.image_wgt_new" t-att-src="image_data_uri(order.image_wgt_new)"  style="width:150px; max-height:150px"/>
 											<br/>完工圖
+											</t>
 										</div>
 									</div>
 									
@@ -289,16 +317,25 @@
 												施工説明:<br/><span t-field="image.install_note"/>
 											</div>
 											<div class="col text-center" style="flex: 1;">
-												<img t-if="image.image_yt" t-att-src="'data:image/png;base64,' + image.image_yt.decode('utf-8')" t-att-alt="'原圖'" style="width: 150px; max-height:150px"/>
+												<t t-if="order.image_yt_new">
+												<!-- <img t-if="image.image_yt" t-att-src="'data:image/png;base64,' + image.image_yt.decode('utf-8')" t-att-alt="'原圖'" style="width: 150px; max-height:150px"/> -->
+												<img t-if="image.image_yt_new" t-att-src="image_data_uri(image.image_yt_new)"  style="width:150px; max-height:150px"/>
 												<br/>原圖
+											</t>
 											</div>
 											<div class="col text-center" style="flex: 1;">
-												<img t-if="image.image_sgq" t-att-src="'data:image/png;base64,' + image.image_sgq.decode('utf-8')" t-att-alt="'施工前'" style="width: 150px; max-height:150px"/>
+												<t t-if="order.image_sgq_new">
+												<!-- <img t-if="image.image_sgq" t-att-src="'data:image/png;base64,' + image.image_sgq.decode('utf-8')" t-att-alt="'施工前'" style="width: 150px; max-height:150px"/> -->
+												<img t-if="image.image_sgq_new" t-att-src="image_data_uri(image.image_sgq_new)"  style="width:150px; max-height:150px"/>
 												<br/>施工前
+											</t>
 											</div>
 											<div class="col text-center" style="flex: 1;">
-												<img t-if="image.image_wgt" t-att-src="'data:image/png;base64,' + image.image_wgt.decode('utf-8')" t-att-alt="'完工圖'" style="width: 150px; max-height:150px"/>
+												<t t-if="order.image_wgt_new">
+												<!-- <img t-if="image.image_wgt" t-att-src="'data:image/png;base64,' + image.image_wgt.decode('utf-8')" t-att-alt="'完工圖'" style="width: 150px; max-height:150px"/> -->
+												<img t-if="image.image_wgt_new" t-att-src="image_data_uri(image.image_wgt_new)"  style="width:150px; max-height:150px"/>
 												<br/>完工圖
+											</t>
 											</div>
 										</div>
 									</t>

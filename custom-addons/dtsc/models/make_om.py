@@ -17,24 +17,15 @@ from lxml import etree
 from datetime import datetime, timedelta, date
 from odoo.tools import config
 
-class ScanMode(models.Model):
-    _name = 'dtsc.scanmode'
-    _description = 'Scan Mode'
-    _order = "sequence"
-    name = fields.Char("Name")
-    code = fields.Char("Code")
-    sequence = fields.Integer()
 
-class MakeIn(models.Model):
-    _name = 'dtsc.makein'
+class MakeOm(models.Model):
+    _name = 'dtsc.makeom'
     _order = "checkout_order_date desc"
     install_state = fields.Selection([
         ("draft","草稿"),
-        # ("imageing","審圖"),
-        ("imaged","工單已審"),
-        ("making","製作中"),    
-        ("stock_in","完成製作"),    
-        ("cancel","作廢"),    
+        ("installing","製作中"),
+        ("succ","完成"),
+        ("cancel","作廢"),     
     ],default='draft' ,string="狀態")
     name = fields.Char(string='單號')
     company_id = fields.Many2one('res.company', string='公司', default=lambda self: self.env.company)
@@ -47,7 +38,7 @@ class MakeIn(models.Model):
     recheck_user = fields.Many2many(related="checkout_id.recheck_user",string="重製相關人員")
     recheck_comment = fields.Char(related="checkout_id.recheck_comment",string="重製備註說明")
     recheck_groups = fields.Many2many(related="checkout_id.recheck_groups",string="重製相關部門") 
-    
+    is_aftermake = fields.Boolean("是否帶後加工信息")
     customer_name = fields.Char(string='客戶名稱',compute="_compute_customer_name")
     contact_person = fields.Char(string='聯絡人')
     delivery_method = fields.Char(string='交貨方式')
@@ -62,16 +53,19 @@ class MakeIn(models.Model):
         ('normal', '正常'),
         ('urgent', '急件')
     ], string='速別',default='normal')
-    order_ids = fields.One2many("dtsc.makeinline","make_order_id")
-    order_ids_sec = fields.One2many("dtsc.makeinline","make_order_id")
+    order_ids = fields.One2many("dtsc.makeomline","make_order_id")
+    order_ids_sec = fields.One2many("dtsc.makeomline","make_order_id")
     project_name = fields.Char(string='案名')
     comment = fields.Char(string='訂單備註') 
     factory_comment = fields.Text(string='廠區備註') 
     total_quantity = fields.Integer(string='本單總數量', compute='_compute_totals')
     total_size = fields.Integer(string='本單總才數', compute='_compute_totals')
+    supplier_id = fields.Many2one('res.partner', string='委外商', domain=[('supplier_rank', '>', 0)])
+    supplier_init_name = fields.Char(string="為外商",related="supplier_id.custom_init_name")
     create_id = fields.Many2one('res.users',string="")
     kaidan = fields.Many2one('dtsc.userlistbefore',string="開單人員",domain=[("is_disabled","=",False)]) 
     no_mprlist = fields.Boolean(default=False)
+    out_side_delivery_date = fields.Datetime(string='站外發貨日期')
     scan_type = fields.Selection([
         ('gun', '掃碼槍'),
         ('camera', '攝像頭')
@@ -84,22 +78,21 @@ class MakeIn(models.Model):
     scan_input = fields.Char("掃碼輸入員工")
     date_labels = fields.Many2many(
         'dtsc.datelabel', 
-        'dtsc_makein_datelabel_rel', 
-        'makein_id', 
+        'dtsc_makeom_datelabel_rel', 
+        'makeom_id', 
         'label_id', 
         string='日期範圍'
     )
     #1輸出 2後置 3品管 4其他
-    houzhiman = fields.Many2many('dtsc.userlist','dtsc_makein_dtsc_userlist_rel1', 'dtsc_makein_id','dtsc_userlist_id',string="後製" , domain=[('worktype_ids.name', '=', '後製'),("is_disabled","=",False)])
-    pinguanman = fields.Many2many('dtsc.userlist','dtsc_makein_dtsc_userlist_rel2', 'dtsc_makein_id','dtsc_userlist_id',string="品管" , domain=[('worktype_ids.name', '=', '品管'),("is_disabled","=",False)])
+    houzhiman = fields.Many2many('dtsc.userlist','dtsc_makeom_dtsc_userlist_rel1', 'dtsc_makeom_id','dtsc_userlist_id',string="後製" , domain=[('worktype_ids.name', '=', '後製'),("is_disabled","=",False)])
+    pinguanman = fields.Many2many('dtsc.userlist','dtsc_makeom_dtsc_userlist_rel2', 'dtsc_makeom_id','dtsc_userlist_id',string="品管" , domain=[('worktype_ids.name', '=', '品管'),("is_disabled","=",False)])
     outmanall = fields.Many2one('dtsc.userlist',string="所有輸出" , domain=[('worktype_ids.name', '=', '輸出'),("is_disabled","=",False)])
     search_line_name = fields.Char(compute="_compute_search_line_name", store=True)
     signature = fields.Binary(string='簽名')
-    # is_open_makein_qrcode = fields.Boolean(compute="_compute_is_open_makein_qrcode")
     
-    is_open_makein_qrcode = fields.Boolean(
+    is_open_makeom_qrcode = fields.Boolean(
         string="是否啟用掃碼",
-        compute="_compute_is_open_makein_qrcode",
+        compute="_compute_is_open_makeom_qrcode",
         store=False
     )
     @api.onchange('scan_input')
@@ -112,6 +105,15 @@ class MakeIn(models.Model):
             else:
                 self.scan_input = employee.name
                 
+    def btn_send(self):
+        if not self.supplier_id:
+            raise UserError("請錄入委外商！")
+        
+        self.write({"install_state":"succ"}) 
+        
+    def send_install_list(self):
+        self.write({"install_state":"installing"}) 
+        
     def button_confirm_action(self):
         if not self.scan_input:
             raise UserError("請錄入員工QRcode！")    
@@ -159,9 +161,9 @@ class MakeIn(models.Model):
 
     
     @api.depends()
-    def _compute_is_open_makein_qrcode(self):
+    def _compute_is_open_makeom_qrcode(self):
         for record in self:
-            record.is_open_makein_qrcode = config.get('is_open_makein_qrcode')
+            record.is_open_makeom_qrcode = config.get('is_open_makein_qrcode')
     
     
     
@@ -215,7 +217,7 @@ class MakeIn(models.Model):
         
     def everyday_set(self):
         # 設置時區
-        print("###make in cron###")
+        print("###make om cron###")
         local_tz = pytz.timezone('Asia/Shanghai')  # 替換為你所在的時區
         
         today = datetime.now(local_tz).date()
@@ -262,11 +264,6 @@ class MakeIn(models.Model):
         label_names = ['出貨日-明日','出貨日-今日','出貨日-本周', '出貨日-10日内', '出貨日-本月', '出貨日-前月', '出貨日-其他','進單日-明日日','進單日-今日','進單日-本周', '進單日-10日内', '進單日-本月', '進單日-前月', '進單日-其他']
         labels = {name: self.env['dtsc.datelabel'].search([('name', '=', name)]) for name in label_names}
         
-        
-        # print(start_of_month)
-        # print(end_of_month)
-        # print(prev_month_start)
-        # print(prev_month_end)
         
         
         checkouts = self.search([])
@@ -456,8 +453,8 @@ class MakeIn(models.Model):
     
     #生成扣料单
     def kld_btn(self):
-        is_open_full_checkoutorder = config.get('is_open_full_checkoutorder')
-        if is_open_full_checkoutorder == False:#简易流程
+        is_open_full_checkoutorder = self.env['ir.config_parameter'].sudo().get_param('dtsc.is_open_full_checkoutorder')
+        if is_open_full_checkoutorder:#简易流程
             self.no_mprlist = True
         else:        
             install_name = self.name.replace("B","W")
@@ -538,10 +535,10 @@ class MakeIn(models.Model):
 
     
 
-class MakeLine(models.Model):
-    _name = 'dtsc.makeinline'
+class MakeOmLine(models.Model):
+    _name = 'dtsc.makeomline'
     sequence = fields.Char(string='項')
-    make_order_id = fields.Many2one("dtsc.makein",ondelete='cascade')
+    make_order_id = fields.Many2one("dtsc.makeom",ondelete='cascade')
     checkout_line_id = fields.Many2one("dtsc.checkoutline",ondelete='cascade')
     file_name = fields.Char(string='檔名')    
     quantity = fields.Integer(string='數量')
@@ -555,7 +552,7 @@ class MakeLine(models.Model):
     comment = fields.Char(string='客戶備註') 
     product_id = fields.Many2one("product.template",string='商品名稱' ,required=True) 
     quantity_peijian = fields.Float("配件數")    
-    
+    is_aftermake = fields.Boolean("是否帶後加工信息") 
     processing_method = fields.Text(string='加工方式', compute='_compute_processing_method')
     processing_method_after = fields.Text(string='後加工方式', compute='_compute_processing_method_after')
     output_material = fields.Char(string='輸出材質', compute='_compute_output_material')
@@ -594,21 +591,7 @@ class MakeLine(models.Model):
     def clean_yichuhuo(self):
         self.yichuhuo_sign = ""
         self.checkout_line_id.yichuhuo_sign = ""    
-    ####权限
-    
-    # is_in_by_sc = fields.Boolean(compute='_compute_is_in_by_sc')
 
-    # @api.depends()
-    # def _compute_is_in_by_sc(self):
-        # group_dtsc_sc = self.env.ref('dtsc.group_dtsc_sc', raise_if_not_found=False)
-        # user = self.env.user
-        # #_logger.info(f"Current user: {user.name}, ID: {user.id}")
-        # #is_in_group_dtsc_mg = group_dtsc_mg and user in group_dtsc_mg.users
-
-        # # 打印调试信息
-        # #_logger.info(f"User '{user.name}' is in DTSC MG: {is_in_group_dtsc_mg}, is in DTSC GLY: {is_in_group_dtsc_gly}")
-        # self.is_in_by_sc = group_dtsc_sc and user in group_dtsc_sc.users
-    ####权限
     barcode = fields.Char(
         string="條碼",
         compute='_compute_barcode',

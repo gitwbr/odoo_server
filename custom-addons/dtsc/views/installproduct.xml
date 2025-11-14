@@ -102,9 +102,12 @@
 									<field name="size" readonly="1"/>
 									<field name="caizhi" readonly="1"/>
 									<field name="install_note"/>
-									<field name="image_yt"   widget="image" class="w200" />
-									<field name="image_sgq"   widget="image" class="w200" />
-									<field name="image_wgt" widget="image" class="w200" />
+									<!-- <field name="image_yt"   widget="image" class="w200" /> -->
+									<!-- <field name="image_sgq"   widget="image" class="w200" /> -->
+									<!-- <field name="image_wgt" widget="image" class="w200" /> -->
+									<field name="image_yt_new"   widget="image" class="w200" />
+									<field name="image_sgq_new"   widget="image" class="w200" />
+									<field name="image_wgt_new" widget="image" class="w200" />
 									<button name="get_action_manage_images" type="object" string="多圖管理" class="btn-primary"/>
 									<field name="caishu" sum="Total"/>
 									<field name="shuliang" readonly="1"/>
@@ -134,9 +137,12 @@
 									<field name="project_product_name" />
 									<field name="install_note" />									
 									<!-- <field name="name" /> -->
-									<field name="image_yt" widget="image" class="w200" />
-									<field name="image_sgq" widget="image" class="w200" />
-									<field name="image_wgt" widget="image" class="w200" />
+									<!-- <field name="image_yt" widget="image" class="w200" /> -->
+									<!-- <field name="image_sgq" widget="image" class="w200" /> -->
+									<!-- <field name="image_wgt" widget="image" class="w200" /> -->
+									<field name="image_yt_new"   widget="image" class="w200" />
+									<field name="image_sgq_new"   widget="image" class="w200" /> 
+									<field name="image_wgt_new" widget="image" class="w200" />
 									<!-- <button name="unlink_record" type="object" string="刪除" icon="fa-trash" class="btn-danger"/> -->
 								</tree>
 							</field>
@@ -190,9 +196,9 @@
 			<tree editable="bottom" delete="True">
                 <!-- <field name="name" /> -->
                 <field name="install_note" />
-                <field name="image_yt" widget="image" class="w200" />
-                <field name="image_sgq" widget="image" class="w200" />
-                <field name="image_wgt" widget="image" class="w200" />
+                <field name="image_yt_new" widget="image" class="w200" />
+                <field name="image_sgq_new" widget="image" class="w200" />
+                <field name="image_wgt_new" widget="image" class="w200" />
                 <button name="unlink_record" type="object" string="刪除" icon="fa-trash" class="btn-danger"/>
 			</tree>
 		</field>

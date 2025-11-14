@@ -956,7 +956,8 @@ odoo.define('dtsc.public_web_order', function (require) {
 			var fileNameRow = $('<tr>').append(
 				$('<td>').attr('colspan', '6').css('width', '100%').append(
 					$('<div>').addClass('form-group').append(
-						$('<input>').addClass('form-control').attr({type: 'text', name: 'project_product_name', id: 'project_product_name', placeholder: '檔案名稱'})
+						$('<input>').addClass('form-control val_required').attr({type: 'text', name: 'project_product_name', id: 'project_product_name', placeholder: '檔案名稱'}),
+						$('<div>').addClass('invalid-feedback').text('請輸入檔案名稱')
 					)
 				),
 				$('<td>')

@@ -67,10 +67,12 @@
                                         <th style="height: 60px;width:150px;text-align: center;vertical-align: middle;border: 1px solid #000;">製作單號</th>
                                     </tr>
                                 </thead>
+								<t t-set="rowno" t-value="(page_num - 1) * lines_per_page"/>
                                 <tbody>
                                     <t t-foreach="doc.order_ids[(page_num-1)*lines_per_page:page_num*lines_per_page]" t-as="order">
                                         <tr style="height: 75px;">
-                                            <td style="height: 75px;width:60px; padding: 0px; text-align: center;vertical-align: middle;border: 1px solid #000; "><span t-field="order.sequence"/></td>
+                                            <td style="height: 75px;width:60px; padding: 0px; text-align: center;vertical-align: middle;border: 1px solid #000; "><t t-set="rowno" t-value="(rowno or 0) + 1"/>
+																																														<t t-esc="rowno"/></td>
                                             <td style="height: 75px;width:150px; padding: 0px 0px 0px 4px; text-align: left;vertical-align: middle;border: 1px solid #000; "><span t-field="order.file_name"/></td>
                                             <td style="height: 75px;width:180px; padding: 0px; text-align: center;vertical-align: middle;border: 1px solid #000; "><span t-field="order.production_size"/> (<span t-field="order.size"/>)</td>
                                             <td style="height: 75px;width:490px; padding: 0px 0px 0px 4px; text-align: left;vertical-align: middle;border: 1px solid #000; "><span t-field="order.output_material"/>/<span t-field="order.processing_method"/></td>
@@ -216,10 +218,12 @@
                                         <th style="height: 60px;width:150px;text-align: center;vertical-align: middle;border: 1px solid #000;">製作單號</th>
                                     </tr>
                                 </thead>
+								<t t-set="rowno" t-value="(page_num - 1) * lines_per_page"/>
                                 <tbody>
                                     <t t-foreach="doc.order_ids[(page_num-1)*lines_per_page:page_num*lines_per_page]" t-as="order">
                                         <tr style="height: 75px;">
-                                            <td style="height: 75px;width:60px; padding: 0px; text-align: center;vertical-align: middle;border: 1px solid #000; "><span t-field="order.sequence"/></td>
+                                            <td style="height: 75px;width:60px; padding: 0px; text-align: center;vertical-align: middle;border: 1px solid #000; "><t t-set="rowno" t-value="(rowno or 0) + 1"/>
+																																														<t t-esc="rowno"/></td>
                                             <td style="height: 75px;width:150px; padding: 0px 0px 0px 4px; text-align: left;vertical-align: middle;border: 1px solid #000; "><span t-field="order.file_name"/></td>
                                             <td style="height: 75px;width:180px; padding: 0px; text-align: center;vertical-align: middle;border: 1px solid #000; "><span t-field="order.production_size"/> (<span t-field="order.size"/>)</td>
                                             <td style="height: 75px;width:490px; padding: 0px 0px 0px 4px; text-align: left;vertical-align: middle;border: 1px solid #000; "><span t-field="order.output_material"/>/<span t-field="order.processing_method"/></td>
@@ -314,4 +318,88 @@
         <t t-call="dtsc.external_layout_standard_coin"><t t-out="0"/></t>
 
     </template>
+	
+	
+<template id="report_deliveryorder_template_line">
+    <t t-call="web.html_container">
+        <t t-foreach="docs" t-as="doc">
+            <t t-call="dtsc.external_layout_coin">
+                <!-- 仅本模板用到的分页参数 -->
+                <t t-set="total_lines" t-value="len(doc.order_ids)"/>
+                <t t-set="lines_per_page" t-value="16"/>
+                <t t-set="total_pages" t-value="(total_lines + lines_per_page - 1) // lines_per_page"/>
+
+                <!-- 分页循环 -->
+                <t t-foreach="[page_num for page_num in range(1, int(total_pages) + 1)]" t-as="page_num">
+                    <t t-set="slice_start" t-value="(page_num-1) * lines_per_page"/>
+                    <t t-set="slice_end"   t-value="page_num * lines_per_page"/>
+                    <t t-set="page_lines"  t-value="doc.order_ids[slice_start:slice_end]"/>
+                    <t t-set="current_page_lines" t-value="len(page_lines)"/>
+                    <t t-set="rowno" t-value="(page_num - 1) * lines_per_page"/>
+
+                    <div class="page">
+                        <!-- 明细表，仅展示必要列 -->
+                        <table class="table table-condensed" style="font-size:19px;width:1280px;table-layout: fixed;">
+                            <thead>
+                                <tr>
+                                    <th style="height:60px;width:60px;text-align:center;vertical-align:middle;border:1px solid #000;">項</th>
+                                    <th style="height:60px;width:150px;text-align:center;vertical-align:middle;border:1px solid #000;">檔名/品名</th>
+                                    <th style="height:60px;width:180px;text-align:center;vertical-align:middle;border:1px solid #000;">製作尺寸/才數</th>
+                                    <th style="height:60px;width:490px;text-align:center;vertical-align:middle;border:1px solid #000;">輸出材質/加工方式</th>
+                                    <th style="height:60px;width:60px;text-align:center;vertical-align:middle;border:1px solid #000;">數量</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <t t-foreach="page_lines" t-as="order">
+                                    <tr style="height:75px;">
+                                        <td style="height:75px;width:60px;padding:0;text-align:center;vertical-align:middle;border:1px solid #000;">
+                                            <t t-set="rowno" t-value="(rowno or 0) + 1"/><t t-esc="rowno"/>
+                                        </td>
+                                        <td style="height:75px;width:150px;padding:0 0 0 4px;text-align:left;vertical-align:middle;border:1px solid #000;">
+                                            <span t-field="order.file_name"/>
+                                        </td>
+                                        <td style="height:75px;width:180px;padding:0;text-align:center;vertical-align:middle;border:1px solid #000;">
+                                            <span t-field="order.production_size"/> (<span t-field="order.size"/>)
+                                        </td>
+                                        <td style="height:75px;width:490px;padding:0 0 0 4px;text-align:left;vertical-align:middle;border:1px solid #000;">
+                                            <span t-field="order.output_material"/>/<span t-field="order.processing_method"/>
+                                        </td>
+                                        <td style="height:75px;width:60px;padding:0;text-align:center;vertical-align:middle;border:1px solid #000;">
+                                            <span t-field="order.quantity"/>
+                                        </td>
+                                    </tr>
+                                </t>
+
+                                <!-- 这里用 t-if（不是 t-elif）补空行 -->
+                                <t t-if="current_page_lines &lt; lines_per_page">
+                                    <t t-foreach="range(0, lines_per_page - current_page_lines)" t-as="i">
+                                        <tr>
+                                            <td style="height:75px;padding:0;text-align:center;vertical-align:middle;border:1px solid #000;"></td>
+                                            <td style="height:75px;padding:0;text-align:center;vertical-align:middle;border:1px solid #000;"></td>
+                                            <td style="height:75px;padding:0;text-align:center;vertical-align:middle;border:1px solid #000;"></td>
+                                            <td style="height:75px;padding:0;text-align:center;vertical-align:middle;border:1px solid #000;"></td>
+                                            <td style="height:75px;padding:0;text-align:center;vertical-align:middle;border:1px solid #000;"></td>
+                                        </tr>
+                                    </t>
+                                </t>
+                            </tbody>
+                        </table>
+
+                        <!-- 简单页码 -->
+                        <div style="display:flex;justify-content:center;font-size:19px;">
+                            <span>P：<t t-esc="page_num"/> / <t t-esc="total_pages"/></span>
+                        </div>
+                    </div>
+
+                    <!-- 分页分隔 -->
+                    <t t-if="page_num &lt; total_pages">
+                        <div style="page-break-after: always;"></div>
+                    </t>
+                </t>
+            </t>
+        </t>
+    </t>
+</template>
+
+	
 </odoo>

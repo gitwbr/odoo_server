@@ -16,6 +16,7 @@ from . import saleorder
 from . import product_att_val
 from . import make_out
 from . import make_in
+from . import make_om
 from . import installproduct
 from . import stock
 from . import barcode

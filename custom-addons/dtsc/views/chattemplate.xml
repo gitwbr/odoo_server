@@ -157,8 +157,9 @@
 		<field name="arch" type="xml">
 			<tree>			
 				<!-- <group expand="1" string="分組結果">			 -->
-					<field name="machineAndproduct" string="類別" readonly="1"  />
-					<field name="saleuser"  readonly="1"  />
+					<field name="checkout_product_id"  readonly="1"  />
+					<field name="saleuser"  readonly="1" invisible="1" />
+					<field name="machineAndproduct" string="類別" invisible="1" readonly="1"  />
 					<field name="total_units" sum="Total" width="140px"  readonly="1"  />
 					<field name="price" sum="Total" width="140px"  readonly="1"  />
 					<field name="estimated_date" readonly="1"  />

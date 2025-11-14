@@ -20,7 +20,7 @@ def _assign_groups_to_admin(cr, registry):
         admin_user = env.ref('base.user_admin')
         groups = base_group + ck_group + cg_group + sc_group + kj_group + mg_group + yw_group + gly_group
         admin_user.write({'groups_id': [(4, group.id) for group in groups]})
-
+        
 def post_init_hook(cr, registry):
     _logger.warning("==== post_init_hook start ====")
     env = api.Environment(cr, SUPERUSER_ID, {})

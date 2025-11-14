@@ -20,6 +20,8 @@ import hashlib
 _logger = logging.getLogger(__name__)
 from odoo.http import request 
 from odoo.tools import config
+import requests
+import time,hmac, secrets
 class Department(models.Model):
     _name = 'dtsc.department'
     
@@ -58,8 +60,7 @@ class yingShouDate(models.TransientModel):
     _name = 'dtsc.yinshoudate'
     _description = '帳單日期'
 
-    selected_date = fields.Datetime(string='賬單日期')
-    
+    selected_date = fields.Datetime(string='帳單日期')
     def action_confirm(self):
         active_ids = self._context.get('active_ids')
         records = self.env["dtsc.checkout"].browse(active_ids)
@@ -68,7 +69,9 @@ class yingShouDate(models.TransientModel):
         if not all(record.checkout_order_state == 'price_review_done' for record in records):
             raise UserError('只有當所有勾選的內容的狀態為“價格已審”時才能執行此操作。')
         
-        
+        year_set = set()
+        month_set = set()
+        eligible_count = 0
         # 分组记录按客户ID
         customer_groups = {}
         for record in records:
@@ -76,12 +79,19 @@ class yingShouDate(models.TransientModel):
                 continue
             if record.name and record.name[0] == "F":#如果是打樣單則不轉應收
                 continue
+                
+            year_set.add(record.report_year)
+            month_set.add(record.report_month)
+            eligible_count += 1   
             # if record.invoice_origin:
                 # raise UserError('大圖訂單%s已生成應收帳單！' % record.name)
             customer_id = record.customer_id.id
             if customer_id not in customer_groups:
                 customer_groups[customer_id] = []
             customer_groups[customer_id].append(record)
+        
+        if len(year_set) > 1 or len(month_set) > 1:
+            raise UserError('所轉訂單不屬於同一個月，請分月分批轉應收。')
 
         for customer_id, records in customer_groups.items():
             self.env['dtsc.checkout']._create_invoice_for_customer(records,self.selected_date)
@@ -96,12 +106,44 @@ class YourWizard(models.TransientModel):
     _description = '送貨日期'
 
     selected_date = fields.Datetime(string='出貨日期')
+    is_send_line = fields.Boolean(string="Line推送",default=True) 
     
-    def send_push_status_flex(self,partner_id,checkout_id):
+    def _get_or_create_line_pdf_secret(self):
+        ICP = self.env['ir.config_parameter'].sudo()
+        secret = ICP.get_param('dtsc.line_pdf_secret')
+        if not secret:
+            secret = secrets.token_hex(32)
+            ICP.set_param('dtsc.line_pdf_secret', secret)
+        return secret
+
+    def _build_pdf_url(self, delivery_order, partner, *, external=False, dl=False):
+        ICP = self.env['ir.config_parameter'].sudo()
+        base = ICP.get_param('web.base.url') or ''
+        secret = ICP.get_param('dtsc.line_pdf_secret')
+        if not secret:
+            secret = secrets.token_hex(32)
+            ICP.set_param('dtsc.line_pdf_secret', secret)
+
+        exp = int(time.time()) + 7 * 24 * 3600  # 7天有效
+        raw = f"{delivery_order.id}.{partner.id}.{exp}"
+        sig = hmac.new(secret.encode(), raw.encode(), hashlib.sha256).hexdigest()
+
+        url = f"{base}/dtsc/delivery/pdf?oid={delivery_order.id}&pid={partner.id}&exp={exp}&sig={sig}"
+        # 方案A关键：外开
+        if external:
+            url += "&openExternalBrowser=1"
+        # 可选：要求外部浏览器以下载方式处理（配合后端 Content-Disposition: attachment）
+        if dl:
+            url += "&dl=1"
+        return url
+        
+    def send_push_status_flex(self,partner_id,checkout_id,delivery_order):
         lineObj = request.env["dtsc.linebot"].sudo().search([("linebot_type","=","for_customer")], limit=1)
         if not lineObj or not lineObj.line_access_token:
             return False
         LINE_ACCESS_TOKEN = lineObj.line_access_token
+        preview_url  = self._build_pdf_url(delivery_order, partner_id, external=False, dl=False)
+        download_url = self._build_pdf_url(delivery_order, partner_id, external=True,  dl=True)
         
         
             
@@ -192,10 +234,34 @@ class YourWizard(models.TransientModel):
                             ]
                         }
                     ]
+                },
+               "footer":{
+                    "type": "box",
+                    "layout": "vertical",
+                    "contents": [
+                        {
+                            "type": "button",
+                            "style": "primary",
+                            "height": "sm",
+                            "action": {
+                                "type": "uri",
+                                "label": "下載明細PDF",
+                                "uri": download_url
+                            }
+                        }
+                    ],
+                    "spacing": "sm",
+                    "margin": "md"
                 }
             }
         }
-        
+        # data = {
+            # "to": "Udeeb959528487750053db1302d784e72",
+            # "messages": [flex_message]
+        # }
+
+        # requests.post("https://api.line.me/v2/bot/message/push", headers=headers, json=data)
+        # return
         for user in partner_id.partnerlinebind_ids:
             if user.is_active:
                 data = {
@@ -249,7 +315,7 @@ class YourWizard(models.TransientModel):
             checkout_ids.append(record.id)
             record.is_delivery = True
             record.delivery_order = new_name
-            # record.estimated_date = self.selected_date
+            record.estimated_date = self.selected_date
             if combined_comments:
                 if record.comment:
                     combined_comments += "/" + record.comment
@@ -292,8 +358,10 @@ class YourWizard(models.TransientModel):
             'project_name' : project_name,        
         }) 
         
-        for record in records:  
-            self.send_push_status_flex(record.customer_id,record)
+        if self.is_send_line == True:
+            for record in records:
+                if record.checkout_order_type not in ['E','e']:
+                    self.send_push_status_flex(record.customer_id,record,delivery_record)
             
         return {
             'type': 'ir.actions.act_window',
@@ -336,9 +404,18 @@ class Checkout(models.Model):
     project_name = fields.Char(string='案件摘要')
     delivery_carrier = fields.Char(string='交貨方式')
     # estimated_date = fields.Datetime(string='發貨日期' , default=lambda self: self._default_estimated_date() ,inverse="_inverse_estimated_date",store=True)
+    succ_date = fields.Date(string='完成日期',store=True)
     estimated_date = fields.Datetime(string='發貨日期' , default=lambda self: self._default_estimated_date() ,store=True)
     estimated_date_str = fields.Char(string='發貨日期', compute='_compute_estimated_date_str',store=True)
     estimated_date_only = fields.Date(string='發貨日期', compute='_compute_estimated_date_only', store=True)
+    checkout_order_type = fields.Selection([
+        ("a","A"), 
+        ("f","F"),
+        ("d","D"),      
+        ("m","M"),    
+        ("e","E"),      
+        ("o","其它"),      
+    ],default='a' , compute='_compute_checkout_order_type',string="類別", store=True)
     checkout_order_state = fields.Selection([
         ("draft","草稿"),
         ("quoting","做檔中"),
@@ -431,6 +508,13 @@ class Checkout(models.Model):
     is_open_full_checkoutorder = fields.Boolean(string="簡易流程",compute="_compute_is_open_full_checkoutorder")
     is_dayang = fields.Boolean('打樣')
     lock_price = fields.Boolean('價格鎖定')
+    
+    @api.depends("name")
+    def _compute_checkout_order_type(self):
+        mapping = {'A': 'a', 'F': 'f', 'D': 'd', 'M': 'm', 'E': 'e'}
+        for rec in self:
+            first = ((rec.name or '').strip()[:1] or '').upper()
+            rec.checkout_order_type = mapping.get(first, 'o')
     
     @api.depends("outside_order_name")
     def _compute_is_outside_order(self):
@@ -562,9 +646,15 @@ class Checkout(models.Model):
         # print(end_of_month)
         # print(prev_month_start)
         # print(prev_month_end)
+        # 計算兩個月前的日期
+        two_months_ago = datetime.today() - timedelta(days=80)
+
+        # 假設你有一個日期欄位叫做 'create_date' 或 'order_date' 或 'checkout_date'
+        checkouts = self.search([
+            ('create_date', '>=', two_months_ago)
+        ])
         
-        
-        checkouts = self.search([])
+        # checkouts = self.search([])
         for record in checkouts:
             # print(record.name)
             
@@ -666,8 +756,8 @@ class Checkout(models.Model):
             user = self.env.user
             if group_dtsc_gly and user in group_dtsc_gly.users:
                 record.is_current_user = True
-            elif group_dtsc_kj and user in group_dtsc_kj.users:
-                record.is_current_user = True
+            # elif group_dtsc_kj and user in group_dtsc_kj.users:
+                # record.is_current_user = True
             elif record.checkout_order_state in ['waiting_confirmation']:
                 record.is_current_user = True
             else:
@@ -774,8 +864,6 @@ class Checkout(models.Model):
         """计算默认的 estimated_date"""
         if not self.checkout_order_state:
             self.checkout_order_state = 'draft'
-        # print("======")
-        # print(self.checkout_order_state)
         base_datetime = fields.Datetime.now()
         weekday = base_datetime.weekday()
         next_day = base_datetime + timedelta(days=1)
@@ -882,8 +970,11 @@ class Checkout(models.Model):
             line_copy_vals.pop('flag', None)
             new_lines_vals.append((0, 0, line_copy_vals))
         
-        for record in self.product_ids:
-            record.is_selected = False
+        # 收集所有需要重設 is_selected 的行
+        lines_to_reset = self.product_ids.filtered(lambda l: l.is_selected)
+
+        # 顯式呼叫 write 並帶上 context
+        lines_to_reset.with_context(from_recheck=True).write({'is_selected': False})
         
         new_record.write({'product_ids': new_lines_vals})
         
@@ -1162,7 +1253,7 @@ class Checkout(models.Model):
         
     
     
-        view_id = self.env.ref('dtsc.view_dtsc_deliverydate_form').id
+        view_id = self.env.ref('dtsc.view_dtsc_yinshoudate_form').id
         return {
             'name': '選擇賬單日期',
             'type': 'ir.actions.act_window',
@@ -1259,11 +1350,12 @@ class Checkout(models.Model):
             record.write({'name': record.name.replace("A","M")})
             name_list.append(record.name)
             # target_record.hebing_comment = target_record.hebing_comment + record.name + "-"
-        for record in records:
+        for record in target_record.product_ids:
+            record.write({'origin_checkout_id': target_record.id})        
+        for record in other_records:
             for line in record.product_ids:
                 line.write({'origin_checkout_id': line.checkout_product_id.id})
                 line.write({'checkout_product_id': target_record.id})  # 把checkoutline对应到合并单中
-                
         if name_list:
             original_comment = target_record.hebing_comment or ""
             target_record.hebing_comment = original_comment + '-'.join(name_list)            
@@ -1302,12 +1394,6 @@ class Checkout(models.Model):
                 elif line.is_purchse == "make_out":
                     make_out_flag = 1
             
-            #簡易流程無委内工單
-            # is_open_full_checkoutorder = self.env['ir.config_parameter'].sudo().get_param('dtsc.is_open_full_checkoutorder')
-            # if not is_open_full_checkoutorder:
-                # make_in_flag = 0 
-                # make_out_flag = 1
-                
             if make_in_flag == 1:
                 if only_expensed == False:#含有非服务项次才会检查工单
                     if record.name.startswith('E') or record.name.startswith('F'):
@@ -1383,12 +1469,7 @@ class Checkout(models.Model):
                 make_in_flag = 1
             elif line.is_purchse == "make_out":
                 make_out_flag = 1
-        ##簡易流程無委内工單
-        # is_open_full_checkoutorder = self.env['ir.config_parameter'].sudo().get_param('dtsc.is_open_full_checkoutorder')
-        # if not is_open_full_checkoutorder:
-            # make_in_flag = 0 
-            # make_out_flag = 1
-            
+        
         if make_in_flag == 1:
             if only_expensed == False:#含有非服务项次才会检查工单
                 if self.name.startswith('E') or self.name.startswith('F'):
@@ -1413,6 +1494,7 @@ class Checkout(models.Model):
                 raise UserError('委外工單還未生成！')
     
     
+        self.write({"succ_date":fields.Date.today()})
         self.write({"checkout_order_state":"finished"})
         
     def jiage_queren(self):
@@ -1801,7 +1883,7 @@ class Checkout(models.Model):
         sequence_number = 1
         
         for record in self.product_ids:
-            if record.is_purchse == 'make_in':
+            if record.is_purchse == 'make_in' or record.is_purchse == 'make_om':
                 if record.product_id.can_be_expensed == True:
                     continue              
                 product_value = {
@@ -1863,6 +1945,89 @@ class Checkout(models.Model):
                 'view_type' : 'tree,form', 
                 'view_mode' : 'tree,form',
                 'res_model' : 'dtsc.makein',
+                'type' : 'ir.actions.act_window',
+            }
+    def om_check(self):
+        install_name = ""#self.name.replace("A","B").replace("E","B")
+        if self.name and self.name[0] == 'A':
+            install_name = self.name.replace("A","G")
+            is_install_id = self.env['dtsc.makeom'].search([('name', '=',install_name)],limit=1)
+            if is_install_id:
+                return
+        if self.name and self.name[0] == 'E':
+            install_name = self.name#.replace("A","B")
+            is_install_id = self.env['dtsc.makeom'].search([('name', '=',install_name)],limit=1)
+            if is_install_id:
+                return
+        if self.name and self.name[0] == 'F':
+            install_name = self.name#.replace("A","B")
+            is_install_id = self.env['dtsc.makeom'].search([('name', '=',install_name)],limit=1)
+            if is_install_id:
+                return
+        product_values_list = []
+        sequence_number = 1
+        
+        for record in self.product_ids:
+            if record.is_purchse == 'make_om':
+                if record.product_id.can_be_expensed == True:
+                    continue              
+                product_value = {
+                    'file_name' : record.project_product_name,
+                    'product_width' : record.product_width,
+                    'product_height' : record.product_height,                    
+                    'checkout_line_id' : record.id,
+                    'size' : record.total_units,
+                    'quantity' : record.quantity,
+                    'machine_id' : record.machine_id.id,
+                    'product_id' : record.product_id.id,
+                    'multi_chose_ids' : record.multi_chose_ids,
+                    'comment' : record.comment,
+                    'sequence' : str(record.sequence), 
+                    'recheck_id_name' : str(record.recheck_id_name),
+                    'product_atts' : [(4, att_id.id) for att_id in record.product_atts],  # 为product_atts设置所有相关的ID值 
+                }
+                # record.make_orderid = install_name + "-" + str(record.sequence)
+                product_values_list.append((0,0,product_value))
+                sequence_number += 1
+        
+        if sequence_number > 1:
+            self.env['dtsc.makeom'].create({
+                'name' : install_name,
+                'checkout_id' : self.id,
+                'order_date' : datetime.now(),
+                'order_ids' : product_values_list,   
+                'checkout_order_date' : self.create_date,         
+                'customer_name' : self.customer_id.name,            
+                'delivery_method' : self.delivery_carrier,            
+                'project_name' : self.project_name,
+                'factory_comment' : self.comment_factory, 
+                'comment' : self.comment,                
+                'contact_person' : self.customer_id.custom_contact_person,#'聯絡人'
+                'phone' : self.customer_id.phone , #電話
+                'fax' : self.customer_id.custom_fax ,#傳真                 
+                'create_id' : self.create_id.id ,#開單人員    
+                'kaidan' : self.kaidan.id ,#開單人員    
+            }) 
+        
+        
+    
+    def om_re_check(self):
+        if self.name and self.name[0] == 'A':
+            install_name = self.name.replace("A","G")#.replace("E","B")
+        elif self.name and self.name[0] == 'E':
+            install_name = self.name#.replace("A","B").replace("E","B")+"-E"
+        elif self.name and self.name[0] == 'F':
+            install_name = self.name#.replace("A","B").replace("E","B")+"-E"
+        is_install_id = self.env['dtsc.makeom'].search([('name', '=',install_name)],limit=1)
+        if is_install_id:
+            raise UserError("請先作廢當前已經存在的%s代工單，再點擊按鈕重新生成！" %install_name)
+        else:  
+            self.om_check()
+            return{
+                'name' : '代工單',
+                'view_type' : 'tree,form', 
+                'view_mode' : 'tree,form',
+                'res_model' : 'dtsc.makeom',
                 'type' : 'ir.actions.act_window',
             }
     
@@ -2141,7 +2306,164 @@ class Checkout(models.Model):
                 })
                 
                 return delivery_record
-    
+                
+    def _get_or_create_line_pdf_secret(self):
+        ICP = self.env['ir.config_parameter'].sudo()
+        secret = ICP.get_param('dtsc.line_pdf_secret')
+        if not secret:
+            secret = secrets.token_hex(32)
+            ICP.set_param('dtsc.line_pdf_secret', secret)
+        return secret
+
+    def _build_pdf_url(self, delivery_order, partner, *, external=False, dl=False):
+        ICP = self.env['ir.config_parameter'].sudo()
+        base = ICP.get_param('web.base.url') or ''
+        secret = ICP.get_param('dtsc.line_pdf_secret')
+        if not secret:
+            secret = secrets.token_hex(32)
+            ICP.set_param('dtsc.line_pdf_secret', secret)
+
+        exp = int(time.time()) + 7 * 24 * 3600  # 7天有效
+        raw = f"{delivery_order.id}.{partner.id}.{exp}"
+        sig = hmac.new(secret.encode(), raw.encode(), hashlib.sha256).hexdigest()
+
+        url = f"{base}/dtsc/delivery/pdf?oid={delivery_order.id}&pid={partner.id}&exp={exp}&sig={sig}"
+        # 方案A关键：外开
+        if external:
+            url += "&openExternalBrowser=1"
+        # 可选：要求外部浏览器以下载方式处理（配合后端 Content-Disposition: attachment）
+        if dl:
+            url += "&dl=1"
+        return url
+        
+    def send_push_status_flex(self,partner_id,checkout_id,delivery_order):
+        lineObj = request.env["dtsc.linebot"].sudo().search([("linebot_type","=","for_customer")], limit=1)
+        if not lineObj or not lineObj.line_access_token:
+            return False
+        LINE_ACCESS_TOKEN = lineObj.line_access_token
+        preview_url  = self._build_pdf_url(delivery_order, partner_id, external=False, dl=False)
+        download_url = self._build_pdf_url(delivery_order, partner_id, external=True,  dl=True)
+        
+        
+            
+        headers = {
+            "Authorization": f"Bearer {LINE_ACCESS_TOKEN}",
+            "Content-Type": "application/json"
+        }
+        
+        flex_message = {
+            "type": "flex",
+            "altText": "您的訂單狀態更新",
+            "contents": {
+                "type": "bubble",
+                "body": {
+                    "type": "box",
+                    "layout": "vertical",
+                    "contents": [
+                        {
+                            "type": "text",
+                            "text": partner_id.name,
+                            "weight": "bold",
+                            "size": "xl",
+                            "align": "center",
+                            "margin": "md"
+                        },
+                        {
+                            "type": "box",
+                            "layout": "horizontal",
+                            "contents": [
+                                {
+                                    "type": "text",
+                                    "text": "訂單號",
+                                    "size": "sm",
+                                    "color": "#333333",
+                                    "flex": 1
+                                },
+                                {
+                                    "type": "text",
+                                    "text": checkout_id.name,
+                                    "size": "sm",
+                                    "align": "end",
+                                    "color": "#4CAF50",
+                                    "weight": "bold"
+                                }
+                            ]
+                        },
+                        {
+                            "type": "box",
+                            "layout": "horizontal",
+                            "contents": [
+                                {
+                                    "type": "text",
+                                    "text": "訂單狀態",
+                                    "size": "sm",
+                                    "color": "#333333",
+                                    "flex": 1
+                                },
+                                {
+                                    "type": "text",
+                                    "text": "已出貨",
+                                    "size": "sm",
+                                    "align": "end",
+                                    "color": "#4CAF50",
+                                    "weight": "bold"
+                                }
+                            ]
+                        },
+                        {
+                            "type": "box",
+                            "layout": "horizontal",
+                            "contents": [
+                                {
+                                    "type": "text",
+                                    "text": "案名",
+                                    "size": "sm",
+                                    "color": "#333333",
+                                    "flex": 1
+                                },
+                                {
+                                    "type": "text",
+                                    "text": checkout_id.project_name,
+                                    "size": "sm",
+                                    "wrap": True,  # 允许换行
+                                    "align": "start",  # 左对齐
+                                    "color": "#4CAF50",
+                                    "weight": "bold"
+                                }
+                            ]
+                        }
+                    ]
+                },
+               "footer":{
+                    "type": "box",
+                    "layout": "vertical",
+                    "contents": [
+                        {
+                            "type": "button",
+                            "style": "primary",
+                            "height": "sm",
+                            "action": {
+                                "type": "uri",
+                                "label": "下載明細PDF",
+                                "uri": download_url
+                            }
+                        }
+                    ],
+                    "spacing": "sm",
+                    "margin": "md"
+                }
+            }
+        }
+        
+        for user in partner_id.partnerlinebind_ids:
+            if user.is_active:
+                data = {
+                    "to": user.line_user_id,
+                    "messages": [flex_message]
+                }
+
+                requests.post("https://api.line.me/v2/bot/message/push", headers=headers, json=data)
+                
     def chuhuo_re_check(self):
         # install_name = self.name.replace("A","S")
         # is_install_id = self.env['dtsc.deliveryorder'].search([('name', '=',install_name)],limit=1)
@@ -2152,6 +2474,8 @@ class Checkout(models.Model):
         if self.is_delivery == True:
             raise UserError("出貨單已經生成！")        
         delivery_record = self.deliveryorder()
+        if self.checkout_order_type not in ['E','e']:
+            self.send_push_status_flex(self.customer_id,self,delivery_record)
          
         return {
             'type': 'ir.actions.act_window',
@@ -2241,8 +2565,7 @@ class Checkout(models.Model):
             existing_sale_order = self.env['sale.order'].search([('name', '=', sale_order_new_name)], limit=1)
             
             if existing_sale_order:
-                pass
-                #existing_sale_order.unlink()
+                pass            
             else:
                 sale_order_vals = {
                     'name' : sale_order_new_name,
@@ -2278,12 +2601,10 @@ class Checkout(models.Model):
                     record.sale_order_line_id = sale_order_line.id
                     
                 self.write({"sale_order_id":sale_order.id})
-            
+    #訂單確認        
     def in_out_check(self):
-        _logger.info("===111====")
         self.write({"checkout_order_state":"producing"})
         
-        # _logger.info("=======")
         #簡易流程
         is_open_full_checkoutorder = self.env['ir.config_parameter'].sudo().get_param('dtsc.is_open_full_checkoutorder')
         #设计公司流程        
@@ -2292,9 +2613,9 @@ class Checkout(models.Model):
         self.out_check()
         if is_des != True:
             self.in_check()
+            self.om_check()
             
-        # _logger.info("444")
-        self.create_sale_order()
+        #self.create_sale_order()
         
         #订单确认给客户发送查询邮件
         if self.name[0] == 'A':
@@ -2354,7 +2675,15 @@ class Checkout(models.Model):
             except Exception as e:
                 _logger.error(f"Error copying last record: {str(e)}")
                 raise
-                
+    
+    
+    def seq_reset(self):
+        seq = 1
+        for record in self.product_ids.sorted(key=lambda l: (l.sequence or 0, l.id)):
+            record.sequence = seq
+            seq = seq + 1
+            
+            
     def set_boolean_field_true(self):
         for record in self.product_ids:
             record.is_install = True
@@ -2487,12 +2816,13 @@ class CheckOutLine(models.Model):
     outside_comment = fields.Text(string="站外訂單備註")
     checkout_product_id = fields.Many2one("dtsc.checkout",ondelete='cascade')
     origin_checkout_id = fields.Many2one('dtsc.checkout', string="原始訂單")
-    origin_checkout_name = fields.Char(related='origin_checkout_id.name', string="原始訂單")
+    origin_checkout_name = fields.Char(related='origin_checkout_id.name', string="原始訂單",store=True)
     # checkout_product_wizard_id = fields.Many2one("dtsc.copycheckoutrecord",ondelete='cascade')
     # is_purchse = fields.Char(string='委外')
     is_purchse = fields.Selection([
         ("make_in","内部工單"),
         ("make_out","委外"),    
+        ("make_om","代工"),    
     ],default='make_in' ,string="製作方式" ,required=True) 
     estimated_date = fields.Datetime(string='發貨日期' , related="checkout_product_id.estimated_date")
     # name = fields.Char(string='製作物編號' , readonly=True)
@@ -2521,7 +2851,7 @@ class CheckOutLine(models.Model):
     quantity_peijian = fields.Float("配件數")
     peijian_price = fields.Float("配件加價", compute='_compute_peijian_price' , store=True)
     total_make_price = fields.Float("加工金額", compute='_compute_total_make_price', store=True)
-    single_units = fields.Float("單一才數" , compute='_compute_single_units')
+    single_units = fields.Float("單一才數" , compute='_compute_single_units', store=True)
     total_units = fields.Float("總才數" , compute='_compute_total_units', inverse="_inverse_total_units" , store=True)
     units_price = fields.Float("單價" , compute='_compute_units_price', inverse="_inverse_units_price" , store=True)
     jijiamoshi = fields.Selection([
@@ -2535,7 +2865,7 @@ class CheckOutLine(models.Model):
     # manual_product_total_price = fields.Float("手动輸出金額")
     # manual_total_make_price = fields.Float("手动加工金額")
     # manual_total_make_price_flag = fields.Boolean(default = False)
-    price = fields.Float("價錢" , compute='_compute_price' , store=True) 
+    price = fields.Float("價錢" , compute='_compute_price', inverse="_inverse_price" , store=True) 
     image_url = fields.Char("圖片鏈接") 
     flag = fields.Float("判斷頁面下單")
     is_copy_last = fields.Integer("是否是复制最后一条")
@@ -2543,6 +2873,7 @@ class CheckOutLine(models.Model):
     recheck_id_name = fields.Char("原工單")
     
     small_image = fields.Binary(string="小圖")
+    small_image_new = fields.Binary(string="小圖", max_width=600, max_height=600)
     machine_cai_cai = fields.Float(string='才數',compute='_compute_machine_cai', store=True)
     sequence = fields.Integer(string='項次', copy=False)
     aftermakepricelist_lines = fields.One2many(
@@ -2728,11 +3059,14 @@ class CheckOutLine(models.Model):
         group_dtsc_gly = self.env.ref('dtsc.group_dtsc_gly', raise_if_not_found=False)
         user = self.env.user
         if self.checkout_product_id.checkout_order_state in ["receivable_assigned"]:
-            raise UserError("此訂單已轉應收，無法修改任何内容。")
+            allowed_fields = {"is_selected"}
+            disallowed = set(vals.keys()) - allowed_fields
+            if disallowed:
+                raise UserError("此訂單已轉應收，無法修改任何内容。")
             
         if user not in group_dtsc_gly.users and user in group_dtsc_mg.users:
             if self.checkout_product_id.is_delivery:
-                allowed_fields = {'price', 'product_total_price', 'units_price', 'total_make_price', 'peijian_price',"is_selected","sale_order_line_id","project_product_name"}
+                allowed_fields = {'checkout_product_id','origin_checkout_id','delivery_order','price', 'is_install','product_total_price', 'units_price', 'total_make_price', 'peijian_price',"is_selected","sale_order_line_id","project_product_name","same_material","jijiamoshi"}
                 disallowed = set(vals.keys()) - allowed_fields
                 if disallowed:
                     raise UserError("此訂單已出貨，僅允許修改價格相關欄位。")
@@ -3018,7 +3352,7 @@ class CheckOutLine(models.Model):
                                     obj = self.env["dtsc.pricelist"].search([("customer_class_id","=" ,customer_class_id),("attribute_value_id","=" ,attr_value.id)],limit=1)
                                     price_extra = obj.attr_price
                                     a = obj.price_cai
-                                    formula = self.env["dtsc.unit_conversion"].search([("name" , "=" ,"單位轉換計算(才數)")]).conversion_formula
+                                    formula = self.env["dtsc.unit_conversion"].search(["|",("name" , "=" ,"單位轉換計算(才數)"),("name" , "=" ,"单位转换计算(平方)")]).conversion_formula
                                     param1 = float(record.product_width)
                                     param2 = float(record.product_height)
                                     unit = 0.0
@@ -3074,7 +3408,7 @@ class CheckOutLine(models.Model):
                                 # price_extra = price_extra_record.price_extra if price_extra_record else 0
                                 price_extra = obj.attr_price
                                 a = obj.price_cai
-                                formula = self.env["dtsc.unit_conversion"].search([("name" , "=" ,"單位轉換計算(才數)")]).conversion_formula
+                                formula = self.env["dtsc.unit_conversion"].search(["|",("name" , "=" ,"單位轉換計算(才數)"),("name" , "=" ,"单位转换计算(平方)")]).conversion_formula
                                 param1 = float(record.product_width)
                                 param2 = float(record.product_height)
                                 unit = 0.0
@@ -3155,7 +3489,7 @@ class CheckOutLine(models.Model):
     @api.depends("product_width","product_height","quantity","jijiamoshi","mergecai")
     def _compute_single_units(self):
         for record in self:
-                formula = self.env["dtsc.unit_conversion"].search([("name" , "=" ,"單位轉換計算(才數)")]).conversion_formula
+                formula = self.env["dtsc.unit_conversion"].search(["|",("name" , "=" ,"單位轉換計算(才數)"),("name" , "=" ,"单位转换计算(平方)")]).conversion_formula
                 param1 = float(record.product_width)
                 param2 = float(record.product_height)
 
@@ -3172,7 +3506,7 @@ class CheckOutLine(models.Model):
     def _compute_total_units(self):
         print("_compute_total_units")
         for record in self:
-                formula = self.env["dtsc.unit_conversion"].search([("name" , "=" ,"單位轉換計算(才數)")]).conversion_formula
+                formula = self.env["dtsc.unit_conversion"].search(["|",("name" , "=" ,"單位轉換計算(才數)"),("name" , "=" ,"单位转换计算(平方)")]).conversion_formula
                 param1 = float(record.product_width)
                 param2 = float(record.product_height)
 

@@ -318,7 +318,7 @@ class ResPartner(models.Model):
                 if prefix:
                     # 生成custom_id
                     last_id = self.env['res.partner'].search([('custom_id', 'like', f'{prefix}%')], order='custom_id desc', limit=1).custom_id
-                    print(last_id)
+                    # print(last_id)
                     if last_id:
                         next_num = int(last_id[1:]) + 1
                     else:
@@ -410,37 +410,34 @@ class ReportExportCenter(models.Model):
         sheet.set_column(0, 0, 12)
         sheet.set_column(1, 1, 12)
         sheet.set_column(2, 2, 6)
-        sheet.set_column(3, 3, 20)
-        sheet.set_column(4, 4, 20)
-        sheet.set_column(5, 5, 18)
-        sheet.set_column(6, 6, 10)
-        sheet.set_column(7, 7, 20)
+        sheet.set_column(3, 3, 25)
+        sheet.set_column(4, 4, 25)
+        sheet.set_column(5, 5, 25)
+        sheet.set_column(6, 6, 18)
+        sheet.set_column(7, 7, 25)
         sheet.set_column(8, 8, 8)
-        sheet.set_column(9, 9, 8)
         sheet.set_column(9, 9, 8)
         sheet.set_column(10, 10, 8)
         sheet.set_column(11, 11, 10)
         sheet.set_column(12, 12, 10)
-        sheet.set_column(13, 13, 10)
-        sheet.set_column(14, 14, 14)
-        sheet.set_column(15, 15, 6)
+        sheet.set_column(13, 13, 8)
+        sheet.set_column(14, 14, 10)
         
         sheet.write(0, 0, '出貨日', border_format)
         sheet.write(0, 1, '單號', border_format)
         sheet.write(0, 2, '項次', border_format)
-        sheet.write(0, 3, '檔名', border_format)
-        sheet.write(0, 4, '案名', border_format)
-        sheet.write(0, 5, '尺寸', border_format)
-        sheet.write(0, 6, '稅別', border_format)
+        sheet.write(0, 3, '案名', border_format)
+        sheet.write(0, 4, '檔名', border_format)
+        sheet.write(0, 5, '商品', border_format)
+        sheet.write(0, 6, '尺寸', border_format)
         sheet.write(0, 7, '材質', border_format)
         sheet.write(0, 8, '才數', border_format)
         sheet.write(0, 9, '數量', border_format)
         sheet.write(0, 10, '單價', border_format)
-        sheet.write(0, 11, '小計', border_format)
-        sheet.write(0, 12, '輸出額', border_format)
-        sheet.write(0, 13, '加工額', border_format)
-        sheet.write(0, 14, '輸出單', border_format)
-        sheet.write(0, 15, '項', border_format)
+        sheet.write(0, 11, '輸出額', border_format)
+        sheet.write(0, 12, '加工額', border_format)
+        sheet.write(0, 13, '小計', border_format)
+        sheet.write(0, 14, '稅別', border_format)
         custom_invoice_form_map = {
             '21': '三聯式',
             '22': '二聯式',
@@ -453,10 +450,10 @@ class ReportExportCenter(models.Model):
                 sheet.write(row, 0, line.estimated_date.strftime('%Y-%m-%d'), content_format)
                 sheet.write(row, 1, line.name, content_format)
                 sheet.write(row, 2, record.sequence, content_format)
-                sheet.write(row, 3, record.project_product_name if record.project_product_name else '', content_format)
-                sheet.write(row, 4, line.project_name if line.project_name else '', content_format)
-                sheet.write(row, 5, f"{str(record.product_width)}x{str(record.product_height)}({record.single_units})", content_format)
-                sheet.write(row, 6, custom_invoice_form_map.get(self.partner_id.custom_invoice_form, ''), content_format)
+                sheet.write(row, 3, line.project_name if line.project_name else '', content_format_text_wrap)
+                sheet.write(row, 4, record.project_product_name if record.project_product_name else '', content_format_text_wrap)
+                sheet.write(row, 5, record.product_id.name if record.product_id else '', content_format_text_wrap)
+                sheet.write(row, 6, f"{str(record.product_width)}x{str(record.product_height)}({record.single_units})", content_format)
                 make_name = ""
 
                 # 追加产品属性名称，假设每个属性都存储在order.product_atts中
@@ -471,12 +468,17 @@ class ReportExportCenter(models.Model):
                 sheet.write(row, 7, make_name, content_format_text_wrap)
                 sheet.write(row, 8, record.total_units, content_format)
                 sheet.write(row, 9, record.quantity, content_format)
-                sheet.write(row, 10, record.units_price, content_format)
-                sheet.write(row, 11, record.price, content_format)
-                sheet.write(row, 12, record.product_total_price, content_format)
-                sheet.write(row, 13, record.total_make_price, content_format)
-                sheet.write(row, 14, record.make_orderid if record.make_orderid else '' , content_format)
-                sheet.write(row, 15, record.sequence if record.make_orderid else '', content_format)
+                if show_price:
+                    sheet.write(row, 10, record.units_price, content_format)
+                    sheet.write(row, 11, record.product_total_price, content_format)
+                    sheet.write(row, 12, record.total_make_price, content_format)
+                    sheet.write(row, 13, record.price, content_format)
+                else:                    
+                    sheet.write(row, 10, "", content_format)
+                    sheet.write(row, 11, "", content_format)
+                    sheet.write(row, 12, "", content_format)
+                    sheet.write(row, 13, "", content_format)
+                sheet.write(row, 14, custom_invoice_form_map.get(self.partner_id.custom_invoice_form, ''), content_format)
                 
             
         

@@ -199,4 +199,4 @@ class InteropAPI(http.Controller):
                  
                     })
             '''
-        return json.dumps({"ok": True, "msg": "成功！", "echo_local_id": local_id})
+        return json.dumps({"ok": True, "msg": "成功！", "echo_local_id": local_id, "checkout_name": checkout_id.name})

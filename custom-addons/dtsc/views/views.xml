@@ -45,6 +45,12 @@
 	  <field name="view_id" ref="dtsc.view_makeoutt_tree"/>
 		<field name="search_view_id" ref="search_makeout"/>
     </record>
+	<record model="ir.actions.act_window" id="dtsc.action_window_make_om">
+      <field name="name">代工單</field>
+      <field name="res_model">dtsc.makeom</field>
+      <field name="view_mode">tree,form,kanban</field>
+		<field name="search_view_id" ref="search_makeom"/>
+    </record>
 
 	<record model="ir.actions.act_window" id="dtsc.action_window_install">
       <field name="name">施工工單</field>
@@ -524,7 +530,7 @@
 		<field name="view_id" ref="work_qrcode_salary_list"/>
 	</record>
 	<record model="ir.actions.act_window" id="action_jl_dtsc" >
-		<field name="name">健勞保基礎表</field>
+		<field name="name">勞健保基礎表</field>
 		<field name="res_model">dtsc.insurancelist</field>
 		<field name="view_mode">tree,form</field>
 	</record>
@@ -562,14 +568,15 @@
 
 	<menuitem name="委外工單" id="dtsc.makeout" sequence="2" action="dtsc.action_window_make_out" parent="dtsc.menu_root"  groups="dtsc.group_dtsc_mg,dtsc.group_dtsc_yw,dtsc.group_dtsc_kj,dtsc.group_dtsc_sc,dtsc.group_dtsc_ck"/>
     <menuitem name="內部工單" id="dtsc.makein" sequence="3" action="dtsc.action_window_make_in" parent="dtsc.menu_root" groups="dtsc.group_dtsc_mg,dtsc.group_dtsc_yw,dtsc.group_dtsc_kj,dtsc.group_dtsc_sc,dtsc.group_dtsc_ck"/>
+    <menuitem name="代工單" id="dtsc.makeom" sequence="4" action="dtsc.action_window_make_om" parent="dtsc.menu_root" groups="dtsc.group_dtsc_mg,dtsc.group_dtsc_yw,dtsc.group_dtsc_kj,dtsc.group_dtsc_sc,dtsc.group_dtsc_ck"/>
     
-	<menuitem name="製作物" id="dtsc.scanqrcode" sequence="4" action="dtsc.action_scan_qrcode_search" parent="dtsc.menu_root" groups="dtsc.group_dtsc_mg,dtsc.group_dtsc_yw,dtsc.group_dtsc_kj,dtsc.group_dtsc_sc,dtsc.group_dtsc_ck"/>
+	<menuitem name="製作物" id="dtsc.scanqrcode" sequence="40" action="dtsc.action_scan_qrcode_search" parent="dtsc.menu_root" groups="dtsc.group_dtsc_mg,dtsc.group_dtsc_yw,dtsc.group_dtsc_kj,dtsc.group_dtsc_sc,dtsc.group_dtsc_ck"/>
     <menuitem id="cx" parent="dtsc.scanqrcode" name="查詢" sequence="1" action="dtsc.action_scan_qrcode_search" groups="dtsc.group_dtsc_mg,dtsc.group_dtsc_yw,dtsc.group_dtsc_kj,dtsc.group_dtsc_sc,dtsc.group_dtsc_cg,dtsc.group_dtsc_ck"/>
     <menuitem id="lcjl" parent="dtsc.scanqrcode" name="流程記錄表" sequence="2" action="dtsc.action_work_sign_search1" groups="dtsc.group_dtsc_mg,dtsc.group_dtsc_yw,dtsc.group_dtsc_kj,dtsc.group_dtsc_sc,dtsc.group_dtsc_cg,dtsc.group_dtsc_ck"/>
 	
 	
-	<menuitem name="施工工單" id="dtsc.installproduct" sequence="5" action="dtsc.action_window_install" parent="dtsc.menu_root"/>
-    <menuitem name="出貨單" id="dtsc.deliveryorder" sequence="6" action="dtsc.action_window_deliveryorder" parent="dtsc.menu_root"/>
+	<menuitem name="施工工單" id="dtsc.installproduct" sequence="50" action="dtsc.action_window_install" parent="dtsc.menu_root"/>
+    <menuitem name="出貨單" id="dtsc.deliveryorder" sequence="60" action="dtsc.action_window_deliveryorder" parent="dtsc.menu_root"/>
     <!-- <menuitem name="每月對賬單" id="dtsc.menu_statement" action="dtsc.action_window_statement" parent="dtsc.menu_root"/> -->
     <!-- <menuitem name="客戶" id="dtsc.menu_custom" action="dtsc.action_window_custom" parent="dtsc.menu_root"/> -->
 	<menuitem name="客戶" id="dtsc.menu_custom" action="dtsc.action_window_custom" parent="dtsc.menu_root" groups="dtsc.group_dtsc_mg,dtsc.group_dtsc_yw,dtsc.group_dtsc_kj"/>
@@ -658,7 +665,7 @@
 	<!-- <menuitem id="menu_calendar" name="日曆" parent="menu_chart_dashboard_root" action="action_calendar" sequence="12" groups="dtsc.group_dtsc_gly"/> -->
 	<menuitem id="menu_performance" name="薪資總表" parent="menu_chart_dashboard_root" action="action_performance_dtsc" sequence="13" groups="dtsc.group_dtsc_gly"/>
 	<menuitem id="menu_salary_setting" name="基礎薪資設定表" parent="menu_chart_dashboard_root" action="action_performance_salary_dtsc" sequence="14" groups="dtsc.group_dtsc_gly"/>
-	<menuitem id="menu_jl_setting" name="健勞保基礎表" parent="menu_chart_dashboard_root" action="action_jl_dtsc" sequence="15" groups="dtsc.group_dtsc_gly"/>
+	<menuitem id="menu_jl_setting" name="勞健保基礎表" parent="menu_chart_dashboard_root" action="action_jl_dtsc" sequence="15" groups="dtsc.group_dtsc_gly"/>
 	<menuitem id="menu_report_center" name="報表查詢" parent="menu_chart_dashboard_root" action="action_report_center" sequence="16" groups="dtsc.group_dtsc_gly"/>
 	<!-- 
 	<menuitem id="submenu1" name="銷售產品" parent="dtsc.action_window_product" action="dtsc.action_window_product"/>
@@ -728,6 +735,9 @@
 		<field name="active" eval="False"/>
 	</record>
 	<record id="mail.menu_root_discuss" model="ir.ui.menu">
+		<field name="active" eval="False"/>
+	</record>
+	<record id="base.menu_custom" model="ir.ui.menu">
 		<field name="active" eval="False"/>
 	</record>
   </data>

@@ -7,21 +7,9 @@ import { listView } from "@web/views/list/list_view";
 import { ListRenderer } from "@web/views/list/list_renderer";
 import { ListController } from "@web/views/list/list_controller";
 import { patch } from '@web/core/utils/patch';
-
-// import { patch } from "@web/core/utils/patch";
 import { WebsitePreview } from "@website/client_actions/website_preview/website_preview";
 
-// patch(WebsitePreview.prototype, "dtsc.debugPreview", {
-    // async willStart() {
-        // await this._super(...arguments);
 
-        // console.log("🌐 websites:", this.websiteService.websites);
-        // console.log("🌐 websiteId:", this.websiteId);
-        // const currentWebsite = this.websiteService.websites.find(w => w.id === this.websiteId);
-        // console.log("🌐 currentWebsite:", currentWebsite);
-        // console.log("🌐 currentWebsite.domain:", currentWebsite?.domain);
-    // }
-// });
 
 const { onWillStart } = owl;
 export class PartnerListControllerS extends ListController {
@@ -68,14 +56,26 @@ export class InstallProductListControllerS extends ListController {
           target: 'new',
       });
 	  
-	  // this.actionService.doAction({
-            // res_model: mainObject.model,
-            // res_id: mainObject.id,
-            // views: [[false, "form"]],
-            // type: "ir.actions.act_window",
-            // view_mode: "form",
-        // });
 	  
+   }
+
+}
+export class PartnerListControllerA extends ListController {
+    setup() {
+        super.setup();
+        this.orm = useService("orm");
+        this.notification = useService("notification");
+    }
+	
+	async OnTestClick() {
+		try {
+            await this.orm.call("dtsc.attendance", "action_run_missing_attendance", [], {});
+            this.notification.add("已執行：缺卡檢測完成", { type: "success" });
+			await this.actionService.doAction({ type: "ir.actions.client", tag: "reload" })
+        } catch (e) {
+            this.notification.add("執行失敗：" + (e?.message || ""), { type: "danger" });
+            // console.error(e);
+        }
    }
 
 }
@@ -95,5 +95,11 @@ registry.category('views').add('res_partner_tree_custom', {
     ...listView,
     buttonTemplate: 'DtscPartner.ListButtons',
     Controller: PartnerListControllerC,
+    // Renderer: PartnerListRenderer,
+});
+registry.category('views').add('dtsc_attendance_tree', {
+    ...listView,
+    buttonTemplate: 'Attendance.ListButtons',
+    Controller: PartnerListControllerA,
     // Renderer: PartnerListRenderer,
 });

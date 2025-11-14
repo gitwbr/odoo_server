@@ -89,6 +89,7 @@
 				
 				<xpath expr="//field[@name='user_id']" position="after">
 					<field name="crm_date" attrs="{'invisible': [('checkout_order_state', '!=', 'waiting_confirmation')]}"/>
+					<field name="crm_effective_date" attrs="{'invisible': [('checkout_order_state', '!=', 'waiting_confirmation')]}"/>
 					<field name="is_show_price" attrs="{'invisible': [('checkout_order_state', '!=', 'waiting_confirmation')]}"/>
 				</xpath>
 				<xpath expr="//field[@name='customer_id']" position="before">					
@@ -210,6 +211,24 @@
 			</field>	
 		</record>
 		<menuitem id="crm_user_comment_menu" name="打印備註" parent="crm.crm_menu_root" sequence="100" action="dtsc.action_crmusercomment"/>
+		
+		<record id="dtsc_action_all_pipeline" model="ir.actions.server">
+		  <field name="name">Crm: All Pipeline (DTSC)</field>
+		  <field name="model_id" ref="crm.model_crm_team"/>
+		  <field name="state">code</field>
+		  <field name="code">action = model.action_all_pipeline()</field>
+			<field name="groups_id" eval="[(6,0,[ref('dtsc.group_dtsc_gly')])]"/>
+		</record>
+
+		<!-- 新的選單（不要動原有的 My Pipeline） -->
+		<record id="dtsc_menu_crm_all_pipeline" model="ir.ui.menu">
+		  <field name="name">全部商機</field>
+		  <field name="parent_id" ref="crm.crm_menu_sales"/>
+		  <field name="action" ref="dtsc_action_all_pipeline"/>
+		  <field name="sequence">2</field>
+			<field name="groups_id" eval="[(6,0,[ref('dtsc.group_dtsc_gly')])]"/>
+		</record>
+	
 		<record id="crm_lead_user_see_own" model="ir.rule">
 			<field name="name">Only see own CRM leads</field>
 			<field name="model_id" ref="crm.model_crm_lead"/>

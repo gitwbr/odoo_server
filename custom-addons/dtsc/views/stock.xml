@@ -150,7 +150,7 @@
                 <field name="location_usage" invisible="1"/>
                 <field name="location_dest_usage" invisible="1"/>
                 <field name="date"/>
-                <field name="reference" string="Reference"
+                <field name="reference" string="參照"
                        invisible="context.get('no_reference', False)"/>
                 <field name="product_id"/>
 				<field name="description"/>		
@@ -163,17 +163,17 @@
 				
 				<field name="move_before_quantity"/>		 
 				<field name="move_after_quantity"/>	
-                <field name="qty_done" string="Quantity"
+                <field name="qty_done" string="數量"
                     decoration-danger="(location_usage in ('internal','transit')) and (location_dest_usage not in ('internal','transit'))"
                     decoration-success="(location_usage not in ('internal','transit')) and (location_dest_usage in ('internal','transit'))"/>
-                <field name="product_uom_id" options="{'no_open': True, 'no_create': True}" string="Unit" groups="uom.group_uom"/>
+                <field name="product_uom_id" options="{'no_open': True, 'no_create': True}" string="單位" groups="uom.group_uom"/>
                 <field name="state" widget='badge' optional="show"
                        decoration-danger="state=='cancel'"
                        decoration-info="state== 'assigned'"
                        decoration-muted="state == 'draft'"
                        decoration-success="state == 'done'"
                        decoration-warning="state not in ('draft','cancel','done','assigned')" invisible="1"/>
-                <field name="create_uid" string="Done By" widget="many2one_avatar_user" optional="hide"/>
+                <field name="create_uid"  widget="many2one_avatar_user" optional="hide"/>
             </tree>
         </field>
     </record>

@@ -25,10 +25,10 @@ import xlsxwriter
 class PartnerLineBind(models.Model):
     _name = "dtsc.partnerlinebind"
     
-    name = fields.Char("Line 昵稱")
+    name = fields.Char("Line 暱稱")
     line_user_id = fields.Char('LINE ID')
     comment = fields.Char('備註')
-    is_active = fields.Boolean("激活")
+    is_active = fields.Boolean("啟用")
     partner_id = fields.Many2one("res.partner",string="客戶")
     
     
@@ -54,9 +54,9 @@ class PartnerLineBind(models.Model):
     def _onchange_is_active(self):
         for record in self:
             if record.is_active:
-                self.reply_to_line_for_customer(record.line_user_id, "您的客戶推送已經激活！")
+                self.reply_to_line_for_customer(record.line_user_id, f"{record.partner_id.display_name}的客戶推送已經啓用！")
             else:
-                self.reply_to_line_for_customer(record.line_user_id, "您的客戶推送已被禁用！")
+                self.reply_to_line_for_customer(record.line_user_id, f"{record.partner_id.display_name}的客戶推送已被禁用！")
     
 class ResPartner(models.Model):
     _inherit = "res.partner"
@@ -75,7 +75,7 @@ class DtscLeave(models.Model):
     start_time = fields.Datetime('開始時間')
     end_time = fields.Datetime('結束時間')
     leave_type = fields.Selection([
-        ('all', '全部'),
+        # ('all', '其他'),
         ('tx', '特休'),
         ('bj', '病假'),
         ('sj', '事假'),
@@ -97,6 +97,86 @@ class DtscLeave(models.Model):
         ('approved', '已批准'),
         ('rejected', '已拒絕'),
     ], default='draft', string='狀態')
+    in_quota_hours  = fields.Float("額度內(小時)", readonly=True, copy=False)
+    out_quota_hours = fields.Float("額度外(小時)", readonly=True, copy=False)
+    
+    # ------ 極簡 write：只在本次有帶 state 時重算 ------
+    def write(self, vals):
+        res = super().write(vals)
+        if 'state' in vals:  # 只要這次確實寫入了 state，就重算
+            for leave in self:
+                self._refresh_attendance_for_leave(leave)
+        return res
+
+    # ------ 極簡刷新邏輯：依目前所有 approved 假單重算 ------
+    def _refresh_attendance_for_leave(self, leave):
+        """根據目前系統中的 approved 假單，重算這張假單涵蓋到的日期的出勤狀態。"""
+        if not (leave.employee_id and leave.start_time and leave.end_time):
+            return
+
+        tz = pytz.timezone("Asia/Taipei")
+        setting = self.env['dtsc.linebot'].search([("linebot_type","=","for_worker")], limit=1)
+        Attendance = self.env['dtsc.attendance']
+        emp = leave.employee_id
+
+        # 取得標準上/下班時間（員工個人 > 系統設定 > 預設）
+        in_str  = emp.in_time  or getattr(setting, 'start_time', None) or "09:00"
+        out_str = emp.out_time or getattr(setting, 'end_time',  None) or "18:00"
+        std_in  = datetime.strptime(in_str,  "%H:%M").time()
+        std_out = datetime.strptime(out_str, "%H:%M").time()
+
+        def to_utc_naive(d, t):
+            return tz.localize(datetime.combine(d, t)).astimezone(pytz.utc).replace(tzinfo=None)
+
+        def covers(a_utc, b_utc):
+            """是否存在 state=approved 的請假完整覆蓋 [a,b]（全局查詢，已含本次新狀態）。"""
+            return bool(self.env['dtsc.leave'].search([
+                ('employee_id', '=', emp.id),
+                ('state', '=', 'approved'),
+                ('start_time', '<=', a_utc),
+                ('end_time', '>=', b_utc),
+            ], limit=1))
+
+        # 取這張假單影響的「在地日期範圍」
+        d0 = pytz.utc.localize(leave.start_time).astimezone(tz).date()
+        d1 = pytz.utc.localize(leave.end_time).astimezone(tz).date()
+
+        cur = d0
+        while cur <= d1:
+            exp_in  = to_utc_naive(cur, std_in)
+            exp_out = to_utc_naive(cur, std_out)
+
+            rec = Attendance.search([('name', '=', emp.id), ('work_date', '=', cur)], limit=1)
+            if rec:
+                vals = {}
+
+                # 上班：有卡→判遲到/授權晚到；沒卡→整日覆蓋才請假，否則缺卡
+                if rec.in_time:
+                    act_in = rec.in_time  # Odoo 存 UTC naive
+                    if act_in <= exp_in:
+                        vals['in_status'] = 'zc'
+                    else:
+                        vals['in_status'] = 'zc' if covers(exp_in, act_in) else 'cd'
+                else:
+                    full_day = covers(exp_in, exp_out)
+                    vals['in_status'] = 'qj' if full_day else 'qk'
+
+                # 下班：有卡→判早退/授權早退；沒卡→整日覆蓋才請假，否則缺卡
+                if rec.out_time:
+                    act_out = rec.out_time
+                    if act_out >= exp_out:
+                        vals['out_status'] = 'zc'
+                    else:
+                        vals['out_status'] = 'zc' if covers(act_out, exp_out) else 'zt'
+                else:
+                    full_day = covers(exp_in, exp_out)
+                    vals['out_status'] = 'qj' if full_day else 'qk'
+
+                if vals:
+                    rec.write(vals)
+
+            # 不自動 create 出勤紀錄，留給你的每日 cron 處理
+            cur += timedelta(days=1)
 
 class LeaveGrantLog(models.Model):
     _name = 'dtsc.leavegrantlog'
@@ -170,6 +250,45 @@ class Attendance(models.Model):
     report_month = fields.Many2one("dtsc.month",string="月",compute="_compute_year_month",store=True)
     att_ip = fields.Char("上班打卡IP")
     att_ip_out = fields.Char("下班打卡IP")
+    
+    def _std_time(self, emp, setting, kind):
+        """kind: 'in' 或 'out'，回傳 time；員工個人 > 系統設定 > 預設"""
+        if kind == 'in':
+            s = getattr(emp, 'in_time', None) or getattr(setting, 'start_time', None) or "09:00"
+        else:
+            s = getattr(emp, 'out_time', None) or getattr(setting, 'end_time', None) or "18:00"
+        return datetime.strptime(s, "%H:%M").time()
+    
+    def _to_utc_naive(self, tz, local_date, local_time):
+        """將在地(Asia/Taipei) 日期+時間 轉成 UTC（naive）"""
+        return tz.localize(datetime.combine(local_date, local_time)).astimezone(pytz.utc).replace(tzinfo=None)
+    
+    def _is_on_leave_at(self, emp_id, when_utc_naive):
+        """該時點是否有核准請假"""
+        return bool(self.env['dtsc.leave'].search([
+            ('employee_id', '=', emp_id),
+            ('state', '=', 'approved'),
+            ('start_time', '<=', when_utc_naive),
+            ('end_time', '>=', when_utc_naive),
+        ], limit=1))
+    
+    def _leave_covers_interval(self, emp_id, start_utc_naive, end_utc_naive):
+        """核准請假是否完整覆蓋 [start, end]（單筆即可覆蓋）；要拼多筆可再擴充"""
+        return bool(self.env['dtsc.leave'].search([
+            ('employee_id', '=', emp_id),
+            ('state', '=', 'approved'),
+            ('start_time', '<=', start_utc_naive),
+            ('end_time', '>=', end_utc_naive),
+        ], limit=1))
+        
+    def _is_workday_fully_covered(self, emp, work_date, tz, setting):
+        """回傳 True 表示該員工在 work_date 的【標準上班→標準下班】整段被核准請假覆蓋。"""
+        std_in  = self._std_time(emp, setting, 'in')
+        std_out = self._std_time(emp, setting, 'out')
+        start_utc = self._to_utc_naive(tz, work_date, std_in)
+        end_utc   = self._to_utc_naive(tz, work_date, std_out)
+        return self._leave_covers_interval(emp.id, start_utc, end_utc)  # 單筆覆蓋；
+        
     @api.depends("work_date")
     def _compute_year_month(self):
         for record in self:
@@ -183,7 +302,56 @@ class Attendance(models.Model):
 
                 record.report_year = year_record.id if year_record else False
                 record.report_month = month_record.id if month_record else False
-                
+    
+    @api.model
+    def action_run_missing_attendance(self):
+        self.sudo()._auto_check_missing_attendance()
+        return True
+    
+    def _is_company_working_day(self, target_date, calendar):
+        """
+        回傳 True = 需要上班
+        回傳 False = 放假、不檢查缺卡
+        """
+
+        # 1. 先用 workalendar 判斷 (已含週末+官方國定假日)
+        if not calendar.is_working_day(target_date):
+            return False
+
+        # 2. 我們公司自己多加的「固定每年都放」的日子 (用月/日判斷)
+        FIXED_EXTRA_OFF_DAYS = {
+            (5, 1),    # 勞動節
+            (9, 28),   # 教師節
+            (10, 25),  # 光復節/古寧頭勝利紀念
+            (12, 25),  # 行憲紀念日
+        }
+        if (target_date.month, target_date.day) in FIXED_EXTRA_OFF_DAYS:
+            return False
+
+        # 3. 非固定日子（每年不同的，像小年夜）
+        #    這裡請你把今年/明年要放假的特別日子手動列出來
+        EXTRA_OFF_DATES = {
+            # 举例：小年夜、公司額外調休等等
+            # date(2025, 1, 28),
+            date(2026, 2, 15),
+            date(2027, 2, 4),
+            date(2028, 1, 24),
+            date(2029, 2, 11),
+            date(2030, 2, 1),
+            date(2031, 1, 21),
+            date(2032, 2, 11),
+            date(2033, 1, 29),
+            date(2034, 2, 17),
+            date(2035, 2, 6),
+            date(2036, 1, 26),
+            date(2037, 2, 13),
+        }
+        if target_date in EXTRA_OFF_DATES:
+            return False
+
+        # 以上都沒命中 => 這天算"要上班"
+        return True
+        
     def _auto_check_missing_attendance(self):
         tz = pytz.timezone("Asia/Taipei")
         today = datetime.now(tz).date()
@@ -194,34 +362,77 @@ class Attendance(models.Model):
         specialleave_model = self.env['dtsc.specialleave']
         grantlog_model = self.env['dtsc.leavegrantlog']        
 
-        if not calendar.is_working_day(today):
-            _logger.info(f"今天 {today} 是台灣公休或週末，不處理缺卡。")
+        # 用我們自己的判斷，而不是直接 calendar.is_working_day
+        if not self._is_company_working_day(today, calendar):
+            _logger.info(f"今天 {today} 被視為公休/公司假，不處理缺卡。")
             return
-        for user in all_users:
-            # 搜尋今天是否已有打卡紀錄
-            # _logger.info(f"----------------{user.name}--------")
-            today_record = self.search([('name', '=', user.id), ('work_date', '=', datetime.now().date())], limit=1)
             
-            # _logger.info(f"----------------{today_record}--------")
+        for user in all_users:
+                
+            # 搜尋今天是否已有打卡紀錄
+            today_record = self.search([('name', '=', user.id), ('work_date', '=', today)], limit=1)
+            # 預設上下班時間（員工個人 > 系統設定 > 預設）
+            in_std  = self._std_time(user, settingObj, 'in')
+            out_std = self._std_time(user, settingObj, 'out')
+            # 在地日期 + 標準時間 → UTC naive
+            expected_in  = self._to_utc_naive(tz, today, in_std)
+            expected_out = self._to_utc_naive(tz, today, out_std)
+            # 整日覆蓋（上班→下班整段）才視為請假
+            full_day = self._is_workday_fully_covered(user, today, tz, settingObj)
             if today_record:
                 updates = {}
-                if not today_record.in_time:
-                    updates['in_status'] = 'qk'
-                if not today_record.out_time:
-                    updates['out_status'] = 'qk'
+                has_any_punch = bool(today_record.in_time or today_record.out_time)
+                if user.out_worker:
+                    # 外勤：缺哪張就自動按標準時間補哪張，標記補卡並設為正常
+                    if not today_record.in_time:
+                        updates.update({
+                            'in_time': expected_in,
+                            'in_status': 'zc',
+                            'is_buka_in': 'wbk',
+                        })
+                    if not today_record.out_time:
+                        updates.update({
+                            'out_time': expected_out,
+                            'out_status': 'zc',
+                            'is_buka_out': 'wbk',
+                        })
+                else:
+                # 沒上班卡
+                    if not today_record.in_time:
+                        updates['in_status'] = 'qk' if has_any_punch else ('qj' if full_day else 'qk')
+
+                    # 沒下班卡
+                    if not today_record.out_time:
+                        updates['out_status'] = 'qk' if has_any_punch else ('qj' if full_day else 'qk')
+
                 if updates:
                     today_record.write(updates)
             else:
-                # 創建新紀錄（完全沒打卡）
-                self.create({
-                    # 'name': user.id,
-                    'work_date': today,
-                    'in_status': 'qk',
-                    'out_status': 'qk',
-                    'is_buka_in': 'wbk',
-                    'is_buka_out': 'wbk',
-                    'line_user_id' : user.line_user_id,
-                })
+                if user.out_worker:
+                    # 外勤且完全沒打卡：直接自動上下班卡都補上，標記補卡，狀態正常
+                    self.create({
+                        'name': user.id,
+                        'work_date': today,
+                        'in_time': expected_in,
+                        'out_time': expected_out,
+                        'in_status': 'zc',
+                        'out_status': 'zc',
+                        'is_buka_in': 'wbk',
+                        'is_buka_out': 'wbk',
+                        'line_user_id': user.line_user_id,
+                    })
+                else:
+                
+                # 完全沒打卡：整日覆蓋才 qj，否則 qk
+                    self.create({
+                        'name': user.id,
+                        'work_date': today,
+                        'in_status':  'qj' if full_day else 'qk',
+                        'out_status': 'qj' if full_day else 'qk',
+                        'is_buka_in': 'wbk',
+                        'is_buka_out': 'wbk',
+                        'line_user_id': user.line_user_id,
+                    })
             #假期额度更新
             in_company_date = user.in_company_date
             if not in_company_date:
@@ -297,6 +508,23 @@ class Attendance(models.Model):
                 'worker_id': user.id,
                 'threshold_days': f"year_{years_worked}",
             })
+            
+    def _find_covering_leave_label(self, emp_id, start_utc_naive, end_utc_naive):
+        """若有單一核准假單完整覆蓋 [start,end]，回傳它的中文假別；否則回傳 None。"""
+        if not start_utc_naive or not end_utc_naive or start_utc_naive >= end_utc_naive:
+            return None
+        leave = self.env['dtsc.leave'].search([
+            ('employee_id', '=', emp_id),
+            ('state', '=', 'approved'),
+            ('start_time', '<=', start_utc_naive),
+            ('end_time', '>=', end_utc_naive),
+        ], limit=1)
+
+        label_map = {
+            'tx': '特休','bj': '病假','sj': '事假','slj': '生理假','jtzgj': '家庭照顧假',
+            'gj': '公假','hj': '婚假','saj': '喪假','cj': '產假','cjj': '產檢假','all': '請假',
+        }
+        return label_map.get(leave.leave_type, '請假') if leave else None
     
     @api.depends("in_status", "in_time")
     def _compute_in_status_show(self):
@@ -329,12 +557,31 @@ class Attendance(models.Model):
                     # _logger.warning(f"遲到計算錯誤: {e}")
                     record.in_status_show = "遲到"
             elif record.in_status == 'zc':
+                            # 正常：若有「授權晚到」（請假覆蓋 [預期上班→實際上班]），顯示假別
+                label = None
+                if record.in_time and record.work_date and record.name:
+                    std_in = self._std_time(record.name, settingObj, 'in')
+                    expected_in_utc = self._to_utc_naive(tz, record.work_date, std_in)
+                    actual_in_utc = fields.Datetime.from_string(record.in_time)
+                    if actual_in_utc > expected_in_utc:
+                        label = self._find_covering_leave_label(record.name.id, expected_in_utc, actual_in_utc)
+
+                parts = []
+                if label:
+                    parts.append(label)        # 例如「特休」
                 if record.is_buka_in == 'ybk':
-                    record.in_status_show = "正常(補卡)"
-                else:
-                    record.in_status_show = "正常"
+                    parts.append("補卡")
+                record.in_status_show = "正常" if not parts else f"正常（{'/'.join(parts)}）"
             elif record.in_status == 'qj':
-                record.in_status_show = "請假"
+                # 整段上班→下班若被單一假單覆蓋，就顯示該假別
+                label = None
+                if record.work_date and record.name:
+                    std_in  = self._std_time(record.name, settingObj, 'in')
+                    std_out = self._std_time(record.name, settingObj, 'out')
+                    expected_in_utc  = self._to_utc_naive(tz, record.work_date, std_in)
+                    expected_out_utc = self._to_utc_naive(tz, record.work_date, std_out)
+                    label = self._find_covering_leave_label(record.name.id, expected_in_utc, expected_out_utc)
+                record.in_status_show = label or "請假"
             else:
                 record.in_status_show = "缺卡"
     
@@ -355,21 +602,36 @@ class Attendance(models.Model):
                         end_hour, end_minute = map(int, settingObj.end_time.split(':'))
                     naive_dt = datetime.combine(out_time_tw.date(), time(hour=end_hour, minute=end_minute))
                     expected_time = tz.localize(naive_dt)
-                    # _logger.warning(f"-----{expected_time}--------------{out_time_tw}------------------")
                     delta = (expected_time - out_time_tw)
-                    # delta_minutes = max(1, int(delta.total_seconds() // 60))
                     delta_minutes = max(1, int(abs(delta.total_seconds()) // 60))
 
                     record.out_status_show = f"早退（{delta_minutes}分鐘）"
                 except Exception as e:
                     record.out_status_show = "早退"
             elif record.out_status == 'zc':
-                if record.is_buka_in == 'ybk':
-                    record.out_status_show = "正常(補卡)"
-                else:
-                    record.out_status_show = "正常"
+                label = None
+                if record.out_time and record.work_date and record.name:
+                    std_out = self._std_time(record.name, settingObj, 'out')
+                    expected_out_utc = self._to_utc_naive(tz, record.work_date, std_out)
+                    actual_out_utc = fields.Datetime.from_string(record.out_time)
+                    if actual_out_utc < expected_out_utc:
+                        label = self._find_covering_leave_label(record.name.id, actual_out_utc, expected_out_utc)
+
+                parts = []
+                if label:
+                    parts.append(label)
+                if record.is_buka_out == 'ybk':
+                    parts.append("補卡")
+                record.out_status_show = "正常" if not parts else f"正常（{'/'.join(parts)}）"
             elif record.out_status == 'qj':
-                record.out_status_show = "請假"
+                label = None
+                if record.work_date and record.name:
+                    std_in  = self._std_time(record.name, settingObj, 'in')
+                    std_out = self._std_time(record.name, settingObj, 'out')
+                    expected_in_utc  = self._to_utc_naive(tz, record.work_date, std_in)
+                    expected_out_utc = self._to_utc_naive(tz, record.work_date, std_out)
+                    label = self._find_covering_leave_label(record.name.id, expected_in_utc, expected_out_utc)
+                record.out_status_show = label or "請假"
             else:
                 record.out_status_show = "缺卡"
     
@@ -476,22 +738,91 @@ class Attendance(models.Model):
             else:
                 record.is_out_place = 'wqy'
     
-    @api.depends("in_time","out_time")
+    @api.depends("in_time", "out_time")
     def _compute_work_time(self):
         for record in self:
             if record.in_time and record.out_time:
-                # 确保两个时间字段都已被设定
-                start = fields.Datetime.from_string(record.in_time)
-                end = fields.Datetime.from_string(record.out_time)
-                # 计算时间差
-                delta = end - start
-                # 将时间差转换为小时数，四舍五入到小数点后两位
-                record.work_time = round(delta.total_seconds() / 3600, 1)
+                # 把資料庫的 UTC datetime 轉成 datetime 物件
+                start_utc = fields.Datetime.from_string(record.in_time)  # naive (UTC)
+                end_utc = fields.Datetime.from_string(record.out_time)  # naive (UTC)
+
+                # 取得時區：優先用登入使用者的 tz，沒有就預設台灣
+                tz_name = record.env.user.tz or "Asia/Taipei"
+                tz = pytz.timezone(tz_name)
+
+                # 先標記為 UTC，再轉成當地時間
+                start_local = pytz.utc.localize(start_utc).astimezone(tz)
+                end_local = pytz.utc.localize(end_utc).astimezone(tz)
+
+                # 總工時（用本地時間算，秒）
+                total_seconds = (end_local - start_local).total_seconds()
+
+                # 午休區間：本地同一天的12:00~13:00
+                lunch_start_local = start_local.replace(hour=12, minute=0, second=0, microsecond=0)
+                lunch_end_local = start_local.replace(hour=13, minute=0, second=0, microsecond=0)
+
+                # 計算與午休的重疊秒數（只扣重疊到的部分，可能是0~3600秒之間）
+                lunch_overlap_seconds = 0.0
+                overlap_start = max(start_local, lunch_start_local)
+                overlap_end = min(end_local, lunch_end_local)
+                if overlap_end > overlap_start:
+                    lunch_overlap_seconds = (overlap_end - overlap_start).total_seconds()
+
+                # 扣掉午休
+                work_seconds = total_seconds - lunch_overlap_seconds
+                if work_seconds < 0:
+                    work_seconds = 0
+
+                # 換成小時，取到小數點一位
+                record.work_time = round(work_seconds / 3600.0, 1)
             else:
-                # 如果任何时间字段未设置，则工作时间设为0
                 record.work_time = 0.0
                 
-                
+    @api.depends("in_time")
+    def _compute_in_status(self):  
+        local_tz = pytz.timezone('Asia/Taipei')
+        setting = self.env['dtsc.linebot'].search([("linebot_type","=","for_worker")], limit=1)
+        for rec in self:        
+            std_in = self._std_time(rec.name, setting, 'in')
+            expected_in_utc = self._to_utc_naive(local_tz, rec.work_date, std_in)
+            
+            if rec.in_time:
+                actual_in_utc = fields.Datetime.from_string(rec.in_time)  # Odoo存UTC naive
+                if actual_in_utc <= expected_in_utc:
+                    rec.in_status = 'zc'
+                else:
+                    # 晚到，但若有請假覆蓋 [expected_in, actual_in]，視為正常
+                    _logger.warning(f"===={expected_in_utc}=={actual_in_utc}==")
+                    ok = self._leave_covers_interval(rec.name.id, expected_in_utc, actual_in_utc)
+                    
+                    rec.in_status = 'zc' if ok else 'cd'
+            else:
+                # 無上班卡：只有「整個工作日被覆蓋」才算請假，否則缺卡
+                full_day = self._is_workday_fully_covered(rec.name, rec.work_date, local_tz, setting)
+                rec.in_status = 'qj' if full_day else 'qk'
+    
+    @api.depends("out_time", "work_date", "name", "name.out_time")
+    def _compute_out_status(self):
+        local_tz = pytz.timezone('Asia/Taipei')
+        setting = self.env['dtsc.linebot'].search([("linebot_type","=","for_worker")], limit=1)
+
+        for rec in self:
+            std_out = self._std_time(rec.name, setting, 'out')
+            expected_out_utc = self._to_utc_naive(local_tz, rec.work_date, std_out)
+            if rec.out_time:
+                actual_out_utc = fields.Datetime.from_string(rec.out_time)  # UTC naive
+                if actual_out_utc >= expected_out_utc:
+                    rec.out_status = 'zc'
+                else:
+                    # 早退，但若請假完整覆蓋 [actual_out, expected_out]，視為正常
+                    ok = self._leave_covers_interval(rec.name.id, actual_out_utc, expected_out_utc)
+                    rec.out_status = 'zc' if ok else 'zt'
+            else:
+                # 無下班卡：只有「整個工作日被覆蓋」才算請假，否則缺卡
+                full_day = self._is_workday_fully_covered(rec.name, rec.work_date, local_tz, setting)
+                rec.out_status = 'qj' if full_day else 'qk'
+    
+    '''                
     @api.depends("in_time")
     def _compute_in_status(self):
         for record in self:
@@ -516,9 +847,8 @@ class Attendance(models.Model):
                         record.in_status = 'cd'  # 遲到
                 else:
                     # 沒有打卡，判斷是否請假
-                    now = datetime.now(local_tz)
-                    today_start = datetime.combine(now.date(), standard_time)
-                    expected_dt = local_tz.localize(today_start).astimezone(pytz.utc).replace(tzinfo=None)
+                    work_dt = datetime.combine(record.work_date, standard_time)
+                    expected_dt = local_tz.localize(work_dt).astimezone(pytz.utc).replace(tzinfo=None)
 
                     leave = self.env['dtsc.leave'].search([
                         ('employee_id', '=', record.name.id),
@@ -541,10 +871,8 @@ class Attendance(models.Model):
             if time_range and time_range.end_time:
                 if record.name.out_time:
                     standard_time = datetime.strptime(record.name.out_time, '%H:%M').time()
-                    # _logger.warning(f"-------111------------{standard_time}------------------")
                 else:
                     standard_time = datetime.strptime(time_range.end_time, '%H:%M').time()
-                    # _logger.warning(f"-------222------------{standard_time}------------------")
 
                 local_tz = pytz.timezone('Asia/Taipei')
 
@@ -553,23 +881,21 @@ class Attendance(models.Model):
                     local_dt = pytz.utc.localize(record_dt).astimezone(local_tz)
                     record_time = local_dt.time()
                     
-                    # _logger.warning(f"-----{record_time}--------------{standard_time}------------------")
                     if record_time >= standard_time:
                         record.out_status = 'zc'  # 正常
                     else:
                         record.out_status = 'zt'  # 早退
                 else:
                     # 沒有打卡，判斷是否請假
-                    now = datetime.now(local_tz)
-                    today_end = datetime.combine(now.date(), standard_time)
-                    expected_dt = local_tz.localize(today_end).astimezone(pytz.utc).replace(tzinfo=None)
+                    work_dt = datetime.combine(record.work_date, standard_time)
+                    expected_dt = local_tz.localize(work_dt).astimezone(pytz.utc).replace(tzinfo=None)
 
                     leave = self.env['dtsc.leave'].search([
                         ('employee_id', '=', record.name.id),
                         ('start_time', '<=', expected_dt),
                         ('end_time', '>=', expected_dt)
                     ], limit=1)
-
+                    _logger.warning(f"名字：{record.name.name}------{expected_dt}-------{leave}")
                     if leave:
                         record.out_status = 'qj'  # 可視需求調整為 'qj'
                     else:
@@ -577,46 +903,7 @@ class Attendance(models.Model):
             else:
                 record.out_status = 'qk'
     '''
-    @api.depends("out_time")
-    def _compute_out_status(self):
-        for record in self:
-            time_range = self.env['dtsc.linebot'].search([("linebot_type","=","for_worker")], limit=1)
-            if time_range and time_range.end_time and record.out_time:
-                standard_time = datetime.strptime(time_range.end_time, '%H:%M').time()
-                user_tz = self.env.user.tz or 'UTC'  # 获取用户时区或默认为UTC
-                local_tz = pytz.timezone(user_tz)
-                record_dt = fields.Datetime.from_string(record.out_time)
-                local_dt = pytz.utc.localize(record_dt).astimezone(local_tz)
-                record_time = local_dt.time()  # 获取本地时间的时
-
-                # 进行时间比较
-                if record_time >= standard_time:
-                    record.out_status = 'zc'  # 正常
-                else:
-                    record.out_status = 'zt'  # 早退        
-            else:
-                record.out_status = 'qk'
-    
-    @api.depends("in_time")
-    def _compute_in_status(self):
-        for record in self:
-            time_range = self.env['dtsc.linebot'].search([("linebot_type","=","for_worker")], limit=1)
-            if time_range and time_range.start_time and record.in_time:
-                standard_time = datetime.strptime(time_range.start_time, '%H:%M').time()
-                user_tz = self.env.user.tz or 'UTC'  # 获取用户时区或默认为UTC
-                local_tz = pytz.timezone(user_tz)
-                record_dt = fields.Datetime.from_string(record.in_time)
-                local_dt = pytz.utc.localize(record_dt).astimezone(local_tz)
-                record_time = local_dt.time()  # 获取本地时间的时
-
-                # 进行时间比较
-                if record_time <= standard_time:
-                    record.in_status = 'zc'  # 正常
-                else:
-                    record.in_status = 'cd'  # 迟到        
-            else:
-                record.in_status = 'qk'
-    '''
+  
     @api.depends("line_user_id")
     def _compute_name(self):
         for record in self:
@@ -850,9 +1137,19 @@ class LineBot(models.Model):
     
     
     bj_day = fields.Integer(string="病假(小時/年)")
+    bj_in_kc = fields.Float(string="病假(時效内扣除係數)",help="1為扣全薪，0.5為扣半薪",default=0.5)
+    bj_out_kc = fields.Float(string="病假(時效外扣除係數)",help="1為扣全薪，0.5為扣半薪",default=1)
+    bj_qq_kc = fields.Float(string="病假(超過扣全勤/月/小時)",default=0)
     sj_day = fields.Integer(string="事假(小時/年)")
+    sj_in_kc = fields.Float(string="事假(時效内扣除係數)",help="1為扣全薪，0.5為扣半薪",default=0.5)
+    sj_out_kc = fields.Float(string="事假(時效外扣除係數)",help="1為扣全薪，0.5為扣半薪",default=1)
+    sj_qq_kc = fields.Float(string="事假(超過扣全勤/月/小時)",default=0)
     slj_day = fields.Integer(string="生理假(小時/年)")
+    slj_in_kc = fields.Float(string="生理假(時效内扣除係數)",help="1為扣全薪，0.5為扣半薪",default=0.5)
+    slj_out_kc = fields.Float(string="生理假(時效外扣除係數)",help="1為扣全薪，0.5為扣半薪",default=1)
     jtzgj_day = fields.Integer(string="家庭照顧假(小時/年)")
+    jtzgj_in_kc = fields.Float(string="家庭照顧假(時效内扣除係數)",help="1為扣全薪，0.5為扣半薪",default=0.5)
+    jtzgj_out_kc = fields.Float(string="家庭照顧假(時效外扣除係數)",help="1為扣全薪，0.5為扣半薪",default=1)
     specialleave_ids = fields.One2many('dtsc.specialleave', 'linebot_id', string="特休假時間表")
     
     linebot_type = fields.Selection([

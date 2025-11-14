@@ -861,6 +861,7 @@
 							<table>
 								<thead>
 									<tr>
+										<th>日期</th>
 										<th>上班時間</th>
 										<th>下班時間</th>
 										<th>上班狀態</th>
@@ -880,6 +881,7 @@
 							const outNeedsFix = abnormal.includes(rec.out_status);
 							html += `
 								<tr>
+									<td>${rec.work_date || ''}</td> 
 									<td>${convertUTCToLocal(rec.in_time) || ''}</td>
 									<td>${convertUTCToLocal(rec.out_time) || ''}</td>
 									<td>${rec.in_status || ''}</td>
@@ -1307,7 +1309,7 @@
         <field name="name">dtsc.attendance.tree</field>
         <field name="model">dtsc.attendance</field>
         <field name="arch" type="xml">
-            <tree create="false" editable="bottom" default_order="work_date desc">
+            <tree js_class="dtsc_attendance_tree"  create="false" editable="bottom" default_order="work_date desc">
 				<field name="work_date" />
 				<field name="department"/>
 				<field name="name" />
@@ -1475,21 +1477,35 @@
 					</group>
 					
 					<group col="12" string="請假時效表" attrs="{'invisible':[('linebot_type','=','for_customer')]}">
-							<group colspan="6">
-								<field name="bj_day" />
-								<field name="sj_day" />
-							</group>
-							<group colspan="6">
-								<field name="slj_day" />
-								<field name="jtzgj_day" />
-							</group>
+						<group colspan="6" string="病假">
+							<field name="bj_day" />
+							<field name="bj_in_kc" />
+							<field name="bj_out_kc" />
+							<field name="bj_qq_kc" />
+						</group>
+						<group colspan="6" string="生理假">
+							<field name="slj_day" />
+							<field name="slj_in_kc" />
+							<field name="slj_out_kc" />
+						</group>
+						<group colspan="6"  string="事假">
+							<field name="sj_day" />
+							<field name="sj_in_kc" />
+							<field name="sj_out_kc" />
+							<field name="sj_qq_kc" />
+						</group>
+						<group colspan="6"  string="家庭照顧假">
+							<field name="jtzgj_day" />
+							<field name="jtzgj_in_kc" />
+							<field name="jtzgj_out_kc" />
+						</group>
 						<group colspan="12">
-						<field name="specialleave_ids">
-							<tree editable="bottom">
-								<field name="days"/>
-								<field name="hours"/>
-							</tree>
-						</field>
+							<field name="specialleave_ids">
+								<tree editable="bottom">
+									<field name="days"/>
+									<field name="hours"/>
+								</tree>
+							</field>
 						</group>
 					</group>
 					<group string="Line Qrcode">
@@ -1506,14 +1522,14 @@
         <field name="model">dtsc.leave</field>
         <field name="arch" type="xml">
             <tree editable="bottom" default_order="start_time desc">
-				<field name="employee_id" />
-				<field name="start_time" />
-				<field name="end_time" />
+				<field name="employee_id" readonly="1" />
+				<field name="start_time"  attrs="{'readonly':[('state','=','approved')]}" />
+				<field name="end_time"  attrs="{'readonly':[('state','=','approved')]}"/>
 				<field name="leave_hours" />
 				<field name="leave_type" />				
 				<field name="reason" />
 				<field name="reject_reason" />
-				<field name="leave_file" widget="image" />
+				<field name="leave_file" widget="image" class="w200"  />
 				<field name="state" />
             </tree>
         </field>

@@ -57,7 +57,7 @@
 											<field name="product_categ_id"  readonly="1"/>
 											<!-- <field name="price_alculator"/> -->
 											<field name="base_price"/>
-											<button string="编辑" type="object" name="open_form_view"/>
+											<button string="編輯" type="object" name="open_form_view"/>
 										</tree>
 									<!-- <field name="product_categ_id" required="1" force_save="1"/> -->
 									<!-- <field name="calculator_id" required="1"/> -->
@@ -282,7 +282,7 @@
 				<!-- <field name="quotation_id" invisible="1"/> -->
 				<field name="price_alculator"/>						
 				<field name="base_price"/>	
-				<button string="编辑" type="object" name="open_form_view"/>				
+				<button string="編輯" type="object" name="open_form_view"/>				
 				<!-- <field name="state"/> -->
 				
 			</tree>

@@ -1,13 +1,7 @@
-<odoo>
-    <!-- Your existing tree view definition -->
-    <!-- <record id="model_dtsc_makeout" model="ir.model"> -->
-        <!-- <field name="name">委外訂單</field> -->
-        <!-- <field name="model">dtsc.makeout</field> -->
-    <!-- </record> -->
-	
-    <record id="view_makeoutt_tree" model="ir.ui.view">
-        <field name="name">dtsc.makeout.tree</field>
-        <field name="model">dtsc.makeout</field>
+<odoo>	
+    <record id="view_makeom_tree" model="ir.ui.view">
+        <field name="name">dtsc.makeom.tree</field>
+        <field name="model">dtsc.makeom</field>
         <field name="arch" type="xml">
             <tree create="false" decoration-danger="install_state == 'cancel'">
 				<field name="name" readonly="1"/>
@@ -23,23 +17,23 @@
         </field>
     </record>
     
-	<record id="action_to_excel_makeout_list" model="ir.actions.server">
-		<field name="name">統計表生成Excel(完整)</field>
-		<field name="model_id" ref="model_dtsc_makeout"/>
-		<field name="state">code</field>
-		<field name="code">
-			action = env['dtsc.makeout'].with_context(env.context).action_to_excel()
-		</field>
-		<field name="binding_model_id" ref="model_dtsc_makeout"/>
-		<field name="binding_type">action</field>
-		<field name="binding_view_types">list</field>
-        <field name="groups_id" eval="[(4, ref('dtsc.group_dtsc_mg'))]"/>
-	</record>
+	<!-- <record id="action_to_excel_makeout_list" model="ir.actions.server"> -->
+		<!-- <field name="name">統計表生成Excel(完整)</field> -->
+		<!-- <field name="model_id" ref="model_dtsc_makeout"/> -->
+		<!-- <field name="state">code</field> -->
+		<!-- <field name="code"> -->
+			<!-- action = env['dtsc.makeout'].with_context(env.context).action_to_excel() -->
+		<!-- </field> -->
+		<!-- <field name="binding_model_id" ref="model_dtsc_makeout"/> -->
+		<!-- <field name="binding_type">action</field> -->
+		<!-- <field name="binding_view_types">list</field> -->
+        <!-- <field name="groups_id" eval="[(4, ref('dtsc.group_dtsc_mg'))]"/> -->
+	<!-- </record> -->
 	
     <!-- Updated form view definition -->
-    <record id="view_makeout_form" model="ir.ui.view">
-        <field name="name">dtsc.makeout.form</field>
-        <field name="model">dtsc.makeout</field>
+    <record id="view_makeom_form" model="ir.ui.view">
+        <field name="name">dtsc.makeom.form</field>
+        <field name="model">dtsc.makeom</field>
         <field name="arch" type="xml">
             <form>
                 <header>
@@ -52,7 +46,7 @@
                 <sheet>
 					<!-- <div class="oe_title" style="text-align: center;"> -->
 					<div style="text-align: center;">
-						<h1>輸出工單</h1>
+						<h1>代工單</h1>
 					</div>
 					<group col="12">
 						<group colspan="10">
@@ -71,16 +65,16 @@
 							<field name="phone" />
 							<field name="is_recheck" invisible="1"/>
 							<field name="source_name" attrs="{'invisible': [('source_name', '=', False)]}" readonly="1"/>
-							<field name="scan_type" attrs="{'invisible': [('is_open_makeout_qrcode', '=', False)]}"/>
-							<field name="scan_modes" options="{'no_create': True, 'no_create_edit': True}" widget="many2many_tags" domain="[('name','in',['後製','品管','完成包裝','已出貨'])]" attrs="{'invisible': ['|',('is_open_makeout_qrcode', '=', False),('scan_type', '!=', 'gun')]}"/>
-							<field name="scan_input" attrs="{'invisible': ['|',('is_open_makeout_qrcode', '=', False),('scan_type', '!=', 'gun')]}"/>
+							<field name="scan_type" attrs="{'invisible': [('is_open_makeom_qrcode', '=', False)]}"/>
+							<field name="scan_modes" options="{'no_create': True, 'no_create_edit': True}" widget="many2many_tags" domain="[('name','in',['後製','品管','完成包裝','已出貨'])]" attrs="{'invisible': ['|',('is_open_makeom_qrcode', '=', False),('scan_type', '!=', 'gun')]}"/>
+							<field name="scan_input" attrs="{'invisible': ['|',('is_open_makeom_qrcode', '=', False),('scan_type', '!=', 'gun')]}"/>
 						</group>
 						<group colspan="4">
 							<field name="order_date" readonly="1"/>
 							<field name="fax" />
 							<field name="recheck_groups" attrs="{'invisible': [('is_recheck', '=', False)]}" widget="many2many_tags"  readonly="1"/>
 							<field name="recheck_comment" attrs="{'invisible': [('is_recheck', '=', False)]}" readonly="1"/>
-							<!-- <field name="factory" /> -->
+							<!-- <field name="is_aftermake" /> -->
 						</group><group colspan="4">
 							<field name="speed_type" />
 							<field name="delivery_date" />
@@ -106,31 +100,19 @@
 									
 								</div>
 							</div>
-							<field name="is_open_makeout_qrcode" invisible="1"/>
-							<div style="display: flex; gap: 6px; align-items: center; margin-bottom: 5px;"
-								attrs="{'invisible': [('is_open_makeout_qrcode', '=', False)]}">
-								<button string="全選" type="object" name="set_boolean_field_true"  class="btn-primary" help="全選" />
-								<button string="取消全選" type="object" name="set_boolean_field_false" class="btn-primary" style="margin-right:20px" help="取消全選" />		
-								<button name="button_confirm_action" confirm="是否確認要將此員工簽名？" type="object" string="確認簽名" class="oe_highlight" attrs="{'invisible': ['|',('is_open_makeout_qrcode', '=', False),('scan_type', '!=', 'gun')]}"/>
-						
-								<!-- 冷裱-過板-裁切-品管-完成包裝-已出貨 -->
+							<field name="is_open_makeom_qrcode" invisible="1"/>
 
-								<button id="scan_qr_button_hz" name="scan_qr_button_hz" string="後製" style="margin-right:20px" type="object" class="btn-primary" attrs="{'invisible': [('scan_type', '=', 'gun')]}" />
-								<button id="scan_qr_button_pg" name="scan_qr_button_pg" string="品管" style="margin-right:20px" type="object" class="btn-primary" attrs="{'invisible': [('scan_type', '=', 'gun')]}"  />
-								<button id="scan_qr_button_dch" name="scan_qr_button_dch" string="完成包裝" style="margin-right:20px" type="object" class="btn-primary" attrs="{'invisible': [('scan_type', '=', 'gun')]}"  />
-								<button id="scan_qr_button_ych" name="scan_qr_button_ych" string="已出貨" style="margin-right:20px" type="object" class="btn-primary" attrs="{'invisible': [('scan_type', '=', 'gun')]}"  />
-								<!-- <button id="close_qr_button" name="close_qr_button" string="结束扫码"  type="object" class="btn-primary" /> --> 
-							</div>
 						
 						
 							<field name="order_ids">
 								<tree editable="bottom" create="false" delete="false">
-									<field name="is_select" attrs="{'invisible': [('parent.is_open_makeout_qrcode', '=', False)]}"/>
+									<field name="is_select" attrs="{'invisible': [('parent.is_open_makeom_qrcode', '=', False)]}"/>
 									<field name="sequence" readonly="1"/>
 									<field name="file_name" readonly="1"/>
 									<field name="output_material" readonly="1"/>
 									<field name="production_size" readonly="1"/>
 									<field name="processing_method" widget='text' readonly="1"/>
+									<field name="is_aftermake" string="外站發送"/>
 									<field name="lengbiao" readonly="1"/>
 									<field name="quantity" readonly="1"/>
 									<field name="total_size" readonly="1"/>
@@ -138,23 +120,6 @@
 									<field name="barcode" readonly="1"/>
 									
 								</tree> 
-							</field>
-							<field name="order_ids_sec" attrs="{'invisible': [('is_open_makeout_qrcode', '=', False)]}">   
-								<tree  editable="bottom"  create="false" delete="false">
-									<field name="sequence" readonly="1"/>
-									<field name="file_name" readonly="1"/>
-									<field name="production_size" readonly="1"/>	
-									<field name="houzhi_sign" readonly="1" />
-									<button name="clean_houzhi" string="刪後製" confirm="確定要清空此項内容嗎？" type="object" class="btn-primary" groups="dtsc.group_dtsc_gly" /> 										
-									<field name="pinguan_sign" readonly="1"/>
-									<button name="clean_pinguan" string="刪品管" confirm="確定要清空此項内容嗎？" type="object" class="btn-primary" groups="dtsc.group_dtsc_gly" /> 
-									<field name="daichuhuo_sign" readonly="1"/>
-									<button name="clean_daichuhuo" string="刪完成包裝" confirm="確定要清空此項内容嗎？" type="object" class="btn-primary" groups="dtsc.group_dtsc_gly" /> 
-									<field name="yichuhuo_sign" readonly="1"/>
-									<button name="clean_yichuhuo" string="刪已出貨" confirm="確定要清空此項内容嗎？" type="object" class="btn-primary" groups="dtsc.group_dtsc_gly" /> 
-									<!-- <field name="is_disable" /> -->
-
-								</tree>
 							</field>
 							<group col="12">
 								<group colspan="12">
@@ -187,7 +152,7 @@
 									
 								</group>
 								<group colspan="3">
-									<field name="pinguanman" options="{'no_create': True, 'no_create_edit': True}" widget="many2many_tags"  attrs="{'invisible': [('is_open_makeout_qrcode', '=', True)]}"/> 
+									<field name="pinguanman" options="{'no_create': True, 'no_create_edit': True}" widget="many2many_tags"  attrs="{'invisible': [('is_open_makeom_qrcode', '=', True)]}"/> 
 									
 								</group>
 							</group>
@@ -198,9 +163,9 @@
         </field>
     </record>
 	
-	<record id="search_makeout" model="ir.ui.view">
-		<field name="name">dtsc.makeout.search</field>
-		<field name="model">dtsc.makeout</field>
+	<record id="search_makeom" model="ir.ui.view">
+		<field name="name">dtsc.makeom.search</field>
+		<field name="model">dtsc.makeom</field>
 		<field name="arch" type="xml">
 			<search>
 				<searchpanel>
@@ -209,7 +174,6 @@
 
 				</searchpanel>
 				<field name="search_line_name" string="所有訊息"/>
-				<field name="partner_id" string="客戶名稱"/>
 				
 				<separator/>
 				
@@ -233,9 +197,9 @@
 			</search>
 		</field>		
 	</record>
-	<record id="ir_cron_makeout" model="ir.cron">
+	<record id="ir_cron_makeom" model="ir.cron">
         <field name="name">Every Minute Computation Job</field>
-        <field name="model_id" ref="model_dtsc_makeout"/>
+        <field name="model_id" ref="model_dtsc_makeom"/>
         <field name="state">code</field>
         <field name="code">model.everyday_set()</field> 
         <field name="interval_number">5</field> 
@@ -245,13 +209,13 @@
     </record>
 	
 	
-    <record id="action_report_makeout" model="ir.actions.report">
-        <field name="name">委外訂單</field>
-        <field name="model">dtsc.makeout</field>
+    <record id="action_report_makeom" model="ir.actions.report">
+        <field name="name">代工單</field>
+        <field name="model">dtsc.makeom</field>
         <field name="report_type">qweb-pdf</field>
-        <field name="report_name">dtsc.report_makeout_template</field>
-        <field name="report_file">dtsc.report_makeout_template</field>
-        <field name="binding_model_id" ref="model_dtsc_makeout"/>
+        <field name="report_name">dtsc.report_makeom_template</field>
+        <field name="report_file">dtsc.report_makeom_template</field>
+        <field name="binding_model_id" ref="model_dtsc_makeom"/>
         <field name="binding_type">report</field>
     </record>
 </odoo>

@@ -478,7 +478,56 @@ class StockPicking(models.Model):
                 order.write({'invoice_status': 'to invoice'})
 
         return super_result
-    
+    #檢查move_line的時候如果move_line中沒有lot則去move反查一下
+    def _sanity_check(self, separate_pickings=True):
+        """ Sanity check for `button_validate()`
+            :param separate_pickings: Indicates if pickings should be checked independently for lot/serial numbers or not.
+        """
+        pickings_without_lots = self.browse()
+        products_without_lots = self.env['product.product']
+        pickings_without_moves = self.filtered(lambda p: not p.move_ids and not p.move_line_ids)
+        precision_digits = self.env['decimal.precision'].precision_get('Product Unit of Measure')
+
+        no_quantities_done_ids = set()
+        no_reserved_quantities_ids = set()
+        for picking in self:
+            if all(float_is_zero(move_line.qty_done, precision_digits=precision_digits) for move_line in picking.move_line_ids.filtered(lambda m: m.state not in ('done', 'cancel'))):
+                no_quantities_done_ids.add(picking.id)
+            if all(float_is_zero(move_line.reserved_qty, precision_rounding=move_line.product_uom_id.rounding) for move_line in picking.move_line_ids):
+                no_reserved_quantities_ids.add(picking.id)
+        pickings_without_quantities = self.filtered(lambda p: p.id in no_quantities_done_ids and p.id in no_reserved_quantities_ids)
+
+        pickings_using_lots = self.filtered(lambda p: p.picking_type_id.use_create_lots or p.picking_type_id.use_existing_lots)
+        if pickings_using_lots:
+            lines_to_check = pickings_using_lots._get_lot_move_lines_for_sanity_check(no_quantities_done_ids, separate_pickings)
+            for line in lines_to_check:
+                # print(line.lot_name)
+                # print(line.lot_id)
+                if not line.lot_name and not line.lot_id:
+                    if line.move_id.lot_id:
+                        line.write({'lot_id': line.move_id.lot_id.id, 'lot_name': line.move_id.lot_id.name})
+                    else:
+                        pickings_without_lots |= line.picking_id
+                        products_without_lots |= line.product_id
+        
+        if not self._should_show_transfers():
+            if pickings_without_moves:
+                raise UserError(_('Please add some items to move.'))
+            if pickings_without_quantities:
+                raise UserError(self._get_without_quantities_error_message())
+            if pickings_without_lots:
+                raise UserError(_('You need to supply a Lot/Serial number for products %s.') % ', '.join(products_without_lots.mapped('display_name')))
+        else:
+            message = ""
+            if pickings_without_moves:
+                message += _('Transfers %s: Please add some items to move.') % ', '.join(pickings_without_moves.mapped('name'))
+            if pickings_without_quantities:
+                message += _('\n\nTransfers %s: You cannot validate these transfers if no quantities are reserved nor done. To force these transfers, switch in edit more and encode the done quantities.') % ', '.join(pickings_without_quantities.mapped('name'))
+            if pickings_without_lots:
+                message += _('\n\nTransfers %s: You need to supply a Lot/Serial number for products %s.') % (', '.join(pickings_without_lots.mapped('name')), ', '.join(products_without_lots.mapped('display_name')))
+            if message:
+                raise UserError(message.lstrip())
+                
     def action_move_done(self):
         self.action_confirm()
         self.action_assign()
@@ -547,8 +596,8 @@ class StockPicking(models.Model):
     def default_get(self, fields):
         res = super(StockPicking, self).default_get(fields)
         picking_type_code = self.env.context.get('default_picking_type_id')
-        # print(1111111111111)
-        # print(picking_type_code)
+
+
         # 获取当前操作类型的编码
         if picking_type_code:
             picking_type = self.env['stock.picking.type'].browse(picking_type_code)
@@ -1094,7 +1143,8 @@ class PurchaseOrder(models.Model):
             record.search_line = result    
    
     def go_to_zuofei(self):
-        
+        if self.my_state == "4":
+            raise UserError("已轉應收單不能作廢！")
         picking_ids = self.env['stock.picking'].search([('origin', '=', self.name)])
         for picking_id in picking_ids:
             if picking_id and picking_id.state == 'done':
@@ -1172,7 +1222,7 @@ class PurchaseOrder(models.Model):
             active_ids.append(order.id)
     
 
-        view_id = self.env.ref('dtsc.view_dtsc_deliverydate_form').id
+        view_id = self.env.ref('dtsc.view_dtsc_billdate_form').id
         return {
             'name': '選擇賬單日期',
             'type': 'ir.actions.act_window',

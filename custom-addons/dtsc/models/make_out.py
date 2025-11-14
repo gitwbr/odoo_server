@@ -352,6 +352,7 @@ class MakeOut(models.Model):
             
             record.total_quantity = total_quantity
             record.total_size = total_size 
+            
     def send_install_list(self):
         self.write({"install_state":"installing"}) 
         

@@ -41,3 +41,21 @@
     min-width: 110px !important;
     overflow: hidden;
 }
+
+/* 雙保險：把設定頁裡的 Developer Tools 卡片隱藏（不同版本選擇器可能不同，這裡覆蓋常見類名/標題文案） */
+
+/* 常見：General Settings 裡的 Developer Tools 卡片容器 */
+.o_settings_container .o_setting_right_panel .o_setting_box:has(.o_setting_left_pane h2:contains("Developer Tools")),
+.o_setting_box:has(h2:contains("Developer Tools")),
+.o_setting_box[data-key="developer_tools"] {
+  display: none !important;
+}
+.o_widget_res_config_dev_tool {
+  display: none !important;
+	
+}
+/* 某些版本會有 debug 相關 class */
+.o_setting_box.o_setting_debug,
+.o_setting_box_debug {
+  display: none !important;
+}

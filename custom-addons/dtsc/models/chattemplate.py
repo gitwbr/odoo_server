@@ -72,7 +72,7 @@ class YklComment(models.Model):
     @api.depends("width","height","quantity")
     def _compute_single_units(self):
         for record in self:
-            formula = self.env["dtsc.unit_conversion"].search([("name" , "=" ,"單位轉換計算(才數)")]).conversion_formula
+            formula = self.env["dtsc.unit_conversion"].search(["|",("name" , "=" ,"單位轉換計算(才數)"),("name" , "=" ,"单位转换计算(平方)")]).conversion_formula
             param1 = float(record.width)
             param2 = float(record.height)
             if formula:
@@ -277,7 +277,7 @@ class CheckOutLine(models.Model):
             'default_start_date': dates['start_date'],
             'default_end_date': dates['end_date'],
             'search_default_custom_26_to_25': 1,
-            'group_by': ['machineAndproduct', 'saleuser']
+            'group_by': ['saleuser','machineAndproduct']
         }
         _logger = logging.getLogger(__name__)
         _logger.info("Action Context: %s", action['context'])

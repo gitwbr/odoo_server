@@ -161,11 +161,11 @@
 							<tr>
 								<td>票據金額</td>
 								<td>未稅</td>
-								<td><t t-esc="'{:,.0f}'.format(abs(o.sale_price))"/></td> 
+								<td><t t-esc="'{:,.0f}'.format(-(o.sale_price or 0.0))"/></td> 
 								<td>稅金</td>
-								<td><t t-esc="'{:,.0f}'.format(abs(o.tax_price))"/></td> 
+								<td><t t-esc="'{:,.0f}'.format(-(o.tax_price or 0.0))"/></td> 
 								<td>小計</td>
-								<td><t t-esc="'{:,.0f}'.format(abs(o.total_price))"/></td> 
+								<td><t t-esc="'{:,.0f}'.format(-(o.total_price or 0.0))"/></td> 
 							</tr>
 							<tr>
 								<td colspan="7">備註: <t t-esc="o.comment_infu"/></td>

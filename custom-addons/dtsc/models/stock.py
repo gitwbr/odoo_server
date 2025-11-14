@@ -63,7 +63,7 @@ class StockQuant(models.Model):
     
     lastmodifydate = fields.Datetime("最後修改時間",compute="_compute_lastmodifydate")
     zksl_cai = fields.Float("在庫數量(才)",compute="_compute_zksl_cai")
-    average_price = fields.Float("平均采購價格" , compute="_compute_average_price")
+    average_price = fields.Float("平均採購價格" , compute="_compute_average_price")
     total_value = fields.Float("成本" , compute="_compute_average_price")
     categ_id = fields.Many2one("product.category",string="產品分類",related="product_id.product_tmpl_id.categ_id",store=True)
     stock_date = fields.Date("指定盤點日期")
@@ -745,7 +745,7 @@ class Productproduct(models.Model):
     _inherit = "product.product"
     
     sec_uom_id = fields.Many2one("uom.uom")
-    average_price = fields.Float("平均采購價格" , compute="_compute_average_price")
+    average_price = fields.Float("平均採購價格" , compute="_compute_average_price")
     total_value = fields.Float("總計金額" , compute="_compute_average_price")
     
     @api.depends('qty_available','standard_price')
@@ -1188,27 +1188,31 @@ class StockMoveLine(models.Model):
         worksheet.set_column('E:E', 15) 
         worksheet.set_column('F:F', 15) 
         worksheet.set_column('G:G', 15) 
-        worksheet.set_column('H:H', 15) 
+        worksheet.set_column('H:H', 15)
         # 写入表头
         worksheet.write(0, 0, '日期', bold_format)
-        worksheet.write(0, 1, '產品', bold_format)
-        worksheet.write(0, 2, '參照', bold_format)
-        worksheet.write(0, 3, '移動前', bold_format)
-        worksheet.write(0, 4, '移動後', bold_format)
-        worksheet.write(0, 5, '完成', bold_format)
-        worksheet.write(0, 6, '量度單位', bold_format)
+        worksheet.write(0, 1, '參照', bold_format)
+        worksheet.write(0, 2, '產品', bold_format)
+        worksheet.write(0, 3, '序號', bold_format)
+        worksheet.write(0, 4, '倉庫', bold_format)
+        worksheet.write(0, 5, '移動前', bold_format)
+        worksheet.write(0, 6, '移動後', bold_format)
+        worksheet.write(0, 7, '完成', bold_format)
+        worksheet.write(0, 8, '量度單位', bold_format)
         row = 1
         for record in records:
             worksheet.write(row, 0, record.date.strftime('%Y-%m-%d %H:%M:%S'))
-            worksheet.write(row, 1, record.product_id.name if record.product_id else "")
-            worksheet.write(row, 2, record.reference if record.reference else "")
-            worksheet.write(row, 3, str(round(record.move_before_quantity,2)) if record.move_before_quantity else "0")
-            worksheet.write(row, 4, str(round(record.move_after_quantity,2)) if record.move_after_quantity else "0")
+            worksheet.write(row, 1, record.reference if record.reference else "")
+            worksheet.write(row, 2, record.product_id.name if record.product_id else "")
+            worksheet.write(row, 3, record.lot_id.name if record.lot_id else "")
+            worksheet.write(row, 4, record.location_ori.name if record.location_ori else "")
+            worksheet.write(row, 5, str(round(record.move_before_quantity,2)) if record.move_before_quantity else "0")
+            worksheet.write(row, 6, str(round(record.move_after_quantity,2)) if record.move_after_quantity else "0")
             if record.move_before_quantity > record.move_after_quantity: 
-                worksheet.write(row, 5, str(-round(record.qty_done,2)) if record.qty_done else "")
+                worksheet.write(row, 7, str(-round(record.qty_done,2)) if record.qty_done else "")
             else:
-                worksheet.write(row, 5, str(round(record.qty_done,2)) if record.qty_done else "")
-            worksheet.write(row, 6, str(record.product_uom_id.name) if record.product_uom_id else "")           
+                worksheet.write(row, 7, str(round(record.qty_done,2)) if record.qty_done else "")
+            worksheet.write(row, 8, str(record.product_uom_id.name) if record.product_uom_id else "")           
             row = row + 1
         
         workbook.close()

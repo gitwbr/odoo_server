@@ -10,6 +10,7 @@ from datetime import datetime, timedelta, date
 from odoo.http import request
 from odoo.exceptions import UserError
 import os
+from odoo.tools.safe_eval import safe_eval  # ← 關鍵
 class CrmUserComment(models.Model):
     _name = "dtsc.crmusercomment"
     _order = "sequence"
@@ -28,6 +29,32 @@ class CrmComment(models.Model):
     comment_data = fields.Text("内容")
     comment_price = fields.Float("報價")
 
+class CrmTeam(models.Model):
+    _inherit = 'crm.team'
+
+    def action_all_pipeline(self):
+        action = self.env['ir.actions.actions']._for_xml_id('crm.crm_lead_action_pipeline')
+
+        # 清空 domain（避免預設仍有限制）
+        action['domain'] = []
+
+        # 取出 context：可能是 dict，也可能是「字串」
+        ctx = action.get('context') or {}
+        if isinstance(ctx, str):
+            # 將 "{'search_default_my': 1, ...}" 轉成真正的 dict
+            ctx = safe_eval(ctx)
+
+        # 移除所有預設搜尋條件（含 search_default_my）
+        for k in list(ctx.keys()):
+            if k.startswith('search_default_'):
+                ctx.pop(k)
+
+        # 也順手清掉常見預設
+        ctx.pop('default_user_id', None)
+
+        action['context'] = ctx
+        return action
+    
 class CrmLead(models.Model):
     _inherit = 'crm.lead'
     
@@ -108,7 +135,8 @@ class CheckoutInherit(models.Model):
     is_show_price = fields.Boolean(string="價格顯示",default=True)
     related_checkout_id = fields.Many2one('dtsc.checkout', string="關聯大圖訂單")
     is_new_partner = fields.Boolean("新客戶")
-    crm_date = fields.Date("報價日期")    
+    crm_date = fields.Date("報價日期") 
+    crm_effective_date = fields.Date("有效期限")    
     new_partner = fields.Char("新客戶名")
     
     new_customer_class_id = fields.Many2one('dtsc.customclass',string="新客戶分類",domain=lambda self: [('sell_user', 'in', [self.env.uid])])
@@ -335,7 +363,7 @@ class CheckoutInherit(models.Model):
                     'custom_pay_mode':new_checkout.new_custom_pay_mode,
                     'custom_invoice_form':new_checkout.new_custom_invoice_form,
                     'is_customer' : True,
-                    'sell_user' : self.env.user.id,
+                    'sell_user' : new_checkout.user_id.id,
                     'custom_init_name' : new_checkout.new_init,
                 }   
                 
@@ -564,7 +592,7 @@ class CheckoutInherit(models.Model):
             sheet.merge_range(5, 6, 5, 8, records[0].customer_id.mobile if records[0].customer_id.mobile else "", merge_format)
         
         sheet.write(5, 9, "有效期限", merge_format)
-        sheet.merge_range(5, 10, 5, 13, "一個月", merge_format)
+        sheet.merge_range(5, 10, 5, 13, records[0].crm_effective_date.strftime('%Y-%m-%d') if records[0].crm_effective_date else "", merge_format)
         
         
         

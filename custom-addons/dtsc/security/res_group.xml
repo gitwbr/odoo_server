@@ -1,7 +1,6 @@
 ﻿
 <odoo>
 
-    
     <!--大图订单页面其它相关权限-->
     <record id="group_common_permissions_dd" model="res.groups">
         <field name="name">大圖訂單通用權限</field>
@@ -154,6 +153,21 @@
         <field name="perm_create" eval="True"/>
     </record>
 	<!-- 委外 -->
+	<!-- 代工 -->
+    <record id="model_dtsc_makeom_rule_mg" model="ir.model.access"> 
+        <field name="name">代工美工</field>
+        <field name="model_id" ref="dtsc.model_dtsc_makeom"/>
+        <field name="group_id" ref="dtsc.group_dtsc_mg"/>
+        <field name="perm_create" eval="True"/>
+    </record>
+    
+    <record id="model_dtsc_makeomline_rule_mg" model="ir.model.access"> 
+        <field name="name">代工line美工</field>
+        <field name="model_id" ref="dtsc.model_dtsc_makeomline"/>
+        <field name="group_id" ref="dtsc.group_dtsc_mg"/>
+        <field name="perm_create" eval="True"/>
+    </record>
+	<!-- 代工 -->
 	<!-- 施工 -->
     <record id="model_dtsc_installproduct_rule_mg" model="ir.model.access"> 
         <field name="name">施工美工</field>
@@ -1112,6 +1126,7 @@
 	
 	
     <data>
+		
         <!-- Inherit the form view of purchase.order -->
         <record id="view_purchase_order_form_inherit" model="ir.ui.view">
             <field name="name">purchase.order.form.inherit</field>

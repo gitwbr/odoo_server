@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- 若你用的是舊版 manifest 資產宣告，也可以從這裡注入；上面 __manifest__.py 的 assets 已足夠 -->
+    <template id="assets_backend" inherit_id="web.assets_backend" name="Hide Dev Mode Assets (legacy)">
+        <xpath expr="." position="inside">
+            <script type="module" src="/hide_dev_mode/static/src/js/hide_dev_user_menu.js"/>
+        </xpath>
+    </template>
+</odoo>

@@ -85,7 +85,7 @@ class WorkTime(models.Model):
 class WorkerQRcode(models.Model):
     _name = "dtsc.workqrcode"
     
-    name=fields.Char("員工姓名")
+    name=fields.Char("員工姓名",required=True)
     work_id = fields.Char("員工編號")
     bar_image = fields.Binary("QRcode", compute='_generate_qrcode_image1')
     bar_image_code = fields.Char("qrcode code", compute='_generate_bar_image_code',store=True)
@@ -1106,7 +1106,8 @@ class vatLogin(models.Model):
     
     vat = fields.Char("帳號")
     vat_password = fields.Char("密碼")
-    partner_id = fields.Many2one("res.partner")
+    partner_id = fields.Many2one("res.partner",string="客戶")
+    name = fields.Char(related="partner_id.name",string="客戶")
     coin_can_cust = fields.Boolean(related="partner_id.coin_can_cust")
     custom_id = fields.Char(related="partner_id.custom_id" ,store=True)
     search_line = fields.Char(compute= "_compute_search_line",store = True)

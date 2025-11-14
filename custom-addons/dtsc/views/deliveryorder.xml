@@ -119,4 +119,14 @@
         <field name="binding_model_id" ref="model_dtsc_deliveryorder"/>
         <field name="binding_type">report</field>
     </record>
+	
+    <record id="action_report_deliveryorder_line" model="ir.actions.report">
+        <field name="name">Line出貨單明細</field>
+        <field name="model">dtsc.deliveryorder</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">dtsc.report_deliveryorder_template_line</field>
+        <field name="report_file">dtsc.report_deliveryorder_template_line</field>
+        <field name="binding_model_id" ref="model_dtsc_deliveryorder"/>
+        <field name="binding_type">report</field>
+    </record>
 </odoo>

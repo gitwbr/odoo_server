@@ -132,6 +132,7 @@
 						<field name="is_daka_qh" />
 						<field name="in_company_date" />
 						<field name="out_company_date" />
+						<field name="out_worker" />
 						<field name="in_time" />
 						<field name="out_time" />
 						<field name="department" options="{'no_create': True, 'no_create_edit': True}"/>
@@ -151,7 +152,15 @@
 						<field name="reworklist_id" />
 						<field name="user_id" />
 						<field name="sys_password" password="True" /> 
-						
+						<field name="lbztj_num"/> 
+						<field name="healthinsurancewithfamily_ids" string="健保攜眷">
+								<tree editable="bottom" limit="100"  >
+									<field name="enable" />
+									<field name="name" />
+									<field name="sfz" />
+									<field name="relationship" />
+								</tree>
+						</field>
 					</group>
 				</sheet>
 			</form>

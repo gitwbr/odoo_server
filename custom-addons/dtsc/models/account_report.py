@@ -307,9 +307,9 @@ class AccountReportWizard(models.TransientModel):
             #worksheet.write(row, 4, total_untaxed, cell_format)       
             # worksheet.write(row, 5, tax, cell_format)                 
             # worksheet.write(row, 6, total_with_tax, cell_format)  
-            worksheet.write(row, 4, abs(move.sale_price), cell_format)     
-            worksheet.write(row, 5, abs(move.tax_price), cell_format)                 
-            worksheet.write(row, 6, abs(move.total_price), cell_format)                
+            worksheet.write(row, 4, -move.sale_price, cell_format)     
+            worksheet.write(row, 5, -move.tax_price, cell_format)                 
+            worksheet.write(row, 6, -move.total_price, cell_format)                
             worksheet.write(row, 7, move.vat_num or "", cell_format)      
             worksheet.write(row, 8, move.comment_infu or "", cell_format)      
             row += 1
@@ -467,6 +467,8 @@ class AccountReport(models.AbstractModel):
                     for line in record.invoice_line_ids:
                         # 添加发票行信息
                         line_detail = {
+                            "id" :line.id,
+                            "sequence" :line.sequence,
                             "date" : record.invoice_date,
                             "in_out_id" : line.in_out_id,
                             'delivery_date' : line.checkout_id.estimated_date_only,
@@ -485,7 +487,7 @@ class AccountReport(models.AbstractModel):
                 company_detail["total_price"] = total_price
                 company_detail["invoice_ids"] = sorted(
                     company_detail["invoice_ids"],
-                    key=lambda x: (x.get('delivery_date', datetime.min), x.get('in_out_id', float('inf')))
+                    key=lambda x: (x.get('delivery_date', datetime.min), x.get('sequence'),x.get('id') )
                 )
                 data["company_details"].append(company_detail)
             else:
@@ -535,6 +537,8 @@ class AccountReport(models.AbstractModel):
                             for line in record.invoice_line_ids:
                                 # 添加发票行信息
                                 line_detail = {
+                                    "id" :line.id,
+                                    "sequence" :line.sequence,
                                     'delivery_date' : line.checkout_id.estimated_date_only,
                                     "date" : record.invoice_date,
                                     "in_out_id" : line.in_out_id,
@@ -554,8 +558,8 @@ class AccountReport(models.AbstractModel):
                         company_detail["total_price"] = total_price        
                         company_detail["invoice_ids"] = sorted(
                             company_detail["invoice_ids"],
-                            key=lambda x: x["delivery_date"]
-)
+                            key=lambda x: (x.get('delivery_date', datetime.min), x.get('sequence'),x.get('id') )
+                        )
                         data["company_details"].append(company_detail)
                    
         else:#應付單
