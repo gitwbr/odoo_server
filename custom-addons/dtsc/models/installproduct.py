@@ -269,7 +269,10 @@ class Installproduct(models.Model):
     @api.depends("zcs")
     def _compupte_cb(self):
         for record in self:
-            record.cb = record.zcs * 10
+            if record.zcs * 10 < 2000:
+                record.cb = 2000
+            else:
+                record.cb = record.zcs * 10
     
     
     @api.depends("cb","cb_other")

@@ -92,6 +92,7 @@
         'views/make_om.xml',  
         'views/report_makeom.xml',
         'views/report_performance.xml',
+        'views/factory.xml',
         'views/views.xml',
     ],
 	'assets': {
@@ -115,6 +116,7 @@
             'dtsc/static/src/js/inventory_report_list_controller.js',  
             'dtsc/static/src/js/inventory_report_list_model.js', 
             'dtsc/static/src/js/hide_dev_user_menu.js',
+            'dtsc/static/src/js/user_menu_documentation_patch.js',
             # 'dtsc/static/src/xml/hide_dev_tools.xml',  # ← 加这行            
         ],
         'web.assets_frontend': [

@@ -99,6 +99,9 @@ class WorkerQRcode(models.Model):
     in_company_date = fields.Date("入職日期")
     out_company_date = fields.Date("離職日期")
     
+    is_zhuguan_crm_sign = fields.Boolean("CRM 簽核主管")
+    is_manager_crm_sign = fields.Boolean("CRM 簽核總經理")
+    
     in_time = fields.Char('上班時間')
     out_time = fields.Char('下班時間')
     
@@ -123,6 +126,28 @@ class WorkerQRcode(models.Model):
     userlist_id = fields.Many2one('dtsc.userlist',string='綁定產綫人員',domain=[("is_disabled","=",False)])
     reworklist_id = fields.Many2one('dtsc.reworklist',string='綁定重製人員',domain=[("is_disabled","=",False)])
     
+    signature = fields.Binary(string='簽名')
+    is_show_signature = fields.Boolean(compute="_compute_is_show_signature")
+    
+    @api.depends("user_id")
+    def _compute_is_show_signature(self):
+        user = self.env.user
+        is_gly = user.has_group('dtsc.group_dtsc_gly')
+        for record in self:
+            record.is_show_signature = bool(
+                is_gly or (record.user_id and record.user_id.id == user.id)
+            )
+
+    def write(self, vals):
+        if 'signature' in vals:
+            user = self.env.user
+            is_gly = user.has_group('dtsc.group_dtsc_gly')
+            for rec in self:
+                if not is_gly and rec.user_id and rec.user_id.id != user.id:
+                    raise AccessError(_("你不能修改其他人的簽名。"))
+        return super().write(vals)
+            
+            
     @api.depends("name")
     def _generate_bar_image_code(self):
         for record in self:

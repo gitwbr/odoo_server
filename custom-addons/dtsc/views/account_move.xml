@@ -361,6 +361,11 @@
                                 <field name="ftp_local_path"/>
                             </div>
 							
+                            <div class="col-12 col-lg-6 o_setting_box">	
+								<label for="crm_sign_manager_level" string="CRM 經理簽核綫："/>
+                                <field name="crm_sign_manager_level"/>
+                            </div>
+							 
                             <!-- <div class="col-12 col-lg-6 o_setting_box">	 -->
 								<!-- <label for="is_open_makein_qrcode" string="是否開啓工單掃碼流程："/> -->
                                 <!-- <field name="is_open_makein_qrcode"/> -->

@@ -539,6 +539,54 @@ class LineBotController(http.Controller):
         else:
             return None
     
+    def get_checkout_user_line_id(self, checkout):
+        """獲取checkout中user_id對應的LINE用戶ID"""
+        if not checkout or not checkout.user_id:
+            return None
+        
+        # 通過checkout.user_id在workqrcode中查找對應的記錄（通過user_id關聯）
+        worker = request.env["dtsc.workqrcode"].sudo().search([
+            ("user_id", "=", checkout.user_id.id)
+        ], limit=1)
+        
+        # 檢查workqrcode是否存在且有綁定LINE
+        if worker and worker.line_user_id:
+            return worker.line_user_id
+        
+        return None
+    
+    def send_notification_to_users(self, line_user_ids, message, access_token):
+        """發送通知消息給多個用戶"""
+        if not line_user_ids or not access_token:
+            return
+        
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {access_token}"
+        }
+        
+        for line_user_id in line_user_ids:
+            if not line_user_id:
+                continue
+            
+            data = {
+                "to": line_user_id,
+                "messages": [{"type": "text", "text": message}]
+            }
+            
+            try:
+                response = requests.post(
+                    "https://api.line.me/v2/bot/message/push",
+                    headers=headers,
+                    data=json.dumps(data, ensure_ascii=False).encode('utf-8')
+                )
+                if response.status_code == 200:
+                    _logger.info(f"✅ 通知發送成功給 {line_user_id}")
+                else:
+                    _logger.error(f"❌ 通知發送失敗給 {line_user_id}: {response.text}")
+            except Exception as e:
+                _logger.error(f"❌ 通知發送異常給 {line_user_id}: {str(e)}")
+    
     @http.route('/line/webhook_for_partner', type='json', auth='public', methods=['POST'], csrf=False)
     def line_webhook_for_partner(self, **kwargs):
         # 获取请求头 & 请求体
@@ -625,6 +673,99 @@ class LineBotController(http.Controller):
             if event['type'] == 'message' and 'text' in event['message']:
                 user_id = event['source']['userId']
                 text = event['message']['text']
+                
+                # 優先檢查是否有待處理的回復操作
+                pending_replies = request.env['dtsc.line_reply_pending'].sudo().search([
+                    ('line_user_id', '=', user_id),
+                    ('is_expired', '=', False),
+                    ('expire_date', '>', fields.Datetime.now())
+                ], order='create_date desc')
+                
+                if pending_replies:
+                    # 只處理最後一個（最新的）
+                    latest_reply = pending_replies[0]
+                    
+                    # 將其他未處理的設為過期
+                    if len(pending_replies) > 1:
+                        other_replies = pending_replies[1:]
+                        other_replies.write({'is_expired': True})
+                    
+                    # 根據類型處理
+                    if latest_reply.type == 'crm_reject':
+                        # 處理CRM拒絕邏輯
+                        if text and text.strip():
+                            text_lower = text.strip().lower()
+                            if text_lower in ['取消', 'cancel', '取消操作']:
+                                latest_reply.write({'is_expired': True})
+                                self.reply_to_line(user_id, "已取消拒絕操作")
+                            else:
+                                # 處理拒絕理由
+                                checkout = request.env[latest_reply.related_model].sudo().browse(latest_reply.related_id)
+                                if checkout.exists():
+                                    # 獲取簽核人信息
+                                    worker = request.env["dtsc.workqrcode"].sudo().search([("line_user_id", "=", user_id)], limit=1)
+                                    sign_user_name = worker.name if worker else "未知"
+                                    
+                                    # 記錄拒絕信息到訂單（需要在checkout模型中添加字段）
+                                    checkout.with_context(skip_compute_is_sign=True).write({
+                                        'is_sign': False,  # 拒絕後需要重新簽核
+                                        'zhuguan_sign_user_id': False,
+                                        'manager_sign_user_id': False,
+                                        'approval_state': 'pending'  # 拒絕後重置為待簽核
+                                    })
+                                    
+                                    # 推送给其他管理员/经理
+                                    lineObj = request.env["dtsc.linebot"].sudo().search([("linebot_type","=","for_worker")], limit=1)
+                                    if lineObj and lineObj.line_access_token:
+                                        # 查找所有主管和經理（排除當前拒絕人）
+                                        all_signers = request.env["dtsc.workqrcode"].sudo().search([
+                                            '|',
+                                            ('is_zhuguan_crm_sign', '=', True),
+                                            ('is_manager_crm_sign', '=', True)
+                                        ])
+                                        other_signer_line_ids = [sg.line_user_id for sg in all_signers if sg.line_user_id and sg.line_user_id != user_id]
+                                        
+                                        if other_signer_line_ids:
+                                            notification_msg = (
+                                                f"報價單 {checkout.name or '待生成'} 已被 {sign_user_name} 拒絕\n\n"
+                                                f"拒絕理由：{text.strip()}\n\n"
+                                                f"單號：{checkout.name or '待生成'}\n"
+                                                f"客戶：{checkout.customer_id.name if checkout.customer_id else '待確認'}\n"
+                                                f"案名：{checkout.project_name or ''}\n"
+                                                f"稅前總額：${checkout.record_price_and_construction_charge_crm or 0:,.0f}"
+                                            )
+                                            self.send_notification_to_users(other_signer_line_ids, notification_msg, lineObj.line_access_token)
+                                        
+                                        # 推送给checkout的user_id
+                                        user_line_id = self.get_checkout_user_line_id(checkout)
+                                        if user_line_id:
+                                            user_notification_msg = (
+                                                f"您建立的報價單 {checkout.name or '待生成'} 已被 {sign_user_name} 拒絕\n\n"
+                                                f"拒絕理由：{text.strip()}\n\n"
+                                                f"單號：{checkout.name or '待生成'}\n"
+                                                f"客戶：{checkout.customer_id.name if checkout.customer_id else '待確認'}\n"
+                                                f"案名：{checkout.project_name or ''}\n"
+                                                f"稅前總額：${checkout.record_price_and_construction_charge_crm or 0:,.0f}"
+                                            )
+                                            self.send_notification_to_users([user_line_id], user_notification_msg, lineObj.line_access_token)
+                                    
+                                    latest_reply.write({'is_expired': True})
+                                    self.reply_to_line(user_id, f"拒絕理由已提交，已通知相關人員。報價單 {checkout.name or '待生成'} 需要重新簽核。")
+                                else:
+                                    latest_reply.write({'is_expired': True})
+                                    self.reply_to_line(user_id, "找不到此報價單，拒絕操作失敗。")
+                        else:
+                            self.reply_to_line(user_id, "請輸入拒絕理由，或輸入'取消'取消操作")
+                        continue  # 不進入正常流程
+                
+                # 清理過期的記錄（每次處理時清理該用戶的過期記錄）
+                expired_records = request.env['dtsc.line_reply_pending'].sudo().search([
+                    ('line_user_id', '=', user_id),
+                    ('is_expired', '=', False),
+                    ('expire_date', '<=', fields.Datetime.now())
+                ], limit=10)
+                if expired_records:
+                    expired_records.write({'is_expired': True})
 
                 # 处理打卡逻辑
                 if text.strip() == "打卡":
@@ -680,6 +821,306 @@ class LineBotController(http.Controller):
                             self.reply_to_line(record.line_user_id, f"單號 {order.name} 已成功簽核！")
                     else:
                         self.reply_to_line(user_id, "找不到此單據，簽核失敗。")
+                elif params.get("action") == "sign_crm_checkout" and params.get("checkout_id"):
+                    # 處理 CRM 報價單主管簽核
+                    checkout_id = int(params["checkout_id"])
+                    checkout = request.env["dtsc.checkout"].sudo().browse(checkout_id)
+
+                    if checkout.exists():
+                        # 檢查當前用戶是否為主管
+                        worker = request.env["dtsc.workqrcode"].sudo().search([("line_user_id", "=", user_id)], limit=1)
+                        if not worker or not worker.is_zhuguan_crm_sign:
+                            self.reply_to_line(user_id, "您沒有主管簽核權限。")
+                            continue
+                        
+                        # 獲取簽核級別和訂單總價
+                        sign_level = float(request.env['ir.config_parameter'].sudo().get_param('dtsc.crm_sign_manager_level') or 0)
+                        total_price = checkout.record_price_and_construction_charge_crm or 0
+                        _logger.warning(f"=====line_webhook_for_partner============={sign_level}===={total_price}=====")
+                        
+                        # 檢查是否已經有主管簽核
+                        if checkout.zhuguan_sign_user_id:
+                            # 獲取已簽核主管的信息
+                            signed_worker = checkout.zhuguan_sign_user_id
+                            signed_user_name = signed_worker.name if signed_worker.exists() else "未知"
+                            
+                            # 如果是高價值單，提示正在等待經理簽核
+                            if total_price > sign_level:
+                                self.reply_to_line(user_id, f"該報價單 {checkout.name or '待生成'} 已由 {signed_user_name} 主管簽核，正在等待經理簽核。")
+                            else:
+                                self.reply_to_line(user_id, f"該報價單 {checkout.name or '待生成'} 已由 {signed_user_name} 主管簽核完成。")
+                            continue
+                        
+                        # 獲取簽核人的信息
+                        sign_user_name = worker.name if worker else "未知"
+                        
+                        # 記錄主管簽名（直接記錄worker的id）
+                        if worker:
+                            checkout.with_context(skip_compute_is_sign=True).write({'zhuguan_sign_user_id': worker.id})
+                        
+                        # 通知其他主管簽核完成
+                        lineObj = request.env["dtsc.linebot"].sudo().search([("linebot_type","=","for_worker")], limit=1)
+                        if lineObj and lineObj.line_access_token:
+                            # 查找所有主管（排除當前簽核人）
+                            all_zhuguan = request.env["dtsc.workqrcode"].sudo().search([("is_zhuguan_crm_sign", "=", True)])
+                            other_zhuguan_line_ids = [zg.line_user_id for zg in all_zhuguan if zg.line_user_id and zg.line_user_id != user_id]
+                            
+                            if other_zhuguan_line_ids:
+                                notification_msg = f"報價單 {checkout.name or '待生成'} 已由 {sign_user_name} 主管簽核完成。"
+                                self.send_notification_to_users(other_zhuguan_line_ids, notification_msg, lineObj.line_access_token)
+                            
+                            # 推送给checkout的user_id
+                            user_line_id = self.get_checkout_user_line_id(checkout)
+                            if user_line_id:
+                                if total_price > sign_level:
+                                    user_notification_msg = f"您建立的報價單 {checkout.name or '待生成'} 已由 {sign_user_name} 主管簽核完成，正在等待經理簽核。"
+                                else:
+                                    user_notification_msg = f"您建立的報價單 {checkout.name or '待生成'} 已由 {sign_user_name} 主管簽核完成，簽核流程已完成。"
+                                self.send_notification_to_users([user_line_id], user_notification_msg, lineObj.line_access_token)
+                        
+                        # 如果總價高於簽核級別，推送給經理（不改變 is_sign）
+                        if total_price > sign_level:
+                            # 檢查簽核人是否既是主管又是經理
+                            if worker.is_manager_crm_sign:
+                                # 如果簽核人既是主管又是經理，同時記錄經理簽名並完成簽核
+                                if worker:
+                                    checkout.with_context(skip_compute_is_sign=True).write({
+                                        'manager_sign_user_id': worker.id,
+                                        'is_sign': True,
+                                        'approval_state': 'approved'  # 簽核完成
+                                    })
+                                
+                                # 推送给checkout的user_id（既是主管又是经理的情况）
+                                lineObj = request.env["dtsc.linebot"].sudo().search([("linebot_type","=","for_worker")], limit=1)
+                                if lineObj and lineObj.line_access_token:
+                                    user_line_id = self.get_checkout_user_line_id(checkout)
+                                    if user_line_id:
+                                        user_notification_msg = f"您建立的報價單 {checkout.name or '待生成'} 已由 {sign_user_name} 簽核完成（主管+經理），簽核流程已完成。"
+                                        self.send_notification_to_users([user_line_id], user_notification_msg, lineObj.line_access_token)
+                                
+                                self.reply_to_line(user_id, f"報價單 {checkout.name or '待生成'} 主管簽核完成！由於您同時是經理，已自動完成經理簽核。")
+                                continue
+                            # 獲取 LINE Bot 配置
+                            lineObj = request.env["dtsc.linebot"].sudo().search([("linebot_type","=","for_worker")], limit=1)
+                            if lineObj and lineObj.line_access_token:
+                                access_token = lineObj.line_access_token
+                                headers = {
+                                    "Content-Type": "application/json",
+                                    "Authorization": f"Bearer {access_token}"
+                                }
+                                
+                                # 查找所有 CRM 簽核經理
+                                manager_line_ids = request.env["dtsc.workqrcode"].sudo().search([("is_manager_crm_sign", "=", True)])
+                                
+                                # 發送給每個經理
+                                for manager_record in manager_line_ids:
+                                    if not manager_record.line_user_id:
+                                        continue
+                                    
+                                    # 構建PDF下載鏈接
+                                    download_url = checkout._build_checkout_pdf_url(checkout, manager_record.id, external=True, dl=True)
+                                    
+                                    # 構建 Flex 消息（與主管推送相同的格式）
+                                    flex_message = {
+                                        "type": "flex",
+                                        "altText": f"報價單待簽核 - {checkout.name or '新訂單'}",
+                                        "contents": {
+                                            "type": "bubble",
+                                            "body": {
+                                                "type": "box",
+                                                "layout": "vertical",
+                                                "contents": [
+                                                    {
+                                                        "type": "text",
+                                                        "text": "報價單待簽核",
+                                                        "weight": "bold",
+                                                        "size": "xl",
+                                                        "align": "center",
+                                                        "gravity": "center",
+                                                        "margin": "md"
+                                                    },
+                                                    {
+                                                        "type": "box",
+                                                        "layout": "vertical",
+                                                        "margin": "lg",
+                                                        "spacing": "sm",
+                                                        "contents": [
+                                                            {
+                                                                "type": "text",
+                                                                "text": f"業務：{checkout.user_id.name or ''}"
+                                                            },
+                                                            {
+                                                                "type": "text",
+                                                                "text": f"單號：{checkout.name or '待生成'}"
+                                                            },
+                                                            {
+                                                                "type": "text",
+                                                                "text": f"客戶：{checkout.customer_id.name if checkout.customer_id else '待確認'}"
+                                                            },
+                                                            {
+                                                                "type": "text",
+                                                                "text": f"案名：{checkout.project_name or ''}",
+                                                                "wrap": True
+                                                            },
+                                                            {
+                                                                "type": "text",
+                                                                "text": f"稅前總額：${checkout.record_price_and_construction_charge_crm or 0:,.0f}"
+                                                            },
+                                                            {
+                                                                "type": "text",
+                                                                "text": "請儘快簽核！",
+                                                                "color": "#FF6B6B",
+                                                                "weight": "bold"
+                                                            }
+                                                        ]
+                                                    }
+                                                ]
+                                            },
+                                            "footer": {
+                                                "type": "box",
+                                                "layout": "vertical",
+                                                "spacing": "sm",
+                                                "margin": "md",
+                                                "contents": [
+                                                    {
+                                                        "type": "button",
+                                                        "style": "primary",
+                                                        "height": "sm",
+                                                        "action": {
+                                                            "type": "uri",
+                                                            "label": "下載報價單PDF",
+                                                            "uri": download_url
+                                                        }
+                                                    },
+                                                    {
+                                                        "type": "button",
+                                                        "style": "primary",
+                                                        "color": "#00B900",
+                                                        "height": "sm",
+                                                        "action": {
+                                                            "type": "postback",
+                                                            "label": "簽核此單",
+                                                            "data": f"action=sign_crm_checkout_manager&checkout_id={checkout.id}"
+                                                        }
+                                                    },
+                                                    {
+                                                        "type": "button",
+                                                        "style": "secondary",
+                                                        "color": "#FF6B6B",
+                                                        "height": "sm",
+                                                        "action": {
+                                                            "type": "postback",
+                                                            "label": "拒絕此單",
+                                                            "data": f"action=reject_crm_checkout&checkout_id={checkout.id}"
+                                                        }
+                                                    }
+                                                ]
+                                            }
+                                        }
+                                    }
+                                    
+                                    data = {
+                                        "to": manager_record.line_user_id,
+                                        "messages": [flex_message]
+                                    }
+                                    
+                                    try:
+                                        response = requests.post(
+                                            "https://api.line.me/v2/bot/message/push",
+                                            headers=headers,
+                                            data=json.dumps(data, ensure_ascii=False).encode('utf-8')
+                                        )
+                                        if response.status_code == 200:
+                                            _logger.warning(f"✅ LINE 發送成功給經理 {manager_record.name}")
+                                    except Exception as e:
+                                        _logger.error(f"❌ LINE 發送異常給經理 {manager_record.name}: {str(e)}")
+                            
+                            self.reply_to_line(user_id, f"報價單 {checkout.name or '待生成'} 主管簽核完成！已推送给經理簽核。")
+                        else:
+                            # 價格低於簽核級別，直接完成簽核（只記錄主管簽名）
+                            checkout.with_context(skip_compute_is_sign=True).write({
+                                'is_sign': True,
+                                'approval_state': 'approved'  # 簽核完成
+                            })
+                            self.reply_to_line(user_id, f"報價單 {checkout.name or '待生成'} 已成功簽核！")
+                    else:
+                        self.reply_to_line(user_id, "找不到此報價單，簽核失敗。")
+                elif params.get("action") == "sign_crm_checkout_manager" and params.get("checkout_id"):
+                    # 處理 CRM 報價單經理簽核
+                    checkout_id = int(params["checkout_id"])
+                    checkout = request.env["dtsc.checkout"].sudo().browse(checkout_id)
+
+                    if checkout.exists():
+                        # 檢查當前用戶是否為經理
+                        worker = request.env["dtsc.workqrcode"].sudo().search([("line_user_id", "=", user_id)], limit=1)
+                        if not worker or not worker.is_manager_crm_sign:
+                            self.reply_to_line(user_id, "您沒有經理簽核權限。")
+                            continue
+                        
+                        # 獲取簽核人的信息
+                        sign_user_name = worker.name if worker else "未知"
+                        
+                        # 記錄經理簽名並完成簽核（直接記錄worker的id）
+                        write_vals = {'is_sign': True, 'approval_state': 'approved'}  # 簽核完成
+                        if worker:
+                            write_vals['manager_sign_user_id'] = worker.id
+                        checkout.with_context(skip_compute_is_sign=True).write(write_vals)
+                        
+                        # 通知其他經理簽核完成
+                        lineObj = request.env["dtsc.linebot"].sudo().search([("linebot_type","=","for_worker")], limit=1)
+                        if lineObj and lineObj.line_access_token:
+                            # 查找所有經理（排除當前簽核人）
+                            all_managers = request.env["dtsc.workqrcode"].sudo().search([("is_manager_crm_sign", "=", True)])
+                            other_manager_line_ids = [mg.line_user_id for mg in all_managers if mg.line_user_id and mg.line_user_id != user_id]
+                            
+                            if other_manager_line_ids:
+                                notification_msg = f"報價單 {checkout.name or '待生成'} 已由 {sign_user_name} 經理簽核完成，簽核流程已完成。"
+                                self.send_notification_to_users(other_manager_line_ids, notification_msg, lineObj.line_access_token)
+                            
+                            # 推送给checkout的user_id
+                            user_line_id = self.get_checkout_user_line_id(checkout)
+                            if user_line_id:
+                                user_notification_msg = f"您建立的報價單 {checkout.name or '待生成'} 已由 {sign_user_name} 經理簽核完成，簽核流程已完成。"
+                                self.send_notification_to_users([user_line_id], user_notification_msg, lineObj.line_access_token)
+                        
+                        self.reply_to_line(user_id, f"報價單 {checkout.name or '待生成'} 經理簽核完成！簽核流程已完成。")
+                    else:
+                        self.reply_to_line(user_id, "找不到此報價單，簽核失敗。")
+                elif params.get("action") == "reject_crm_checkout" and params.get("checkout_id"):
+                    # 處理 CRM 報價單拒絕
+                    checkout_id = int(params["checkout_id"])
+                    checkout = request.env["dtsc.checkout"].sudo().browse(checkout_id)
+                    
+                    if checkout.exists():
+                        # 檢查當前用戶是否有簽核權限
+                        worker = request.env["dtsc.workqrcode"].sudo().search([("line_user_id", "=", user_id)], limit=1)
+                        if not worker or (not worker.is_zhuguan_crm_sign and not worker.is_manager_crm_sign):
+                            self.reply_to_line(user_id, "您沒有簽核權限。")
+                            continue
+                        
+                        # 檢查是否已有同類型的待處理記錄，如果有則設為過期
+                        existing = request.env['dtsc.line_reply_pending'].sudo().search([
+                            ('line_user_id', '=', user_id),
+                            ('type', '=', 'crm_reject'),
+                            ('is_expired', '=', False),
+                            ('expire_date', '>', fields.Datetime.now())
+                        ])
+                        if existing:
+                            existing.write({'is_expired': True})
+                        
+                        # 創建新的待處理記錄（5分鐘過期）
+                        expire_time = fields.Datetime.now() + timedelta(minutes=5)
+                        request.env['dtsc.line_reply_pending'].sudo().create({
+                            'line_user_id': user_id,
+                            'type': 'crm_reject',
+                            'related_id': checkout_id,
+                            'related_model': 'dtsc.checkout',
+                            'expire_date': expire_time
+                        })
+                        
+                        self.reply_to_line(user_id, "請輸入拒絕理由（5分鐘內有效，輸入'取消'可取消操作）")
+                    else:
+                        self.reply_to_line(user_id, "找不到此報價單，拒絕操作失敗。")
                 elif params.get("action") == "select_leave_type":
                     # 處理請假類型選擇
                     leave_key = params.get("leave_key")

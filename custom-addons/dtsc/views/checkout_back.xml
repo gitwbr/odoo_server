@@ -202,7 +202,8 @@
 				<field name="project_name" string="案件摘要" readonly="1"/>
 				<field name="delivery_carrier" string="交貨方式" />
 				<!-- <field name="delivery_carrier_char" string="送件"/> -->
-				<field name="estimated_date_str"/>
+				<field name="estimated_date_str" decoration-warning="is_overdue_not_delivered == True"/>
+				<field name="is_overdue_not_delivered" invisible="1"/>
 				<field name="checkout_order_state" string="狀態"/>
 				<field name="delivery_order" readonly="1"/>
 				<field name="customer_class_id" invisible="1"/>
@@ -218,7 +219,7 @@
 				<field name="succ_date" string="完成日" optional="hide"/>
 				<field name="is_online" invisible="1"/>
 				<field name="checkout_order_type" invisible="1"/>
-				<!-- <field name="report_year"/> -->
+				<field name="date_labels" widget="many2many_tags"  optional="hide"/>
 				<!-- <field name="report_month"/> -->
 				<!-- <field name="is_delivery"/> -->
 				<!-- <field name="is_recheck"/> -->
@@ -263,7 +264,7 @@
 					<button name="cancel_hebing" string="取消合併" type="object" confirm="是否確取消合併？" class="oe_highlight" groups="dtsc.group_dtsc_mg" attrs="{'invisible': ['|',('checkout_order_state', 'not in', ['finished']),('hebing_type','not in',['1'])]}"/>
 					<button name="button_back" type="object" class="oe_highlight" string="返回" groups="dtsc.group_dtsc_gly" attrs="{'invisible': [('checkout_order_state', 'in', ['waiting_confirmation'])]}"/>
 					<!-- <button name="button_back" type="object" class="oe_highlight" string="返回" attrs="{'invisible':[('checkout_order_state','not in',['receivable_assigned'])]}" groups="dtsc.group_dtsc_gly"/> -->
-					<field name="checkout_order_state" widget="statusbar" statusbar_visible="draft,quoting,producing,finished,price_review_done,receivable_assigned,closed,cancel"/>
+					<field name="checkout_order_state" widget="statusbar" statusbar_visible="draft,quoting,producing,finished,price_review_done,receivable_assigned,closed,cancel" attrs="{'invisible':[('checkout_order_state','in',['waiting_confirmation'])]}"/>
 				
 					<field name="is_delivery" readonly="1" invisible="1"/>
 				</header>
@@ -299,6 +300,7 @@
 							<field name="customer_class_id" string="客戶分類"  options="{'no_create': True, 'no_create_edit': True}" attrs="{'invisible': [('is_new_partner', '=', True)]}"/>
 							<field name="comment" placeholder="客戶之特殊要求..."/>
 							<field name="comment_factory"/>
+							<field name="factory_ids" widget="many2many_tags" options="{'no_create': True, 'no_create_edit': True}"/>
 							<!-- <field name="payment_first" string="先收款再製作" attrs="{'readonly':[('checkout_order_state','not in',['draft'])]}"/> -->
 							<field name="is_recheck" invisible="1"/>
 							<field name="is_online" invisible="1"/>
@@ -488,6 +490,17 @@
 								</field>
 							</page>
 							
+							<page string="CRM成本" attrs="{'invisible': [('checkout_order_state', 'not in', ['waiting_confirmation'])]}">
+								<field name="product_ids_crm_chengben">
+									<tree  create="false" delete="false" editable="bottom">									
+										<field name="sequence" readonly="1"/>								
+										<field name="project_product_name" readonly="1"/>										
+										<field name="crm_chengben"/>										
+										<field name="crm_chengben_comment"/>										
+									</tree>									 
+								</field>
+							</page>
+							
 							<!-- <page string="物料清單"> -->
 								<!-- <field name="product_check_ids"> -->
 									<!-- <tree create="false" delete="false" editable="bottom" decoration-danger="now_stock &lt; now_use" decoration-success="now_stock >= now_use">									 -->
@@ -576,11 +589,12 @@
                     <field name="checkout_order_type" string="大圖訂單類別"/>
                     <field name="report_year" string="年"  select="multi"/>
                     <field name="report_month" string="月" context="{'group_by': 'report_year'}" select="multi"/>
+                    <!-- <field name="factory_ids" string="廠區"/>  -->
                 </searchpanel>
 				
 				<field name="search_line_namee" string="所有訊息"/>
 				<field name="customer_id" string="客戶名稱"/>
-				
+				<field name="factory_ids" string="廠區"/>
 				<separator/>
 				<!-- <filter name="今日" string="今日" domain="[('date_labels.name', '=', '今日')]"/> -->
                 <!-- <filter name="10日内" string="10日内" domain="[('date_labels.name', '=', '10日内')]"/> -->

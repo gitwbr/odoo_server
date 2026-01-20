@@ -1383,6 +1383,8 @@ class DtscConfigSettings(models.TransientModel):
     is_open_crm = fields.Boolean("是否打開CRM",default=False)
     is_open_linebot = fields.Boolean("是否打開LINEBot",default=False)
     
+    crm_sign_zhuguan_level = fields.Integer(string="CRM 主管簽核綫")
+    crm_sign_manager_level = fields.Integer(string="CRM 經理簽核綫")
     # ftp_server = self.env['ir.config_parameter'].sudo().get_param('dtsc.ftp_server')
     # ftp_user = self.env['ir.config_parameter'].sudo().get_param('dtsc.ftp_user')
     # ftp_password = self.env['ir.config_parameter'].sudo().get_param('dtsc.ftp_password')
@@ -1418,6 +1420,8 @@ class DtscConfigSettings(models.TransientModel):
             ftp_password=get_param('dtsc.ftp_password', default=''),
             ftp_target_folder=get_param('dtsc.ftp_target_folder', default='/Home'),
             ftp_local_path=get_param('dtsc.ftp_local_path', default='/var/www/html/ftp'),
+            crm_sign_zhuguan_level = get_param('dtsc.crm_sign_zhuguan_level', default='50000'),
+            crm_sign_manager_level = get_param('dtsc.crm_sign_manager_level', default='50000'),
         )
         return res
 
@@ -1435,6 +1439,8 @@ class DtscConfigSettings(models.TransientModel):
         set_param('dtsc.ftp_password', self.ftp_password)
         set_param('dtsc.ftp_target_folder', self.ftp_target_folder)
         set_param('dtsc.ftp_local_path', self.ftp_local_path)
+        set_param('dtsc.crm_sign_zhuguan_level', self.crm_sign_zhuguan_level)
+        set_param('dtsc.crm_sign_manager_level', self.crm_sign_manager_level)
 
 class IrUiMenu(models.Model):
     _inherit = 'ir.ui.menu'

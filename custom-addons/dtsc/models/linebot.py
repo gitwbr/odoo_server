@@ -22,6 +22,19 @@ from workalendar.asia import Taiwan
 from io import BytesIO
 from PIL import Image
 import xlsxwriter
+
+class LineReplyPending(models.Model):
+    _name = 'dtsc.line_reply_pending'
+    _description = 'LINE待處理的回復操作'
+    
+    line_user_id = fields.Char("LINE用戶ID", required=True, index=True)
+    type = fields.Char("回復類型", required=True, index=True)  # 如：'crm_reject', 'other_type'
+    related_id = fields.Integer("關聯記錄ID", required=True)  # 通用字段，可以是checkout_id或其他
+    related_model = fields.Char("關聯模型", required=True)  # 如：'dtsc.checkout'
+    create_date = fields.Datetime("創建時間", default=fields.Datetime.now)
+    expire_date = fields.Datetime("過期時間", required=True, index=True)
+    is_expired = fields.Boolean("是否已過期", default=False, index=True)
+
 class PartnerLineBind(models.Model):
     _name = "dtsc.partnerlinebind"
     

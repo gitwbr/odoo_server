@@ -22,6 +22,12 @@ from odoo.http import request
 from odoo.tools import config
 import requests
 import time,hmac, secrets
+class Factory(models.Model):
+    _name = 'dtsc.factory'    
+    name = fields.Char("廠區")
+    is_default = fields.Boolean("默认")
+    
+    
 class Department(models.Model):
     _name = 'dtsc.department'
     
@@ -360,7 +366,7 @@ class YourWizard(models.TransientModel):
         
         if self.is_send_line == True:
             for record in records:
-                if record.checkout_order_type not in ['E','e']:
+                if record.checkout_order_type not in ['E','e','F','f']:
                     self.send_push_status_flex(record.customer_id,record,delivery_record)
             
         return {
@@ -452,6 +458,7 @@ class Checkout(models.Model):
     comment = fields.Char(string="訂單備註")
     # comment_customer = fields.Char(string="客戶備註")
     comment_factory = fields.Text(string="廠區備註" ,inverse="_inverse_comment_factory",compute="_compute_comment" ,store=True)
+    factory_ids = fields.Many2many("dtsc.factory", string="廠區", default=lambda self: self._default_factory_ids())
     
     another_price_content = fields.Char(string="訂單備註")
     delivery_price = fields.Integer(string="運費")
@@ -471,7 +478,8 @@ class Checkout(models.Model):
     total_price_added_tax_crm = fields.Integer(string="稅後總價" , compute="_compute_total_price_added_tax_crm" ,store=True) 
     
     is_delivery = fields.Boolean(string="是否已生成出貨單" , default=False ) 
-    delivery_order = fields.Char(string="出貨單號" , default=False ) 
+    delivery_order = fields.Char(string="出貨單號" , default=False )
+    is_overdue_not_delivered = fields.Boolean(string="是否超期未出貨", compute="_compute_is_overdue_not_delivered", store=False) 
     del_reason = fields.Char(string="作廢原因") 
     
     invoice_origin = fields.Many2one("account.move")
@@ -598,6 +606,9 @@ class Checkout(models.Model):
         local_tz = pytz.timezone('Asia/Shanghai')  # 替換為你所在的時區
         
         today = datetime.now(local_tz).date()
+        # _logger.warning(datetime.now)
+        # _logger.warning(datetime.now(local_tz))
+        # _logger.warning(today) 
         ten_days_ago = today - timedelta(days=10)
         tomorrow = today + timedelta(days=1)
         
@@ -638,16 +649,23 @@ class Checkout(models.Model):
                 prev_month_start = prev_month_start.replace(day=26)
         
         # 預先查詢所有標籤
-        label_names = ['出貨日-明日','出貨日-今日','出貨日-本周', '出貨日-10日内', '出貨日-本月', '出貨日-前月', '出貨日-其他','進單日-明日日','進單日-今日','進單日-本周', '進單日-10日内', '進單日-本月', '進單日-前月', '進單日-其他']
-        labels = {name: self.env['dtsc.datelabel'].search([('name', '=', name)]) for name in label_names}
+        label_names = ['出貨日-明日','出貨日-今日','出貨日-本周', '出貨日-10日内', '出貨日-本月', '出貨日-前月', '出貨日-其他','進單日-明日','進單日-今日','進單日-本周', '進單日-10日内', '進單日-本月', '進單日-前月', '進單日-其他']
+        # labels = {name: self.env['dtsc.datelabel'].search([('name', '=', name)]) for name in label_names}
         
-        
+        label_model = self.env['dtsc.datelabel']
+ 
+        labels = {}
+        for name in label_names:
+            label = label_model.search([('name', '=', name)], limit=1)
+            if not label:
+                label = label_model.create({'name': name})
+            labels[name] = label
         # print(start_of_month)
         # print(end_of_month)
         # print(prev_month_start)
         # print(prev_month_end)
         # 計算兩個月前的日期
-        two_months_ago = datetime.today() - timedelta(days=80)
+        two_months_ago = datetime.today() - timedelta(days=110)
 
         # 假設你有一個日期欄位叫做 'create_date' 或 'order_date' 或 'checkout_date'
         checkouts = self.search([
@@ -679,26 +697,29 @@ class Checkout(models.Model):
             
             # 使用預先查詢的標籤
             record_labels = []
+            
+            # _logger.warning(f"====={record.name}====={record.estimated_date}========{estimated_date_local}======{today}======{tomorrow}===========")
             if estimated_date_local:
                 if estimated_date_local == tomorrow:
                     record_labels.append(labels.get('出貨日-明日'))
                 if estimated_date_local == today:
                     record_labels.append(labels.get('出貨日-今日'))
-                    # print(1)
+                    _logger.warning(1)
                 if start_of_week <= estimated_date_local <= end_of_week:
                     record_labels.append(labels.get('出貨日-本周'))
+                    _logger.warning(2)
                     
                 if ten_days_ago <= estimated_date_local <= today:
                     record_labels.append(labels.get('出貨日-10日内'))
-                    # print(2)
+                    _logger.warning(3)
                 if start_of_month <= estimated_date_local <= end_of_month:
                     record_labels.append(labels.get('出貨日-本月'))
                     # print(3)
                 if prev_month_start <= estimated_date_local <= prev_month_end:
                     record_labels.append(labels.get('出貨日-前月'))
                     # print(4)
-                # if estimated_date_local < prev_month_start:
-                    # record_labels.append(labels.get('出貨日-其他'))
+                if estimated_date_local < prev_month_start:
+                    record_labels.append(labels.get('出貨日-其他'))
                     # print(5)
                     
             if create_date_local:            
@@ -720,10 +741,10 @@ class Checkout(models.Model):
                 if prev_month_start <= create_date_local <= prev_month_end:
                     record_labels.append(labels.get('進單日-前月'))
                     # print(4)
-                # if create_date_local < prev_month_start:
-                    # record_labels.append(labels.get('進單日-其他'))
+                if create_date_local < prev_month_start:
+                    record_labels.append(labels.get('進單日-其他'))
                     # print(5)
-            # print(record_labels)
+            # _logger.warning(record_labels)
             # 寫入標籤時過濾None
             record.write({'date_labels': [(6, 0, [label.id for label in record_labels if label])]})
     
@@ -733,6 +754,12 @@ class Checkout(models.Model):
             
     def _inverse_comment_factory(self):
         pass
+    
+    @api.model
+    def _default_factory_ids(self):
+        """获取默认廠區（is_default=True的记录）"""
+        default_factories = self.env['dtsc.factory'].search([('is_default', '=', True)])
+        return default_factories.ids
         
     @api.depends('customer_id')
     def _compute_comment(self):
@@ -1006,6 +1033,20 @@ class Checkout(models.Model):
     def _compute_estimated_date_only(self):
         for record in self:
             record.estimated_date_only = record.estimated_date.date() if record.estimated_date else False
+    
+    @api.depends('estimated_date', 'is_delivery')
+    def _compute_is_overdue_not_delivered(self):
+        """计算是否超期未出货：当前日期超过发货日期且未出货"""
+        now = fields.Datetime.now()
+        for record in self:
+            if record.estimated_date and not record.is_delivery:
+                # 比较当前时间与发货日期
+                if now > record.estimated_date:
+                    record.is_overdue_not_delivered = True
+                else:
+                    record.is_overdue_not_delivered = False
+            else:
+                record.is_overdue_not_delivered = False
 
     
     @api.depends('create_date')
@@ -2474,7 +2515,7 @@ class Checkout(models.Model):
         if self.is_delivery == True:
             raise UserError("出貨單已經生成！")        
         delivery_record = self.deliveryorder()
-        if self.checkout_order_type not in ['E','e']:
+        if self.checkout_order_type not in ['E','e','F','f']:
             self.send_push_status_flex(self.customer_id,self,delivery_record)
          
         return {

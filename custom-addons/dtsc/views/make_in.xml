@@ -78,7 +78,13 @@
 							<field name="delivery_date" />
 							<field name="speed_type" />
 							<field name="outmanall" attrs="{'readonly': [('is_in_by_sc', '=', False)]}"  options="{'no_create': True, 'no_create_edit': True}"  />
-							
+							<field name="factory_succ" widget="many2many_tags" options="{'no_create': True, 'no_create_edit': True}"/>
+							<field name="factory_line_ids">
+								<tree editable="bottom" create="false" delete="false">
+									<field name="factory_id"/> 
+									<field name="confirmed" widget="boolean_toggle"/> 
+								</tree>
+							</field>
 						</group>						
 					</group>
 					<!--  <notebook>

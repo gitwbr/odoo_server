@@ -11,6 +11,12 @@ from odoo.http import request
 from odoo.exceptions import UserError
 import os
 from odoo.tools.safe_eval import safe_eval  # ← 關鍵
+import requests
+import json
+import hmac
+import hashlib
+import time
+import secrets
 class CrmUserComment(models.Model):
     _name = "dtsc.crmusercomment"
     _order = "sequence"
@@ -130,6 +136,7 @@ class CheckoutInherit(models.Model):
     checkout_order_state = fields.Selection(selection_add=[
         ('waiting_confirmation', '待確認')
     ], ondelete={'waiting_confirmation': 'set default'})
+    product_ids_crm_chengben = fields.One2many("dtsc.checkoutline","checkout_product_id",limit=100)
     
     checkoutcomment_ids= fields.One2many("dtsc.checkoutcomment","checkout_id",string="備註列表")
     is_show_price = fields.Boolean(string="價格顯示",default=True)
@@ -161,8 +168,367 @@ class CheckoutInherit(models.Model):
         ('22', '二聯式'),
         ('other', '其他'),
     ], string='稅別') 
+    is_sign = fields.Boolean("簽核", default=True, compute="_compute_is_sign", store=True)
+    zhuguan_sign_user_id = fields.Many2one('dtsc.workqrcode', string="主管簽名", help="記錄主管簽名是誰")
+    manager_sign_user_id = fields.Many2one('dtsc.workqrcode', string="經理簽名", help="記錄經理簽名是誰")
+    approval_state = fields.Selection([
+        ('pending', '待簽核'),
+        ('approving', '簽核中'),
+        ('approved', '已簽核'),
+    ], string='簽核狀態', default='pending', help="簽核狀態：待簽核、簽核中、已簽核")
     
     
+    def _get_or_create_line_pdf_secret(self):
+        """获取或创建PDF链接签名密钥"""
+        ICP = self.env['ir.config_parameter'].sudo()
+        secret = ICP.get_param('dtsc.line_pdf_secret')
+        if not secret:
+            secret = secrets.token_hex(32)
+            ICP.set_param('dtsc.line_pdf_secret', secret)
+        return secret
+    
+    def _build_checkout_pdf_url(self, checkout, manager_user_id, *, external=False, dl=False):
+        """构建checkout订单PDF下载链接（带签名验证）"""
+        ICP = self.env['ir.config_parameter'].sudo()
+        base = ICP.get_param('web.base.url') or ''
+        secret = self._get_or_create_line_pdf_secret()
+        
+        exp = int(time.time()) + 7 * 24 * 3600  # 7天有效
+        raw = f"{checkout.id}.{manager_user_id}.{exp}"
+        sig = hmac.new(secret.encode(), raw.encode(), hashlib.sha256).hexdigest()
+        
+        url = f"{base}/dtsc/checkout/pdf?cid={checkout.id}&uid={manager_user_id}&exp={exp}&sig={sig}"
+        if external:
+            url += "&openExternalBrowser=1"
+        if dl:
+            url += "&dl=1"
+        return url
+    
+    def action_sign_checkout(self):
+        """當 is_sign=False 時，推送訂單給 CRM 簽核主管或總經理"""
+        # 只处理需要签核的订单
+        if self.is_sign:
+            return
+        
+        # 如果已经是签核中状态，不允许重复提交
+        if self.approval_state == 'approving':
+            raise UserError("此訂單正在簽核中，請勿重複提交。")
+        
+        # 设置签核状态为"签核中"
+        self.approval_state = 'approving'
+        
+        # 獲取 LINE Bot 配置（員工用）
+        lineObj = self.env["dtsc.linebot"].sudo().search([("linebot_type","=","for_worker")], limit=1)
+        if not lineObj or not lineObj.line_access_token:
+            _logger.warning("LINE Bot 配置不存在或缺少 access_token")
+            return False
+        
+        access_token = lineObj.line_access_token
+        
+        # 檢查開單人員是否是總經理
+        if self.user_id:
+            worker = self.env["dtsc.workqrcode"].sudo().search([
+                ("user_id", "=", self.user_id.id)
+            ], limit=1)
+            
+            # 如果開單人員是總經理，跳過主管簽核，直接發送給總經理簽核
+            if worker and worker.is_manager_crm_sign:
+                # 查找所有 CRM 簽核總經理
+                manager_line_ids = self.env["dtsc.workqrcode"].sudo().search([("is_manager_crm_sign", "=", True)])
+                
+                if not manager_line_ids:
+                    _logger.warning("沒有找到 CRM 簽核總經理")
+                    return False
+                
+                headers = {
+                    "Content-Type": "application/json",
+                    "Authorization": f"Bearer {access_token}"
+                }
+                
+                # 發送給每個總經理
+                for manager_record in manager_line_ids:
+                    if not manager_record.line_user_id:
+                        _logger.warning(f"總經理 {manager_record.name} 沒有綁定 LINE 用戶ID")
+                        continue
+                    
+                    # 構建PDF下載鏈接
+                    download_url = self._build_checkout_pdf_url(self, manager_record.id, external=True, dl=True)
+                    
+                    # 構建 Flex 消息（總經理簽核格式）
+                    flex_message = {
+                        "type": "flex",
+                        "altText": f"報價單待簽核 - {self.name or '新訂單'}",
+                        "contents": {
+                            "type": "bubble",
+                            "body": {
+                                "type": "box",
+                                "layout": "vertical",
+                                "contents": [
+                                    {
+                                        "type": "text",
+                                        "text": "報價單待簽核",
+                                        "weight": "bold",
+                                        "size": "xl",
+                                        "align": "center",
+                                        "gravity": "center",
+                                        "margin": "md"
+                                    },
+                                    {
+                                        "type": "box",
+                                        "layout": "vertical",
+                                        "margin": "lg",
+                                        "spacing": "sm",
+                                        "contents": [
+                                            {
+                                                "type": "text",
+                                                "text": f"業務：{self.user_id.name or ''}"
+                                            },
+                                            {
+                                                "type": "text",
+                                                "text": f"單號：{self.name or '待生成'}"
+                                            },
+                                            {
+                                                "type": "text",
+                                                "text": f"客戶：{self.customer_id.name if self.customer_id else '待確認'}"
+                                            },
+                                            {
+                                                "type": "text",
+                                                "text": f"案名：{self.project_name or ''}",
+                                                "wrap": True
+                                            },
+                                            {
+                                                "type": "text",
+                                                "text": f"稅前總額：${self.record_price_and_construction_charge_crm or 0:,.0f}"
+                                            },
+                                            {
+                                                "type": "text",
+                                                "text": "請儘快簽核！",
+                                                "color": "#FF6B6B",
+                                                "weight": "bold"
+                                            }
+                                        ]
+                                    }
+                                ]
+                            },
+                            "footer": {
+                                "type": "box",
+                                "layout": "vertical",
+                                "spacing": "sm",
+                                "margin": "md",
+                                "contents": [
+                                    {
+                                        "type": "button",
+                                        "style": "primary",
+                                        "height": "sm",
+                                        "action": {
+                                            "type": "uri",
+                                            "label": "下載報價單PDF",
+                                            "uri": download_url
+                                        }
+                                    },
+                                    {
+                                        "type": "button",
+                                        "style": "primary",
+                                        "color": "#00B900",
+                                        "height": "sm",
+                                        "action": {
+                                            "type": "postback",
+                                            "label": "簽核此單",
+                                            "data": f"action=sign_crm_checkout_manager&checkout_id={self.id}"
+                                        }
+                                    },
+                                    {
+                                        "type": "button",
+                                        "style": "secondary",
+                                        "color": "#FF6B6B",
+                                        "height": "sm",
+                                        "action": {
+                                            "type": "postback",
+                                            "label": "拒絕此單",
+                                            "data": f"action=reject_crm_checkout&checkout_id={self.id}"
+                                        }
+                                    }
+                                ]
+                            }
+                        }
+                    }
+                    
+                    data = {
+                        "to": manager_record.line_user_id,
+                        "messages": [flex_message]
+                    }
+                    
+                    try:
+                        response = requests.post(
+                            "https://api.line.me/v2/bot/message/push",
+                            headers=headers,
+                            data=json.dumps(data, ensure_ascii=False).encode('utf-8')
+                        )
+                        
+                        if response.status_code != 200:
+                            _logger.error(f"❌ LINE 發送失敗給總經理 {manager_record.name}: {response.text}")
+                        else:
+                            _logger.info(f"✅ LINE 發送成功給總經理 {manager_record.name}")
+                    except Exception as e:
+                        _logger.error(f"❌ LINE 發送異常給總經理 {manager_record.name}: {str(e)}")
+                
+                return True
+        
+        # 如果不是總經理，按照原流程發送給主管
+        # 查找所有 CRM 簽核主管
+        user_line_ids = self.env["dtsc.workqrcode"].search([("is_zhuguan_crm_sign", "=", True)])
+        
+        if not user_line_ids:
+            _logger.warning("沒有找到 CRM 簽核主管")
+            return False
+        
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {access_token}"
+        }
+        
+        # 發送給每個主管
+        for manager_record in user_line_ids:
+            if not manager_record.line_user_id:
+                _logger.warning(f"主管 {manager_record.name} 沒有綁定 LINE 用戶ID")
+                continue
+            
+            # 構建PDF下載鏈接
+            download_url = self._build_checkout_pdf_url(self, manager_record.id, external=True, dl=True)
+            
+            # 構建 Flex 消息（單個bubble，不分批）
+            flex_message = {
+                "type": "flex",
+                "altText": f"報價單待簽核 - {self.name or '新訂單'}",
+                "contents": {
+                    "type": "bubble",
+                    "body": {
+                        "type": "box",
+                        "layout": "vertical",
+                        "contents": [
+                            {
+                                "type": "text",
+                                "text": "報價單待簽核",
+                                "weight": "bold",
+                                "size": "xl",
+                                "align": "center",
+                                "gravity": "center",
+                                "margin": "md"
+                            },
+                            {
+                                "type": "box",
+                                "layout": "vertical",
+                                "margin": "lg",
+                                "spacing": "sm",
+                                "contents": [
+                                    {
+                                        "type": "text",
+                                        "text": f"業務：{self.user_id.name or ''}"
+                                    },
+                                    {
+                                        "type": "text",
+                                        "text": f"單號：{self.name or '待生成'}"
+                                    },
+                                    {
+                                        "type": "text",
+                                        "text": f"客戶：{self.customer_id.name if self.customer_id else '待確認'}"
+                                    },
+                                    {
+                                        "type": "text",
+                                        "text": f"案名：{self.project_name or ''}",
+                                        "wrap": True
+                                    },
+                                    {
+                                        "type": "text",
+                                        "text": f"稅前總額：${self.record_price_and_construction_charge_crm or 0:,.0f}"
+                                    },
+                                    {
+                                        "type": "text",
+                                        "text": "請儘快簽核！",
+                                        "color": "#FF6B6B",
+                                        "weight": "bold"
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    "footer": {
+                        "type": "box",
+                        "layout": "vertical",
+                        "spacing": "sm",
+                        "margin": "md",
+                        "contents": [
+                            {
+                                "type": "button",
+                                "style": "primary",
+                                "height": "sm",
+                                "action": {
+                                    "type": "uri",
+                                    "label": "下載報價單PDF",
+                                    "uri": download_url
+                                }
+                            },
+                            {
+                                "type": "button",
+                                "style": "primary",
+                                "color": "#00B900",
+                                "height": "sm",
+                                "action": {
+                                    "type": "postback",
+                                    "label": "簽核此單",
+                                    "data": f"action=sign_crm_checkout&checkout_id={self.id}"
+                                }
+                            },
+                            {
+                                "type": "button",
+                                "style": "secondary",
+                                "color": "#FF6B6B",
+                                "height": "sm",
+                                "action": {
+                                    "type": "postback",
+                                    "label": "拒絕此單",
+                                    "data": f"action=reject_crm_checkout&checkout_id={self.id}"
+                                }
+                            }
+                        ]
+                    }
+                }
+            }
+            
+            data = {
+                "to": manager_record.line_user_id,
+                "messages": [flex_message]
+            }
+            
+            try:
+                response = requests.post(
+                    "https://api.line.me/v2/bot/message/push",
+                    headers=headers,
+                    data=json.dumps(data, ensure_ascii=False).encode('utf-8')
+                )
+                
+                if response.status_code != 200:
+                    _logger.error(f"❌ LINE 發送失敗給 {manager_record.name}: {response.text}")
+                else:
+                    _logger.info(f"✅ LINE 發送成功給 {manager_record.name}")
+            except Exception as e:
+                _logger.error(f"❌ LINE 發送異常給 {manager_record.name}: {str(e)}")
+        
+        return True
+    
+    @api.depends("record_price_and_construction_charge_crm")
+    def _compute_is_sign(self):
+        # 如果設置了跳過計算的上下文，則不重新計算（允許手動設置）
+        if self.env.context.get('skip_compute_is_sign'):
+            return
+        
+        sign_level = self.env['ir.config_parameter'].sudo().get_param('dtsc.crm_sign_manager_level')
+        for record in self:
+            if int(sign_level) == 0:
+                record.is_sign = True
+            else:
+                record.is_sign = False
+                
     def go_datu(self):
         if self.related_checkout_id:
             return {
@@ -725,12 +1091,110 @@ class CrmReport(models.AbstractModel):
         # comments = self.env["dtsc.crmusercomment"].search([("create_id","=",self.env.user.id)], order='sequence')
         comments = self.env["dtsc.checkoutcomment"].search([("checkout_id","=",docs[0].id)], order='sequence')
         # _logger.info(comments)
+        if data is None:
+            data = {}
         data["comments"] = comments
         data["len"] = len(data["comments"])
+        
+        # 獲取主管和經理的簽名圖片（直接從workqrcode獲取）
+        sign_images = {}
+        for doc in docs:
+            sign_images[doc.id] = {
+                'zhuguan_sign': False,
+                'manager_sign': False,
+            }
+            # 獲取主管簽名（zhuguan_sign_user_id現在直接是workqrcode）
+            if doc.zhuguan_sign_user_id and doc.zhuguan_sign_user_id.signature:
+                sign_images[doc.id]['zhuguan_sign'] = doc.zhuguan_sign_user_id.signature
+            
+            # 獲取經理簽名（manager_sign_user_id現在直接是workqrcode）
+            if doc.manager_sign_user_id and doc.manager_sign_user_id.signature:
+                sign_images[doc.id]['manager_sign'] = doc.manager_sign_user_id.signature
+        
         return {
             'company': company, 
             'data': data,
             'doc_ids': docids,
             'docs': docs,
+            'sign_images': sign_images,
             # 'comments':comments,
         }
+
+class CheckoutLineCrm(models.Model):
+    _inherit = 'dtsc.checkoutline'
+    
+    crm_chengben = fields.Integer("成本")
+    crm_chengben_comment = fields.Char("備註")
+    
+    def write(self, vals):
+        result = super().write(vals)
+        
+        # 檢查配置開關：如果 sign_level 為 0，則不執行簽核邏輯
+        sign_level = self.env['ir.config_parameter'].sudo().get_param('dtsc.crm_sign_manager_level')
+        if int(sign_level) == 0:
+            return result
+        
+        # 收集所有需要更新 is_sign 的 CRM 訂單（checkout_order_type = 'd'）
+        crm_checkouts = self.env['dtsc.checkout']
+        for record in self:
+            if record.checkout_product_id and record.checkout_product_id.checkout_order_type == 'd':
+                crm_checkouts |= record.checkout_product_id
+        
+        # 如果有 CRM 訂單，將 is_sign 設置為 False，並清空簽名字段，重置簽核狀態為待簽核
+        if crm_checkouts:
+            crm_checkouts.with_context(skip_compute_is_sign=True).write({
+                'is_sign': False,
+                'zhuguan_sign_user_id': False,
+                'manager_sign_user_id': False,
+                'approval_state': 'pending'
+            })
+        
+        return result
+    
+    @api.model
+    def create(self, vals):
+        result = super().create(vals)
+        
+        # 檢查配置開關：如果 sign_level 為 0，則不執行簽核邏輯
+        sign_level = self.env['ir.config_parameter'].sudo().get_param('dtsc.crm_sign_manager_level')
+        if int(sign_level) == 0:
+            return result
+        
+        # 如果是 CRM 訂單（checkout_order_type = 'd'），將 is_sign 設置為 False，並清空簽名字段，重置簽核狀態為待簽核
+        if 'checkout_product_id' in vals:
+            checkout = self.env['dtsc.checkout'].browse(vals['checkout_product_id'])
+            if checkout.checkout_order_type == 'd':
+                checkout.with_context(skip_compute_is_sign=True).write({
+                    'is_sign': False,
+                    'zhuguan_sign_user_id': False,
+                    'manager_sign_user_id': False,
+                    'approval_state': 'pending'
+                })
+        
+        return result
+    
+    def unlink(self):
+        # 檢查配置開關：如果 sign_level 為 0，則不執行簽核邏輯
+        sign_level = self.env['ir.config_parameter'].sudo().get_param('dtsc.crm_sign_manager_level')
+        if int(sign_level) == 0:
+            return super().unlink()
+        
+        # 收集所有需要更新 is_sign 的 CRM 訂單（checkout_order_type = 'd'）
+        crm_checkouts = self.env['dtsc.checkout']
+        for rec in self:
+            # 收集 CRM 訂單
+            if rec.checkout_product_id and rec.checkout_product_id.checkout_order_type == 'd':
+                crm_checkouts |= rec.checkout_product_id
+        
+        result = super().unlink()
+        
+        # 如果有 CRM 訂單，將 is_sign 設置為 False，並清空簽名字段，重置簽核狀態為待簽核
+        if crm_checkouts:
+            crm_checkouts.with_context(skip_compute_is_sign=True).write({
+                'is_sign': False,
+                'zhuguan_sign_user_id': False,
+                'manager_sign_user_id': False,
+                'approval_state': 'pending'
+            })
+        
+        return result

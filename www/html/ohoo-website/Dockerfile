@@ -12,15 +12,11 @@ RUN npm install @mui/material @emotion/react @emotion/styled
 # 复制所有文件
 COPY . .
 
-# 构建应用
-RUN npm run build
-
 # 暴露端口
 EXPOSE 3000
 
-# 启动应用
-# CMD ["npm", "start"]
-CMD ["npm", "run", "start"]
+# 启动应用（开发模式，因为 docker-compose 配置了 NODE_ENV=development）
+CMD ["npm", "run", "dev"]
 
 
  

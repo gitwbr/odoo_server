@@ -61,19 +61,22 @@
                                 </tr>
                             </tbody>
                         </table>	
+
+						<t t-set="SHOW_PRICE" t-value="doc.is_show_price or (doc.checkout_order_type == 'd' and not doc.is_sign)"/>						
 						<div>
 							<div class="row" style="border-bottom: 2px solid black;  margin-bottom:10px;">
 								<div class="col text-center" style="flex: 1;">項</div>
 								<div class="col text-center" style="flex: 4;">製作内容</div>
 								<div class="col text-center" style="flex: 1;">尺寸cm</div>
-								<t t-if="doc.is_show_price">
+								<t t-if="SHOW_PRICE">
 									<div class="col text-center" style="flex: 1;">才數</div>
 								</t>
 								<div class="col text-center" style="flex: 1;">數量</div>
-								<t t-if="doc.is_show_price">
+								<t t-if="SHOW_PRICE">
 									<div class="col text-center" style="flex: 1;">單價</div>
 									<div class="col text-center" style="flex: 1;">其它</div>
 								</t>
+
 								<div class="col text-center" style="flex: 1;">小計</div>
 							</div>	
 							<t t-foreach="doc.product_ids" t-as="order">
@@ -113,7 +116,7 @@
 										<span t-field="order.product_width" />x<span t-field="order.product_height" />	
 									</div>
 									
-									<t t-if="doc.is_show_price">
+									<t t-if="SHOW_PRICE">
 										<div class="col text-center" style="flex: 1;">
 											<!-- <span t-field="order.total_units" /> -->
 											<span t-esc="'{:,.0f}'.format((order.total_units))" />
@@ -124,7 +127,7 @@
 										<span t-esc="'{:,.0f}'.format((order.quantity))" />
 									</div>
 									
-									<t t-if="doc.is_show_price">
+									<t t-if="SHOW_PRICE">
 										<div class="col text-center" style="flex: 1;">
 											<!-- <span t-field="order.units_price" /> -->
 											<span t-esc="'{:,.0f}'.format((order.units_price))" />
@@ -139,10 +142,27 @@
 										<!-- <span t-field="order.price" /> -->
 									</div>
 								</div>
+								<!--  and  -->
+								<t t-if="not doc.is_sign">
+								<t t-if="doc.checkout_order_state == 'waiting_confirmation'">
+									
+										<div class="row" style="border-bottom: 1px solid lightgray; margin-bottom: 10px;">
+
+											<div class="col text-center" style="flex: 10;"><span t-esc="order.crm_chengben_comment"/></div>
+
+
+											<div class="col text-center" style="flex: 1;">
+												<t t-if="(order.crm_chengben or 0) != 0">
+													<span t-esc="'{:,.0f}'.format(order.crm_chengben)"/>
+												</t>
+											</div> 
+										</div>
+									</t>
+								</t>
 							</t>
 							<div class="row" style="border-bottom: 1px solid lightgray; margin-bottom: 10px;">
 									
-									<t t-if="doc.is_show_price">
+									<t t-if="SHOW_PRICE">
 										<div class="col text-center" style="flex: 1;"></div><div class="col text-center" style="flex: 4;"></div><div class="col text-center" style="flex: 1;"></div>
 									</t>
 									<div class="col text-center" style="flex: 1;"></div>
@@ -155,7 +175,7 @@
 									</div>
 							</div>
 							<div class="row" style="border-bottom: 1px solid lightgray; margin-bottom: 10px;">
-									<t t-if="doc.is_show_price">
+									<t t-if="SHOW_PRICE">
 										<div class="col text-center" style="flex: 1;"></div><div class="col text-center" style="flex: 4;"></div><div class="col text-center" style="flex: 1;"></div>
 									</t>
 									<div class="col text-center" style="flex: 1;"></div>
@@ -168,7 +188,7 @@
 									</div>
 							</div>
 							<div class="row" style="border-bottom: 1px solid lightgray; margin-bottom: 10px;">
-									<t t-if="doc.is_show_price">
+									<t t-if="SHOW_PRICE">
 										<div class="col text-center" style="flex: 1;"></div><div class="col text-center" style="flex: 4;"></div><div class="col text-center" style="flex: 1;"></div>
 									</t>
 									<div class="col text-center" style="flex: 1;"></div>
@@ -202,44 +222,57 @@
 								<!-- </t> -->
 							</t>
 						</div>
-						<div class="table-section" style="page-break-inside: avoid !important;">
-							<div class="row" style="border-bottom: 1px solid lightgray;margin-bottom: 10px;">
-								<div class="col-12 text-center" style="background-color:gray"><span t-field="company.crm_report_account" /></div>
-							</div>
-							<div class="row" style="border-bottom: 1px solid lightgray;margin-bottom: 10px;">
-								<div class="col-3">業務</div>
-								<div class="col-3"><span t-field="doc.user_id.name" /></div>
-								<div class="col-3">聯絡電話</div>
-								<div class="col-3"><span t-field="company.phone" /></div>
-							</div>
-							<div class="row" style="border-bottom: 1px solid lightgray;margin-bottom: 10px; height: 100px;">
-								<div class="col-3"  style="display: flex; align-items: center;">主管確認簽章</div>
-								<div class="col-3">
-								
-								<t t-if="company.image_sign">
-									<img t-att-src="'data:image/png;base64,' + company.image_sign.decode('utf-8')" style="width:auto; height:80px;"/>
-								</t>
+
+						<t t-if="doc.is_sign">
+							<div class="table-section" style="page-break-inside: avoid !important;">
+								<div class="row" style="border-bottom: 1px solid lightgray;margin-bottom: 10px;">
+									<div class="col-12 text-center" style="background-color:gray"><span t-field="company.crm_report_account" /></div>
 								</div>
-								<div class="col-6"  style="display: flex; align-items: center;">客戶確認簽章</div>
+								<div class="row" style="border-bottom: 1px solid lightgray;margin-bottom: 10px;">
+									<div class="col-3">業務</div>
+									<div class="col-3"><span t-field="doc.user_id.name" /></div>
+									<div class="col-3">聯絡電話</div>
+									<div class="col-3"><span t-field="company.phone" /></div>
+								</div>
+								<div class="row" style="border-bottom: 1px solid lightgray;margin-bottom: 10px; height: 100px;">
+									<!-- 第一列：主管確認簽章（標籤） -->
+									<div class="col-3" style="display: flex; align-items: center;">主管確認簽章</div>
+									<!-- 第二列：三張圖片水平排列（公司章、主管簽名、經理簽名） -->
+									<div class="col-3" style="display: flex; align-items: center; justify-content: center; gap: 5px; padding: 5px;">
+										<!-- 公司章 -->
+										<div style="display: flex; align-items: center; justify-content: center;">
+											<t t-if="company.image_sign">
+												<img t-att-src="'data:image/png;base64,' + company.image_sign.decode('utf-8')" style="width:auto; height:60px;"/>
+											</t>
+										</div>
+										<!-- 主管簽名 -->
+										<div style="display: flex; align-items: center; justify-content: center;">
+											<t t-if="sign_images.get(doc.id, {}).get('zhuguan_sign')">
+												<img t-att-src="'data:image/png;base64,' + sign_images[doc.id]['zhuguan_sign'].decode('utf-8')" style="width:auto; height:60px;"/>
+											</t>
+										</div>
+										<!-- 經理簽名 -->
+										<div style="display: flex; align-items: center; justify-content: center;">
+											<t t-if="sign_images.get(doc.id, {}).get('manager_sign')">
+												<img t-att-src="'data:image/png;base64,' + sign_images[doc.id]['manager_sign'].decode('utf-8')" style="width:auto; height:60px;"/>
+											</t>
+										</div>
+									</div>
+									<!-- 第三列：客戶確認簽章（標籤） -->
+									<div class="col-3" style="display: flex; align-items: center;">客戶確認簽章</div>
+									<!-- 第四列：空着 -->
+									<div class="col-3"></div>
+								</div>
 							</div>
-						</div>
+						</t>
 					</t>
 				</t>
 			</div>
-            <!-- <t t-foreach="docs" t-as="doc"> -->
-				<!-- <t t-call="dtsc.external_layout_coin"> -->
-					<!-- <div class="company-header"> -->
-                    <!-- <img t-if="company.logo" t-att-src="'data:image/png;base64,%s' % company.logo.decode('utf-8')" class="company-logo" /> -->
-                    <!-- <div class="company-name"> -->
-                        <!-- <span t-field="company.name" /> -->
-                    <!-- </div> -->
-                <!-- </div> -->
-				<!-- </t> -->
-			<!-- </t> -->
 		</t>
 	</template>
 
 
+	
 	<record id="action_report_crm_checkout" model="ir.actions.report">
         <field name="name">報價單</field>
         <field name="model">dtsc.checkout</field>
@@ -256,4 +289,6 @@
 		  )
 		</field>
     </record>
+	
+
 </odoo>

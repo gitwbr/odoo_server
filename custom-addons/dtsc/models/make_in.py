@@ -24,7 +24,18 @@ class ScanMode(models.Model):
     name = fields.Char("Name")
     code = fields.Char("Code")
     sequence = fields.Integer()
+class InstallFactoryLine(models.Model):
+    _name = 'dtsc.makeinfactoryline'
+    _description = '工單廠區確認'
 
+    makein_id = fields.Many2one('dtsc.makein', required=True, ondelete='cascade')
+    factory_id = fields.Many2one('dtsc.factory', string='廠區', required=True)
+    confirmed = fields.Boolean(string='已確認', default=False)
+
+    def action_confirm(self):
+        for rec in self:
+            rec.confirmed = True
+        return True
 class MakeIn(models.Model):
     _name = 'dtsc.makein'
     _order = "checkout_order_date desc"
@@ -102,6 +113,41 @@ class MakeIn(models.Model):
         compute="_compute_is_open_makein_qrcode",
         store=False
     )
+    
+    factory_succ = fields.Many2many("dtsc.factory",string="廠區選擇")
+    factory_line_ids = fields.One2many('dtsc.makeinfactoryline', 'makein_id',string='廠區確認')    
+    all_factory_confirmed = fields.Boolean(string='廠區是否全部已確認',compute='_compute_all_factory_confirmed',store=True,)
+
+    @api.onchange('factory_succ')
+    def _onchange_factory_succ(self):
+        for rec in self:
+            # 先清空既有 line
+            new_lines = []
+            for factory in rec.factory_succ:
+                new_lines.append((0, 0, {
+                    'factory_id': factory.id,
+                    # 預設全部未確認
+                    'confirmed': False,
+                }))
+            rec.factory_line_ids = [(5, 0, 0)] + new_lines
+
+    @api.depends('factory_succ', 'factory_line_ids.confirmed')
+    def _compute_all_factory_confirmed(self):
+        for rec in self:
+            # 沒選任何廠區 → 視為無需確認，直接 True
+            if not rec.factory_succ:
+                rec.all_factory_confirmed = True
+            else:
+                # 有選廠區 → 全部 line.confirmed 才算 True
+                needed_factories = rec.factory_succ
+                lines = rec.factory_line_ids
+                # 工商保險：line 數量也要跟選的廠區一樣
+                if not lines or len(lines) != len(needed_factories):
+                    rec.all_factory_confirmed = False
+                else:
+                    rec.all_factory_confirmed = all(lines.mapped('confirmed'))
+                    
+                    
     @api.onchange('scan_input')
     def _onchange_scan_input(self):
         if self.scan_input:

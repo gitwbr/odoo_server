@@ -129,6 +129,8 @@
 						<field name="work_id"  />
 						<field name="is_zg" />
 						<field name="is_qh" />
+						<field name="is_zhuguan_crm_sign" />
+						<field name="is_manager_crm_sign" />
 						<field name="is_daka_qh" />
 						<field name="in_company_date" />
 						<field name="out_company_date" />
@@ -161,6 +163,12 @@
 									<field name="relationship" />
 								</tree>
 						</field>
+						<field name="is_show_signature" invisible="1"/>
+						<field name="signature" widget="signature" readonly="context.get('readonly', False)"
+							   attrs="{
+								   'invisible': [('is_show_signature','=', False)],
+								   'readonly': [('is_show_signature','=', False)]
+							   }"/>
 					</group>
 				</sheet>
 			</form>

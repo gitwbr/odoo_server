@@ -93,6 +93,8 @@ access_dtsc_linebotlocation,dtsc.linebotlocation,model_dtsc_linebotlocation,dtsc
 access_dtsc_specialleave,dtsc.specialleave,model_dtsc_specialleave,dtsc.group_dtsc_bs,1,1,1,1
 access_dtsc_leavegrantlog,dtsc.leavegrantlog,model_dtsc_leavegrantlog,dtsc.group_dtsc_bs,1,1,1,1
 access_dtsc_department,dtsc.department,model_dtsc_department,dtsc.group_dtsc_bs,1,1,1,1
+access_dtsc_factory,dtsc.factory,model_dtsc_factory,dtsc.group_dtsc_bs,1,1,1,1
+access_dtsc_makeinfactoryline,dtsc.makeinfactoryline,model_dtsc_makeinfactoryline,dtsc.group_dtsc_bs,1,1,1,1
 access_dtsc_linebotip,dtsc.linebotip,model_dtsc_linebotip,dtsc.group_dtsc_bs,1,1,1,1
 access_dtsc_performance,dtsc.performance,model_dtsc_performance,dtsc.group_dtsc_bs,1,1,1,1
 access_dtsc_performanceline,dtsc.performanceline,model_dtsc_performanceline,dtsc.group_dtsc_bs,1,1,1,1
@@ -105,3 +107,4 @@ access_dtsc_checkoutstatehistory,dtsc.checkoutstatehistory,model_dtsc_checkoutst
 
 access_dtsc_interoperate,dtsc.interoperate,model_dtsc_interoperate,dtsc.group_dtsc_bs,1,1,1,1
 access_dtsc_healthinsurancewithfamily,dtsc.healthinsurancewithfamily,model_dtsc_healthinsurancewithfamily,dtsc.group_dtsc_bs,1,1,1,1
+access_dtsc_line_reply_pending,dtsc.line_reply_pending,model_dtsc_line_reply_pending,dtsc.group_dtsc_bs,1,1,1,1
