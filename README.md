@@ -182,13 +182,16 @@ command:
 
 ```bash
 # 创建新客户端（自动使用下一个可用编号）
-./create_client.sh create
+./create_client.sh create 
 
 # 创建指定编号的客户端
 ./create_client.sh create <number>
 
 # 删除指定客户端
 ./create_client.sh delete <number>
+
+#指定odoo版本
+./create_client.sh create 3 --version 19
 
 # 列出所有客户端
 ./create_client.sh list

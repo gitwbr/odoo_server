@@ -1,4 +1,4 @@
-﻿
+
 <odoo>
 
     <!--大图订单页面其它相关权限-->
@@ -965,6 +965,13 @@
         <field name="group_id" ref="base.group_portal"/>
         <field name="perm_read" eval="True"/>
     </record>
+	
+	<record id="model_dtsc_factory_rule_wz" model="ir.model.access"> 
+        <field name="name">dtsc.factory网站</field>
+        <field name="model_id" ref="dtsc.model_dtsc_factory"/>
+        <field name="group_id" ref="base.group_portal"/>
+        <field name="perm_read" eval="True"/>
+    </record>
 	 
 	<!-- 网站 -->
 	
@@ -990,6 +997,13 @@
         <field name="group_id" ref="base.group_public"/>
         <field name="perm_read" eval="True"/>
 		<field name="perm_create" eval="True"/>
+    </record>
+	
+	<record id="model_dtsc_factory_rule_wb" model="ir.model.access"> 
+        <field name="name">dtsc.factory外部</field>
+        <field name="model_id" ref="dtsc.model_dtsc_factory"/>
+        <field name="group_id" ref="base.group_public"/>
+        <field name="perm_read" eval="True"/>
     </record>
 	
 	<record id="model_dtsc_checkoutlineaftermakepricelist_rule_wb" model="ir.model.access"> 

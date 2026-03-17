@@ -18,11 +18,18 @@ print_warning() {
 }
 
 function show_usage() {
-    echo "Usage: $0 <command> [client_number]"
+    echo "Usage: $0 <command> [client_number] [options]"
     echo "Commands:"
-    echo "  create <number> - Create a new client"
+    echo "  create <number> [--version <version>] - Create a new client"
+    echo "    Options:"
+    echo "      --version, -v <version>  - Specify Odoo version (19 for odoo:19, default: 16.0.1)"
     echo "  delete <number> - Delete an existing client"
     echo "  list           - List all clients"
+    echo ""
+    echo "Examples:"
+    echo "  $0 create 4                    # Create client4 with default Odoo 16.0.1"
+    echo "  $0 create 4 --version 19       # Create client4 with Odoo 19"
+    echo "  $0 create 4 -v 19              # Create client4 with Odoo 19 (short form)"
     exit 1
 }
 
@@ -40,6 +47,7 @@ function get_next_available_number() {
 
 function create_client() {
     local CLIENT_NUM=$1
+    local ODOO_VERSION=${2:-"16.0.1"}  # 默认版本为 16.0.1
     local CLIENT="client${CLIENT_NUM}"
     local DB_HOST="db${CLIENT_NUM}"
     local DB_USER="odoo${CLIENT_NUM}"
@@ -48,6 +56,16 @@ function create_client() {
     local LONGPOLLING_PORT=$((9000 + CLIENT_NUM))
     local DB_PORT=$((5400 + CLIENT_NUM))
     local DOMAIN="client${CLIENT_NUM}.euhon.com"
+    
+    # 根据版本选择镜像
+    local ODOO_IMAGE
+    if [ "$ODOO_VERSION" = "19" ] || [ "$ODOO_VERSION" = "19.0" ]; then
+        ODOO_IMAGE="odoo:19"
+        print_info "使用 Odoo 19 社区版镜像: ${ODOO_IMAGE}"
+    else
+        ODOO_IMAGE="custom-odoo:${ODOO_VERSION}"
+        print_info "使用自定义镜像: ${ODOO_IMAGE}"
+    fi
 
     # 检查目录是否已存在
     if [ -d "${CLIENT}" ]; then
@@ -61,6 +79,13 @@ function create_client() {
 
     # 创建配置文件
     sed "s/{CLIENT}/${CLIENT_NUM}/g; s/{DB_HOST}/${DB_HOST}/g; s/{DB_USER}/${DB_USER}/g; s/{DB_PASSWORD}/${DB_PASSWORD}/g" odoo.conf.template > ${CLIENT}/config/odoo.conf
+    
+    # 如果使用 Odoo 19，修改 addons_path 只使用镜像自带的模块（不包含本地自定义模块）
+    if [ "$ODOO_VERSION" = "19" ] || [ "$ODOO_VERSION" = "19.0" ]; then
+        sed -i 's|addons_path = /mnt/addons,/mnt/custom-addons,/mnt/custom-addons-client|addons_path = /usr/lib/python3/dist-packages/odoo/addons|' ${CLIENT}/config/odoo.conf
+        print_info "已配置使用 Odoo 19 镜像自带的官方模块（不挂载本地自定义模块）"
+    fi
+    
     chmod 777 ${CLIENT}/config/odoo.conf
 
     # 创建并复制 custom-addons-client 目录
@@ -83,7 +108,7 @@ function create_client() {
     #CONFIG+="    build:\n"
     #CONFIG+="      context: .\n"
     #CONFIG+="      dockerfile: Dockerfile\n"
-    CONFIG+="    image: custom-odoo:16.0.1\n"
+    CONFIG+="    image: ${ODOO_IMAGE}\n"
     #CONFIG+="    image: custom-odoo-web_default:latest\n"
     CONFIG+="    depends_on:\n"
     CONFIG+="      - db${CLIENT_NUM}\n"
@@ -91,9 +116,12 @@ function create_client() {
     CONFIG+="      - ./${CLIENT}/config:/etc/odoo\n"
     CONFIG+="      - ./${CLIENT}/data:/var/lib/odoo/${CLIENT}\n"
     CONFIG+="      - ./${CLIENT}/logs:/var/log/odoo\n"
-    CONFIG+="      - ./addons:/mnt/addons\n"
-    CONFIG+="      - ./custom-addons:/mnt/custom-addons\n"
-    CONFIG+="      - ./${CLIENT}/custom-addons-client:/mnt/custom-addons-client\n"
+    # 如果使用 Odoo 19，不挂载任何本地模块目录（只使用镜像自带的官方模块）
+    if [ "$ODOO_VERSION" != "19" ] && [ "$ODOO_VERSION" != "19.0" ]; then
+        CONFIG+="      - ./addons:/mnt/addons\n"
+        CONFIG+="      - ./custom-addons:/mnt/custom-addons\n"
+        CONFIG+="      - ./${CLIENT}/custom-addons-client:/mnt/custom-addons-client\n"
+    fi
     CONFIG+="    ports:\n"
     CONFIG+="      - \"${WEB_PORT}:8069\"\n"
     CONFIG+="      - \"${LONGPOLLING_PORT}:8072\"\n"
@@ -130,7 +158,8 @@ function create_client() {
     ' docker-compose.yml > docker-compose.yml.tmp
     mv docker-compose.yml.tmp docker-compose.yml
 
-    echo "Client ${CLIENT} created successfully"
+    print_success "Client ${CLIENT} created successfully"
+    echo "Odoo version: ${ODOO_VERSION} (Image: ${ODOO_IMAGE})"
     echo "Web port: ${WEB_PORT}"
     echo "Longpolling port: ${LONGPOLLING_PORT}"
     echo "Database port: ${DB_PORT}"
@@ -311,13 +340,48 @@ function list_clients() {
 # 主程序
 case "$1" in
     create)
-        if [ -z "$2" ]; then
+        # 解析版本参数（默认值）
+        ODOO_VERSION="16.0.1"  # 默认版本
+        
+        # 解析参数
+        CLIENT_NUM=""
+        shift  # 移除 command
+        
+        # 解析所有参数
+        while [[ $# -gt 0 ]]; do
+            case $1 in
+                --version|-v)
+                    if [ -z "$2" ]; then
+                        print_error "版本参数需要指定版本号"
+                        show_usage
+                    fi
+                    ODOO_VERSION="$2"
+                    shift 2
+                    ;;
+                [0-9]*)
+                    # 如果是数字，认为是 client_number
+                    if [ -z "$CLIENT_NUM" ]; then
+                        CLIENT_NUM="$1"
+                    else
+                        print_error "重复的客户端编号: $1"
+                        show_usage
+                    fi
+                    shift
+                    ;;
+                *)
+                    print_error "未知参数: $1"
+                    show_usage
+                    ;;
+            esac
+        done
+        
+        # 如果没有指定 client_number，自动获取下一个可用编号
+        if [ -z "$CLIENT_NUM" ]; then
             CLIENT_NUM=$(get_next_available_number)
             echo "Using next available number: ${CLIENT_NUM}"
-        else
-            CLIENT_NUM=$2
         fi
-        create_client ${CLIENT_NUM}
+        
+        create_client ${CLIENT_NUM} ${ODOO_VERSION}
         ;;
     delete)
         [ -z "$2" ] && show_usage

@@ -15,8 +15,14 @@ COPY . .
 # 暴露端口
 EXPOSE 3000
 
-# 启动应用（开发模式，因为 docker-compose 配置了 NODE_ENV=development）
-CMD ["npm", "run", "dev"]
+# 构建生产版本
+RUN npm run build
+
+# 启动应用（生产模式）
+CMD ["npm", "start"]
+
+# 开发模式启动命令（已改为生产模式）
+# CMD ["npm", "run", "dev"]
 
 
  

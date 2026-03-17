@@ -1,9 +1,8 @@
-from odoo import http
+from odoo import http, fields
 import json
 from odoo.http import request
 import xlsxwriter
 from io import BytesIO
-from odoo import http
 from odoo.http import content_disposition
 from collections import defaultdict
 from odoo import SUPERUSER_ID
@@ -27,18 +26,28 @@ class WorkManage(http.Controller):
                 
                     if step == '冷裱':
                         field_name = "lengbiao_sign"
+                        time_field_name = "lengbiao_sign_time"
                     elif step == '過板':
                         field_name = "guoban_sign"
+                        time_field_name = "guoban_sign_time"
                     elif step == '裁切':
                         field_name = "caiqie_sign"
+                        time_field_name = "caiqie_sign_time"
                     elif step == '後製':
                         field_name = "houzhi_sign"
+                        time_field_name = "houzhi_sign_time"
                     elif step == '品管':
                         field_name = "pinguan_sign"
+                        time_field_name = "pinguan_sign_time"
                     elif step == '完成包裝':
                         field_name = "daichuhuo_sign"
+                        time_field_name = "daichuhuo_sign_time"
                     elif step == '已出貨':
                         field_name = "yichuhuo_sign"
+                        time_field_name = "yichuhuo_sign_time"
+                    else:
+                        field_name = None
+                        time_field_name = None
                     
                     if index:
                         order_number, item_number = index.split('-')
@@ -51,7 +60,7 @@ class WorkManage(http.Controller):
                             if make_order:
                                 makeline = request.env['dtsc.makeoutline'].sudo().search([('sequence', '=', item_number),('make_order_id','=',make_order.id)], limit=1) 
                         
-                        if makeline:
+                        if makeline and field_name:
                             current_value = makeline[field_name] or ""
                             # 如果字段已有值，追加新的签名
                             if current_value:
@@ -61,16 +70,28 @@ class WorkManage(http.Controller):
                                     continue
                             else:
                                 new_value = name
-                            # 写入更新后的值
-                            makeline.write({field_name: new_value})
+                            
+                            # 获取当前时间
+                            current_time = fields.Datetime.now()
+                            
+                            # 写入更新后的值（同时更新签名字段和时间字段）
+                            write_vals = {field_name: new_value}
+                            if time_field_name:
+                                write_vals[time_field_name] = current_time
+                            makeline.write(write_vals)
+                            
                             if makeline.checkout_line_id:
                                 checkout_current_value = makeline.checkout_line_id[field_name] or ""
                                 if checkout_current_value:
                                     checkout_new_value = f"{checkout_current_value},{name}"
                                 else:
                                     checkout_new_value = name
-                                # print(checkout_new_value)
-                                makeline.checkout_line_id.write({field_name: checkout_new_value})
+                                
+                                # 同时更新checkout_line的签名字段和时间字段
+                                checkout_write_vals = {field_name: checkout_new_value}
+                                if time_field_name:
+                                    checkout_write_vals[time_field_name] = current_time
+                                makeline.checkout_line_id.write(checkout_write_vals)
                     
                 return json.dumps({'success': True})
             return json.dumps({'success': False, 'error': 'No data received'})

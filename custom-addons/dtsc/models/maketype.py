@@ -16,11 +16,12 @@ class Maketype(models.Model):
 
     _name = 'dtsc.maketype'
     _order = 'sequence, id'
-    _description = "後加工方式" 
-    name = fields.Char('後加工名稱') 
+    _description = "後加工方式"
+    name = fields.Char('後加工名稱')
     unit_char = fields.Char('單位描述')
     price = fields.Float('基礎價格')
     sequence = fields.Integer('順序', default=10)
+
     @api.model
     def create(self, vals):
         # 创建Maketype记录时，自动在AfterMakePriceList中创建相应的记录
@@ -38,9 +39,10 @@ class Maketype(models.Model):
 
     def unlink(self):
         # 删除Maketype记录时，删除相应的AfterMakePriceList记录
-        aftermake_pricelists = self.env['dtsc.aftermakepricelist'].search([('name', 'in', self.ids)])
+        aftermake_pricelists = self.env['dtsc.aftermakepricelist'].search(
+            [('name', 'in', self.ids)])
         aftermake_pricelists.unlink()
-        
+
         # 找到所有与即将删除的 maketype 记录相关联的 product.maketype.rel 记录
         related_rel_records = self.env['product.maketype.rel'].search([
             ('make_type_id', 'in', self.ids)
@@ -48,6 +50,5 @@ class Maketype(models.Model):
         # 删除相关的 product.maketype.rel 记录
         related_rel_records.unlink()
         # 删除 maketype 记录本身
-        
-        return super(Maketype, self).unlink()
 
+        return super(Maketype, self).unlink()

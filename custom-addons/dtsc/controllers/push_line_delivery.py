@@ -102,8 +102,10 @@ class DeliveryPdfController(http.Controller):
             # v15+ 等：直接传 docids
             pdf_bytes = report._render_qweb_pdf([checkout.id])[0]
         
-        # 生成文件名
-        filename = f"{checkout.name or '報價單'}.pdf"
+        # 生成文件名，格式与报表模板保持一致：{name}-{customer_name}-{project_name}-報價單.pdf
+        customer_name = checkout.is_new_partner and (checkout.new_partner or '客戶') or (checkout.customer_id and checkout.customer_id.name) or '客戶'
+        project_name = checkout.project_name or ''
+        filename = f"{checkout.name or '報價單'}-{customer_name}-{project_name}-報價單.pdf"
         
         headers = [
             ('Content-Type', 'application/pdf'),

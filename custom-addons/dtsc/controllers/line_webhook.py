@@ -872,11 +872,19 @@ class LineBotController(http.Controller):
                             # 推送给checkout的user_id
                             user_line_id = self.get_checkout_user_line_id(checkout)
                             if user_line_id:
-                                if total_price > sign_level:
-                                    user_notification_msg = f"您建立的報價單 {checkout.name or '待生成'} 已由 {sign_user_name} 主管簽核完成，正在等待經理簽核。"
+                                if user_line_id == user_id:
+                                    # 自己签核自己的单子，发送"您建立的報價單..."的消息
+                                    if total_price > sign_level:
+                                        self.reply_to_line(user_id, f"您建立的報價單 {checkout.name or '待生成'} 已由 {sign_user_name} 主管簽核完成，正在等待經理簽核。")
+                                    else:
+                                        self.reply_to_line(user_id, f"您建立的報價單 {checkout.name or '待生成'} 已由 {sign_user_name} 主管簽核完成，簽核流程已完成。")
                                 else:
-                                    user_notification_msg = f"您建立的報價單 {checkout.name or '待生成'} 已由 {sign_user_name} 主管簽核完成，簽核流程已完成。"
-                                self.send_notification_to_users([user_line_id], user_notification_msg, lineObj.line_access_token)
+                                    # 别人签核，推送给创建订单的用户
+                                    if total_price > sign_level:
+                                        user_notification_msg = f"您建立的報價單 {checkout.name or '待生成'} 已由 {sign_user_name} 主管簽核完成，正在等待經理簽核。"
+                                    else:
+                                        user_notification_msg = f"您建立的報價單 {checkout.name or '待生成'} 已由 {sign_user_name} 主管簽核完成，簽核流程已完成。"
+                                    self.send_notification_to_users([user_line_id], user_notification_msg, lineObj.line_access_token)
                         
                         # 如果總價高於簽核級別，推送給經理（不改變 is_sign）
                         if total_price > sign_level:
@@ -895,10 +903,21 @@ class LineBotController(http.Controller):
                                 if lineObj and lineObj.line_access_token:
                                     user_line_id = self.get_checkout_user_line_id(checkout)
                                     if user_line_id:
-                                        user_notification_msg = f"您建立的報價單 {checkout.name or '待生成'} 已由 {sign_user_name} 簽核完成（主管+經理），簽核流程已完成。"
-                                        self.send_notification_to_users([user_line_id], user_notification_msg, lineObj.line_access_token)
-                                
-                                self.reply_to_line(user_id, f"報價單 {checkout.name or '待生成'} 主管簽核完成！由於您同時是經理，已自動完成經理簽核。")
+                                        if user_line_id == user_id:
+                                            # 自己签核自己的单子，发送"您建立的報價單..."的消息
+                                            self.reply_to_line(user_id, f"您建立的報價單 {checkout.name or '待生成'} 已由 {sign_user_name} 簽核完成（主管+經理），簽核流程已完成。")
+                                        else:
+                                            # 别人签核，推送给创建订单的用户
+                                            user_notification_msg = f"您建立的報價單 {checkout.name or '待生成'} 已由 {sign_user_name} 簽核完成（主管+經理），簽核流程已完成。"
+                                            self.send_notification_to_users([user_line_id], user_notification_msg, lineObj.line_access_token)
+                                            # 回复给签核的人
+                                            self.reply_to_line(user_id, f"報價單 {checkout.name or '待生成'} 主管簽核完成！由於您同時是經理，已自動完成經理簽核。")
+                                    else:
+                                        # 如果找不到创建订单的用户LINE ID，只回复给签核的人
+                                        self.reply_to_line(user_id, f"報價單 {checkout.name or '待生成'} 主管簽核完成！由於您同時是經理，已自動完成經理簽核。")
+                                else:
+                                    # 如果没有LINE Bot配置，只回复给签核的人
+                                    self.reply_to_line(user_id, f"報價單 {checkout.name or '待生成'} 主管簽核完成！由於您同時是經理，已自動完成經理簽核。")
                                 continue
                             # 獲取 LINE Bot 配置
                             lineObj = request.env["dtsc.linebot"].sudo().search([("linebot_type","=","for_worker")], limit=1)
@@ -1035,14 +1054,20 @@ class LineBotController(http.Controller):
                                     except Exception as e:
                                         _logger.error(f"❌ LINE 發送異常給經理 {manager_record.name}: {str(e)}")
                             
-                            self.reply_to_line(user_id, f"報價單 {checkout.name or '待生成'} 主管簽核完成！已推送给經理簽核。")
+                            # 如果创建订单的用户不是签核的主管，才回复给签核的主管（避免重复）
+                            user_line_id = self.get_checkout_user_line_id(checkout)
+                            if not user_line_id or user_line_id != user_id:
+                                self.reply_to_line(user_id, f"報價單 {checkout.name or '待生成'} 主管簽核完成！已推送给經理簽核。")
                         else:
                             # 價格低於簽核級別，直接完成簽核（只記錄主管簽名）
                             checkout.with_context(skip_compute_is_sign=True).write({
                                 'is_sign': True,
                                 'approval_state': 'approved'  # 簽核完成
                             })
-                            self.reply_to_line(user_id, f"報價單 {checkout.name or '待生成'} 已成功簽核！")
+                            # 如果创建订单的用户不是签核的主管，才回复（避免重复，因为上面已经回复过了）
+                            user_line_id = self.get_checkout_user_line_id(checkout)
+                            if not user_line_id or user_line_id != user_id:
+                                self.reply_to_line(user_id, f"報價單 {checkout.name or '待生成'} 已成功簽核！")
                     else:
                         self.reply_to_line(user_id, "找不到此報價單，簽核失敗。")
                 elif params.get("action") == "sign_crm_checkout_manager" and params.get("checkout_id"):
@@ -1080,10 +1105,18 @@ class LineBotController(http.Controller):
                             # 推送给checkout的user_id
                             user_line_id = self.get_checkout_user_line_id(checkout)
                             if user_line_id:
-                                user_notification_msg = f"您建立的報價單 {checkout.name or '待生成'} 已由 {sign_user_name} 經理簽核完成，簽核流程已完成。"
-                                self.send_notification_to_users([user_line_id], user_notification_msg, lineObj.line_access_token)
-                        
-                        self.reply_to_line(user_id, f"報價單 {checkout.name or '待生成'} 經理簽核完成！簽核流程已完成。")
+                                if user_line_id == user_id:
+                                    # 自己签核自己的单子，发送"您建立的報價單..."的消息
+                                    self.reply_to_line(user_id, f"您建立的報價單 {checkout.name or '待生成'} 已由 {sign_user_name} 經理簽核完成，簽核流程已完成。")
+                                else:
+                                    # 别人签核，推送给创建订单的用户
+                                    user_notification_msg = f"您建立的報價單 {checkout.name or '待生成'} 已由 {sign_user_name} 經理簽核完成，簽核流程已完成。"
+                                    self.send_notification_to_users([user_line_id], user_notification_msg, lineObj.line_access_token)
+                                    # 回复给签核的经理
+                                    self.reply_to_line(user_id, f"報價單 {checkout.name or '待生成'} 經理簽核完成！簽核流程已完成。")
+                            else:
+                                # 如果找不到创建订单的用户LINE ID，只回复给签核的经理
+                                self.reply_to_line(user_id, f"報價單 {checkout.name or '待生成'} 經理簽核完成！簽核流程已完成。")
                     else:
                         self.reply_to_line(user_id, "找不到此報價單，簽核失敗。")
                 elif params.get("action") == "reject_crm_checkout" and params.get("checkout_id"):

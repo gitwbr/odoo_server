@@ -93,6 +93,7 @@
         'views/report_makeom.xml',
         'views/report_performance.xml',
         'views/factory.xml',
+        'views/normalsettings.xml',
         'views/views.xml',
     ],
 	'assets': {

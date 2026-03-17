@@ -436,7 +436,8 @@
 												</label>
 											  </div>
 											  <div class="table-summary">
-												更正或作廢發票，請於次月5日前寄回，逾期恕不受理。
+												<!-- 更正或作廢發票，請於次月5日前寄回，逾期恕不受理。 -->
+												<t t-esc="account_print_comment"/> 
 											  </div>
 											</t>
 										  </t>

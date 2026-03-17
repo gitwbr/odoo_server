@@ -28,6 +28,9 @@ class WorkTime(models.Model):
     workqrcode_id = fields.Many2one('dtsc.workqrcode',string="員工姓名")
     checkout_id = fields.Many2one("dtsc.checkout",string="大圖訂單")
     checkoutline_id = fields.Many2one("dtsc.checkoutline",string="大圖訂單項次")
+    machine_id = fields.Many2one("dtsc.machineprice", string="機台", related="checkoutline_id.machine_id", store=True, readonly=True)
+    partner_id = fields.Many2one("res.partner" , string="客戶" , related="checkout_id.customer_id") 
+    sell_user = fields.Many2one("res.user" , string="客戶" , related="checkout_id.user_id") 
     start_time = fields.Datetime("開始時間")
     end_time = fields.Datetime("結束時間")
     cai_done = fields.Float("才數",related="checkoutline_id.total_units",store=True)
@@ -208,12 +211,19 @@ class CheckOut(models.Model):
     
     outman = fields.Many2one('dtsc.userlist',string="輸出" , domain=[('worktype_ids.name', '=', '輸出'),("is_disabled","=",False)],store=True)    
     lengbiao_sign = fields.Char("冷裱")
+    lengbiao_sign_time = fields.Datetime("冷裱時間")
     guoban_sign = fields.Char("過板")
+    guoban_sign_time = fields.Datetime("過板時間")
     caiqie_sign = fields.Char("裁切")
+    caiqie_sign_time = fields.Datetime("裁切時間")
     houzhi_sign = fields.Char("後製")
+    houzhi_sign_time = fields.Datetime("後製時間")
     pinguan_sign = fields.Char("品管")
+    pinguan_sign_time = fields.Datetime("品管時間")
     daichuhuo_sign = fields.Char("完成包裝")
+    daichuhuo_sign_time = fields.Datetime("完成包裝時間")
     yichuhuo_sign = fields.Char("已出貨")
+    yichuhuo_sign_time = fields.Datetime("已出貨時間")
 
     outman_count = fields.Float("輸出",compute="_compute_count",store=True)
     lengbiao_count = fields.Float("冷裱",compute="_compute_count",store=True)
@@ -293,12 +303,19 @@ class MakeInLine(models.Model):
     meigong = fields.Many2one('dtsc.userlistbefore',string="美工",domain=[("is_disabled","=",False)])
     
     lengbiao_sign = fields.Char("冷裱")
+    lengbiao_sign_time = fields.Datetime("冷裱時間")
     guoban_sign = fields.Char("過板")
+    guoban_sign_time = fields.Datetime("過板時間")
     caiqie_sign = fields.Char("裁切")
+    caiqie_sign_time = fields.Datetime("裁切時間")
     houzhi_sign = fields.Char("後製")
+    houzhi_sign_time = fields.Datetime("後製時間")
     pinguan_sign = fields.Char("品管")
+    pinguan_sign_time = fields.Datetime("品管時間")
     daichuhuo_sign = fields.Char("完成包裝")
+    daichuhuo_sign_time = fields.Datetime("完成包裝時間")
     yichuhuo_sign = fields.Char("已出貨")
+    yichuhuo_sign_time = fields.Datetime("已出貨時間")
     is_disable = fields.Boolean("是否隱藏")    
     
     bar_image = fields.Binary("QRcode", compute='_generate_qrcode_image1')
@@ -406,7 +423,11 @@ class MakeInLine(models.Model):
     def _onchange_lengbiao_sign(self):
         for record in self:
             # record.checkout_line_id.lengbiao_sign = record.lengbiao_sign
-            record.checkout_line_id.write({"lengbiao_sign":record.lengbiao_sign})  
+            current_time = fields.Datetime.now() if record.lengbiao_sign else False
+            record.checkout_line_id.write({
+                "lengbiao_sign": record.lengbiao_sign,
+                "lengbiao_sign_time": current_time
+            })  
             if not record.lengbiao_sign:
                 worktimeObjs = self.env['dtsc.worktime'].sudo().search([("checkoutline_id", "=", record.checkout_line_id.id),('work_type', '='  ,"lb")])
                 if worktimeObjs:
@@ -437,7 +458,11 @@ class MakeInLine(models.Model):
     # @api.onchange("guoban_sign")
     def _onchange_guoban_sign(self):
         for record in self:
-            record.checkout_line_id.write({"guoban_sign":record.guoban_sign}) 
+            current_time = fields.Datetime.now() if record.guoban_sign else False
+            record.checkout_line_id.write({
+                "guoban_sign": record.guoban_sign,
+                "guoban_sign_time": current_time
+            }) 
             if not record.guoban_sign:
                 worktimeObjs = self.env['dtsc.worktime'].sudo().search([("checkoutline_id", "=", record.checkout_line_id.id),('work_type', '='  ,"gb")])
                 if worktimeObjs:
@@ -465,7 +490,11 @@ class MakeInLine(models.Model):
     # @api.onchange("caiqie_sign")
     def _onchange_caiqie_sign(self):
         for record in self:
-            record.checkout_line_id.write({"caiqie_sign":record.caiqie_sign}) 
+            current_time = fields.Datetime.now() if record.caiqie_sign else False
+            record.checkout_line_id.write({
+                "caiqie_sign": record.caiqie_sign,
+                "caiqie_sign_time": current_time
+            }) 
             if not record.caiqie_sign:
                 worktimeObjs = self.env['dtsc.worktime'].sudo().search([("checkoutline_id", "=", record.checkout_line_id.id),('work_type', '='  ,"cq")])
                 if worktimeObjs:
@@ -493,7 +522,11 @@ class MakeInLine(models.Model):
     # @api.onchange("houzhi_sign")
     def _onchange_houzhi_sign(self):
         for record in self:
-            record.checkout_line_id.write({"houzhi_sign":record.houzhi_sign}) 
+            current_time = fields.Datetime.now() if record.houzhi_sign else False
+            record.checkout_line_id.write({
+                "houzhi_sign": record.houzhi_sign,
+                "houzhi_sign_time": current_time
+            }) 
             if not record.houzhi_sign:
                 worktimeObjs = self.env['dtsc.worktime'].sudo().search([("checkoutline_id", "=", record.checkout_line_id.id),('work_type', '='  ,"hz")])
                 if worktimeObjs:
@@ -521,7 +554,11 @@ class MakeInLine(models.Model):
     # @api.onchange("pinguan_sign")
     def _onchange_pinguan_sign(self):
         for record in self:
-            record.checkout_line_id.write({"pinguan_sign":record.pinguan_sign}) 
+            current_time = fields.Datetime.now() if record.pinguan_sign else False
+            record.checkout_line_id.write({
+                "pinguan_sign": record.pinguan_sign,
+                "pinguan_sign_time": current_time
+            }) 
             if not record.pinguan_sign:
                 worktimeObjs = self.env['dtsc.worktime'].sudo().search([("checkoutline_id", "=", record.checkout_line_id.id),('work_type', '='  ,"pg")])
                 if worktimeObjs:
@@ -549,7 +586,11 @@ class MakeInLine(models.Model):
     # @api.onchange("daichuhuo_sign")
     def _onchange_daichuhuo_sign(self):
         for record in self:
-            record.checkout_line_id.write({"daichuhuo_sign":record.daichuhuo_sign}) 
+            current_time = fields.Datetime.now() if record.daichuhuo_sign else False
+            record.checkout_line_id.write({
+                "daichuhuo_sign": record.daichuhuo_sign,
+                "daichuhuo_sign_time": current_time
+            }) 
             if not record.daichuhuo_sign:
                 worktimeObjs = self.env['dtsc.worktime'].sudo().search([("checkoutline_id", "=", record.checkout_line_id.id),('work_type', '='  ,"dch")])
                 if worktimeObjs:
@@ -577,7 +618,11 @@ class MakeInLine(models.Model):
     # @api.onchange("yichuhuo_sign")
     def _onchange_yichuhuo_sign(self):
         for record in self:
-            record.checkout_line_id.write({"yichuhuo_sign":record.yichuhuo_sign}) 
+            current_time = fields.Datetime.now() if record.yichuhuo_sign else False
+            record.checkout_line_id.write({
+                "yichuhuo_sign": record.yichuhuo_sign,
+                "yichuhuo_sign_time": current_time
+            }) 
             if not record.yichuhuo_sign:
                 worktimeObjs = self.env['dtsc.worktime'].sudo().search([("checkoutline_id", "=", record.checkout_line_id.id),('work_type', '='  ,"ych")])
                 if worktimeObjs:
@@ -612,9 +657,13 @@ class MakeOutLine(models.Model):
     # guoban_sign = fields.Char("過板")
     # caiqie_sign = fields.Char("裁切")
     houzhi_sign = fields.Char("後製")
+    houzhi_sign_time = fields.Datetime("後製時間")
     pinguan_sign = fields.Char("品管")
+    pinguan_sign_time = fields.Datetime("品管時間")
     daichuhuo_sign = fields.Char("完成包裝")
+    daichuhuo_sign_time = fields.Datetime("完成包裝時間")
     yichuhuo_sign = fields.Char("已出貨")
+    yichuhuo_sign_time = fields.Datetime("已出貨時間")
     is_disable = fields.Boolean("是否隱藏")
     bar_image = fields.Binary("QRcode", compute='_generate_qrcode_image1')    
 
@@ -672,7 +721,12 @@ class MakeOutLine(models.Model):
     # @api.onchange("houzhi_sign")
     def _onchange_houzhi_sign(self):
         for record in self:
+            current_time = fields.Datetime.now() if record.houzhi_sign else False
+            # 更新自身的时间字段
+            record.houzhi_sign_time = current_time
+            # 更新 checkout_line_id 的签名字段和时间字段
             record.checkout_line_id.houzhi_sign = record.houzhi_sign
+            record.checkout_line_id.houzhi_sign_time = current_time
             if not record.houzhi_sign:
                 worktimeObjs = self.env['dtsc.worktime'].sudo().search([("checkoutline_id", "=", record.checkout_line_id.id),('work_type', '='  ,"hz")])
                 if worktimeObjs:
@@ -700,7 +754,12 @@ class MakeOutLine(models.Model):
     # @api.onchange("pinguan_sign")
     def _onchange_pinguan_sign(self):
         for record in self:
+            current_time = fields.Datetime.now() if record.pinguan_sign else False
+            # 更新自身的时间字段
+            record.pinguan_sign_time = current_time
+            # 更新 checkout_line_id 的签名字段和时间字段
             record.checkout_line_id.pinguan_sign = record.pinguan_sign
+            record.checkout_line_id.pinguan_sign_time = current_time
             if not record.pinguan_sign:
                 worktimeObjs = self.env['dtsc.worktime'].sudo().search([("checkoutline_id", "=", record.checkout_line_id.id),('work_type', '='  ,"pg")])
                 if worktimeObjs:
@@ -728,7 +787,12 @@ class MakeOutLine(models.Model):
     # @api.onchange("daichuhuo_sign")
     def _onchange_daichuhuo_sign(self):
         for record in self:
+            current_time = fields.Datetime.now() if record.daichuhuo_sign else False
+            # 更新自身的时间字段
+            record.daichuhuo_sign_time = current_time
+            # 更新 checkout_line_id 的签名字段和时间字段
             record.checkout_line_id.daichuhuo_sign = record.daichuhuo_sign
+            record.checkout_line_id.daichuhuo_sign_time = current_time
             if not record.daichuhuo_sign:
                 worktimeObjs = self.env['dtsc.worktime'].sudo().search([("checkoutline_id", "=", record.checkout_line_id.id),('work_type', '='  ,"dch")])
                 if worktimeObjs:
@@ -755,7 +819,12 @@ class MakeOutLine(models.Model):
     # @api.onchange("yichuhuo_sign")
     def _onchange_yichuhuo_sign(self):
         for record in self:
+            current_time = fields.Datetime.now() if record.yichuhuo_sign else False
+            # 更新自身的时间字段
+            record.yichuhuo_sign_time = current_time
+            # 更新 checkout_line_id 的签名字段和时间字段
             record.checkout_line_id.yichuhuo_sign = record.yichuhuo_sign
+            record.checkout_line_id.yichuhuo_sign_time = current_time
             if not record.yichuhuo_sign:
                 worktimeObjs = self.env['dtsc.worktime'].sudo().search([("checkoutline_id", "=", record.checkout_line_id.id),('work_type', '='  ,"ych")])
                 if worktimeObjs:
@@ -851,11 +920,16 @@ class MakeIn(models.Model):
                     
                     if field_name:
                         current_value = record[field_name] or ""
+                        time_field_name = f"{field_name}_time"
+                        current_time = fields.Datetime.now()
                         if current_value:
                             new_value = f"{current_value},{name}"
                         else:
                             new_value = name
-                        record.write({field_name: new_value})
+                        record.write({
+                            field_name: new_value,
+                            time_field_name: current_time
+                        })
                         if record.checkout_line_id:
                             checkout_current_value = record.checkout_line_id[field_name] or ""
                             if checkout_current_value:
@@ -863,7 +937,10 @@ class MakeIn(models.Model):
                             else:
                                 checkout_new_value = name
                             # print(checkout_new_value)
-                            record.checkout_line_id.write({field_name: checkout_new_value})
+                            record.checkout_line_id.write({
+                                field_name: checkout_new_value,
+                                time_field_name: current_time
+                            })
                       
                 record.write({"is_select":False})   
         return {"status": "success"}  # 返回成功的响应 
@@ -939,20 +1016,28 @@ class MakeOut(models.Model):
                     if field_name:
                         # 获取当前字段值
                         current_value = record[field_name] or ""
+                        time_field_name = f"{field_name}_time"
+                        current_time = fields.Datetime.now()
                         # 如果字段已有值，追加新的签名
                         if current_value:
                             new_value = f"{current_value},{name}"
                         else:
                             new_value = name
                         # 写入更新后的值
-                        record.write({field_name: new_value})
+                        record.write({
+                            field_name: new_value,
+                            time_field_name: current_time
+                        })
                         if record.checkout_line_id:
                             checkout_current_value = record.checkout_line_id[field_name] or ""
                             if checkout_current_value:
                                 checkout_new_value = f"{checkout_current_value},{name}"
                             else:
                                 checkout_new_value = name
-                            record.checkout_line_id.write({field_name: checkout_new_value})
+                            record.checkout_line_id.write({
+                                field_name: checkout_new_value,
+                                time_field_name: current_time
+                            })
                         
                 record.write({"is_select":False})   
         return {"status": "success"}  # 返回成功的响应

@@ -28,6 +28,12 @@ from odoo.modules import get_module_resource
 from odoo.osv import expression
 from odoo.tools import config
 from odoo.tools.misc import clean_context, OrderedSet, groupby
+class NormalSettings(models.Model):
+    _name = "dtsc.normalsettings"
+    
+    key = fields.Char(string = "名稱") 
+    value = fields.Char(string = "值") 
+     
 class UoMCategory(models.Model):
     _inherit = "uom.category"
     

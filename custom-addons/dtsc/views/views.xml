@@ -300,6 +300,11 @@
       <field name="res_model">dtsc.interoperate</field>
       <field name="view_mode">tree,form</field>
 	</record>
+	<record model="ir.actions.act_window" id="dtsc.normal_setting">
+      <field name="name">一般設定</field>
+      <field name="res_model">dtsc.normalsettings</field>
+      <field name="view_mode">tree,form</field>
+	</record>
     <!-- <record model="ir.actions.act_window" id="dtsc.bh">
         <field name="name">補貨</field>
         <field name="res_model">stock.warehouse.orderpoint</field>
@@ -651,6 +656,7 @@
 	<menuitem id="department_s" parent="dtsc.menu_setting" name="部門" sequence="15" action="dtsc.department_setting"/>
 	<menuitem id="factory_s" parent="dtsc.menu_setting" name="廠區" sequence="16" action="dtsc.factory_setting"/>
 	<menuitem id="xthl" parent="dtsc.menu_setting" name="系統互連設定" sequence="17" action="dtsc.interoperate_setting"/>
+	<menuitem id="ybsd" parent="dtsc.menu_setting" name="一般設定" sequence="180" action="dtsc.normal_setting"/>
 	
 	
 	 

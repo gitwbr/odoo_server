@@ -352,8 +352,11 @@
                                 	<button string="全選施工" type="object" name="set_boolean_field_true"   style="margin-right:20px" help="全選施工" groups="dtsc.group_dtsc_mg"/>
 									<button string="取消施工" type="object" name="set_boolean_field_false"  help="取消施工" groups="dtsc.group_dtsc_mg"/>									
 									<button string="複製最後一條" type="object" name="copy_last_record" groups="dtsc.group_dtsc_mg"/>															
-									<button string="項次序號整理" type="object" name="seq_reset" attrs="{'invisible': [('checkout_order_state', 'not in', ['waiting_confirmation','draft','quoting'])]}" />															
-								
+									<button string="項次序號整理" type="object" name="seq_reset" attrs="{'invisible': [('checkout_order_state', 'not in', ['waiting_confirmation','draft','quoting'])]}" />	
+                                	<button string="全選重製" type="object" name="set_cz_field_true"   style="margin-right:20px" help="全選重製" groups="dtsc.group_dtsc_mg"/>														
+                                	<button string="取消重製" type="object" name="set_cz_field_false"   style="margin-right:20px" help="取消重製" groups="dtsc.group_dtsc_mg"/>														
+									<field name="set_all_machine_id" />															
+                                	<button string="設定全部機台" type="object" name="set_all_machine_button"   style="margin-right:20px" help="設定全部機台" groups="dtsc.group_dtsc_mg"/>			
 								<field name="product_ids" >
                                     <!-- <tree create="false" delete="false" editable="bottom"> -->
                                     <tree  editable="bottom" class="my_custom_class"  limit="100" default_order="origin_checkout_name,sequence">
@@ -408,7 +411,8 @@
 										<button name="open_price_popup" string="選擇" attrs="{'invisible':['|','|',('parent.is_current_user', '=', False),('parent.is_recheck','=',True),('parent.is_dayang','=',True)]}" type="object" class="btn-primary" /> 
 										<field name="recheck_id_name" attrs="{'column_invisible':[('parent.is_recheck','!=',True)]}"/>
 										
-										<field name="product_total_price" sum="輸出金額" attrs="{'readonly': ['|',('parent.is_in_by_yw', '=', False),('parent.checkout_order_state','in',['receivable_assigned'])] ,'column_invisible':['|','|',('parent.is_current_user', '=', False),('parent.is_recheck','=',True),('parent.is_dayang','=',True)]}" groups="dtsc.group_dtsc_yw,dtsc.group_dtsc_kj"/> 
+										<!-- <field name="product_total_price" sum="輸出金額" attrs="{'readonly': ['|',('parent.is_in_by_yw', '=', False),('parent.checkout_order_state','in',['receivable_assigned'])] ,'column_invisible':['|','|',('parent.is_current_user', '=', False),('parent.is_recheck','=',True),('parent.is_dayang','=',True)]}" groups="dtsc.group_dtsc_yw,dtsc.group_dtsc_kj"/>  -->
+										<field name="product_total_price" sum="輸出金額" attrs="{'column_invisible':['|','|',('parent.is_current_user', '=', False),('parent.is_recheck','=',True),('parent.is_dayang','=',True)]}" groups="dtsc.group_dtsc_yw,dtsc.group_dtsc_kj"/> 
 										
 										<field name="total_make_price" sum="加工總價" attrs="{'readonly': ['|',('parent.is_in_by_yw', '=', False),('parent.checkout_order_state','in',['receivable_assigned'])] ,'column_invisible':['|','|',('parent.is_current_user', '=', False),('parent.is_recheck','=',True),('parent.is_dayang','=',True)]}" groups="dtsc.group_dtsc_yw,dtsc.group_dtsc_kj"/> 
 										<field name="price" sum="價錢" attrs="{'readonly': ['|',('parent.is_in_by_yw', '=', False),('parent.checkout_order_state','in',['receivable_assigned'])] ,'column_invisible':['|','|',('parent.is_current_user', '=', False),('parent.is_recheck','=',True),('parent.is_dayang','=',True)]}" groups="dtsc.group_dtsc_yw,dtsc.group_dtsc_kj"/> 

@@ -86,8 +86,8 @@ class yingShouDate(models.TransientModel):
             if record.name and record.name[0] == "F":#如果是打樣單則不轉應收
                 continue
                 
-            year_set.add(record.report_year)
-            month_set.add(record.report_month)
+            year_set.add(record.report_year.id)
+            month_set.add(record.report_month.id)
             eligible_count += 1   
             # if record.invoice_origin:
                 # raise UserError('大圖訂單%s已生成應收帳單！' % record.name)
@@ -98,6 +98,26 @@ class yingShouDate(models.TransientModel):
         
         if len(year_set) > 1 or len(month_set) > 1:
             raise UserError('所轉訂單不屬於同一個月，請分月分批轉應收。')
+
+        # 账单月（来自订单的 report_year/report_month）
+        bill_year_rec = self.env['dtsc.year'].browse(next(iter(year_set)))
+        bill_month_rec = self.env['dtsc.month'].browse(next(iter(month_set)))
+
+        bill_year = int(bill_year_rec.name)
+        bill_month = int(bill_month_rec.name)
+
+        # selected_date 必须在该账单月内
+        if not self.selected_date:
+            raise UserError('請先選擇轉應收的日期。')
+
+        dt_local = fields.Datetime.context_timestamp(self, self.selected_date)
+
+        if dt_local.year != bill_year or dt_local.month != bill_month:
+            raise UserError(
+                '轉應收日期必須落在帳單月內：%s年%s月。你選的是：%s' % (
+                    bill_year, bill_month, dt_local.strftime('%Y-%m-%d %H:%M:%S')
+                )
+            )
 
         for customer_id, records in customer_groups.items():
             self.env['dtsc.checkout']._create_invoice_for_customer(records,self.selected_date)
@@ -495,6 +515,9 @@ class Checkout(models.Model):
     
     search_line_namee = fields.Char(compute="_compute_search_line_project_product_name", store=True)
     is_current_user = fields.Boolean(compute='_compute_is_current_user', default=False, store=False)
+    
+    
+    set_all_machine_id = fields.Many2one("dtsc.machineprice",string="生產機台",domain=[("is_disabled","=",False)])
     
     date_labels = fields.Many2many(
         'dtsc.datelabel', 
@@ -992,8 +1015,11 @@ class Checkout(models.Model):
         for line in selected_lines:
             line_copy_vals = line.copy_data()[0]
             line_copy_vals['checkout_product_id'] = new_record.id  # 设置新的父记录ID
-            line_copy_vals['make_orderid'] = ""   
-            line_copy_vals['recheck_id_name'] = str(self.name) + "-" + str(line.sequence)   
+            line_copy_vals['make_orderid'] = ""      
+            if self.hebing_type == "1":
+                line_copy_vals['recheck_id_name'] = str(self.origin_checkout_name) + "-" + str(line.sequence)   
+            else:
+                line_copy_vals['recheck_id_name'] = str(self.name) + "-" + str(line.sequence)   
             line_copy_vals.pop('flag', None)
             new_lines_vals.append((0, 0, line_copy_vals))
         
@@ -2721,9 +2747,12 @@ class Checkout(models.Model):
     def seq_reset(self):
         seq = 1
         for record in self.product_ids.sorted(key=lambda l: (l.sequence or 0, l.id)):
-            record.sequence = seq
+            record.sequence = seq 
             seq = seq + 1
-            
+   
+    def set_all_machine_button(self):
+        for record in self.product_ids:
+            record.machine_id = self.set_all_machine_id.id         
             
     def set_boolean_field_true(self):
         for record in self.product_ids:
@@ -2732,6 +2761,14 @@ class Checkout(models.Model):
     def set_boolean_field_false(self):
         for record in self.product_ids:
             record.is_install = False
+            
+    def set_cz_field_true(self):
+        for record in self.product_ids:
+            record.is_selected = True
+            
+    def set_cz_field_false(self):
+        for record in self.product_ids:
+            record.is_selected = False
 
     #checkout create    
     @api.model
@@ -2902,7 +2939,7 @@ class CheckOutLine(models.Model):
     ],default='forcai' ,string="計價模式" ,required=True) 
     mergecai = fields.Boolean("合併")
     # install_price = fields.Float("施工金額", compute='_compute_install_price', inverse="_inverse_install_price" ,default=0)
-    product_total_price = fields.Float("輸出金額", compute='_compute_product_total_price' , store=True)
+    product_total_price = fields.Float("輸出金額", compute='_compute_product_total_price' , store=True,readonly=True)
     # manual_product_total_price = fields.Float("手动輸出金額")
     # manual_total_make_price = fields.Float("手动加工金額")
     # manual_total_make_price_flag = fields.Boolean(default = False)
@@ -3107,7 +3144,7 @@ class CheckOutLine(models.Model):
             
         if user not in group_dtsc_gly.users and user in group_dtsc_mg.users:
             if self.checkout_product_id.is_delivery:
-                allowed_fields = {'checkout_product_id','origin_checkout_id','delivery_order','price', 'is_install','product_total_price', 'units_price', 'total_make_price', 'peijian_price',"is_selected","sale_order_line_id","project_product_name","same_material","jijiamoshi"}
+                allowed_fields = {'small_image_new','small_image','checkout_product_id','origin_checkout_id','delivery_order','price', 'is_install','product_total_price', 'units_price', 'total_make_price', 'peijian_price',"is_selected","sale_order_line_id","project_product_name","same_material","jijiamoshi"}
                 disallowed = set(vals.keys()) - allowed_fields
                 if disallowed:
                     raise UserError("此訂單已出貨，僅允許修改價格相關欄位。")
@@ -3539,7 +3576,7 @@ class CheckOutLine(models.Model):
                         'param1' :param1,
                         'param2' :param2,
                     })
-                    record.single_units = round(result, 2)
+                    record.single_units = round(result, 2) 
                 else:
                     record.single_units = 0.0
     #长宽改变计算才数

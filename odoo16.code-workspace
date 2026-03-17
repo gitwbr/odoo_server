@@ -1,0 +1,127 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "../../../etc/nginx"
+		}
+	],
+	"settings":{
+		     // 基本编辑器设置
+		     "editor.formatOnSave": true,
+		     "editor.tabSize": 2,
+		     "editor.insertSpaces": true,
+		     "editor.detectIndentation": false,
+		     "files.autoSave": "afterDelay",
+		     "files.autoSaveDelay": 1000,
+		     // 文件排除 - 提高性能
+		     "files.exclude": {
+		      "**/__pycache__": true,
+		      "**/*.pyc": true,
+		      "**/.pytest_cache": true,
+		      "**/.mypy_cache": true,
+		      "**/.coverage": true,
+		      "**/htmlcov": true,
+		      "**/.tox": true,
+		      "**/.venv": true,
+		      "**/venv": true,
+		      "**/env": true,
+		      "**/node_modules": true,
+		      "**/.next": true,
+		      "**/dist": true,
+		      "**/build": true,
+		      "**/.git": true,
+		      "**/.DS_Store": true,
+		      "**/Thumbs.db": true
+		     },
+		     // 搜索排除
+		     "search.exclude": {
+		      "**/node_modules": true,
+		      "**/__pycache__": true,
+		      "**/*.pyc": true,
+		      "**/.pytest_cache": true,
+		      "**/.mypy_cache": true,
+		      "**/.coverage": true,
+		      "**/htmlcov": true,
+		      "**/.tox": true,
+		      "**/.venv": true,
+		      "**/venv": true,
+		      "**/env": true,
+		      "**/.next": true,
+		      "**/dist": true,
+		      "**/build": true
+		     },
+		     // 文件监听排除
+		     "files.watcherExclude": {
+		      "**/node_modules/**": true,
+		      "**/.git/**": true,
+		      "**/.next/**": true,
+		      "**/__pycache__/**": true,
+		      "**/*.pyc": true,
+		      "**/.pytest_cache/**": true,
+		      "**/.mypy_cache/**": true,
+		      "**/.coverage": true,
+		      "**/htmlcov/**": true,
+		      "**/.tox/**": true,
+		      "**/.venv/**": true,
+		      "**/venv/**": true,
+		      "**/env/**": true,
+		      "**/.env": true,
+		      "**/.env.local": true,
+		      "**/.env.production": true,
+		      "**/dist/**": true,
+		      "**/build/**": true,
+		      "**/.DS_Store": true,
+		      "**/Thumbs.db": true
+		     },
+		     // 文件关联
+		     "files.associations": {
+		      "*.py": "python",
+		      "requirements.txt": "pip-requirements",
+		      "Pipfile": "pipfile",
+		      "pyproject.toml": "toml",
+		      "setup.cfg": "ini",
+		      "setup.py": "python",
+		      "manage.py": "python",
+		      "wsgi.py": "python",
+		      "asgi.py": "python",
+		      "alembic.ini": "ini",
+		      "docker-compose.yml": "dockercompose",
+		      "docker-compose.yaml": "dockercompose",
+		      "Dockerfile": "dockerfile",
+		      ".env": "dotenv",
+		      ".env.local": "dotenv",
+		      ".env.production": "dotenv"
+		     },
+		     // 工作区设置
+		     "workbench.colorTheme": "Default Dark+",
+		     "workbench.startupEditor": "newUntitledFile",
+		     // Git 设置
+		     "git.enableSmartCommit": true,
+		     "git.autofetch": true,
+		     "git.confirmSync": false,
+		     // 终端设置
+		     "terminal.integrated.defaultProfile.linux": "bash",
+		     "terminal.integrated.defaultProfile.windows": "PowerShell",
+		     "terminal.integrated.defaultProfile.osx": "bash",
+		     // 禁用所有诊断和问题
+		     "problems.decorations.enabled": false,
+		     "problems.showCurrentInStatus": false,
+		     "problems.visibility": "never",
+		     // 禁用编辑器诊断
+		     "editor.quickSuggestions": {
+		      "other": false,
+		      "comments": false,
+		      "strings": false
+		     },
+		     "editor.suggestOnTriggerCharacters": false,
+		     "editor.acceptSuggestionOnCommitCharacter": false,
+		     "editor.acceptSuggestionOnEnter": "off",
+		     // 禁用语言服务器
+		     "python.languageServer": "None",
+		     "python.analysis.typeCheckingMode": "off",
+		     "python.analysis.diagnosticMode": "off",
+		     "terminal.integrated.shellIntegration.enabled": true
+		    }
+}

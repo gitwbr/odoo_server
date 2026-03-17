@@ -788,6 +788,7 @@ class CheckoutInherit(models.Model):
             # self.env.cr.commit()
             record.related_checkout_id = new_checkout.id
             new_checkout.related_checkout_id = record.id
+            new_checkout.user_id = record.user_id
             new_checkout.crm_lead_id = False
             
             new_checkout.checkoutcomment_ids.unlink()
@@ -1111,12 +1112,17 @@ class CrmReport(models.AbstractModel):
             if doc.manager_sign_user_id and doc.manager_sign_user_id.signature:
                 sign_images[doc.id]['manager_sign'] = doc.manager_sign_user_id.signature
         
+        # 每張報表是否有項次圖片（用於末尾附件區塊是否顯示）
+        doc_has_product_images = {}
+        for doc in docs:
+            doc_has_product_images[doc.id] = any(p.small_image_new for p in doc.product_ids)
         return {
-            'company': company, 
+            'company': company,
             'data': data,
             'doc_ids': docids,
             'docs': docs,
             'sign_images': sign_images,
+            'doc_has_product_images': doc_has_product_images,
             # 'comments':comments,
         }
 

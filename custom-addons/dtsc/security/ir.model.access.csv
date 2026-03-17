@@ -108,3 +108,4 @@ access_dtsc_checkoutstatehistory,dtsc.checkoutstatehistory,model_dtsc_checkoutst
 access_dtsc_interoperate,dtsc.interoperate,model_dtsc_interoperate,dtsc.group_dtsc_bs,1,1,1,1
 access_dtsc_healthinsurancewithfamily,dtsc.healthinsurancewithfamily,model_dtsc_healthinsurancewithfamily,dtsc.group_dtsc_bs,1,1,1,1
 access_dtsc_line_reply_pending,dtsc.line_reply_pending,model_dtsc_line_reply_pending,dtsc.group_dtsc_bs,1,1,1,1
+access_dtsc_normalsettings,dtsc.normalsettings,model_dtsc_normalsettings,dtsc.group_dtsc_bs,1,1,1,1

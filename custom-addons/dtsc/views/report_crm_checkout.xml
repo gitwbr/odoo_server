@@ -85,31 +85,36 @@
 										<span t-field="order.sequence" />	
 									</div>
 									<div class="col text-center" style="flex: 4;">
-										<t t-if="order.project_product_name">
-											<span t-field="order.project_product_name" />
+										<t t-set="last_value" t-value="False"/>
+										<t t-set="part1" t-value="(order.project_product_name or '').replace('其他','').replace('其它','')"/>
+										<t t-if="part1">
+											<span t-esc="part1"/>
 											<t t-set="last_value" t-value="True"/>
 										</t>
-										<t t-if="order.product_id.name">
+										<t t-set="part2" t-value="(order.product_id.name or '').replace('其他','').replace('其它','')"/>
+										<t t-if="part2">
 											<t t-if="last_value">
 												<t t-raw="'/'"/>
 											</t>
-											<span t-field="order.product_id.name" />
+											<span t-esc="part2"/>
 											<t t-set="last_value" t-value="True"/>
 										</t>
 										<t t-foreach="order.product_atts" t-as="attr">
-											<!-- <t t-if="attr.attribute_id.name != '冷裱'"> -->
+											<t t-set="part_attr" t-value="(attr.name or '').replace('其他','').replace('其它','')"/>
+											<t t-if="part_attr">
 												<t t-if="last_value">
 													<t t-raw="'/'"/>
 												</t>
-												<span t-field="attr.name" />
+												<span t-esc="part_attr"/>
 												<t t-set="last_value" t-value="True"/>
-											<!-- </t> -->
+											</t>
 										</t>
-										<t t-if="order.multi_chose_ids">
+										<t t-set="part_multi" t-value="(order.multi_chose_ids or '').replace('其他','').replace('其它','')"/>
+										<t t-if="part_multi">
 											<t t-if="last_value">
 												<t t-raw="'/'"/>
 											</t>
-											<span t-field="order.multi_chose_ids" />
+											<span t-esc="part_multi"/>
 										</t>
 									</div>
 									<div class="col text-center" style="flex: 1;">
@@ -265,6 +270,25 @@
 								</div>
 							</div>
 						</t>
+						<!-- 附件：按項次列印圖片（緊接正文下方，寫滿才換頁；模板內直接判斷有圖與否，不依賴 doc_has_product_images 避免生產環境未傳入報錯） -->
+						<t t-set="show_attachment_images" t-value="any(p.small_image_new for p in doc.product_ids)"/>
+						<t t-if="show_attachment_images">
+							<div style="margin-top: 15px;">
+								<div class="row" style="border-bottom: 2px solid black; margin-bottom: 10px;">
+									<div class="col-12" style="font-weight: bold;">附件：項次對應圖片</div>
+								</div>
+								<t t-foreach="doc.product_ids" t-as="order">
+									<t t-if="order.small_image_new">
+										<div class="row" style="border-bottom: 1px solid lightgray; margin-bottom: 10px; min-height: 130px; padding-bottom: 8px; display: flex; align-items: flex-start;">
+											<div class="col text-center" style="flex: 0 0 80px; padding-top: 8px;"><span t-field="order.sequence"/></div>
+											<div class="col text-center" style="flex: 1; max-height: 120px; overflow: hidden;">
+												<img t-att-src="image_data_uri(order.small_image_new)" style="max-width: 120px; max-height: 120px; width: auto; height: auto; object-fit: contain; display: block; margin: 0 auto;"/>
+											</div>
+										</div>
+									</t>
+								</t>
+							</div>
+						</t>
 					</t>
 				</t>
 			</div>
@@ -282,12 +306,15 @@
         <field name="binding_model_id" ref="model_dtsc_checkout"/>
         <field name="binding_type">report</field>
 		<field name="print_report_name">
-		  '%s-%s-報價單' % (
+		  '%s-%s-%s-報價單' % (
 			(object.name or '報價單'),
 			(object.is_new_partner and (object.new_partner or '客戶')
-			 or (object.customer_id and object.customer_id.name) or '客戶')
+			 or (object.customer_id and object.customer_id.name) or '客戶'),
+			(object.project_name or '')
 		  )
 		</field>
+		<!-- 排除 dtsc.group_dtsc_mg 权限组，不允许在页面上下载 -->
+		<field name="groups_id" eval="[(6, 0, [ref('dtsc.group_dtsc_yw'), ref('dtsc.group_dtsc_kj'), ref('dtsc.group_dtsc_sc'), ref('dtsc.group_dtsc_ck'), ref('dtsc.group_dtsc_gly')])]"/>
     </record>
 	
 

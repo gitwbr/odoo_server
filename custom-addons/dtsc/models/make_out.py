@@ -129,18 +129,26 @@ class MakeOut(models.Model):
                     
                     if field_name:
                         current_value = record[field_name] or ""
+                        time_field_name = f"{field_name}_time"
+                        current_time = fields.Datetime.now()
                         if current_value:
                             new_value = f"{current_value},{self.scan_input}"
                         else:
                             new_value = self.scan_input
-                        record.write({field_name: new_value})
+                        record.write({
+                            field_name: new_value,
+                            time_field_name: current_time
+                        })
                         if record.checkout_line_id:
                             checkout_current_value = record.checkout_line_id[field_name] or ""
                             if checkout_current_value:
                                 checkout_new_value = f"{checkout_current_value},{self.scan_input}"
                             else:
                                 checkout_new_value = self.scan_input
-                            record.checkout_line_id.write({field_name: checkout_new_value})
+                            record.checkout_line_id.write({
+                                field_name: checkout_new_value,
+                                time_field_name: current_time
+                            })
         if select_flag == 0:
             raise UserError("請選擇要簽名的項次！") 
             
@@ -503,16 +511,24 @@ class MakeLine(models.Model):
     )
     def clean_houzhi(self):
         self.houzhi_sign = ""
+        self.houzhi_sign_time = False
         self.checkout_line_id.houzhi_sign = ""
+        self.checkout_line_id.houzhi_sign_time = False
     def clean_pinguan(self):
         self.pinguan_sign = ""
+        self.pinguan_sign_time = False
         self.checkout_line_id.pinguan_sign = ""
+        self.checkout_line_id.pinguan_sign_time = False
     def clean_daichuhuo(self):
         self.daichuhuo_sign = ""
+        self.daichuhuo_sign_time = False
         self.checkout_line_id.daichuhuo_sign = ""
+        self.checkout_line_id.daichuhuo_sign_time = False
     def clean_yichuhuo(self):
         self.yichuhuo_sign = ""
+        self.yichuhuo_sign_time = False
         self.checkout_line_id.yichuhuo_sign = ""
+        self.checkout_line_id.yichuhuo_sign_time = False
     @api.depends('make_order_id.name', 'sequence')
     def _compute_barcode(self):
         for record in self:

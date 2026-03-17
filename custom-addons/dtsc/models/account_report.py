@@ -733,7 +733,10 @@ class AccountReport(models.AbstractModel):
         data["company_details"] = sorted(data["company_details"], key=lambda x: x['company_id'])
 
        
-        # print(data)
+
+        setting = self.env.ref('dtsc.account_print_comment', raise_if_not_found=False)
+        comment = (setting.value or '') if setting else ''
+        # print(data) 
         
         company = self.env['res.company']._company_default_get('account.move')
         return {
@@ -742,4 +745,5 @@ class AccountReport(models.AbstractModel):
             'docs': docs,
             'company': company,
             'data': data,
+            'account_print_comment': comment,
         }

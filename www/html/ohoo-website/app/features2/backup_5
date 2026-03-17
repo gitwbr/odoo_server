@@ -1,0 +1,118 @@
+<div className="w-full max-w-4xl mx-auto mt-20 flex flex-col items-center">
+        {/* 顶部大标题色块，靠左且左侧切平 */}
+        <div className="w-full flex mb-8">
+          <div className="bg-[#FFB84A] px-8 py-3 flex items-center shadow-md rounded-r-[18px] rounded-l-none" style={{borderTopLeftRadius:0, borderBottomLeftRadius:0, maxWidth:'600px'}}>
+            <span className="text-white text-2xl md:text-3xl font-extrabold tracking-wide text-left">
+              我該選擇哪一個 <span className="text-[#7B5A7B]">Megaboard</span> 呢？
+            </span>
+          </div>
+        </div>
+        {/* 方案卡片双栏，手机竖排 */}
+        <div className="w-full grid grid-cols-1 md:grid-cols-2 gap-8">
+          {/* 入門版 */}
+          <div className="flex flex-col h-full">
+            {/* 顶部clip-path黄色块，只包图片和标题 */}
+            <div className="w-full relative" style={{height:'180px'}}>
+              <div className="absolute inset-0" style={{clipPath:'polygon(0 0, 100% 0, 100% 80%, 50% 100%, 0 80%)', background:'#FFB84A', borderTopLeftRadius:'36px', borderTopRightRadius:'36px'}}></div>
+              {/* 图片浮层 */}
+              <div className="relative z-10 flex justify-center w-full pt-4">
+                <div className="mx-auto rounded-2xl bg-white p-2 shadow-lg" style={{width:'160px',height:'100px'}}>
+                  <Image
+                    src="/images/features/plan-basic.jpg"
+                    alt="入門版"
+                    width={160}
+                    height={100}
+                    className="object-cover rounded-xl w-full h-full"
+                    style={{boxShadow:'0 4px 16px rgba(0,0,0,0.10)'}}
+                  />
+                </div>
+              </div>
+              {/* 标题 */}
+              <div className="absolute left-0 right-0 bottom-6 flex justify-center z-20">
+                <div className="text-[#7B5A1B] text-3xl font-extrabold drop-shadow-sm">入門版</div>
+              </div>
+            </div>
+            {/* 内容区块：浅黄色圆角矩形 */}
+            <div className="flex-1 flex flex-col">
+              <div className="w-full bg-[#FFF7E6] rounded-2xl px-8 py-6 mt-4 mb-4 flex flex-col items-center h-full">
+                <div className="text-[#7B5A7B] text-base font-semibold mb-4">快速啟用・基本管理，適合新創、小型企業。</div>
+                <ul className="text-[#7B5A7B] text-base space-y-2 list-none text-left w-full max-w-xs mx-auto">
+                  <li>・印刷訂單系統</li>
+                  <li>・CRM模組</li>
+                  <li>・施工/完工報告單生成</li>
+                  <li>・及時報表與資料分析（基本款）</li>
+                  <li>・雲端部署</li>
+                  <li>・操作簡易，一站式平台</li>
+                  <li>・基本官網</li>
+                  <li>・免費年度更新</li>
+                  <li>・網頁下單，檔案預判功能<br /><span className="text-xs text-gray-400">（AI檔案尺寸及文字是否轉外框）</span></li>
+                </ul>
+              </div>
+              {/* 价格区块，深黄色 */}
+              <div className="w-full flex justify-center mt-auto">
+                <div className="bg-[#FFEB99] rounded-xl px-8 py-3 flex flex-col items-center shadow-md max-w-xs w-full">
+                  <div className="text-xl md:text-2xl font-bold mb-1">
+                    <span className="italic text-black">NT$</span><span className="italic text-[#D32B2B]">8888</span><span className="text-black font-bold">/每月</span>
+                  </div>
+                  <div className="text-black text-base font-bold">盡享所有應用程式</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          {/* 進階版 */}
+          <div className="flex flex-col h-full">
+            {/* 顶部clip-path蓝色块，只包图片和标题 */}
+            <div className="w-full relative" style={{height:'180px'}}>
+              <div className="absolute inset-0" style={{clipPath:'polygon(0 0, 100% 0, 100% 80%, 50% 100%, 0 80%)', background:'#4A7BFF', borderTopLeftRadius:'36px', borderTopRightRadius:'36px'}}></div>
+              {/* 图片浮层 */}
+              <div className="relative z-10 flex justify-center w-full pt-4">
+                <div className="mx-auto rounded-2xl bg-white p-2 shadow-lg" style={{width:'160px',height:'100px'}}>
+                  <Image
+                    src="/images/features/plan-pro.jpg"
+                    alt="進階版"
+                    width={160}
+                    height={100}
+                    className="object-cover rounded-xl w-full h-full"
+                    style={{boxShadow:'0 4px 16px rgba(0,0,0,0.10)'}}
+                  />
+                </div>
+              </div>
+              {/* 标题 */}
+              <div className="absolute left-0 right-0 bottom-6 flex justify-center z-20">
+                <div className="text-[#fff] text-3xl font-extrabold drop-shadow-sm" style={{textShadow:'0 2px 8px #2a3e6e55'}} >進階版</div>
+              </div>
+            </div>
+            {/* 内容区块：浅蓝色圆角矩形 */}
+            <div className="flex-1 flex flex-col">
+              <div className="w-full bg-[#E6EDFF] rounded-2xl px-8 py-6 mt-4 mb-4 flex flex-col items-center h-full">
+                <div className="text-[#555] text-base font-semibold mb-4">全方位整合，智慧決策，適合成長型企業。</div>
+                <ul className="text-[#555] text-base space-y-2 list-none text-left w-full max-w-xs mx-auto">
+                  <li>・印刷訂單系統</li>
+                  <li>・<span className="text-[#4A7BFF] font-bold">流程進度顯示</span></li>
+                  <li>・<span className="text-[#4A7BFF] font-bold">庫存掃碼精準掌控</span></li>
+                  <li>・CRM模組</li>
+                  <li>・<span className="text-[#4A7BFF] font-bold">EIP線上簽核</span></li>
+                  <li>・施工/完工報告單生成</li>
+                  <li>・及時報表與資料分析（進階款）</li>
+                  <li>・<span className="text-[#4A7BFF] font-bold">員工績效管理報告</span></li>
+                  <li>・雲端部署</li>
+                  <li>・操作簡易，一站式平台</li>
+                  <li>・基本官網</li>
+                  <li>・免費年度更新</li>
+                  <li>・<span className="text-[#4A7BFF] font-bold">網站串流（第三方金流）</span></li>
+                  <li>・網頁下單，檔案預判功能<br /><span className="text-xs text-gray-400">（AI檔案尺寸及文字是否轉外框）</span></li>
+                </ul>
+              </div>
+              {/* 价格区块，深蓝色 */}
+              <div className="w-full flex justify-center mt-auto">
+                <div className="bg-[#52a9ff] rounded-xl px-8 py-3 flex flex-col items-center shadow-md max-w-xs w-full">
+                  <div className="text-xl md:text-2xl font-bold mb-1">
+                    <span className="italic text-white">NT$</span><span className="italic text-[#D32B2B]">16888</span><span className="text-white font-bold">/每月</span>
+                  </div>
+                  <div className="text-white text-base font-bold">盡享所有應用程式</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>

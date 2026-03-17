@@ -11,40 +11,40 @@ export default function Features2() {
       <Navbar />
       <div className="w-full max-w-4xl mx-auto pt-24 pb-8 px-4 flex flex-col items-start">
         {/* 橘色竖条在主标题上方居左 */}
-        <div className="w-12 md:w-16 h-24 md:h-32 bg-[#FFB84A] rounded-b-full mb-4 ml-8" style={{borderTopLeftRadius:0,borderTopRightRadius:0}}></div>
+        <div className="w-12 md:w-16 h-24 md:h-32 bg-[#FFB84A] rounded-b-full mb-4 ml-8" style={{ borderTopLeftRadius: 0, borderTopRightRadius: 0 }}></div>
         {/* 主标题区块：主标题+蓝色横条 */}
-        <div className="relative w-full mb-2 flex flex-col items-start" style={{minHeight:'110px'}}>
+        <div className="relative w-full mb-2 flex flex-col items-start" style={{ minHeight: '110px' }}>
           {/* 主标题两行 */}
           <div className="flex items-center relative z-10">
-            <span className="text-[2.6rem] md:text-[3.5rem] font-extrabold leading-[1.1] text-[#7B5A7B]" style={{letterSpacing:'2px'}}>MEGA</span>
+            <span className="text-[2.6rem] md:text-[3.5rem] font-extrabold leading-[1.1] text-[#7B5A7B]" style={{ letterSpacing: '2px' }}>MEGA</span>
           </div>
           <div className="flex items-center relative z-10 mt-[-0.2em]">
-            <span className="text-[2.6rem] md:text-[3.5rem] font-extrabold leading-[1.1] text-[#7B5A7B]" style={{letterSpacing:'2px'}}>Board ERP</span>
+            <span className="text-[2.6rem] md:text-[3.5rem] font-extrabold leading-[1.1] text-[#7B5A7B]" style={{ letterSpacing: '2px' }}>Board ERP</span>
           </div>
           {/* 蓝色横条绝对定位在右侧 */}
           <span
             className="hidden md:block absolute right-0 top-1/2 -translate-y-1/2 h-16 w-[500px] bg-[#4A7BFF] rounded-l-full"
-            style={{borderTopRightRadius:0,borderBottomRightRadius:0}}
+            style={{ borderTopRightRadius: 0, borderBottomRightRadius: 0 }}
           ></span>
           <span
             className="block md:hidden absolute right-0 top-1/2 -translate-y-1/2 h-12 w-[100px] bg-[#4A7BFF] rounded-l-full"
-            style={{borderTopRightRadius:0,borderBottomRightRadius:0}}
+            style={{ borderTopRightRadius: 0, borderBottomRightRadius: 0 }}
           ></span>
         </div>
         {/* 副标题区块：副标题三行 */}
         <div className="flex w-full items-start mb-8 mt-2">
           {/* 副标题三行 */}
           <div className="flex flex-col justify-center">
-            <div className="text-[2rem] md:text-[2.5rem] font-extrabold leading-[1.1] text-[#888888]" style={{letterSpacing:'2px'}}>五大優勢帶您突圍重生</div>
+            <div className="text-[2rem] md:text-[2.5rem] font-extrabold leading-[1.1] text-[#888888]" style={{ letterSpacing: '2px' }}>五大優勢帶您突圍重生</div>
           </div>
         </div>
         {/* 说明文字区块：红色竖条+说明文字 */}
         <div className="flex w-full items-start mt-8">
           {/* 红色竖条 */}
-          <div className="w-12 md:w-16 h-60 md:h-35 bg-[#FF6B6B] rounded-t-full mr-4 ml-8 flex-shrink-0" style={{borderBottomLeftRadius:0,borderBottomRightRadius:0}}></div>
+          <div className="w-12 md:w-16 h-60 md:h-35 bg-[#FF6B6B] rounded-t-full mr-4 ml-8 flex-shrink-0" style={{ borderBottomLeftRadius: 0, borderBottomRightRadius: 0 }}></div>
           {/* 说明文字 */}
           <div className="w-full text-gray-500 text-base md:text-lg leading-relaxed text-left">
-          告別手忙腳亂的傳統管理瓶頸，昂首闊步邁向數位化轉型！我們的數位印刷專用ERP系統，Mega Board ERP基於強大的Odoo平台客製化精雕細琢而成，為您帶來五大核心優勢，一舉掃除大圖產業常見的客戶管理、庫存管理、生產管理、記帳管理等陳年痛點，助您在競爭激烈的市場中脫穎而出，贏得先機。
+            告別手忙腳亂的傳統管理瓶頸，昂首闊步邁向數位化轉型！我們的數位印刷專用ERP系統，Mega Board ERP基於強大的Odoo平台客製化精雕細琢而成，為您帶來五大核心優勢，一舉掃除大圖產業常見的客戶管理、庫存管理、生產管理、記帳管理等陳年痛點，助您在競爭激烈的市場中脫穎而出，贏得先機。
           </div>
         </div>
       </div>
@@ -52,7 +52,7 @@ export default function Features2() {
       <div className="w-full max-w-4xl mx-auto mt-20 flex flex-col items-start">
         {/* 红色标题条 */}
         <div className="w-full flex items-center mb-8">
-          <div className="h-14 md:h-16 px-8 flex items-center bg-[#FF6B6B] rounded-r-full" style={{borderTopLeftRadius:0,borderBottomLeftRadius:0}}>
+          <div className="h-14 md:h-16 px-8 flex items-center bg-[#FF6B6B] rounded-r-full" style={{ borderTopLeftRadius: 0, borderBottomLeftRadius: 0 }}>
             <span className="text-white text-2xl md:text-3xl font-extrabold tracking-wide">客戶管理與資訊透明</span>
           </div>
         </div>
@@ -88,7 +88,7 @@ export default function Features2() {
       <div className="w-full max-w-4xl mx-auto mt-20 flex flex-col items-start">
         {/* 蓝色标题条 */}
         <div className="w-full flex items-center mb-8">
-          <div className="h-14 md:h-16 px-8 flex items-center bg-[#4A7BFF] rounded-r-full" style={{borderTopLeftRadius:0,borderBottomLeftRadius:0}}>
+          <div className="h-14 md:h-16 px-8 flex items-center bg-[#4A7BFF] rounded-r-full" style={{ borderTopLeftRadius: 0, borderBottomLeftRadius: 0 }}>
             <span className="text-white text-2xl md:text-3xl font-extrabold tracking-wide">遠端辦公與系統整合</span>
           </div>
         </div>
@@ -125,7 +125,7 @@ export default function Features2() {
       <div className="w-full max-w-4xl mx-auto mt-20 flex flex-col items-start">
         {/* 橘色标题条 */}
         <div className="w-full flex items-center mb-8">
-          <div className="h-14 md:h-16 px-8 flex items-center bg-[#FFB84A] rounded-r-full" style={{borderTopLeftRadius:0,borderBottomLeftRadius:0}}>
+          <div className="h-14 md:h-16 px-8 flex items-center bg-[#FFB84A] rounded-r-full" style={{ borderTopLeftRadius: 0, borderBottomLeftRadius: 0 }}>
             <span className="text-white text-2xl md:text-3xl font-extrabold tracking-wide">CRM整合與數據驅動決策</span>
           </div>
         </div>
@@ -154,7 +154,7 @@ export default function Features2() {
       <div className="w-full max-w-4xl mx-auto mt-20 flex flex-col items-start">
         {/* 红色标题条 */}
         <div className="w-full flex items-center mb-8">
-          <div className="h-14 md:h-16 px-8 flex items-center bg-[#FF6B6B] rounded-r-full" style={{borderTopLeftRadius:0,borderBottomLeftRadius:0}}>
+          <div className="h-14 md:h-16 px-8 flex items-center bg-[#FF6B6B] rounded-r-full" style={{ borderTopLeftRadius: 0, borderBottomLeftRadius: 0 }}>
             <span className="text-white text-2xl md:text-3xl font-extrabold tracking-wide">24小時自動接單系統</span>
           </div>
         </div>
@@ -268,7 +268,7 @@ export default function Features2() {
       <div className="w-full max-w-4xl mx-auto mt-20 flex flex-col items-center">
         {/* 顶部大标题色块，靠左且左侧切平 */}
         <div className="w-full flex mb-8">
-          <div className="bg-[#FFB84A] px-8 py-3 flex items-center shadow-md rounded-r-[18px] rounded-l-none" style={{borderTopLeftRadius:0, borderBottomLeftRadius:0, maxWidth:'600px'}}>
+          <div className="bg-[#FFB84A] px-8 py-3 flex items-center shadow-md rounded-r-[18px] rounded-l-none" style={{ borderTopLeftRadius: 0, borderBottomLeftRadius: 0, maxWidth: '600px' }}>
             <span className="text-white text-2xl md:text-3xl font-extrabold tracking-wide text-left">
               我該選擇哪一個 <span className="text-[#7B5A7B]">Megaboard</span> 呢？
             </span>
@@ -279,18 +279,18 @@ export default function Features2() {
           {/* 入門版 */}
           <div className="flex flex-col h-full">
             {/* 顶部clip-path黄色块，只包图片和标题 */}
-            <div className="w-full relative" style={{height:'180px'}}>
-              <div className="absolute inset-0" style={{clipPath:'polygon(0 0, 100% 0, 100% 80%, 50% 100%, 0 80%)', background:'#FFB84A', borderTopLeftRadius:'36px', borderTopRightRadius:'36px'}}></div>
+            <div className="w-full relative" style={{ height: '180px' }}>
+              <div className="absolute inset-0" style={{ clipPath: 'polygon(0 0, 100% 0, 100% 80%, 50% 100%, 0 80%)', background: '#FFB84A', borderTopLeftRadius: '36px', borderTopRightRadius: '36px' }}></div>
               {/* 图片浮层 */}
               <div className="relative z-10 flex justify-center w-full pt-4">
-                <div className="mx-auto rounded-2xl bg-white p-2 shadow-lg" style={{width:'160px',height:'100px'}}>
+                <div className="mx-auto rounded-2xl bg-white p-2 shadow-lg" style={{ width: '160px', height: '100px' }}>
                   <Image
                     src="/images/features/plan-basic.jpg"
                     alt="入門版"
                     width={160}
                     height={100}
                     className="object-cover rounded-xl w-full h-full"
-                    style={{boxShadow:'0 4px 16px rgba(0,0,0,0.10)'}}
+                    style={{ boxShadow: '0 4px 16px rgba(0,0,0,0.10)' }}
                   />
                 </div>
               </div>
@@ -316,37 +316,37 @@ export default function Features2() {
                 </ul>
               </div>
               {/* 价格区块，深黄色 */}
-              <div className="w-full flex justify-center mt-auto">
+              {/* <div className="w-full flex justify-center mt-auto">
                 <div className="bg-[#FFEB99] rounded-xl px-8 py-3 flex flex-col items-center shadow-md max-w-xs w-full">
                   <div className="text-xl md:text-2xl font-bold mb-1">
                     <span className="italic text-black">NT$</span><span className="italic text-[#D32B2B]">8888</span><span className="text-black font-bold">/每月</span>
                   </div>
                   <div className="text-black text-base font-bold">盡享所有應用程式</div>
                 </div>
-              </div>
+              </div> */}
             </div>
           </div>
           {/* 進階版 */}
           <div className="flex flex-col h-full">
             {/* 顶部clip-path蓝色块，只包图片和标题 */}
-            <div className="w-full relative" style={{height:'180px'}}>
-              <div className="absolute inset-0" style={{clipPath:'polygon(0 0, 100% 0, 100% 80%, 50% 100%, 0 80%)', background:'#4A7BFF', borderTopLeftRadius:'36px', borderTopRightRadius:'36px'}}></div>
+            <div className="w-full relative" style={{ height: '180px' }}>
+              <div className="absolute inset-0" style={{ clipPath: 'polygon(0 0, 100% 0, 100% 80%, 50% 100%, 0 80%)', background: '#4A7BFF', borderTopLeftRadius: '36px', borderTopRightRadius: '36px' }}></div>
               {/* 图片浮层 */}
               <div className="relative z-10 flex justify-center w-full pt-4">
-                <div className="mx-auto rounded-2xl bg-white p-2 shadow-lg" style={{width:'160px',height:'100px'}}>
+                <div className="mx-auto rounded-2xl bg-white p-2 shadow-lg" style={{ width: '160px', height: '100px' }}>
                   <Image
                     src="/images/features/plan-pro.jpg"
                     alt="進階版"
                     width={160}
                     height={100}
                     className="object-cover rounded-xl w-full h-full"
-                    style={{boxShadow:'0 4px 16px rgba(0,0,0,0.10)'}}
+                    style={{ boxShadow: '0 4px 16px rgba(0,0,0,0.10)' }}
                   />
                 </div>
               </div>
               {/* 标题 */}
               <div className="absolute left-0 right-0 bottom-6 flex justify-center z-20">
-                <div className="text-[#fff] text-3xl font-extrabold drop-shadow-sm" style={{textShadow:'0 2px 8px #2a3e6e55'}} >進階版</div>
+                <div className="text-[#fff] text-3xl font-extrabold drop-shadow-sm" style={{ textShadow: '0 2px 8px #2a3e6e55' }} >進階版</div>
               </div>
             </div>
             {/* 内容区块：浅蓝色圆角矩形 */}
@@ -371,14 +371,14 @@ export default function Features2() {
                 </ul>
               </div>
               {/* 价格区块，深蓝色 */}
-              <div className="w-full flex justify-center mt-auto">
+              {/* <div className="w-full flex justify-center mt-auto">
                 <div className="bg-[#52a9ff] rounded-xl px-8 py-3 flex flex-col items-center shadow-md max-w-xs w-full">
                   <div className="text-xl md:text-2xl font-bold mb-1">
                     <span className="italic text-white">NT$</span><span className="italic text-[#D32B2B]">16888</span><span className="text-white font-bold">/每月</span>
                   </div>
                   <div className="text-white text-base font-bold">盡享所有應用程式</div>
                 </div>
-              </div>
+              </div> */}
             </div>
           </div>
         </div>
@@ -399,7 +399,7 @@ export default function Features2() {
           ></div>
         </div>
         {/* 主文案+蓝色横条 */}
-        <div className="flex w-full items-center justify-end relative" style={{minHeight:'120px'}}>
+        <div className="flex w-full items-center justify-end relative" style={{ minHeight: '120px' }}>
           {/* 蓝色横条贴左侧，垂直居中 */}
           <div
             className="w-20 md:w-96 h-12 md:h-16 bg-[#4A7BFF] absolute left-0 top-1/2 -translate-y-1/2"
@@ -410,8 +410,8 @@ export default function Features2() {
               borderBottomRightRadius: '9999px',
             }}
           ></div>
-          <div className="flex flex-col items-end pr-2 md:pr-16 z-20 w-full" style={{paddingLeft: '5rem'}}>
-            <div className="text-[#666] font-extrabold text-2xl md:text-4xl leading-snug text-right" style={{letterSpacing:'2px', lineHeight:'1.3'}}>
+          <div className="flex flex-col items-end pr-2 md:pr-16 z-20 w-full" style={{ paddingLeft: '5rem' }}>
+            <div className="text-[#666] font-extrabold text-2xl md:text-4xl leading-snug text-right" style={{ letterSpacing: '2px', lineHeight: '1.3' }}>
               <div>立即預約專人服務，</div>
               <div>免費諮詢，</div>
               <div>量身推薦，</div>
@@ -440,11 +440,11 @@ export default function Features2() {
         {/* 左下角logo与公司名 */}
         <div className="absolute left-20 bottom-30 flex flex-col items-start z-20">
           <div className="flex items-center space-x-1">
-            <span className="block font-bold" style={{fontSize:'2.2rem', color:'#888888', lineHeight:'1.1', letterSpacing:'2px', display:'inline-block', width:'auto'}}>
-              Euh<span style={{color:'#7B5A7B'}}>o</span>n
+            <span className="block font-bold" style={{ fontSize: '2.2rem', color: '#888888', lineHeight: '1.1', letterSpacing: '2px', display: 'inline-block', width: 'auto' }}>
+              Euh<span style={{ color: '#7B5A7B' }}>o</span>n
             </span>
           </div>
-          <div className="text-[#888] text-base font-semibold tracking-wide"><span className="block text-lg font-bold" style={{color:'#888888',letterSpacing:'2px',marginTop:'-2px',width:'100%'}}>歐鴻網路科技</span></div>
+          <div className="text-[#888] text-base font-semibold tracking-wide"><span className="block text-lg font-bold" style={{ color: '#888888', letterSpacing: '2px', marginTop: '-2px', width: '100%' }}>歐鴻網路科技</span></div>
         </div>
       </div>
     </main>
