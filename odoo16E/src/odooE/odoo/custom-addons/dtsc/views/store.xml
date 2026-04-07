@@ -1,0 +1,26 @@
+<odoo>
+	<record id="view_product_pricelist_item_form_inherit" model="ir.ui.view">
+        <field name="name">product.pricelist.item.form.inherit</field>
+        <field name="model">product.pricelist.item</field>
+        <field name="inherit_id" ref="product.product_pricelist_item_tree_view_from_product"/>
+        <field name="arch" type="xml">
+			<field name="product_id" position="after">
+                <field name="checkout_product_id" options="{'no_create': True, 'no_create_edit': True}"/>
+                <field name="checkout_width"/>
+                <field name="checkout_height"/>
+				<field name="checkout_product_atts" widget="many2many_tags" domain="[('id' , 'in' , checkout_allowed_product_atts )]"/> 
+				<field name="checkout_maketype" widget="many2many_tags"/> 
+				<field name="checkout_allowed_product_atts" invisible="1" />
+            </field>
+			
+			<field name="date_start" position="attributes">
+				<attribute name="invisible">1</attribute>
+			</field>
+			
+			<field name="date_end" position="attributes">
+				<attribute name="invisible">1</attribute>
+			</field>
+           
+        </field>
+    </record>
+</odoo>

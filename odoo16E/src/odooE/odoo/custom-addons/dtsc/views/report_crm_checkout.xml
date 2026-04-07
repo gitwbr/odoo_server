@@ -1,0 +1,1115 @@
+<odoo>
+	<template id="report_crm_checkout_template">
+        <t t-call="web.html_container">
+            <style>
+		/* 整行不可分页 */
+		.keep-together{
+		  display:block !important;
+		  width:100%;
+		  page-break-inside:avoid !important;
+		  break-inside:avoid !important;
+		}
+
+		/* 明细列：固定行高 78px，足够显示 3 行（含行距） */
+		.report-crm-checkout-detail .pdf-row,
+		.report-crm-checkout-detail .row.pdf-row.fixed-3{
+		  display:table !important;
+		  width:100% !important;
+		  table-layout:fixed !important;
+		  height:78px !important;
+		  min-height:78px !important;
+		  max-height:78px !important;
+		  margin:0 !important;
+		  box-sizing:border-box !important;
+		}
+		.report-crm-checkout-detail .pdf-row > .col,
+		.report-crm-checkout-detail .pdf-row > [class*="col-"]{
+		  display:table-cell !important;
+		  float:none !important;
+		  vertical-align:middle !important;
+		  height:78px !important;
+		  min-height:78px !important;
+		  max-height:78px !important;
+		  padding:0 2mm 0 2mm !important;
+		  margin:0 !important;
+		  overflow:hidden !important;
+		  box-sizing:border-box !important;
+		}
+
+		.report-crm-checkout-detail .cell-3{
+		  height:78px !important;
+		  max-height:78px !important;
+		  min-height:78px !important;
+		  margin:0 !important;
+		  padding:0 !important;
+		  overflow:hidden !important;
+		  box-sizing:border-box !important;
+		}
+		/* 多行格：行高 24px，3 行=72px，不超出 78px */
+		.report-crm-checkout-detail .cell-3.multi,
+		.report-crm-checkout-detail .cell-3.multi *{
+		  margin:0 !important;
+		  padding:0 !important;
+		}
+		.report-crm-checkout-detail .cell-3.multi{
+		  line-height:24px !important;
+		  white-space:normal !important;
+		  word-break:break-word !important;
+		  word-wrap:break-word !important;
+		  overflow:hidden !important;
+		  display:-webkit-box !important;
+		  -webkit-box-orient:vertical !important;
+		  -webkit-line-clamp:3 !important;
+		}
+		.report-crm-checkout-detail .cell-3.center{
+		  display:flex !important;
+		  align-items:center !important;
+		  justify-content:center !important;
+		  white-space:nowrap !important;
+		}
+
+		@media print{
+		  .keep-together{ page-break-inside:avoid !important; break-inside:avoid !important; }
+		  .report-crm-checkout-detail .pdf-row,
+		  .report-crm-checkout-detail .row.pdf-row.fixed-3{
+		    display:table !important;
+		    height:78px !important;
+		    min-height:78px !important;
+		    max-height:78px !important;
+		  }
+		  .report-crm-checkout-detail .pdf-row > .col,
+		  .report-crm-checkout-detail .pdf-row > [class*="col-"]{
+		    height:78px !important;
+		    min-height:78px !important;
+		    max-height:78px !important;
+		    padding:0 2mm 0 2mm !important;
+		    margin:0 !important;
+		  }
+		  .report-crm-checkout-detail .cell-3{
+		    height:78px !important;
+		    min-height:78px !important;
+		    max-height:78px !important;
+		    margin:0 !important;
+		    padding:0 !important;
+		  }
+		  .report-crm-checkout-detail .cell-3.multi,
+		  .report-crm-checkout-detail .cell-3.multi *{
+		    margin:0 !important;
+		    padding:0 !important;
+		    line-height:24px !important;
+		  }
+		}
+		</style>
+			<div class="page">
+				<t t-foreach="docs" t-as="doc">
+					<t t-call="dtsc.external_layout_coin">
+						<table class="table table-condensed">
+                            <tbody>
+                                <tr>
+                                    <td rowspan="2" ><img t-if="company.logo" t-att-src="'data:image/png;base64,%s' % company.logo.decode('utf-8')" style="width: 50px; max-height:50px"/><span t-field="company.name" /></td>
+                                    <td>報價單 - <span t-field="doc.name" /></td>
+                                    <td><span t-field="company.street" /></td>
+                                </tr>
+                                <tr>
+                                    <td>Mail：<span t-field="company.email" /></td>
+                                    <td>Tel：<span t-field="company.phone" /> Fax：<span t-field="company.fax" /></td>
+                                </tr>
+                                <tr>
+									<t t-if="doc.is_new_partner"><td>客戶名稱： <span t-field="doc.new_partner" /></td></t>
+									<t t-else="1"><td>客戶名稱： <span t-field="doc.customer_id.name" /></td></t>
+									<!-- <td>客戶名稱:<span t-field="doc.customer_id.name" /></td> -->
+									
+									<t t-if="doc.is_new_partner"><td>統一編號： <span t-field="doc.new_vat" /></td></t>
+									<t t-else="1"><td>統一編號： <span t-field="doc.customer_id.vat" /></td></t>
+									<!-- <td>統一編號:<span t-field="doc.customer_id.vat" /></td> -->
+									<t t-if="doc.is_new_partner"><td>付款條件： <span t-field="doc.new_property_payment_term_id" /></td></t>
+									<t t-else="1"><td>付款條件： <span t-field="doc.customer_id.property_payment_term_id" /></td></t>
+									<!-- <td>付款條件:<span t-field="doc.customer_id.property_payment_term_id" /></td> -->
+                                </tr>
+                                <tr>
+									<t t-if="doc.is_new_partner"><td>聯絡人： <span t-field="doc.new_custom_contact_person" /></td></t>
+									<t t-else="1"><td>聯絡人： <span t-field="doc.customer_id.custom_contact_person" /></td></t>
+									<!-- <td>聯絡人:<span t-field="doc.customer_id.custom_contact_person" /></td> -->
+									<t t-if="doc.is_new_partner"><td>電話： <span t-field="doc.new_phone" /></td></t>
+									<t t-else="1"><td>電話： <span t-field="doc.customer_id.phone" /></td></t>
+									<!-- <td>電話:<span t-field="doc.customer_id.phone" /></td> -->
+									<t t-if="doc.is_new_partner"><td>收款方式： <span t-field="doc.new_custom_pay_mode" /></td></t>
+									<t t-else="1"><td>收款方式： <span t-field="doc.customer_id.custom_pay_mode" /></td></t>
+									<!-- <td>收款方式:<span t-field="doc.customer_id.custom_pay_mode" /></td> -->
+                                </tr>
+                                <tr>
+									<t t-if="doc.is_new_partner"><td>地址： <span t-field="doc.new_street" /></td></t>
+									<t t-else="1"><td>地址：<span t-field="doc.customer_id.street" /></td></t>
+									<!-- <td>地址:<span t-field="doc.customer_id.street" /></td> -->
+									<t t-if="doc.is_new_partner"><td>傳真： <span t-field="doc.new_custom_fax" /></td></t>
+									<t t-else="1"><td>傳真：<span t-field="doc.customer_id.custom_fax" /></td></t>
+									<!-- <td>傳真:<span t-field="doc.customer_id.custom_fax" /></td> -->
+									<td>報價日期： <span t-field="doc.crm_date" /></td>
+                                </tr>
+                                <tr>
+									<t t-if="doc.is_new_partner"><td>E-mail：  <span t-field="doc.new_email" /></td></t>
+									<t t-else="1"><td>E-mail： <span t-field="doc.customer_id.email" /></td></t>
+									<!-- <td>E-mail:<span t-field="doc.customer_id.email" /></td> -->
+									<t t-if="doc.is_new_partner"><td>行動電話： <span t-field="doc.new_mobile" /></td></t>
+									<t t-else="1"><td>行動電話： <span t-field="doc.customer_id.mobile" /></td></t>
+									<!-- <td>行動電話:<span t-field="doc.customer_id.mobile" /></td> -->
+									<td>有效期限： <span t-field="doc.crm_effective_date" /></td>
+                                </tr>
+                            </tbody>
+                        </table>	
+
+						<t t-set="SHOW_PRICE" t-value="doc.is_show_price or (doc.checkout_order_type == 'd' and not doc.is_sign)"/>						
+						<div class="report-crm-checkout-detail">
+							<div class="row" style="border-bottom: 2px solid black;  margin-bottom:10px;">
+								<div class="col text-center" style="flex: 1;">項</div>
+								<div class="col text-center" style="flex: 4;">製作内容</div>
+								<div class="col text-center" style="flex: 1;">尺寸cm</div>
+								<t t-if="SHOW_PRICE">
+									<div class="col text-center" style="flex: 1;">才數</div>
+								</t>
+								<div class="col text-center" style="flex: 1;">數量</div>
+								<t t-if="SHOW_PRICE">
+									<div class="col text-center" style="flex: 1;">單價</div>
+									<div class="col text-center" style="flex: 1;">其它</div>
+								</t>
+
+								<div class="col text-center" style="flex: 1;">小計</div>
+							</div>	
+							<t t-set="row_count" t-value="0"/>
+							<t t-foreach="doc.product_ids" t-as="order">
+								<!-- 本條是否有成本行（算入行數） -->
+								<t t-set="has_chengben" t-value="doc.checkout_order_type == 'd' and not doc.is_sign and doc.checkout_order_state == 'waiting_confirmation' and (order.crm_chengben_comment or (order.crm_chengben or 0) != 0)"/>
+								<t t-set="row_count_after" t-value="row_count + 1 + (1 if has_chengben else 0)"/>
+								<!-- 换页后（累计13、29、45…行之后）先输出表头 -->
+								<t t-if="row_count == 13 or ((row_count - 13) % 16 == 0 and row_count &gt; 13)">
+									<div class="row" style="border-bottom: 2px solid black; margin-bottom:10px;">
+										<div class="col text-center" style="flex: 1;">項</div>
+										<div class="col text-center" style="flex: 4;">製作内容</div>
+										<div class="col text-center" style="flex: 1;">尺寸cm</div>
+										<t t-if="SHOW_PRICE">
+											<div class="col text-center" style="flex: 1;">才數</div>
+										</t>
+										<div class="col text-center" style="flex: 1;">數量</div>
+										<t t-if="SHOW_PRICE">
+											<div class="col text-center" style="flex: 1;">單價</div>
+											<div class="col text-center" style="flex: 1;">其它</div>
+										</t>
+										<div class="col text-center" style="flex: 1;">小計</div>
+									</div>
+								</t>
+								<div class="keep-together">
+								<div class="row pdf-row fixed-3" style="border-bottom:1px solid lightgray; height:78px; min-height:78px;">
+									<div class="col text-center" style="flex: 1;">
+										<div class="cell-3 center">
+											<span t-field="order.sequence" />
+										  </div>
+									</div>
+									
+									<div class="col text-center" style="flex: 4;">
+										<div class="cell-3 multi">
+											<t t-set="last_value" t-value="False"/>
+											<t t-set="part1" t-value="(order.project_product_name or '').replace('其他','').replace('其它','')"/>
+											<t t-if="part1">
+												<span t-esc="part1"/>
+												<t t-set="last_value" t-value="True"/>
+											</t>
+											<t t-set="part2" t-value="(order.product_id.name or '').replace('其他','').replace('其它','')"/>
+											<t t-if="part2">
+												<t t-if="last_value">
+													<t t-raw="'/'"/>
+												</t>
+												<span t-esc="part2"/>
+												<t t-set="last_value" t-value="True"/>
+											</t>
+											<t t-foreach="order.product_atts" t-as="attr">
+												<t t-set="part_attr" t-value="(attr.name or '').replace('其他','').replace('其它','')"/>
+												<t t-if="part_attr">
+													<t t-if="last_value">
+														<t t-raw="'/'"/>
+													</t>
+													<span t-esc="part_attr"/>
+													<t t-set="last_value" t-value="True"/>
+												</t>
+											</t>
+											<t t-set="part_multi" t-value="(order.multi_chose_ids and order.multi_chose_ids or '').replace('其他','').replace('其它','')"/>
+											<t t-if="part_multi">
+												<t t-if="last_value">
+													<t t-raw="'/'"/>
+												</t>
+												<span t-esc="part_multi"/>
+											</t>
+										</div>
+									</div>
+									<div class="col text-center" style="flex: 1;">
+										<div class="cell-3 multi">
+											<span t-field="order.product_width" />x<span t-field="order.product_height" />	
+										</div>
+									</div>
+									
+									<t t-if="SHOW_PRICE">
+										<div class="col text-center" style="flex: 1;">
+											<div class="cell-3 multi">
+												<span t-esc="'{:,.0f}'.format((order.total_units))" />
+											</div>
+										</div>
+									</t>
+									<div class="col text-center no-wrap" style="flex: 1;">
+										<div class="cell-3 multi">
+											<span t-esc="'{:,.0f}'.format((order.quantity))" />
+										</div>
+									</div>
+									
+									<t t-if="SHOW_PRICE">
+										<div class="col text-center" style="flex: 1;">
+											<div class="cell-3 multi">
+												<span t-esc="'{:,.0f}'.format((order.units_price))" />
+											</div>
+										</div>
+										<div class="col text-center" style="flex: 1;">
+											<div class="cell-3 multi">
+												<span t-esc="'{:,.0f}'.format((order.total_make_price + order.peijian_price))" />
+											</div>
+										</div>
+									</t>
+									<div class="col text-center" style="flex: 1;">
+										<div class="cell-3 multi">
+											<span t-esc="'{:,.0f}'.format((order.price))" />
+										
+										</div>
+									</div>
+								</div>
+								</div>
+								<!--  and  -->
+								<t t-if="doc.checkout_order_type == 'd' and not doc.is_sign ">
+									<t t-if="doc.checkout_order_state == 'waiting_confirmation'">
+										<t t-if="order.crm_chengben_comment or (order.crm_chengben or 0) != 0">
+											<div class="keep-together">
+											<div class="row pdf-row fixed-3" style="border-bottom:1px solid lightgray; height:78px; min-height:78px;">
+
+												<div class="col text-center" style="flex: 10;">
+													<div class="cell-3 multi">
+														<span t-esc="order.crm_chengben_comment"/>
+													
+													</div>
+												</div>
+
+
+												<div class="col text-center" style="flex: 1;">
+													<div class="cell-3 multi">
+													<t t-if="(order.crm_chengben or 0) != 0">
+														<span t-esc="'{:,.0f}'.format(order.crm_chengben)"/>
+													</t>
+													</div> 
+												</div> 
+											</div>
+											</div>
+										</t>
+									</t>
+								</t>
+								<!-- 第一页 13 行后换页，之后每 16 行换页（行数含成本行） -->
+								<t t-if="row_count_after == 13 or ((row_count_after - 13) % 16 == 0 and row_count_after &gt; 13)">
+									<div style="page-break-after:always;"></div>
+								</t>
+								<t t-set="row_count" t-value="row_count_after"/>
+							</t>
+							<t t-if="doc.checkout_order_type == 'a'">
+								<div class="row" style="border-bottom: 1px solid lightgray; margin-bottom: 10px;">
+										
+										
+										<div class="col text-center" style="flex: 1;"></div><div class="col text-center" style="flex: 4;"></div><div class="col text-center" style="flex: 1;"></div>
+										
+										<t t-if="SHOW_PRICE">
+											<div class="col text-center" style="flex: 1;"></div>
+											<div class="col text-center" style="flex: 1;"></div>
+											<div class="col text-center" style="flex: 1;"></div>
+										</t>
+										<div class="col text-center" style="flex: 1;">
+											小計
+										</div>
+										<div class="col text-center" style="flex: 1;">
+											<span t-field="doc.record_price" />
+										</div>
+								</div>
+								<t t-if="doc.construction_charge_price > 0">
+									<div class="row" style="border-bottom: 1px solid lightgray; margin-bottom: 10px;">
+											
+											
+											<div class="col text-center" style="flex: 1;"></div><div class="col text-center" style="flex: 4;"></div><div class="col text-center" style="flex: 1;"></div>
+											
+											<t t-if="SHOW_PRICE">
+												<div class="col text-center" style="flex: 1;"></div>
+												<div class="col text-center" style="flex: 1;"></div>
+												<div class="col text-center" style="flex: 1;"></div>
+											</t>
+											<div class="col text-center" style="flex: 1;">
+												施工費用
+											</div>
+											<div class="col text-center" style="flex: 1;">
+												<span t-field="doc.construction_charge_price" />
+											</div>
+									</div>
+								</t>
+								<div class="row" style="border-bottom: 1px solid lightgray; margin-bottom: 10px;">
+							
+										<div class="col text-center" style="flex: 1;"></div><div class="col text-center" style="flex: 4;"></div><div class="col text-center" style="flex: 1;"></div>
+		
+										<t t-if="SHOW_PRICE">
+											<div class="col text-center" style="flex: 1;"></div>
+											<div class="col text-center" style="flex: 1;"></div>
+											<div class="col text-center" style="flex: 1;"></div>
+										</t>
+										<div class="col text-center" style="flex: 1;">
+											稅金
+										</div>
+										<div class="col text-center" style="flex: 1;">
+											<span t-field="doc.tax_of_price" />
+										</div>
+								</div>
+								<div class="row" style="border-bottom: 1px solid lightgray; margin-bottom: 10px;">
+		
+										<div class="col text-center" style="flex: 1;"></div><div class="col text-center" style="flex: 4;"></div><div class="col text-center" style="flex: 1;"></div>
+		
+										<t t-if="SHOW_PRICE">
+											<div class="col text-center" style="flex: 1;"></div>
+											<div class="col text-center" style="flex: 1;"></div>
+											<div class="col text-center" style="flex: 1;"></div>
+										</t>
+										<div class="col text-center" style="flex: 1;">
+											合計
+										</div>
+										<div class="col text-center" style="flex: 1;">
+											<span t-field="doc.total_price_added_tax" />
+										</div>
+								</div>
+							</t>
+							<t t-else="">
+								<div class="row" style="border-bottom: 1px solid lightgray; margin-bottom: 10px;">
+										
+										
+										<div class="col text-center" style="flex: 1;"></div><div class="col text-center" style="flex: 4;"></div><div class="col text-center" style="flex: 1;"></div>
+										
+										<t t-if="SHOW_PRICE">
+											<div class="col text-center" style="flex: 1;"></div>
+											<div class="col text-center" style="flex: 1;"></div>
+											<div class="col text-center" style="flex: 1;"></div>
+										</t>
+										<div class="col text-center" style="flex: 1;">
+											小計
+										</div>
+										<div class="col text-center" style="flex: 1;">
+											<span t-field="doc.record_price" />
+										</div>
+								</div>
+								<t t-if="doc.construction_charge_price_crm > 0">
+									<div class="row" style="border-bottom: 1px solid lightgray; margin-bottom: 10px;">
+											
+											
+											<div class="col text-center" style="flex: 1;"></div><div class="col text-center" style="flex: 4;"></div><div class="col text-center" style="flex: 1;"></div>
+											
+											<t t-if="SHOW_PRICE">
+												<div class="col text-center" style="flex: 1;"></div>
+												<div class="col text-center" style="flex: 1;"></div>
+												<div class="col text-center" style="flex: 1;"></div>
+											</t>
+											<div class="col text-center" style="flex: 1;">
+												施工費用
+											</div>
+											<div class="col text-center" style="flex: 1;">
+												<span t-field="doc.construction_charge_price_crm" />
+											</div>
+									</div>
+								</t>
+								<div class="row" style="border-bottom: 1px solid lightgray; margin-bottom: 10px;">
+							
+										<div class="col text-center" style="flex: 1;"></div><div class="col text-center" style="flex: 4;"></div><div class="col text-center" style="flex: 1;"></div>
+		
+										<t t-if="SHOW_PRICE">
+											<div class="col text-center" style="flex: 1;"></div>
+											<div class="col text-center" style="flex: 1;"></div>
+											<div class="col text-center" style="flex: 1;"></div>
+										</t>
+										<div class="col text-center" style="flex: 1;">
+											稅金
+										</div>
+										<div class="col text-center" style="flex: 1;">
+											<span t-field="doc.tax_of_price_crm" />
+										</div>
+								</div>
+								<div class="row" style="border-bottom: 1px solid lightgray; margin-bottom: 10px;">
+		
+										<div class="col text-center" style="flex: 1;"></div><div class="col text-center" style="flex: 4;"></div><div class="col text-center" style="flex: 1;"></div>
+		
+										<t t-if="SHOW_PRICE">
+											<div class="col text-center" style="flex: 1;"></div>
+											<div class="col text-center" style="flex: 1;"></div>
+											<div class="col text-center" style="flex: 1;"></div>
+										</t>
+										<div class="col text-center" style="flex: 1;">
+											合計
+										</div>
+										<div class="col text-center" style="flex: 1;">
+											<span t-field="doc.total_price_added_tax_crm" />
+										</div>
+								</div>
+							</t>
+							<div class="row" style="margin-bottom: 10px;">
+								<div class="col text-center" style="flex: 1; font-weight: bold;">
+									備註
+								</div>
+								<div class="col text-center" style="flex: 20;"></div>
+							</div>
+							<t t-set="index" t-value="0"/>
+							<t t-foreach="data['comments']" t-as="o">
+								<!-- <t t-if="o.is_enable"> -->
+									<t t-set="index" t-value="index + 1"/>
+									<div class="row" style="margin-bottom: 10px;">
+										<div class="col text-center" style="flex: 1;">
+											<t t-esc="index"/>.
+										</div>
+										<div class="col text-start" style="flex: 20; ">
+											<!-- <t t-esc="o.comment"/> -->
+											<t t-esc="o.name"/>
+										</div>
+									</div>
+								<!-- </t> -->
+							</t>
+						</div>
+
+						<t t-if="doc.is_sign">
+							<div class="table-section" style="page-break-inside: avoid !important;">
+								<div class="row" style="border-bottom: 1px solid lightgray;margin-bottom: 10px;">
+									<div class="col-12 text-center" style="background-color:gray"><span t-field="company.crm_report_account" /></div>
+								</div>
+								<div class="row" style="border-bottom: 1px solid lightgray;margin-bottom: 10px;">
+									<div class="col-3">業務</div>
+									<div class="col-3"><span t-field="doc.user_id.name" /></div>
+									<div class="col-3">聯絡電話</div>
+									<div class="col-3"><span t-field="company.phone" /></div>
+								</div>
+							<t t-set="has_zhuguan_sign" t-value="bool(sign_images.get(doc.id, {}).get('zhuguan_sign'))"/>
+							<t t-set="has_manager_sign" t-value="bool(sign_images.get(doc.id, {}).get('manager_sign'))"/>
+							<t t-set="show_second_row" t-value="has_zhuguan_sign and has_manager_sign"/>
+
+							<div class="row"
+								 t-attf-style="border-bottom:1px solid lightgray;margin-bottom:10px; height: #{'160px' if show_second_row else '100px'};">
+							  <div class="col-1" style="display:flex; align-items:center;">主管確認簽章</div>
+
+							  <div class="col-5">
+								<!-- 兩行容器 -->
+								<div style="display:flex; flex-direction:column; height:100%; gap:6px;">
+
+								  <!-- 第一行：公司章 + 主管簽名（若無主管則放經理簽名） -->
+								  <div style="display:flex; align-items:center; justify-content:space-between; gap:6px; height:90px;">
+
+									<!-- 公司章 -->
+									<div style="flex:1; text-align:center;">
+									  <img src="dtsc/static/description/sig.png"
+										   alt="Company Seal"
+										   style="max-height:90px; object-fit:contain;"/>
+									</div>
+
+									<!-- 主管簽名（優先）/ 沒主管就放經理簽名 -->
+									<div style="flex:1; text-align:center;">
+									  <t t-if="has_zhuguan_sign">
+										<img t-att-src="'data:image/png;base64,' + sign_images[doc.id]['zhuguan_sign'].decode('utf-8')"
+											 alt="Supervisor Sign"
+											 style="max-height:80px; object-fit:contain;"/>
+									  </t>
+									  <t t-elif="has_manager_sign">
+										<img t-att-src="'data:image/png;base64,' + sign_images[doc.id]['manager_sign'].decode('utf-8')"
+											 alt="Manager Sign"
+											 style="max-height:80px; object-fit:contain;"/>
+									  </t>
+									</div>
+
+								  </div>
+
+								  <!-- 第二行：只有「主管+經理都存在」才顯示經理簽名 -->
+								  <t t-if="show_second_row">
+									<div style="display:flex; justify-content:center; align-items:center; height:60px;">
+									  <div style="width:50%; text-align:center;">
+										<img t-att-src="'data:image/png;base64,' + sign_images[doc.id]['manager_sign'].decode('utf-8')"
+											 alt="Manager Sign"
+											 style="max-height:55px; object-fit:contain;"/>
+									  </div>
+									</div>
+								  </t>
+
+								</div>
+							  </div>
+
+							  <div class="col-1" style="display:flex; align-items:center;">客戶確認簽章</div>
+							  <div class="col-5"></div>
+							</div>
+							</div>
+						</t>
+						<!-- 附件：按項次列印圖片（緊接正文下方，寫滿才換頁；模板內直接判斷有圖與否，不依賴 doc_has_product_images 避免生產環境未傳入報錯） -->
+						<t t-set="show_attachment_images" t-value="any(p.small_image_new for p in doc.product_ids)"/>
+						<t t-if="show_attachment_images">
+							<div style="margin-top: 15px;">
+								<div class="row" style="border-bottom: 2px solid black; margin-bottom: 10px;">
+									<div class="col-12" style="font-weight: bold;">附件：項次對應圖片</div>
+								</div>
+								<t t-foreach="doc.product_ids" t-as="order">
+									<t t-if="order.small_image_new">
+										<div class="row" style="border-bottom: 1px solid lightgray; margin-bottom: 10px; min-height: 130px; padding-bottom: 8px; display: flex; align-items: flex-start;">
+											<div class="col text-center" style="flex: 0 0 80px; padding-top: 8px;"><span t-field="order.sequence"/></div>
+											<div class="col text-center" style="flex: 1; max-height: 120px; overflow: hidden;">
+												<img t-att-src="image_data_uri(order.small_image_new)" style="max-width: 120px; max-height: 120px; width: auto; height: auto; object-fit: contain; display: block; margin: 0 auto;"/>
+											</div>
+										</div>
+									</t>
+								</t>
+							</div>
+						</t>
+					</t>
+				</t>
+			</div>
+		</t>
+	</template>
+
+
+	
+	<record id="action_report_crm_checkout" model="ir.actions.report">
+        <field name="name">報價單</field>
+        <field name="model">dtsc.checkout</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">dtsc.report_crm_checkout_template</field>
+        <field name="report_file">dtsc.report_crm_checkout_template</field>
+        <field name="binding_model_id" ref="model_dtsc_checkout"/>
+        <field name="binding_type">report</field>
+		<field name="print_report_name">
+		  '%s-%s-%s-報價單' % (
+			(object.name or '報價單'),
+			(object.is_new_partner and (object.new_partner or '客戶')
+			 or (object.customer_id and object.customer_id.name) or '客戶'),
+			(object.project_name or '')
+		  )
+		</field>
+		<!-- 排除 dtsc.group_dtsc_mg 权限组，不允许在页面上下载 -->
+		<field name="groups_id" eval="[(6, 0, [ref('dtsc.group_dtsc_yw'), ref('dtsc.group_dtsc_kj'), ref('dtsc.group_dtsc_sc'), ref('dtsc.group_dtsc_ck'), ref('dtsc.group_dtsc_gly')])]"/>
+    </record>
+	
+	<record id="action_report_crm_checkout_no_price_no_sign" model="ir.actions.report">
+		<field name="name">報價單(無價格-無簽名)</field>
+		<field name="model">dtsc.checkout</field>
+		<field name="report_type">qweb-pdf</field>
+		<field name="report_name">dtsc.report_crm_checkout_template_no_price_no_sign</field>
+		<field name="report_file">dtsc.report_crm_checkout_template_no_price_no_sign</field>
+		<field name="binding_model_id" ref="model_dtsc_checkout"/>
+		<field name="binding_type">report</field>
+		<field name="print_report_name">
+		  '%s-%s-%s-報價單' % (
+			(object.name or '報價單'),
+			(object.is_new_partner and (object.new_partner or '客戶')
+			 or (object.customer_id and object.customer_id.name) or '客戶'),		 
+			(object.project_name or '')
+		  )
+		</field>
+		<!-- 排除 dtsc.group_dtsc_mg 权限组，不允许在页面上下载 -->
+		<field name="groups_id" eval="[(6, 0, [ref('dtsc.group_dtsc_yw'), ref('dtsc.group_dtsc_kj'), ref('dtsc.group_dtsc_sc'), ref('dtsc.group_dtsc_ck'), ref('dtsc.group_dtsc_gly')])]"/>
+   </record>
+
+
+	<template id="report_crm_checkout_template_no_price_no_sign">
+<t t-call="web.html_container">
+            <style>
+		/* 整行不可分页 */
+		.keep-together{
+		  display:block !important;
+		  width:100%;
+		  page-break-inside:avoid !important;
+		  break-inside:avoid !important;
+		}
+
+		/* 明细列：固定行高 78px，足够显示 3 行（含行距） */
+		.report-crm-checkout-detail .pdf-row,
+		.report-crm-checkout-detail .row.pdf-row.fixed-3{
+		  display:table !important;
+		  width:100% !important;
+		  table-layout:fixed !important;
+		  height:78px !important;
+		  min-height:78px !important;
+		  max-height:78px !important;
+		  margin:0 !important;
+		  box-sizing:border-box !important;
+		}
+		.report-crm-checkout-detail .pdf-row > .col,
+		.report-crm-checkout-detail .pdf-row > [class*="col-"]{
+		  display:table-cell !important;
+		  float:none !important;
+		  vertical-align:middle !important;
+		  height:78px !important;
+		  min-height:78px !important;
+		  max-height:78px !important;
+		  padding:0 2mm 0 2mm !important;
+		  margin:0 !important;
+		  overflow:hidden !important;
+		  box-sizing:border-box !important;
+		}
+
+		.report-crm-checkout-detail .cell-3{
+		  height:78px !important;
+		  max-height:78px !important;
+		  min-height:78px !important;
+		  margin:0 !important;
+		  padding:0 !important;
+		  overflow:hidden !important;
+		  box-sizing:border-box !important;
+		}
+		/* 多行格：行高 24px，3 行=72px，不超出 78px */
+		.report-crm-checkout-detail .cell-3.multi,
+		.report-crm-checkout-detail .cell-3.multi *{
+		  margin:0 !important;
+		  padding:0 !important;
+		}
+		.report-crm-checkout-detail .cell-3.multi{
+		  line-height:24px !important;
+		  white-space:normal !important;
+		  word-break:break-word !important;
+		  word-wrap:break-word !important;
+		  overflow:hidden !important;
+		  display:-webkit-box !important;
+		  -webkit-box-orient:vertical !important;
+		  -webkit-line-clamp:3 !important;
+		}
+		.report-crm-checkout-detail .cell-3.center{
+		  display:flex !important;
+		  align-items:center !important;
+		  justify-content:center !important;
+		  white-space:nowrap !important;
+		}
+
+		@media print{
+		  .keep-together{ page-break-inside:avoid !important; break-inside:avoid !important; }
+		  .report-crm-checkout-detail .pdf-row,
+		  .report-crm-checkout-detail .row.pdf-row.fixed-3{
+		    display:table !important;
+		    height:78px !important;
+		    min-height:78px !important;
+		    max-height:78px !important;
+		  }
+		  .report-crm-checkout-detail .pdf-row > .col,
+		  .report-crm-checkout-detail .pdf-row > [class*="col-"]{
+		    height:78px !important;
+		    min-height:78px !important;
+		    max-height:78px !important;
+		    padding:0 2mm 0 2mm !important;
+		    margin:0 !important;
+		  }
+		  .report-crm-checkout-detail .cell-3{
+		    height:78px !important;
+		    min-height:78px !important;
+		    max-height:78px !important;
+		    margin:0 !important;
+		    padding:0 !important;
+		  }
+		  .report-crm-checkout-detail .cell-3.multi,
+		  .report-crm-checkout-detail .cell-3.multi *{
+		    margin:0 !important;
+		    padding:0 !important;
+		    line-height:24px !important;
+		  }
+		}
+		</style>
+			<div class="page">
+				<t t-foreach="docs" t-as="doc">
+					<t t-call="dtsc.external_layout_coin">
+						<table class="table table-condensed">
+                            <tbody>
+                                <tr>
+                                    <td rowspan="2" ><img t-if="company.logo" t-att-src="'data:image/png;base64,%s' % company.logo.decode('utf-8')" style="width: 50px; max-height:50px"/><span t-field="company.name" /></td>
+                                    <td>報價單 - <span t-field="doc.name" /></td>
+                                    <td><span t-field="company.street" /></td>
+                                </tr>
+                                <tr>
+                                    <td>Mail：<span t-field="company.email" /></td>
+                                    <td>Tel：<span t-field="company.phone" /> Fax：<span t-field="company.fax" /></td>
+                                </tr>
+                                <tr>
+									<t t-if="doc.is_new_partner"><td>客戶名稱： <span t-field="doc.new_partner" /></td></t>
+									<t t-else="1"><td>客戶名稱： <span t-field="doc.customer_id.name" /></td></t>
+									<!-- <td>客戶名稱:<span t-field="doc.customer_id.name" /></td> -->
+									
+									<t t-if="doc.is_new_partner"><td>統一編號： <span t-field="doc.new_vat" /></td></t>
+									<t t-else="1"><td>統一編號： <span t-field="doc.customer_id.vat" /></td></t>
+									<!-- <td>統一編號:<span t-field="doc.customer_id.vat" /></td> -->
+									<t t-if="doc.is_new_partner"><td>付款條件： <span t-field="doc.new_property_payment_term_id" /></td></t>
+									<t t-else="1"><td>付款條件： <span t-field="doc.customer_id.property_payment_term_id" /></td></t>
+									<!-- <td>付款條件:<span t-field="doc.customer_id.property_payment_term_id" /></td> -->
+                                </tr>
+                                <tr>
+									<t t-if="doc.is_new_partner"><td>聯絡人： <span t-field="doc.new_custom_contact_person" /></td></t>
+									<t t-else="1"><td>聯絡人： <span t-field="doc.customer_id.custom_contact_person" /></td></t>
+									<!-- <td>聯絡人:<span t-field="doc.customer_id.custom_contact_person" /></td> -->
+									<t t-if="doc.is_new_partner"><td>電話： <span t-field="doc.new_phone" /></td></t>
+									<t t-else="1"><td>電話： <span t-field="doc.customer_id.phone" /></td></t>
+									<!-- <td>電話:<span t-field="doc.customer_id.phone" /></td> -->
+									<t t-if="doc.is_new_partner"><td>收款方式： <span t-field="doc.new_custom_pay_mode" /></td></t>
+									<t t-else="1"><td>收款方式： <span t-field="doc.customer_id.custom_pay_mode" /></td></t>
+									<!-- <td>收款方式:<span t-field="doc.customer_id.custom_pay_mode" /></td> -->
+                                </tr>
+                                <tr>
+									<t t-if="doc.is_new_partner"><td>地址： <span t-field="doc.new_street" /></td></t>
+									<t t-else="1"><td>地址：<span t-field="doc.customer_id.street" /></td></t>
+									<!-- <td>地址:<span t-field="doc.customer_id.street" /></td> -->
+									<t t-if="doc.is_new_partner"><td>傳真： <span t-field="doc.new_custom_fax" /></td></t>
+									<t t-else="1"><td>傳真：<span t-field="doc.customer_id.custom_fax" /></td></t>
+									<!-- <td>傳真:<span t-field="doc.customer_id.custom_fax" /></td> -->
+									<td>報價日期： <span t-field="doc.crm_date" /></td>
+                                </tr>
+                                <tr>
+									<t t-if="doc.is_new_partner"><td>E-mail：  <span t-field="doc.new_email" /></td></t>
+									<t t-else="1"><td>E-mail： <span t-field="doc.customer_id.email" /></td></t>
+									<!-- <td>E-mail:<span t-field="doc.customer_id.email" /></td> -->
+									<t t-if="doc.is_new_partner"><td>行動電話： <span t-field="doc.new_mobile" /></td></t>
+									<t t-else="1"><td>行動電話： <span t-field="doc.customer_id.mobile" /></td></t>
+									<!-- <td>行動電話:<span t-field="doc.customer_id.mobile" /></td> -->
+									<td>有效期限： <span t-field="doc.crm_effective_date" /></td>
+                                </tr>
+                            </tbody>
+                        </table>	
+
+						<t t-set="SHOW_PRICE" t-value="doc.is_show_price or (doc.checkout_order_type == 'd' and not doc.is_sign)"/>						
+						<div class="report-crm-checkout-detail">
+							<div class="row" style="border-bottom: 2px solid black;  margin-bottom:10px;">
+								<div class="col text-center" style="flex: 1;">項</div>
+								<div class="col text-center" style="flex: 4;">製作内容</div>
+								<div class="col text-center" style="flex: 1;">尺寸cm</div>
+								<t t-if="0">
+									<div class="col text-center" style="flex: 1;">才數</div>
+								</t>
+								<div class="col text-center" style="flex: 1;">數量</div>
+								<t t-if="0">
+									<div class="col text-center" style="flex: 1;">單價</div>
+									<div class="col text-center" style="flex: 1;">其它</div>
+								</t>
+
+								<div class="col text-center" style="flex: 1;">小計</div>
+							</div>	
+							<t t-set="row_count" t-value="0"/>
+							<t t-foreach="doc.product_ids" t-as="order">
+								<!-- 本條是否有成本行（算入行數） -->
+								<t t-set="has_chengben" t-value="doc.checkout_order_type == 'd' and not doc.is_sign and doc.checkout_order_state == 'waiting_confirmation' and (order.crm_chengben_comment or (order.crm_chengben or 0) != 0)"/>
+								<t t-set="row_count_after" t-value="row_count + 1 + (1 if has_chengben else 0)"/>
+								<!-- 换页后（累计13、29、45…行之后）先输出表头 -->
+								<t t-if="row_count == 13 or ((row_count - 13) % 16 == 0 and row_count &gt; 13)">
+									<div class="row" style="border-bottom: 2px solid black; margin-bottom:10px;">
+										<div class="col text-center" style="flex: 1;">項</div>
+										<div class="col text-center" style="flex: 4;">製作内容</div>
+										<div class="col text-center" style="flex: 1;">尺寸cm</div>
+										<t t-if="0">
+											<div class="col text-center" style="flex: 1;">才數</div>
+										</t>
+										<div class="col text-center" style="flex: 1;">數量</div>
+										<t t-if="0">
+											<div class="col text-center" style="flex: 1;">單價</div>
+											<div class="col text-center" style="flex: 1;">其它</div>
+										</t>
+										<div class="col text-center" style="flex: 1;">小計</div>
+									</div>
+								</t>
+								<div class="keep-together">
+								<div class="row pdf-row fixed-3" style="border-bottom:1px solid lightgray; height:78px; min-height:78px;">
+									<div class="col text-center" style="flex: 1;">
+										<div class="cell-3 center">
+											<span t-field="order.sequence" />
+										  </div>
+									</div>
+									
+									<div class="col text-center" style="flex: 4;">
+										<div class="cell-3 multi">
+											<t t-set="last_value" t-value="False"/>
+											<t t-set="part1" t-value="(order.project_product_name or '').replace('其他','').replace('其它','')"/>
+											<t t-if="part1">
+												<span t-esc="part1"/>
+												<t t-set="last_value" t-value="True"/>
+											</t>
+											<t t-set="part2" t-value="(order.product_id.name or '').replace('其他','').replace('其它','')"/>
+											<t t-if="part2">
+												<t t-if="last_value">
+													<t t-raw="'/'"/>
+												</t>
+												<span t-esc="part2"/>
+												<t t-set="last_value" t-value="True"/>
+											</t>
+											<t t-foreach="order.product_atts" t-as="attr">
+												<t t-set="part_attr" t-value="(attr.name or '').replace('其他','').replace('其它','')"/>
+												<t t-if="part_attr">
+													<t t-if="last_value">
+														<t t-raw="'/'"/>
+													</t>
+													<span t-esc="part_attr"/>
+													<t t-set="last_value" t-value="True"/>
+												</t>
+											</t>
+											<t t-set="part_multi" t-value="(order.multi_chose_ids and order.multi_chose_ids or '').replace('其他','').replace('其它','')"/>
+											<t t-if="part_multi">
+												<t t-if="last_value">
+													<t t-raw="'/'"/>
+												</t>
+												<span t-esc="part_multi"/>
+											</t>
+										</div>
+									</div>
+									<div class="col text-center" style="flex: 1;">
+										<div class="cell-3 multi">
+											<span t-field="order.product_width" />x<span t-field="order.product_height" />	
+										</div>
+									</div>
+									
+									<t t-if="0">
+										<div class="col text-center" style="flex: 1;">
+											<div class="cell-3 multi">
+												<span t-esc="'{:,.0f}'.format((order.total_units))" />
+											</div>
+										</div>
+									</t>
+									<div class="col text-center no-wrap" style="flex: 1;">
+										<div class="cell-3 multi">
+											<span t-esc="'{:,.0f}'.format((order.quantity))" />
+										</div>
+									</div>
+									
+									<t t-if="0">
+										<div class="col text-center" style="flex: 1;">
+											<div class="cell-3 multi">
+												<span t-esc="'{:,.0f}'.format((order.units_price))" />
+											</div>
+										</div>
+										<div class="col text-center" style="flex: 1;">
+											<div class="cell-3 multi">
+												<span t-esc="'{:,.0f}'.format((order.total_make_price + order.peijian_price))" />
+											</div>
+										</div>
+									</t>
+									<div class="col text-center" style="flex: 1;">
+										<div class="cell-3 multi">
+											<span t-esc="'{:,.0f}'.format((order.price))" />
+										
+										</div>
+									</div>
+								</div>
+								</div>
+								<!--  and  -->
+								<t t-if="doc.checkout_order_type == 'd' and not doc.is_sign ">
+									<t t-if="doc.checkout_order_state == 'waiting_confirmation'">
+										<t t-if="order.crm_chengben_comment or (order.crm_chengben or 0) != 0">
+											<div class="keep-together">
+											<div class="row pdf-row fixed-3" style="border-bottom:1px solid lightgray; height:78px; min-height:78px;">
+
+												<div class="col text-center" style="flex: 10;">
+													<div class="cell-3 multi">
+														<span t-esc="order.crm_chengben_comment"/>
+													
+													</div>
+												</div>
+
+
+												<div class="col text-center" style="flex: 1;">
+													<div class="cell-3 multi">
+													<t t-if="(order.crm_chengben or 0) != 0">
+														<span t-esc="'{:,.0f}'.format(order.crm_chengben)"/>
+													</t>
+													</div> 
+												</div> 
+											</div>
+											</div>
+										</t>
+									</t>
+								</t>
+								<!-- 第一页 13 行后换页，之后每 16 行换页（行数含成本行） -->
+								<t t-if="row_count_after == 13 or ((row_count_after - 13) % 16 == 0 and row_count_after &gt; 13)">
+									<div style="page-break-after:always;"></div>
+								</t>
+								<t t-set="row_count" t-value="row_count_after"/>
+							</t>
+							<t t-if="doc.checkout_order_type == 'a'">
+								<div class="row" style="border-bottom: 1px solid lightgray; margin-bottom: 10px;">
+										
+										
+										<div class="col text-center" style="flex: 1;"></div><div class="col text-center" style="flex: 4;"></div><div class="col text-center" style="flex: 1;"></div>
+										
+										<t t-if="SHOW_PRICE">
+											<div class="col text-center" style="flex: 1;"></div>
+											<div class="col text-center" style="flex: 1;"></div>
+											<div class="col text-center" style="flex: 1;"></div>
+										</t>
+										<div class="col text-center" style="flex: 1;">
+											小計
+										</div>
+										<div class="col text-center" style="flex: 1;">
+											<span t-field="doc.record_price" />
+										</div>
+								</div>
+								<t t-if="doc.construction_charge_price > 0">
+									<div class="row" style="border-bottom: 1px solid lightgray; margin-bottom: 10px;">
+											
+											
+											<div class="col text-center" style="flex: 1;"></div><div class="col text-center" style="flex: 4;"></div><div class="col text-center" style="flex: 1;"></div>
+											
+											<t t-if="SHOW_PRICE">
+												<div class="col text-center" style="flex: 1;"></div>
+												<div class="col text-center" style="flex: 1;"></div>
+												<div class="col text-center" style="flex: 1;"></div>
+											</t>
+											<div class="col text-center" style="flex: 1;">
+												施工費用
+											</div>
+											<div class="col text-center" style="flex: 1;">
+												<span t-field="doc.construction_charge_price" />
+											</div>
+									</div>
+								</t>
+								<div class="row" style="border-bottom: 1px solid lightgray; margin-bottom: 10px;">
+							
+										<div class="col text-center" style="flex: 1;"></div><div class="col text-center" style="flex: 4;"></div><div class="col text-center" style="flex: 1;"></div>
+		
+										<t t-if="SHOW_PRICE">
+											<div class="col text-center" style="flex: 1;"></div>
+											<div class="col text-center" style="flex: 1;"></div>
+											<div class="col text-center" style="flex: 1;"></div>
+										</t>
+										<div class="col text-center" style="flex: 1;">
+											稅金
+										</div>
+										<div class="col text-center" style="flex: 1;">
+											<span t-field="doc.tax_of_price" />
+										</div>
+								</div>
+								<div class="row" style="border-bottom: 1px solid lightgray; margin-bottom: 10px;">
+		
+										<div class="col text-center" style="flex: 1;"></div><div class="col text-center" style="flex: 4;"></div><div class="col text-center" style="flex: 1;"></div>
+		
+										<t t-if="SHOW_PRICE">
+											<div class="col text-center" style="flex: 1;"></div>
+											<div class="col text-center" style="flex: 1;"></div>
+											<div class="col text-center" style="flex: 1;"></div>
+										</t>
+										<div class="col text-center" style="flex: 1;">
+											合計
+										</div>
+										<div class="col text-center" style="flex: 1;">
+											<span t-field="doc.total_price_added_tax" />
+										</div>
+								</div>
+							</t>
+							<t t-else="">
+								<div class="row" style="border-bottom: 1px solid lightgray; margin-bottom: 10px;">
+										
+										
+										<div class="col text-center" style="flex: 1;"></div><div class="col text-center" style="flex: 4;"></div><div class="col text-center" style="flex: 1;"></div>
+										
+										<t t-if="SHOW_PRICE">
+											<div class="col text-center" style="flex: 1;"></div>
+											<div class="col text-center" style="flex: 1;"></div>
+											<div class="col text-center" style="flex: 1;"></div>
+										</t>
+										<div class="col text-center" style="flex: 1;">
+											小計
+										</div>
+										<div class="col text-center" style="flex: 1;">
+											<span t-field="doc.record_price" />
+										</div>
+								</div>
+								<t t-if="doc.construction_charge_price_crm > 0">
+									<div class="row" style="border-bottom: 1px solid lightgray; margin-bottom: 10px;">
+											
+											
+											<div class="col text-center" style="flex: 1;"></div><div class="col text-center" style="flex: 4;"></div><div class="col text-center" style="flex: 1;"></div>
+											
+											<t t-if="SHOW_PRICE">
+												<div class="col text-center" style="flex: 1;"></div>
+												<div class="col text-center" style="flex: 1;"></div>
+												<div class="col text-center" style="flex: 1;"></div>
+											</t>
+											<div class="col text-center" style="flex: 1;">
+												施工費用
+											</div>
+											<div class="col text-center" style="flex: 1;">
+												<span t-field="doc.construction_charge_price_crm" />
+											</div>
+									</div>
+								</t>
+								<div class="row" style="border-bottom: 1px solid lightgray; margin-bottom: 10px;">
+							
+										<div class="col text-center" style="flex: 1;"></div><div class="col text-center" style="flex: 4;"></div><div class="col text-center" style="flex: 1;"></div>
+		
+										<t t-if="SHOW_PRICE">
+											<div class="col text-center" style="flex: 1;"></div>
+											<div class="col text-center" style="flex: 1;"></div>
+											<div class="col text-center" style="flex: 1;"></div>
+										</t>
+										<div class="col text-center" style="flex: 1;">
+											稅金
+										</div>
+										<div class="col text-center" style="flex: 1;">
+											<span t-field="doc.tax_of_price_crm" />
+										</div>
+								</div>
+								<div class="row" style="border-bottom: 1px solid lightgray; margin-bottom: 10px;">
+		
+										<div class="col text-center" style="flex: 1;"></div><div class="col text-center" style="flex: 4;"></div><div class="col text-center" style="flex: 1;"></div>
+		
+										<t t-if="SHOW_PRICE">
+											<div class="col text-center" style="flex: 1;"></div>
+											<div class="col text-center" style="flex: 1;"></div>
+											<div class="col text-center" style="flex: 1;"></div>
+										</t>
+										<div class="col text-center" style="flex: 1;">
+											合計
+										</div>
+										<div class="col text-center" style="flex: 1;">
+											<span t-field="doc.total_price_added_tax_crm" />
+										</div>
+								</div>
+							</t>
+							<div class="row" style="margin-bottom: 10px;">
+								<div class="col text-center" style="flex: 1; font-weight: bold;">
+									備註
+								</div>
+								<div class="col text-center" style="flex: 20;"></div>
+							</div>
+							<t t-set="index" t-value="0"/>
+							<t t-foreach="data['comments']" t-as="o">
+								<!-- <t t-if="o.is_enable"> -->
+									<t t-set="index" t-value="index + 1"/>
+									<div class="row" style="margin-bottom: 10px;">
+										<div class="col text-center" style="flex: 1;">
+											<t t-esc="index"/>.
+										</div>
+										<div class="col text-start" style="flex: 20; ">
+											<!-- <t t-esc="o.comment"/> -->
+											<t t-esc="o.name"/>
+										</div>
+									</div>
+								<!-- </t> -->
+							</t>
+						</div>
+
+
+						<!-- 附件：按項次列印圖片（緊接正文下方，寫滿才換頁；模板內直接判斷有圖與否，不依賴 doc_has_product_images 避免生產環境未傳入報錯） -->
+						<t t-set="show_attachment_images" t-value="any(p.small_image_new for p in doc.product_ids)"/>
+						<t t-if="show_attachment_images">
+							<div style="margin-top: 15px;">
+								<div class="row" style="border-bottom: 2px solid black; margin-bottom: 10px;">
+									<div class="col-12" style="font-weight: bold;">附件：項次對應圖片</div>
+								</div>
+								<t t-foreach="doc.product_ids" t-as="order">
+									<t t-if="order.small_image_new">
+										<div class="row" style="border-bottom: 1px solid lightgray; margin-bottom: 10px; min-height: 130px; padding-bottom: 8px; display: flex; align-items: flex-start;">
+											<div class="col text-center" style="flex: 0 0 80px; padding-top: 8px;"><span t-field="order.sequence"/></div>
+											<div class="col text-center" style="flex: 1; max-height: 120px; overflow: hidden;">
+												<img t-att-src="image_data_uri(order.small_image_new)" style="max-width: 120px; max-height: 120px; width: auto; height: auto; object-fit: contain; display: block; margin: 0 auto;"/>
+											</div>
+										</div>
+									</t>
+								</t>
+							</div>
+						</t>
+					</t>
+				</t>
+			</div>
+		</t>
+	</template>
+</odoo>

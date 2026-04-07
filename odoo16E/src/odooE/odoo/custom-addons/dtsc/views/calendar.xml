@@ -1,0 +1,22 @@
+<odoo>
+	<record id="view_calendar_dtsc" model="ir.ui.view">
+		<field name="name">dtsc.calendar.view</field>
+		<field name="model">dtsc.calendar</field>
+		<field name="arch" type="xml">
+			<calendar string="Meetings" date_start="start_date" date_stop="end_date" all_day="all_day" color="event_type">
+				<field name="name"/>
+				<field name="employee_id"/>
+			</calendar>
+		</field>
+	</record>
+	
+	<record id="view_calendar_tree_dtsc" model="ir.ui.view">
+		<field name="name">dtsc.calendar.tree</field>
+		<field name="model">dtsc.calendar</field>
+		<field name="arch" type="xml">
+			<tree>
+				<field name="name"/>
+			</tree>
+		</field>
+	</record>
+</odoo>

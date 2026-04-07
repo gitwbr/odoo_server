@@ -276,3 +276,20 @@ class ReportDeliveryOrder(models.AbstractModel):
             'doc_model': 'dtsc.deliveryorder',
             'docs': docs,
         }
+
+
+class ReportCheckoutDeliveryOrder(models.AbstractModel):
+    """預打印出貨單：以 checkout 列印，不落 deliveryorder；與 CRM 報表同樣帶入 company。"""
+    _name = 'report.dtsc.checkout_delivery_order'
+    _description = 'Checkout pre-print delivery order report'
+
+    @api.model
+    def _get_report_values(self, docids, data=None):
+        docs = self.env['dtsc.checkout'].browse(docids)
+        company = self.env['res.company'].search([])
+        return {
+            'doc_ids': docids,
+            'doc_model': 'dtsc.checkout',
+            'docs': docs,
+            'company': company,
+        }

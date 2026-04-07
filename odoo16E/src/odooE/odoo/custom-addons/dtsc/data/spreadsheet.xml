@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>    
+    <record id="spreadsheet_dashboard.spreadsheet_dashboard_group_finance" model="spreadsheet.dashboard.group">
+        <field name="name">財經</field>
+        <field name="sequence">300</field>
+    </record>
+
+    <record id="spreadsheet_dashboard.spreadsheet_dashboard_group_sales" model="spreadsheet.dashboard.group">
+        <field name="name">銷售</field>
+        <field name="sequence">100</field>
+    </record>
+
+    <record id="spreadsheet_dashboard.spreadsheet_dashboard_group_hr" model="spreadsheet.dashboard.group">
+        <field name="name">人力資源</field>
+        <field name="sequence">800</field>
+    </record>
+
+    <record id="spreadsheet_dashboard.spreadsheet_dashboard_group_website" model="spreadsheet.dashboard.group">
+        <field name="name">網站訊息</field>
+        <field name="sequence">700</field>
+    </record>
+
+    <record id="spreadsheet_dashboard.spreadsheet_dashboard_group_project" model="spreadsheet.dashboard.group">
+        <field name="name">專案</field>
+        <field name="sequence">500</field>
+    </record>
+
+    <record id="spreadsheet_dashboard.spreadsheet_dashboard_group_logistics" model="spreadsheet.dashboard.group">
+        <field name="name">物流</field>
+        <field name="sequence">400</field>
+    </record>
+    
+    <record id="spreadsheet_dashboard_crm.spreadsheet_dashboard_group_crm" model="spreadsheet.dashboard.group">
+        <field name="name">商機漏斗</field>
+        <field name="sequence">200</field>
+    </record>
+    
+    <delete model="spreadsheet.dashboard" id="spreadsheet_dashboard_sale.spreadsheet_dashboard_sales"/>    
+    <record id="spreadsheet_dashboard_sales" model="spreadsheet.dashboard">
+        <field name="name">銷售</field>
+        <field name="data" type="base64" file="spreadsheet_dashboard_sale/data/files/sales_dashboard.json"/>
+        <field name="dashboard_group_id" ref="spreadsheet_dashboard.spreadsheet_dashboard_group_sales"/>
+        <field name="group_ids" eval="[Command.link(ref('sales_team.group_sale_manager'))]"/>
+        <field name="sequence">100</field>
+    </record>
+    
+    <delete model="spreadsheet.dashboard" id="spreadsheet_dashboard_sale.spreadsheet_dashboard_product"/>
+    <record id="spreadsheet_dashboard_product" model="spreadsheet.dashboard">
+        <field name="name">產品</field>
+        <field name="data" type="base64" file="spreadsheet_dashboard_sale/data/files/product_dashboard.json"/>
+        <field name="dashboard_group_id" ref="spreadsheet_dashboard.spreadsheet_dashboard_group_sales"/>
+        <field name="group_ids" eval="[Command.link(ref('sales_team.group_sale_manager'))]"/>
+        <field name="sequence">200</field>
+    </record>
+    
+    <delete model="spreadsheet.dashboard" id="spreadsheet_dashboard_crm.dashboard_leads"/>
+    <record id="dashboard_leads" model="spreadsheet.dashboard">
+        <field name="name">潛在商機</field>
+        <field name="data" type="base64" file="spreadsheet_dashboard_crm/data/files/leads_dashboard.json"/>
+        <field name="dashboard_group_id" ref="spreadsheet_dashboard_crm.spreadsheet_dashboard_group_crm"/>
+        <field name="group_ids" eval="[Command.link(ref('sales_team.group_sale_salesman'))]"/>
+        <field name="sequence">10</field>
+    </record>
+
+    <delete model="spreadsheet.dashboard" id="spreadsheet_dashboard_crm.dashboard_pipeline"/>
+    <record id="dashboard_pipeline" model="spreadsheet.dashboard">
+        <field name="name">商機漏斗</field>
+        <field name="data" type="base64" file="spreadsheet_dashboard_crm/data/files/pipeline_dashboard.json"/>
+        <field name="dashboard_group_id" ref="spreadsheet_dashboard_crm.spreadsheet_dashboard_group_crm"/>
+        <field name="group_ids" eval="[Command.link(ref('sales_team.group_sale_salesman'))]"/>
+        <field name="sequence">20</field>
+    </record>
+    
+   <!--  <delete model="spreadsheet.dashboard" id="spreadsheet_dashboard_account.dashboard_invoicing"/>    
+    <record id="dtsc.my_spreadsheet_dashboard_invoicing" model="spreadsheet.dashboard">
+        <field name="name">應收憑單</field>
+        <field name="data" type="base64" file="dtsc/data/files/dtsc_invoicing_dashboard.json"/>
+        <field name="dashboard_group_id" ref="spreadsheet_dashboard.spreadsheet_dashboard_group_finance"/>
+        <field name="group_ids" eval="[Command.link(ref('account.group_account_readonly')), Command.link(ref('account.group_account_invoice'))]"/>
+        <field name="sequence">20</field>
+    </record> -->
+</odoo>

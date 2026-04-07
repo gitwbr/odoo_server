@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <record model="ir.ui.view" id="view_order_preview_tree">
+            <field name="name">order.preview.tree</field>
+            <field name="model">dtsc.order.preview</field>
+            <field name="arch" type="xml">
+                <tree string="下單統計表">
+                    <field name="customer_id" string="客戶"/>
+                    <field name="create_date" string="時間"/>
+                    <field name="is_ordered" string="是否下單"/>
+                </tree>
+            </field>
+        </record>
+
+        <record model="ir.ui.view" id="view_order_preview_form">
+            <field name="name">order.preview.form</field>
+            <field name="model">dtsc.order.preview</field>
+            <field name="arch" type="xml">
+                <form string="下單統計表">
+                    <sheet>
+                        <group>
+                            <field name="customer_id" string="客戶"/>
+                            <field name="create_date" string="時間"/>
+                            <field name="is_ordered" string="是否下單"/>
+                        </group>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+    </data>
+</odoo> 

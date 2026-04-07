@@ -1,0 +1,162 @@
+﻿<odoo>
+    <template id="report_install_template">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <t t-call="web.external_layout">
+                    <div class="page">
+                        <!-- Title -->
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <h3><span t-field="doc.company_id" style="margin-right: 20px;"/>施工單</h3> <!-- 增加右边距 -->
+                            </div>
+                            <div>
+                                <strong>單號:</strong> <span t-field="doc.name"/>
+                            </div>
+                        </div>
+                        <hr style="border-top: 2px solid #333; opacity: 1;"/>
+                        <!-- Main Information -->
+                        <table class="table table-condensed">
+                            <tbody>
+                                <tr>
+                                    <td style="width: 13%;"><strong>現場聯絡人:</strong></td>
+                                    <td style="width: 17%;"><span t-field="doc.xcllr"/></td>
+                                    <td style="width: 13%;"><strong>承包商聯絡人:</strong></td>
+                                    <td style="width: 17%;"><span t-field="doc.cbsllr"/></td>
+                                </tr>
+                                <tr>
+                                    <td style="width: 13%;"><strong>聯絡人電話:</strong></td>
+                                    <td style="width: 17%;"><span t-field="doc.cbsllr_phone"/></td>
+                                    <td style="width: 13%;"><strong>承包商電話:</strong></td>
+                                    <td style="width: 17%;"><span t-field="doc.cbsllr_phone"/></td>
+                                    <!-- <td style="width: 12%;"><strong>撤場時間:</strong></td> -->
+                                    <!-- <td style="width: 38%;"><span t-field="doc.out_date"/></td> -->
+                                </tr>
+								<tr>
+                                    <td style="width: 12%;"><strong>進場開始時間:</strong></td>
+                                    <td style="width: 38%;"><span t-field="doc.in_date"/></td>
+                                    <td style="width: 12%;"><strong>進場結束時間:</strong></td>
+                                    <td style="width: 38%;"><span t-field="doc.in_date_end"/></td>
+								</tr>
+								<t t-if="doc.is_out_date == True">
+									<tr>
+										<td style="width: 12%;"><strong>撤場開始時間:</strong></td>
+										<td style="width: 38%;"><span t-field="doc.out_date"/></td>
+										<td style="width: 12%;"><strong>撤場結束時間:</strong></td>
+										<td style="width: 38%;"><span t-field="doc.out_date_end"/></td>
+									</tr>
+								</t>
+                                <tr>
+                                    <td><strong>施工地址:</strong></td>
+                                    <td  colspan="3"><span t-field="doc.address"/></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <!-- Order Details -->
+                        <table class="table table-condensed">
+                            <thead>
+                                <tr>
+                                    <th>項</th>
+                                    <th>檔名</th>
+                                    <th>尺寸</th>
+                                    <th>材質</th>
+                                    <th>才數</th>
+                                    <th>數量</th>
+                                    <th>工單</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+								<t t-set="counter" t-value="0"/>
+                                <t t-foreach="doc.install_product_ids" t-as="order">
+                                    <tr>
+                                        <td><span t-field="order.sequence"/></td>
+                                        <td><span t-field="order.project_product_name"/></td>
+                                        <td><span t-field="order.size"/></td>
+                                        <td><span t-field="order.caizhi"/></td>
+                                        <td><span t-field="order.caishu"/></td>
+                                        <td><span t-field="order.shuliang"/></td>
+                                        <td><span t-field="order.gongdan"/></td>
+                                    </tr>
+									<tr>
+										<td colspan="2" style="vertical-align: top;">施工説明:<br/><span t-field="order.install_note"/>
+										</td>
+										<td colspan="2" style="text-align: center;">
+											<img t-if="order.image_shiyi" t-att-src="'data:image/png;base64,' + order.image_shiyi.decode('utf-8')" t-att-alt="'示意圖'" style="width: 150px; max-height:150px"/>
+											<br/>示意圖
+										</td>
+										<td colspan="3" style="text-align: center;">
+											<img t-if="order.image_hecheng" t-att-src="'data:image/png;base64,' + order.image_hecheng.decode('utf-8')" t-att-alt="'合成圖'" style="width: 150px; max-height:150px"/>
+											<br/>合成圖
+										</td>
+									</tr>
+
+									<t t-set="counter" t-value="counter + 1"/>
+									<!-- 每四个记录后插入换页符 -->
+									<t t-if="counter % 4 == 0">
+										<t t-raw="'&lt;/tbody&gt;&lt;/table&gt;'"/> 
+											<div style="page-break-after: always;"></div> 
+											<!-- 打开一个新的表格 -->
+											<t t-raw="'&lt;table class=&quot;table table-condensed&quot;&gt;&lt;tbody&gt;'"/> 
+										<t t-set="counter" t-value="0"/> <!-- 重置行数 -->
+									</t>
+                                </t>
+                            </tbody>
+                        </table>
+                        <!-- Additional Details -->
+                        <div><strong>備註:</strong> <span t-field="doc.comment"/></div>
+                        <div style="text-align: right;">
+                            <div style="display: inline-block;">
+                                <strong>負責業務:</strong> 
+                            </div>
+                            <div style="display: inline-block; margin-right: 30px;">
+                                <span t-field="doc.fzyw"/>                        
+                            </div>
+                            <div style="display: inline-block;">
+                                <strong>總才數:</strong> 
+                            </div>
+                            <div style="display: inline-block;">
+                                <span t-field="doc.zcs"/>
+                            </div>
+							<!-- <t t-if="doc.signature"> -->
+								<div style="display: inline-block;">
+									<img t-if="doc.signature" t-att-src="'data:image/png;base64,' + doc.signature.decode('utf-8')" t-att-alt="'Signature'" style="width: 150px; height: auto"/>
+								</div>
+							<!-- </t> -->
+                        </div>
+						<!-- <t t-foreach="doc.image_ids" t-as="image_record"> -->
+							<!-- <div class="image"> -->
+								<!-- <img t-att-src="'data:image/png;base64,' + image_record.image.decode('utf-8')" style="max-height:200px; max-width:200px;"/> -->
+							<!-- </div> -->
+						<!-- </t> -->
+						<!-- <t t-if="doc.image_urls"> -->
+							<!-- <div class="images"> -->
+								<!-- <t t-foreach="json.loads(doc.image_urls)" t-as="url"> -->
+									<!-- <img t-att-src="'http://43.156.27.132/uploads_makein/' + url" style="max-height:200px;max-width:200px;"/> -->
+								<!-- </t> -->
+							<!-- </div> -->
+						<!-- </t> -->
+                    </div>
+                
+				<t t-set="image_index" t-value="0"/>
+                <t t-foreach="doc.image_ids" t-as="image_record">
+                    <t t-if="image_index % 2 == 0">
+						<div style="page-break-after: always;"></div>
+                        <div class="page">
+                            <div class="image" style="text-align: center;">
+                                <img t-att-src="'data:image/png;base64,' + image_record.image.decode('utf-8')" style="max-height: 600px; max-width: 600px;"/>
+                            </div>
+                            <t t-set="next_image_index" t-value="image_index + 1"/>
+                            <t t-if="next_image_index &lt; len(doc.image_ids)">
+                                <div class="image" style="text-align: center;margin-top:20px">
+                                    <img t-att-src="'data:image/png;base64,' + doc.image_ids[next_image_index].image.decode('utf-8')" style="max-height: 600px; max-width: 600px;"/>
+                                </div>
+                            </t>
+                        </div>
+                    </t>
+                    <t t-set="image_index" t-value="image_index + 1"/>
+                </t>
+				</t>
+				
+            </t>
+        </t>
+    </template>
+</odoo>

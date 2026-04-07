@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+   <template id="redirect_form">
+        <form t-att-action="api_url" method="post">
+            <input type="hidden" name="MerchantID" t-att-value="MerchantID"/>
+            <input type="hidden" name="Version" t-att-value="Version"/>
+            <input type="hidden" name="TradeInfo" t-att-value="TradeInfo"/>
+            <input type="hidden" name="TradeSha" t-att-value="TradeSha"/>
+        </form>
+    </template>
+    
+    <!-- <template id="assets_frontend_payment_newebpay" inherit_id="web.assets_frontend">
+        <xpath expr="." position="inside">
+            <script type="text/javascript" src="/payment_newebpay/static/src/js/custom_payment_checkout.js"></script>
+        </xpath>
+    </template> -->
+</odoo>

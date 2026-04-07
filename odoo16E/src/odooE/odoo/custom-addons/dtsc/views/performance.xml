@@ -1,0 +1,244 @@
+<odoo>
+	<record id="view_insurancelist_tree" model="ir.ui.view">
+		<field name="name">dtsc.insurancelist.tree</field>
+		<field name="model">dtsc.insurancelist</field>
+		<field name="arch" type="xml">
+			<tree>
+				<field name="name"/>
+				<!-- <field name="start_date"/> -->
+				<!-- <field name="end_date"/> -->
+				<field name="is_active"/>
+			</tree>
+		</field>
+	</record>
+	
+	<record id="view_insurancelist_form" model="ir.ui.view">
+		<field name="name">dtsc.insurancelist.form</field>
+		<field name="model">dtsc.insurancelist</field>
+		<field name="arch" type="xml">
+			<form>
+				<sheet class="w3000">
+					<div class="oe_title">
+						<h1>
+							<field name="name" />
+							<!-- <field name="name" readonly="1"/> -->
+						</h1>
+					</div>	
+					<group>
+						
+							<field name="is_active"/>
+							<field name="is_qqjj_compute"/>
+					</group>
+					<!-- <group string="勞保"> -->
+						<!-- <field name="lb_per"/> -->
+						<!-- <field name="lb_zf"/> -->
+						<!-- <field name="lb_dw"/>						 -->
+					<!-- </group> -->
+					<!-- <group string="健保"> -->
+						<!-- <field name="jb_per"/> -->
+						<!-- <field name="jb_zf"/> -->
+						<!-- <field name="jb_dw"/>						 -->
+					<!-- </group> -->
+					<notebook>					
+						<page string="勞保">
+							<field name="labor_insurance_grade_ids" >
+								<tree editable="bottom" limit="100" mode="tree" nolabel="1" >
+									<field name="name"/>
+									<field name="grade_salary"/>									
+									<field name="price_single"/>									
+									<field name="price_company"/>									
+								</tree>
+							</field>
+						</page>
+						<page string="健保">
+							<field name="health_insurance_grade_ids" >
+								<tree editable="bottom" limit="100" mode="tree" nolabel="1" >
+									<field name="name"/>
+									<field name="grade_salary"/>
+									<field name="price_single"/>
+									<field name="price_company"/>
+								</tree>
+							</field>
+						</page>
+					</notebook>
+				</sheet>
+			</form>
+		</field>
+	</record>
+	
+	
+	<record id="view_performance_tree" model="ir.ui.view">
+		<field name="name">dtsc.performance.tree</field>
+		<field name="model">dtsc.performance</field>
+		<field name="arch" type="xml">
+			<tree>
+				<field name="name"/>
+			</tree>
+		</field>
+	</record>
+	
+	<record id="action_recompute_all_tb" model="ir.actions.server">
+		<field name="name">重算所有保費</field>
+		<field name="model_id" ref="model_dtsc_workqrcode"/>
+		<field name="binding_model_id" ref="model_dtsc_workqrcode"/>
+		<field name="state">code</field>
+		<field name="code">
+			model.action_recompute_all_tb()
+		</field>
+		<field name="binding_view_types">list</field>
+	</record>
+	
+	<record id="action_performance_to_excel" model="ir.actions.server">
+		<field name="name">導出Excel</field>
+		<field name="model_id" ref="model_dtsc_performance"/>
+		<field name="binding_model_id" ref="model_dtsc_performance"/>
+		<field name="state">code</field>
+		<field name="code">
+			action = env['dtsc.performance'].with_context(env.context).action_performance_excel()
+		</field>
+		<field name="binding_view_types">list</field>
+	</record>
+	
+	
+	<record id="view_performance_form" model="ir.ui.view">
+		<field name="name">dtsc.performance.form</field>
+		<field name="model">dtsc.performance</field>
+		<field name="arch" type="xml">
+			<form>
+				<header>
+					<button name="update_kaoji" type="object" class="oe_highlight" string="生成工資表"/>
+				</header>
+				<sheet class="w3000">
+					<div class="oe_title">
+						<h1>
+							<!-- <field name="name" /> -->
+							<field name="name" readonly="1"/>
+						</h1>
+					</div>	
+					<group>
+						<field name="report_year"/>
+						<field name="report_month"/>
+					</group>
+					<group string="考勤">
+						<field name="attendance_weight"/>
+						<field name="attendance_formula_display"/>
+						<field name="attendance_formula_code" invisible="1"/>						
+					</group>
+					<group string="業務/產出">
+						<field name="sale_make_weight"/>
+						<field name="sale_formula_display"/>
+						<!-- <field name="make_tag"/>						 -->
+					</group>
+					<notebook>					
+						<page string="員工薪資表">
+							<field name="performanceline_salary_ids" >
+								<tree editable="bottom" limit="100"  >
+									<field name="work_id"/>
+									<field name="name"/>
+									<field name="department"/>
+									<field name="jcxz"/>
+									<field name="ykxz" decoration-danger="1"/>
+									<field name="zgjj"/>
+									<field name="jxjj"/>
+									<field name="qqjj"/>
+									<field name="jbf"/>
+									<field name="qtjt"/>
+									<field name="ywjt"/>
+									<field name="qijx"/>
+									<field name="hsjt"/>
+									<field name="czjx" decoration-danger="1"/>
+									<field name="lbfzf"  decoration-danger="1"/>
+									<field name="lbfztj"  decoration-danger="1"/>
+									<field name="jbfzf"  decoration-danger="1"/>
+									<field name="sfje"/>
+ 
+									
+								</tree>
+							</field>
+						</page>
+						<!-- <page string="員工考績明细"> -->
+							<!-- <field name="performanceline_kao_id" > -->
+								<!-- <tree editable="bottom" limit="100"  > -->
+									<!-- <field name="name"/> -->
+									<!-- <field name="should_work_days"/> -->
+									<!-- <field name="should_work_hours"/> -->
+									<!-- <field name="cd_num"/> -->
+									<!-- <field name="zt_num"/> -->
+									<!-- <field name="qk_num"/> -->
+									<!-- <field name="ybqj_num"/> -->
+									<!-- <field name="txqj_num"/> -->
+									<!-- <field name="attendance_score" decoration-info="1"/> -->
+									<!-- <field name="ywjxdbx" decoration-success="1"/> -->
+									<!-- <field name="byxsyj" /> -->
+									<!-- <field name="ywcc_score" decoration-info="1"/> -->
+									<!-- <field name="total_score" decoration-info="1"/> -->
+									
+								<!-- </tree> -->
+							<!-- </field> -->
+						<!-- </page> -->
+						<page string="員工請假明细">
+							<field name="performanceline_leave_id" >
+								<tree editable="bottom" limit="100"  >
+									<field name="name"/>
+									<field name="tx_num"/>
+									<field name="bj_num"/>
+									<field name="bj_kouxin"/>
+									<field name="sj_num"/>
+									<field name="sj_kouxin"/>
+									<field name="slj_num"/>
+									<field name="slj_kouxin"/>
+									<field name="jtzgj_num"/>
+									<field name="jtzgj_kouxin"/>
+									<field name="gj_num"/>
+									<!-- <field name="gj_kouxin"/> -->
+									<field name="hj_num"/>
+									<!-- <field name="hj_kouxin"/> -->
+									<field name="saj_num"/>
+									<!-- <field name="saj_kouxin"/> -->
+									<field name="cj_num"/>
+									<field name="cj_kouxin"/>
+									<field name="cjj_num"/>
+									<!-- <field name="cjj_kouxin"/> -->
+									<!-- <field name="all_num"/> -->
+									<!-- <field name="all_kouxin"/> -->
+									
+								</tree>
+							</field>
+						</page>
+					</notebook>
+				</sheet>
+			</form>
+		</field>
+	</record>
+	
+	<record id="work_qrcode_salary_list" model="ir.ui.view">
+		<field name="name">dtsc.workqrcode.salary.tree</field>
+		<field name="model">dtsc.workqrcode</field>
+		<field name="arch" type="xml">
+			<tree editable="bottom">	 			
+				<field name="work_id"  readonly="1"  />
+				<field name="name"  readonly="1"  />
+				<field name="department"  readonly="1"  />
+				<field name="jcxz" />
+				<field name="qqjj" />
+				<field name="zgjj" />
+				<field name="hsjt" />
+				<field name="qtjt" />
+				<field name="jxjj" />
+				<field name="ywjxdbx" decoration-success="1"/>
+				
+				<field name="jbtb_level" decoration-info="1"/>
+				<field name="jbtb_single" decoration-info="1"/>
+				<field name="jbtb_company" decoration-info="1"/>
+				<field name="lbtb_level" decoration-info="1"/>
+				<field name="lbtb_single" decoration-info="1"/>
+				<field name="lbtb_company" decoration-info="1"/>
+				<field name="lbztj" decoration-info="1"/>
+				
+				
+				
+				<field name="work_type"/>
+			</tree>  
+		</field>	
+	</record>
+</odoo>

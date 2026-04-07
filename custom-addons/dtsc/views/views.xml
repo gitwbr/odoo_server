@@ -403,6 +403,23 @@
 		<field name="state">code</field>
 	</record>
 	
+	<record id="action_chart_dashboard_yubaojia" model="ir.actions.act_window">
+        <field name="name">預報單價統計表</field> 
+		<field name="res_model">dtsc.checkout</field>
+		<field name="view_mode">kanban,graph,tree</field>
+		<field name="domain">[('is_delivery','=',True)]</field>
+		<!-- <field name="context">{'group_by' : 'display_name_reportt','search_default_custom_26_to_today': 1}</field> -->
+		<field name="view_id" ref="dtsc.report_checkout_treee"/>
+		<field name="search_view_id" ref="search_checkout_report"/>
+    </record>
+
+	<record id="action_server_chart_dashboard_yubaojia" model="ir.actions.server">
+		<field name="name">預報單價統計表server</field>
+		<field name="model_id" ref="model_dtsc_checkout"/>
+		<field name="code">action = model.action_chart_dashboard_yubaojia()</field> 
+		<field name="state">code</field>
+	</record>
+	
 	<record id="action_sales_chart_dashboard" model="ir.actions.act_window">
         <field name="name">業務出貨統計表</field>
 		<field name="res_model">dtsc.checkout</field>
@@ -662,23 +679,24 @@
 	 
 	
 	<menuitem id="menu_chart_dashboard_root" parent="dtsc.menu_root" name="報表" sequence="10" action="dtsc.action_server_chart_dashboard2" groups="dtsc.group_dtsc_gly"/>
-    <menuitem id="menu_chart_dashboard" name="出貨統計表" parent="menu_chart_dashboard_root" action="action_server_chart_dashboard2" sequence="1" groups="dtsc.group_dtsc_gly"/>
-    <menuitem id="menu_sales_chart_dashboard" name="業務出貨統計表" parent="menu_chart_dashboard_root" action="action_server_sales_chart_dashboard" sequence="2" groups="dtsc.group_dtsc_gly"/>
-    <menuitem id="menu_machine_chart_dashboard" name="機台出貨統計表" parent="menu_chart_dashboard_root" action="action_server_machine_chart_dashboard" sequence="3" groups="dtsc.group_dtsc_gly"/>
-    <menuitem id="menu_product_chart_dashboard" name="材料出貨統計表" parent="menu_chart_dashboard_root" action="action_server_product_chart_dashboard" sequence="4" groups="dtsc.group_dtsc_gly"/>
-    <menuitem id="menu_makeout_chart_dashboard" name="委外生產統計表" parent="menu_chart_dashboard_root" action="action_server_makeout_chart_dashboard" sequence="5" groups="dtsc.group_dtsc_gly"/>
-	<menuitem id="menu_order_preview" name="下單統計表" parent="menu_chart_dashboard_root" action="action_order_preview1" sequence="6" groups="dtsc.group_dtsc_gly"/>
+    <menuitem id="menu_chart_dashboard" name="出貨統計表" parent="menu_chart_dashboard_root" action="action_server_chart_dashboard2" sequence="10" groups="dtsc.group_dtsc_gly"/>
+    <menuitem id="menu_chart_dashboard_yubaojia" name="預報單價統計表" parent="menu_chart_dashboard_root" action="action_server_chart_dashboard_yubaojia" sequence="10" groups="dtsc.group_dtsc_gly"/>
+    <menuitem id="menu_sales_chart_dashboard" name="業務出貨統計表" parent="menu_chart_dashboard_root" action="action_server_sales_chart_dashboard" sequence="20" groups="dtsc.group_dtsc_gly"/>
+    <menuitem id="menu_machine_chart_dashboard" name="機台出貨統計表" parent="menu_chart_dashboard_root" action="action_server_machine_chart_dashboard" sequence="30" groups="dtsc.group_dtsc_gly"/>
+    <menuitem id="menu_product_chart_dashboard" name="材料出貨統計表" parent="menu_chart_dashboard_root" action="action_server_product_chart_dashboard" sequence="40" groups="dtsc.group_dtsc_gly"/>
+    <menuitem id="menu_makeout_chart_dashboard" name="委外生產統計表" parent="menu_chart_dashboard_root" action="action_server_makeout_chart_dashboard" sequence="50" groups="dtsc.group_dtsc_gly"/>
+	<menuitem id="menu_order_preview" name="下單統計表" parent="menu_chart_dashboard_root" action="action_order_preview1" sequence="60" groups="dtsc.group_dtsc_gly"/>
 	<menuitem id="menu_make_order_preview" name="工單狀況表" parent="menu_chart_dashboard_root" action="action_make_machine_chart_dashboard" sequence="7" groups="dtsc.group_dtsc_gly"/>
-	<menuitem id="menu_work_time" name="員工績效(工時)" parent="menu_chart_dashboard_root" action="action_work_time" sequence="8" groups="dtsc.group_dtsc_gly"/>
-	<menuitem id="menu_daka" name="考勤記錄" parent="menu_chart_dashboard_root" action="action_kaoqing" sequence="9" groups="dtsc.group_dtsc_gly"/>
-	<menuitem id="menu_leave1" name="請假表" parent="menu_chart_dashboard_root" action="action_leave" sequence="10" />
-	<menuitem id="menu_pettycash" name="零用金" parent="menu_chart_dashboard_root" action="action_pettycash1" sequence="11" groups="dtsc.group_dtsc_gly"/>
-	<menuitem id="menu_calendar" name="日曆" parent="menu_chart_dashboard_root" action="action_calendar_dtsc" sequence="12" groups="dtsc.group_dtsc_gly"/>
+	<menuitem id="menu_work_time" name="員工績效(工時)" parent="menu_chart_dashboard_root" action="action_work_time" sequence="80" groups="dtsc.group_dtsc_gly"/>
+	<menuitem id="menu_daka" name="考勤記錄" parent="menu_chart_dashboard_root" action="action_kaoqing" sequence="90" groups="dtsc.group_dtsc_gly"/>
+	<menuitem id="menu_leave1" name="請假表" parent="menu_chart_dashboard_root" action="action_leave" sequence="100" />
+	<menuitem id="menu_pettycash" name="零用金" parent="menu_chart_dashboard_root" action="action_pettycash1" sequence="110" groups="dtsc.group_dtsc_gly"/>
+	<menuitem id="menu_calendar" name="日曆" parent="menu_chart_dashboard_root" action="action_calendar_dtsc" sequence="120" groups="dtsc.group_dtsc_gly"/>
 	<!-- <menuitem id="menu_calendar" name="日曆" parent="menu_chart_dashboard_root" action="action_calendar" sequence="12" groups="dtsc.group_dtsc_gly"/> -->
 	<menuitem id="menu_performance" name="薪資總表" parent="menu_chart_dashboard_root" action="action_performance_dtsc" sequence="13" groups="dtsc.group_dtsc_gly"/>
 	<menuitem id="menu_salary_setting" name="基礎薪資設定表" parent="menu_chart_dashboard_root" action="action_performance_salary_dtsc" sequence="14" groups="dtsc.group_dtsc_gly"/>
-	<menuitem id="menu_jl_setting" name="勞健保基礎表" parent="menu_chart_dashboard_root" action="action_jl_dtsc" sequence="15" groups="dtsc.group_dtsc_gly"/>
-	<menuitem id="menu_report_center" name="報表查詢" parent="menu_chart_dashboard_root" action="action_report_center" sequence="16" groups="dtsc.group_dtsc_gly"/>
+	<menuitem id="menu_jl_setting" name="勞健保基礎表" parent="menu_chart_dashboard_root" action="action_jl_dtsc" sequence="150" groups="dtsc.group_dtsc_gly"/>
+	<menuitem id="menu_report_center" name="報表查詢" parent="menu_chart_dashboard_root" action="action_report_center" sequence="160" groups="dtsc.group_dtsc_gly"/>
 	<!-- 
 	<menuitem id="submenu1" name="銷售產品" parent="dtsc.action_window_product" action="dtsc.action_window_product"/>
 

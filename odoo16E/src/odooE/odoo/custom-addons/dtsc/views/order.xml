@@ -1,0 +1,134 @@
+﻿<odoo>
+    <data>
+        <template id="order_page" name="order Page">
+            <t t-call="website.layout">
+                <t t-call-assets="web.assets_common"/>
+				
+				<style>
+					#top {
+						display: none !important;
+					}
+                    .detail-row {
+                        display: flex;
+                        justify-content: space-between;
+                        margin-top: 10px;
+                    }
+
+                    .detail-label, .detail-input {
+                        width: 23%;
+                        box-sizing: border-box;
+                    }
+
+                    .detail-input {
+                        padding: 5px;
+                        border: 1px solid #ccc;
+                    }
+					.detail-row-full {
+                        display: flex;
+                        justify-content: space-between;
+                        margin-top: 10px;
+                    }
+
+                    .detail-label-full, .detail-input-full {
+                        width: 100%;
+                        box-sizing: border-box;
+                    }
+
+                    .detail-input-full {
+                        padding: 5px;
+                        border: 1px solid #ccc;
+                    }
+					.form-control {
+					  appearance: auto !important;
+					}
+					.table-active, .table-active > th, .table-active > td {
+						background-color: rgba(0, 0, 0, 0.075);
+					}
+					.table > :not(caption) > * > * {
+						box-shadow: none !important;
+						padding: initial; 
+					}
+					.table > :not(:first-child) {
+						border-top: none !important;
+					}
+					.invalid-feedback {
+						display: none;
+						width: 100%;
+						margin-top: 0.25rem;
+						font-size: 80%;
+						color: #dc3545;
+					}
+					.table th, .table td {
+						padding: 0.75rem;
+						padding-left: 0;
+						padding-right: 0;
+						#vertical-align: middle;
+						#border-top: 1px solid #dee2e6;
+					}
+					.text-right {
+						text-align: right !important;
+					}
+                </style>
+				
+				<script type="text/javascript" src="/dtsc/static/src/js/order.js"></script>
+
+                <div class="banner_service_form_order">
+                    <div class="container">
+                        <div class="py-5 text-center">
+                            <h2>
+                                <b>訂單基本資料</b>
+                            </h2>
+                        </div>
+                        <div class="mb-3" id="content">
+                            <input name="search" type="text" class="form-control" readonly="1"/>
+                        </div>
+                       <!--  <div class="mb-3">
+                            <label for="unit-selection">选择单位：</label>
+                            <select id="unit-selection">
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="param1">参数1：</label>
+                            <input type="number" id="param1" />
+                        </div>
+                        <div class="mb-3">
+                            <label for="param2">参数2：</label>
+                            <input type="number" id="param2" />
+                        </div>
+                        <div class="mb-3">
+                            <label>结果：</label>
+                            <span id="result"></span>
+                        </div> -->
+						<div class="col-lg-12">
+						  <h5>
+							<b>
+							  <font style="font-size: 24px;">注意事項</font>
+							</b>
+						  </h5>
+						  <h5>1.檔案請提供: AI.PS.PDF檔 </h5>
+						  <h5>2.文字需轉曲線（建立外框），否則將會產生替換文字</h5>
+						  <h5>3.滿版印刷檔，請做0.1cm以上出血及裁切線</h5>
+						  <h5>4.建議字體粗設定0.1cm以上</h5>
+						  <h5>5.檔案命名方式: 客戶簡稱-檔名-材質+加工方式-寬x高(完成尺寸)x張數 </h5>
+						  <h5>   EX：科影-背牆輸出-PVC+霧膜+5mm合成板-540x120cmx1張</h5>
+						 <h5>
+							<span style="color: rgb(0, 0, 0); font-family: &quot;PingFang TC&quot;;">6.在Adobe illustrator製稿時，所置入的影像檔，最好為「嵌入圖檔」，不然易發生掉圖或連結錯誤狀況<br/>7.印刷品下單時,需在備註正確的輸出尺寸</span>
+							<br/>
+							<br/>
+						</h5>
+
+						  <h5><span style="font-size: 1.09375rem;">※</span>同圖檔輸出在不同材質、不同性質之墨水，色彩皆有差異；同圖檔與材質，在不同時間輸出，亦有可能因溫度及色墨，而產生色差。</h5>
+						  <h5>
+							
+						  </h5>
+						  <h5>
+							<span style="font-size: 1.09375rem;">※請注意！等畫面出現『感謝您的訂購！！』即下單成功～</span>
+						  </h5>
+						</div>
+                    </div>
+                </div>           
+           
+		 </t>
+        </template>
+    </data>
+</odoo>

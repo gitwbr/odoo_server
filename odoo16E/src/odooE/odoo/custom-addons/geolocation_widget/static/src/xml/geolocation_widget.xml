@@ -1,0 +1,24 @@
+<templates>
+    <t t-name="GeoLocationField" owl="1">
+        <div>
+            <!-- 输入框：显示经纬度 -->
+            <input t-ref="geoInput" type="text" readonly="1" class="form-control" placeholder="Click the button to select location"/>
+            
+            <!-- 输入框：用户输入地址 -->
+            <input t-ref="addressInput" type="text" class="form-control" placeholder="Enter address to search" style="margin-top: 5px;"/>
+            
+            <!-- 按钮：手动获取当前定位 -->
+            <button t-ref="updateButton" class="btn btn-primary">
+                <i class="fa fa-map-marker"></i> Get Coordinates
+            </button>
+
+            <!-- 按钮：查询地址 -->
+            <button t-ref="searchAddressButton" class="btn btn-success" style="margin-left: 5px;">
+                <i class="fa fa-search"></i> Search Address
+            </button>
+        </div>
+        
+        <!-- Google Map 容器 -->
+        <div t-ref="mapContainer" style="width:100%; height:600px; display:none; margin-top:10px;"></div>
+    </t>
+</templates>

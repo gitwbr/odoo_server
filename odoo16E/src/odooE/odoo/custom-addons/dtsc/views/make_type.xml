@@ -1,0 +1,21 @@
+<odoo>
+	 <record model="ir.ui.view" id="dtsc_list_tree">
+      <field name="name">dtsc.maketype.tree</field>
+      <field name="model">dtsc.maketype</field>
+      <field name="arch" type="xml">
+		<tree editable="top">
+            <field name="sequence" widget="handle"/>
+			<field name="name"/> 
+			<!-- <field name="unit_char"/>		   -->
+			<field name="price" groups="dtsc.group_dtsc_yw,dtsc.group_dtsc_kj"/>				  
+		</tree>
+      </field>
+    </record>
+	
+	
+	<record id="dtsc.make_type_template_action" model="ir.actions.act_window"> 
+		<field name="name">後加工方式</field> 
+		<field name="res_model">dtsc.maketype</field>
+		<field name="view_mode">tree,form</field>
+	</record>	
+</odoo>

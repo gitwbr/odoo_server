@@ -1,0 +1,54 @@
+<odoo>
+	<record id="action_report_qrcode" model="ir.actions.report">
+		<field name="name">列印QRcode</field> <!-- 报告名称 -->
+		<field name="model">dtsc.workqrcode</field> <!-- 模型名称 -->
+		<field name="report_type">qweb-pdf</field> <!-- 报告类型，PDF 格式 -->
+		<field name="report_name">dtsc.report_qrcode</field> <!-- QWeb 模板的名称 -->
+		<field name="report_file">dtsc.report_qrcode</field> <!-- 可选字段，与 report_name 一致 -->
+		<field name="binding_model_id" ref="model_dtsc_workqrcode"/> <!-- 模型的 XML ID -->
+		<field name="binding_type">report</field> <!-- 动作类型，指定为“报告” -->
+	</record>
+
+	<template id="dtsc.report_qrcode">
+		<t t-call="web.html_container">
+            <t t-call="web.external_layout">
+				<t t-set="cards_per_page" t-value="12"/> <!-- 每页最多显示 12 个卡片 -->
+				<t t-set="cards_per_row" t-value="4"/>  <!-- 每行最多显示 4 个卡片 -->
+
+				<!-- 按页分割 -->
+				<t t-foreach="[docs[i:i+cards_per_page] for i in range(0, len(docs), cards_per_page)]" t-as="page">
+					<div style="page-break-after: always; width: 21cm; height: 29.7cm; padding: 1cm; box-sizing: border-box;">
+						<!-- 每页布局 -->
+						<t t-foreach="[page[i:i+cards_per_row] for i in range(0, len(page), cards_per_row)]" t-as="row">
+							<div style="display: flex; justify-content: flex-start; gap: 0.5cm; margin-bottom: 1cm;">
+								<!-- 每行布局 -->
+								<t t-foreach="row" t-as="doc">
+									<div style="width: 5cm; height: 8cm; border: 2px solid black; text-align: center; margin: 0.5cm; padding: 0.5cm; box-sizing: border-box; display: flex; justify-content: center; align-items: center;">
+										<!-- 卡片内容 -->
+										<div style="text-align: center;">
+											<t t-if="doc.bar_image">
+												<img t-att-src="'data:image/png;base64,' + doc.bar_image.decode('utf-8')" style="max-width: 4cm; max-height: 4cm;" alt="QR Code"/>
+											</t>
+											<div style="font-size: 14px; font-weight: bold; margin-top: 1cm;">
+												<t t-esc="doc.name"/>
+											</div>
+										</div>
+									</div>
+								</t>
+								<!-- 空白占位符 -->
+								<t t-set="empty_slots" t-value="cards_per_row - len(row)"/>
+								<t t-foreach="range(empty_slots)" t-as="empty">
+									<div style="width: 5cm; height: 8cm; border: 2px solid black; text-align: center; margin: 0.5cm; padding: 0.5cm; box-sizing: border-box; visibility: hidden;">
+										<div style="display: flex; justify-content: center; align-items: center; height: 100%;">
+											<span></span>
+										</div>
+									</div>
+								</t>
+							</div>
+						</t>
+					</div>
+				</t>
+			</t>
+		</t>
+	</template>
+</odoo>

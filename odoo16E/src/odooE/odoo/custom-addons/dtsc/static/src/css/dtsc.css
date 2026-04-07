@@ -1,0 +1,43 @@
+.text-truncate{
+	overflow:initial;
+	text-overflow:initial;	
+}
+
+.my_custom_class table {
+    /* 您的自定义表格样式 */
+    table-layout: auto !important;
+    /* 其他样式 */
+}
+
+.my_custom_tree_image img {
+    max-width: 100px; /* 或者其他您想要的尺寸 */
+    height: auto; /* 保持图片的宽高比 */
+}
+
+.w100{
+	width:100px;
+}
+.w200{
+	width:200px;
+}
+
+.w3000 .o_form_sheet{
+	max-width:3000px;
+}
+
+.o_form_view.o_xxl_form_view .o_form_sheet_bg > .o_form_sheet {
+    width: 100%;
+    max-width: 3000px;
+}
+
+.o_FormRenderer_chatterContainer.o-aside{
+	display:none;
+	
+}
+
+.o_list_view th.w110, .o_list_view td.w110 {
+    width: 110px !important;
+    max-width: 110px !important;
+    min-width: 110px !important;
+    overflow: hidden;
+}

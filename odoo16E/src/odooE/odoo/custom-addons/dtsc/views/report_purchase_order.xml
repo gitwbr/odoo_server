@@ -1,0 +1,130 @@
+<odoo>
+    <data>
+        <template id="dtsc_report_purchaseorder" inherit_id="purchase.report_purchaseorder_document">
+            <xpath expr="." position="replace">
+                <t t-call="web.html_container">
+					<!-- <style>
+						.o_standard_footer {
+							margin-top: 20px;
+						}
+                    </style> -->
+                    <t t-set="o" t-value="o.with_context(lang=o.partner_id.lang)"/>
+                    <t t-foreach="docs" t-as="doc">
+                        <t t-call="web.external_layout">
+                            <div class="page" style="min-height: 29cm; position: relative;">
+                                <!-- Title -->
+                                <div style="width: 100%; text-align: center;position: relative;">
+									<div style="display: inline-block;">
+										<p>
+											<h3>
+												<span t-field="doc.company_id" style="margin-right: 20px;"/>
+												<!-- <t t-if="int(doc.my_state) in [3, 4]">
+													進貨單
+												</t>
+												<t t-else="">
+													採購單
+												</t> -->
+												<t t-if="o['is_return_goods'] == False">
+													<t t-if="int(doc.my_state) in [3, 4]">
+														進貨單
+													</t>
+													<t t-else="">
+														採購單
+													</t>
+												</t>
+												<t t-if="o['is_return_goods'] == True">
+													退貨單
+												</t>
+											</h3>
+										</p>
+										<p>新北市中和中山路二段482巷15號2樓     Tel:02-2221-8868    Fax:02-2221-8861    日期:<span t-field="o.effective_date" t-options='{"format": "yyyy年MM月dd日"}'/></p>
+										<!-- <p></p> -->
+									</div>
+									<div style="position: absolute; top: 0; right: 0;font-size: 24px;">
+                                        單號：<span t-field="o.name"/>
+                                    </div>
+								</div>
+
+                                <hr style="border-top: 2px solid #333; opacity: 1;"/>
+
+                                <!-- Main Information -->
+                                <table class="table table-condensed">
+                                    <tbody>
+                                        <tr>
+                                            <td style="width: 10%;"><strong>工廠名稱:</strong></td> 
+                                            <td style="width: 15%;"><span t-field="o.partner_id.name"/></td>
+                                            <td style="width: 10%;"><strong>電話:</strong></td>
+                                            <td style="width: 15%;"><span t-field="o.partner_id.phone"/></td>
+                                            <td style="width: 10%;"><strong>傳真:</strong></td>
+                                            <td style="width: 15%;"><span t-field="o.partner_id.custom_fax"/></td>
+                                        </tr>
+                                        <tr>
+                                            <td style="width: 10%;"><strong>地址:</strong></td>
+                                            <td colspan="5" style="width: 35%;"><span t-field="o.partner_id.street"/></td>
+                                        </tr>
+                                        <t t-if="o['is_return_goods'] == True">
+                                            <tr>
+                                                <td style="width: 10%;"><strong>退貨備註:</strong></td>
+                                                <td colspan="5"><span t-field="o.return_goods_comment"/></td>
+                                            </tr>
+                                        </t>
+										<tr>
+											<td style="width: 10%;"><strong>采購備註:</strong></td>
+											<td colspan="5"><span t-field="o.purchase_comment"/></td>
+										</tr>
+                                    </tbody>
+                                </table>
+
+                                <!-- Order Details -->
+                                <table class="table table-condensed">
+                                    <thead>
+                                        <tr>
+                                            <th>項次</th>
+                                            <th>品名/規格</th>
+                                            <th>數量</th>
+                                            <th>單位</th>
+                                            <th>單價</th>
+                                            <th>金額</th>
+                                            <th>備注</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <t t-foreach="o.order_line" t-as="order">
+                                            <tr>
+                                                <td><span t-esc="order_index + 1"/></td>
+                                                <td><span t-field="order.name"/></td>
+                                                <td><span t-field="order.product_qty"/></td>
+                                                <td><span t-field="order.product_uom"/></td>
+                                                <td><span t-field="order.price_unit"/></td>
+                                                <td><span t-field="order.price_subtotal"/></td>
+                                                <td></td>
+                                            </tr>
+                                        </t>
+                                    </tbody>
+                                </table>
+
+                                <div id="total" class="row justify-content-end">
+                                    <div class="col-4">
+                                        <table class="table table-sm table-borderless">
+                                            <t t-set="tax_totals" t-value="o.tax_totals"/>
+                                            <t t-call="account.document_tax_totals"/>
+                                        </table>
+                                    </div>
+                                </div>
+
+                                <!-- Footer with 製表人 on the left and 簽核 in the center -->
+                                <div style="position: absolute; bottom: 10px; left: 0; right: 0; width: 100%;">
+                                    <div style="display: flex; justify-content: space-between;">
+                                        <div style="width: 33.3%;"><strong>製表人:</strong></div>
+                                        <div style="width: 33.3%; text-align: center;"><strong>簽核:</strong></div>
+                                        <div style="width: 33.3%;"></div> <!-- 留空白，用于对齐 -->
+                                    </div>
+                                </div>
+                            </div>
+                        </t>
+                    </t>
+                </t>
+            </xpath>
+        </template>
+    </data>
+</odoo>

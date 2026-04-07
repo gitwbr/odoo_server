@@ -1,0 +1,1374 @@
+<odoo>
+  <template id="report_crm_checkout_template">
+    <t t-call="web.html_container">
+
+      <style type="text/css">
+        @page { size: A4 portrait; margin: 10mm; }
+        table.table.fixed { table-layout: fixed; width: 100%; border-collapse: collapse; }
+        thead { display: table-header-group; }
+        tfoot { display: table-footer-group; }
+        tr, td, th, .row { page-break-inside: avoid; }
+
+        /* 一筆明細固定高度（最多顯示兩行文字） */
+        .line-row td{
+          height: 24px;
+          padding: 0 2mm;
+          vertical-align: middle;
+        }
+
+        .cell-2lines{
+          position: relative;
+          height: 24px;
+          max-height: 24px;
+          padding: 0 2mm;
+          overflow: hidden;
+        }
+
+        .clamp-2{
+          position: relative;
+          line-height: 24px;
+          max-height: 24px;
+          word-break: break-word;
+          white-space: normal;
+        }
+
+        .clamp-2.is-long::after{
+          content: '...';
+          position: absolute;
+          right: 1mm;
+          bottom: 0;
+          background: #fff;
+          padding-left: 1mm;
+        }
+
+        .table.totals > :not(:first-child) {
+          border-top: 0 !important;
+        }
+        .table.totals > colgroup + thead,
+        .table.totals > colgroup + tbody,
+        .table.totals > colgroup + tfoot {
+          border-top: 0 !important;
+        }
+      </style>
+
+      <div>
+        <t t-foreach="docs" t-as="doc">
+          <t t-call="dtsc.external_layout_coin">
+
+            <!-- ================== 頂部資訊 ================== -->
+            <table class="table table-condensed" style="margin-bottom:0px">
+              <tbody>
+                <tr>
+                  <td rowspan="2">
+                    <img t-if="company.logo"
+                         t-att-src="'data:image/png;base64,%s' % company.logo.decode('utf-8')"
+                         style="width:50px; max-height:50px"/>
+                    <span t-field="company.name"/>
+                  </td>
+                  <td>報價單</td>
+                  <td><span t-field="company.street"/></td>
+                </tr>
+                <tr>
+                  <td>Mail：<span t-field="company.email"/></td>
+                  <td>Tel：02-22218868 Fax：22218861</td>
+                </tr>
+
+                <tr>
+                  <t t-if="doc.is_new_partner"><td>客戶名稱： <span t-field="doc.new_partner"/></td></t>
+                  <t t-else="1"><td>客戶名稱： <span t-field="doc.customer_id.name"/></td></t>
+
+                  <t t-if="doc.is_new_partner"><td>統一編號： <span t-field="doc.new_vat"/></td></t>
+                  <t t-else="1"><td>統一編號： <span t-field="doc.customer_id.vat"/></td></t>
+
+                  <t t-if="doc.is_new_partner"><td>付款條件： <span t-field="doc.new_property_payment_term_id"/></td></t>
+                  <t t-else="1"><td>付款條件： <span t-field="doc.customer_id.property_payment_term_id"/></td></t>
+                </tr>
+
+                <tr>
+                  <t t-if="doc.is_new_partner"><td>聯絡人： <span t-field="doc.new_custom_contact_person"/></td></t>
+                  <t t-else="1"><td>聯絡人： <span t-field="doc.customer_id.custom_contact_person"/></td></t>
+
+                  <t t-if="doc.is_new_partner"><td>電話： <span t-field="doc.new_phone"/></td></t>
+                  <t t-else="1"><td>電話： <span t-field="doc.customer_id.phone"/></td></t>
+
+                  <t t-if="doc.is_new_partner"><td>收款方式： <span t-field="doc.new_custom_pay_mode"/></td></t>
+                  <t t-else="1"><td>收款方式： <span t-field="doc.customer_id.custom_pay_mode"/></td></t>
+                </tr>
+
+                <tr>
+                  <t t-if="doc.is_new_partner"><td>地址： <span t-field="doc.new_street"/></td></t>
+                  <t t-else="1"><td>地址：<span t-field="doc.customer_id.street"/></td></t>
+
+                  <t t-if="doc.is_new_partner"><td>傳真： <span t-field="doc.new_custom_fax"/></td></t>
+                  <t t-else="1"><td>傳真：<span t-field="doc.customer_id.custom_fax"/></td></t>
+
+                  <td>報價日期： <span t-field="doc.crm_date"/></td>
+                </tr>
+
+                <tr>
+                  <t t-if="doc.is_new_partner"><td>E-mail： <span t-field="doc.new_email"/></td></t>
+                  <t t-else="1"><td>E-mail： <span t-field="doc.customer_id.email"/></td></t>
+
+                  <t t-if="doc.is_new_partner"><td>行動電話： <span t-field="doc.new_mobile"/></td></t>
+                  <t t-else="1"><td>行動電話： <span t-field="doc.customer_id.mobile"/></td></t>
+
+                  <td>有效期限： <span t-field="doc.crm_effective_date" /></td>
+                </tr>
+              </tbody>
+            </table>
+
+            <!-- ========== 先在 QWeb 把明細分頁：依字數算行數 ========== -->
+            <!-- 首頁 28 行，其後每頁 34 行 -->
+            <t t-set="MAX_FIRST" t-value="25"/>
+            <t t-set="MAX_NEXT" t-value="33"/>
+
+            <!-- 有價用 25 字、無價用 30 字當兩行的門檻 -->
+            <t t-set="NAME_LIMIT" t-value="14 if doc.is_show_price else 30"/>
+
+            <t t-set="pages" t-value="[]"/>
+            <t t-set="current_page" t-value="[]"/>
+            <t t-set="current_lines" t-value="0"/> 
+            <t t-set="page_index" t-value="0"/>
+			
+			
+            <t t-foreach="doc.product_ids" t-as="order">
+              <!-- 文字長度：專案名 + 品名 + multi_chose + 有效屬性 -->
+              <t t-set="text_len"
+                 t-value="len(order.project_product_name or '') 
+                          + len(order.product_id.name or '') 
+                          + len(order.multi_chose_ids or '') 
+                          + sum(len(a.name or '') for a in order.product_atts if a.attribute_id and a.attribute_id.name != '冷裱')
+
+						  "/>
+
+			  <t t-if="order.crm_chengben_comment or (order.crm_chengben or 0) != 0">
+				<t t-set="row_lines" t-value="2 if text_len &gt; NAME_LIMIT else 1
+										+ (1.6 if (doc.checkout_order_type == 'd' and not doc.is_sign) else 0)
+										"/>
+			  </t>
+			  <t t-else="1">
+				<t t-set="row_lines" t-value="2 if text_len &gt; NAME_LIMIT else 1"/>
+			  </t>
+              <t t-set="limit" t-value="MAX_FIRST if page_index == 0 else MAX_NEXT"/>
+
+              <t t-if="current_lines + row_lines &gt; limit">
+                <!-- 目前頁塞不下，先關一頁 -->
+                <t t-set="pages" t-value="pages + [current_page]"/>
+                <t t-set="current_page" t-value="[order]"/>
+                <t t-set="current_lines" t-value="row_lines"/>
+                <t t-set="page_index" t-value="page_index + 1"/>
+              </t>
+              <t t-else="">
+                <!-- 還放得下，繼續加在同一頁 -->
+                <t t-set="current_page" t-value="current_page + [order]"/>
+                <t t-set="current_lines" t-value="current_lines + row_lines"/>
+              </t>
+            </t>
+
+            <!-- 把最後一頁補進去 -->
+            <t t-if="current_page">
+              <t t-set="pages" t-value="pages + [current_page]"/>
+            </t>
+
+            <t t-set="page_count" t-value="len(pages)"/>
+
+            <!-- ================= 明細表格（有價版本） ================= -->
+			
+            <t t-if="doc.is_show_price or (doc.checkout_order_type == 'd' and not doc.is_sign)">
+              <t t-foreach="range(page_count)" t-as="pidx">
+                <t t-set="page_lines" t-value="pages[pidx]"/>
+
+                <!-- 除了最後一頁以外，都強制換頁 -->
+                <div t-attf-style="page-break-after: #{ 'always' if pidx &lt; page_count - 1 else 'auto' };">
+
+                  <table class="table table-condensed fixed" style="margin-bottom:0px">
+                    <colgroup>
+                      <col style="width:5%"/>
+                      <col style="width:36%"/>
+                      <col style="width:11%"/>
+                      <col style="width:8%"/>
+                      <col style="width:8%"/>
+                      <col style="width:8%"/>
+                      <col style="width:8%"/>
+                      <col style="width:8%"/>
+                      <col style="width:8%"/>
+                    </colgroup>
+                    <thead>
+                      <tr>
+                        <th style="text-align: center;vertical-align: middle;">項</th>
+                        <th style="text-align: center;vertical-align: middle;">製作内容</th>
+                        <th style="text-align: center;vertical-align: middle;">尺寸cm</th>
+                        <th style="text-align: center;vertical-align: middle;">才數</th>
+                        <th style="text-align: center;vertical-align: middle;">數量</th>
+                        <th style="text-align: center;vertical-align: middle;">施工費</th>
+                        <th style="text-align: center;vertical-align: middle;">單價</th>
+                        <th style="text-align: center;vertical-align: middle;">其它</th>
+                        <th style="text-align: center;vertical-align: middle;">小計</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <t t-foreach="page_lines" t-as="order">
+                        <tr class="line-row">
+                          <!-- 再算一次同樣的 text_len，讓顯示與分頁一致 -->
+                          <t t-set="text_len"
+                             t-value="len(order.project_product_name or '') 
+                                      + len(order.product_id.name or '') 
+                                      + len(order.multi_chose_ids or '') 
+                                      + sum(len(a.name or '') for a in order.product_atts if a.attribute_id and a.attribute_id.name != '冷裱')"/>
+
+                          <td style="text-align: center;vertical-align: middle;">
+                            <span t-field="order.sequence"/>
+                          </td>
+
+                          <!-- 製作內容：最多兩行，超過顯示 ... -->
+                          <td class="cell-2lines" style="text-align: center;">
+                            <t t-set="name_len" t-value="text_len"/>
+                            <div t-attf-class="clamp-2 #{ 'is-long' if name_len &gt; NAME_LIMIT else '' }">
+                              <t t-set="lv" t-value="False"/>
+
+                              <t t-if="order.project_product_name">
+                                <span t-esc="order.project_product_name"/><t t-set="lv" t-value="True"/>
+                              </t>
+
+                              <t t-if="order.product_id.name">
+                                <t t-if="lv"><t t-raw="'/'"/></t>
+                                <span t-esc="order.product_id.name"/><t t-set="lv" t-value="True"/>
+                              </t>
+
+                              <t t-foreach="order.product_atts" t-as="attr">
+                                <t t-if="attr.attribute_id and attr.attribute_id.name != '冷裱'">
+                                  <t t-if="lv"><t t-raw="'/'"/></t>
+                                  <span t-esc="attr.name"/><t t-set="lv" t-value="True"/>
+                                </t>
+                              </t>
+
+                              <t t-if="order.multi_chose_ids">
+                                <t t-if="lv"><t t-raw="'/'"/></t>
+                                <span t-esc="order.multi_chose_ids"/>
+                              </t>
+                            </div>
+                          </td>
+
+                          <td style="text-align: center;vertical-align: middle;">
+                            <span t-field="order.product_width"/>x<span t-field="order.product_height"/>
+                          </td>
+
+                          <td style="text-align: center;vertical-align: middle;">
+                            <span t-esc="'{:,.0f}'.format(order.total_units)"/>
+                          </td>
+                          <td style="text-align: center;vertical-align: middle;">
+                            <span t-esc="'{:,.0f}'.format(order.quantity)"/>
+                          </td>
+
+                          <!-- 施工費：還原為 install_price -->
+                          <td style="text-align: center;vertical-align: middle;">
+                            <span t-esc="'{:,.0f}'.format(order.install_price)"/>
+                          </td>
+
+                          <td style="text-align: center;vertical-align: middle;">
+                            <span t-esc="'{:,.0f}'.format(order.units_price)"/>
+                          </td>
+                          <td style="text-align: center;vertical-align: middle;">
+                            <span t-esc="'{:,.0f}'.format(order.total_make_price + order.peijian_price)"/>
+                          </td>
+                          <td style="text-align: center;vertical-align: middle;">
+                            <span t-esc="'{:,.0f}'.format(order.price + order.install_price)"/>
+
+                          </td>
+                        </tr>
+						<t t-if="doc.checkout_order_type == 'd' and not doc.is_sign ">
+							<t t-if="order.crm_chengben_comment or (order.crm_chengben or 0) != 0">
+								<tr>
+									<td colspan="8" style="text-align: center;vertical-align: middle;">
+										<span t-esc="order.crm_chengben_comment"/>
+									</td>
+									<td style="text-align: center;vertical-align: middle;">
+										<t t-if="(order.crm_chengben or 0) != 0">
+											<span t-esc="'{:,.0f}'.format(order.crm_chengben)"/>
+										</t>
+									</td>
+								</tr>								
+							</t>
+						</t>
+                      </t>
+                    </tbody>
+                  </table>
+
+                  <!-- ===== 只有最後一頁才印總計 + 備註 + 簽名 ===== -->
+                  <t t-if="pidx == page_count - 1">
+                    <!-- 總計 -->
+                    <table class="table table-condensed fixed totals" style="margin-bottom:0px">
+                      <colgroup style="border-top:0 !important; border-color:transparent !important;">
+                        <col style="width:5%"/><col style="width:36%"/><col style="width:11%"/>
+                        <col style="width:8%"/><col style="width:8%"/><col style="width:8%"/>
+                        <col style="width:8%"/><col style="width:8%"/><col style="width:8%"/>
+                      </colgroup>
+
+                      <t t-if="doc.checkout_order_type == 'a'">
+                        <tbody style="border-top:0 !important; ">
+                          <tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td>
+                            <td style="text-align:center;">小計</td>
+                            <td style="text-align:center;">
+                              <span t-esc="'{:,.0f}'.format(doc.record_price)"/>
+                            </td>
+                          </tr>
+                          <t t-if="doc.construction_charge_price &gt; 0">
+                            <tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td>
+                              <td style="text-align:center;">施工費</td>
+                              <td style="text-align:center;">
+                                <span t-esc="'{:,.0f}'.format(doc.construction_charge_price)"/>
+                              </td>
+                            </tr>
+                          </t>
+                          <tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td>
+                            <td style="text-align:center;">稅金</td>
+                            <td style="text-align:center;">
+                              <span t-esc="'{:,.0f}'.format(doc.tax_of_price)"/>
+                            </td>
+                          </tr>
+                          <tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td>
+                            <td style="text-align:center;">合計</td>
+                            <td style="text-align:center;">
+                              <span t-esc="'{:,.0f}'.format(doc.total_price_added_tax)"/>
+                            </td>
+                          </tr>
+                        </tbody>
+                      </t>
+                      <t t-else="">
+                        <tbody style="border-top:0 !important; border-color:transparent !important;">
+                          <tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td>
+                            <td style="text-align:center;">小計</td>
+                            <td style="text-align:center;">
+                              <span t-esc="'{:,.0f}'.format(doc.record_price_and_construction_charge_crm)"/>
+                            </td>
+                          </tr>
+                          <tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td>
+                            <td style="text-align:center;">稅金</td>
+                            <td style="text-align:center;">
+                              <span t-esc="'{:,.0f}'.format(doc.tax_of_price_crm)"/>
+                            </td>
+                          </tr>
+                          <tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td>
+                            <td style="text-align:center;">合計</td>
+                            <td style="text-align:center;">
+                              <span t-esc="'{:,.0f}'.format(doc.total_price_added_tax_crm)"/>
+                            </td>
+                          </tr>
+                        </tbody>
+                      </t>
+                    </table>
+
+                    <!-- 備註區塊：跟著最後一頁 -->
+                    <div class="row" style="margin-bottom:10px; page-break-inside: avoid;">
+                      <div class="col text-center" style="flex:1; font-weight:bold;">備註</div>
+                      <div class="col text-center" style="flex:20;"></div>
+                    </div>
+                    <t t-set="index" t-value="0"/>
+                    <t t-foreach="data['comments']" t-as="o">
+                      <t t-set="index" t-value="index + 1"/>
+                      <div class="row" style="margin-bottom:10px;">
+                        <div class="col text-center" style="flex:1;"><t t-esc="index"/>.</div>
+                        <div class="col text-start" style="flex:20;"><t t-esc="o.name"/></div>
+                      </div>
+                    </t>
+
+                    <!-- 簽名區塊 -->
+                    <t t-if="doc.is_sign">
+                      <div class="table-section" style="page-break-inside: avoid;">
+                        <div class="row" style="border-bottom:1px solid lightgray;margin-bottom:10px;">
+                          <div class="col-12 text-center" style="background-color:gray">
+                            匯款銀行:玉山銀行808 中和分行0439 戶名:科影數位影像股份有限公司. 帳號:0439940021915
+                          </div>
+                        </div>
+                        <div class="row" style="border-bottom:1px solid lightgray;margin-bottom:10px;">
+                          <div class="col-3">業務</div>
+                          <div class="col-3"><span t-field="doc.user_id.name"/></div>
+                          <div class="col-3">聯絡電話</div>
+                          <div class="col-3">2221-8868</div>
+                        </div>
+							<t t-set="has_zhuguan_sign" t-value="bool(sign_images.get(doc.id, {}).get('zhuguan_sign'))"/>
+							<t t-set="has_manager_sign" t-value="bool(sign_images.get(doc.id, {}).get('manager_sign'))"/>
+							<t t-set="show_second_row" t-value="has_zhuguan_sign and has_manager_sign"/>
+
+							<div class="row"
+								 t-attf-style="border-bottom:1px solid lightgray;margin-bottom:10px; height: #{'160px' if show_second_row else '100px'};">
+							  <div class="col-1" style="display:flex; align-items:center;">主管確認簽章</div>
+
+							  <div class="col-5">
+								<!-- 兩行容器 -->
+								<div style="display:flex; flex-direction:column; height:100%; gap:6px;">
+
+								  <!-- 第一行：公司章 + 主管簽名（若無主管則放經理簽名） -->
+								  <div style="display:flex; align-items:center; justify-content:space-between; gap:6px; height:90px;">
+
+									<!-- 公司章 -->
+									<div style="flex:1; text-align:center;">
+									  <img src="dtsc/static/description/sig.png"
+										   alt="Company Seal"
+										   style="max-height:90px; object-fit:contain;"/>
+									</div>
+
+									<!-- 主管簽名（優先）/ 沒主管就放經理簽名 -->
+									<div style="flex:1; text-align:center;">
+									  <t t-if="has_zhuguan_sign">
+										<img t-att-src="'data:image/png;base64,' + sign_images[doc.id]['zhuguan_sign'].decode('utf-8')"
+											 alt="Supervisor Sign"
+											 style="max-height:80px; object-fit:contain;"/>
+									  </t>
+									  <t t-elif="has_manager_sign">
+										<img t-att-src="'data:image/png;base64,' + sign_images[doc.id]['manager_sign'].decode('utf-8')"
+											 alt="Manager Sign"
+											 style="max-height:80px; object-fit:contain;"/>
+									  </t>
+									</div>
+
+								  </div>
+
+								  <!-- 第二行：只有「主管+經理都存在」才顯示經理簽名 -->
+								  <t t-if="show_second_row">
+									<div style="display:flex; justify-content:center; align-items:center; height:60px;">
+									  <div style="width:50%; text-align:center;">
+										<img t-att-src="'data:image/png;base64,' + sign_images[doc.id]['manager_sign'].decode('utf-8')"
+											 alt="Manager Sign"
+											 style="max-height:55px; object-fit:contain;"/>
+									  </div>
+									</div>
+								  </t>
+
+								</div>
+							  </div>
+
+							  <div class="col-1" style="display:flex; align-items:center;">客戶確認簽章</div>
+							  <div class="col-5"></div>
+							</div>
+                      </div>
+                    </t>
+                  </t> <!-- / if last page -->
+                </div>
+              </t>
+            </t>
+
+            <!-- ================= 明細表格（無價版本） ================= -->
+            <t t-else="">
+              <t t-foreach="range(page_count)" t-as="pidx">
+                <t t-set="page_lines" t-value="pages[pidx]"/>
+
+                <div t-attf-style="page-break-after: #{ 'always' if pidx &lt; page_count - 1 else 'auto' };">
+
+                  <table class="table table-condensed fixed" style="margin-bottom:0px">
+                    <colgroup>
+                      <col style="width:6%"/>
+                      <col style="width:48%"/>
+                      <col style="width:16%"/>
+                      <col style="width:14%"/>
+                      <col style="width:16%"/>
+                    </colgroup>
+                    <thead>
+                      <tr>
+                        <th style="text-align: center;vertical-align: middle;">項</th>
+                        <th style="text-align: center;vertical-align: middle;">製作内容</th>
+                        <th style="text-align: center;vertical-align: middle;">尺寸cm</th>
+                        <th style="text-align: center;vertical-align: middle;">數量</th>
+                        <th style="text-align: center;vertical-align: middle;">小計</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <t t-foreach="page_lines" t-as="order">
+                        <tr class="line-row">
+                          <!-- 無價版一樣用 NAME_LIMIT（此時是 30） -->
+                          <t t-set="text_len"
+                             t-value="len(order.project_product_name or '') 
+                                      + len(order.product_id.name or '') 
+                                      + len(order.multi_chose_ids or '') 
+                                      + sum(len(a.name or '') for a in order.product_atts if a.attribute_id and a.attribute_id.name != '冷裱')"/>
+
+                          <td style="text-align: center;vertical-align: middle;">
+                            <span t-field="order.sequence"/>
+                          </td>
+
+                          <td class="cell-2lines" style="text-align: center;">
+                            <t t-set="name_len" t-value="text_len"/>
+                            <div t-attf-class="clamp-2 #{ 'is-long' if name_len &gt; NAME_LIMIT else '' }">
+                              <t t-set="lv" t-value="False"/>
+
+                              <t t-if="order.project_product_name">
+                                <span t-esc="order.project_product_name"/><t t-set="lv" t-value="True"/>
+                              </t>
+
+                              <t t-if="order.product_id.name">
+                                <t t-if="lv"><t t-raw="'/'"/></t>
+                                <span t-esc="order.product_id.name"/><t t-set="lv" t-value="True"/>
+                              </t>
+
+                              <t t-foreach="order.product_atts" t-as="attr">
+                                <t t-if="attr.attribute_id and attr.attribute_id.name != '冷裱'">
+                                  <t t-if="lv"><t t-raw="'/'"/></t>
+                                  <span t-esc="attr.name"/><t t-set="lv" t-value="True"/>
+                                </t>
+                              </t>
+
+                              <t t-if="order.multi_chose_ids">
+                                <t t-if="lv"><t t-raw="'/'"/></t>
+                                <span t-esc="order.multi_chose_ids"/>
+                              </t>
+                            </div>
+                          </td>
+
+                          <td style="text-align: center;vertical-align: middle;">
+                            <span t-field="order.product_width"/>x<span t-field="order.product_height"/>
+                          </td>
+                          <td style="text-align: center;vertical-align: middle;">
+                            <span t-esc="'{:,.0f}'.format(order.quantity)"/>
+                          </td>
+                          <td style="text-align: center;vertical-align: middle;">
+                            <span t-esc="'{:,.0f}'.format(order.price + order.install_price)"/>
+							<!-- <t t-if="doc.checkout_order_type == 'd' and not doc.is_sign"> -->
+								<!-- (<span t-esc="'{:,.0f}'.format(order.crm_chengben)"/>) -->
+							<!-- </t> -->
+                          </td>
+                        </tr>
+						<t t-if="doc.checkout_order_type == 'd' and not doc.is_sign">
+							<t t-if="order.crm_chengben_comment or (order.crm_chengben or 0) != 0">
+							<tr>
+								<td colspan="4" style="text-align: center;vertical-align: middle;">
+									<span t-esc="order.crm_chengben_comment"/>
+								</td>
+								<td style="text-align: center;vertical-align: middle;">
+									<t t-if="(order.crm_chengben or 0) != 0">
+										<span t-esc="'{:,.0f}'.format(order.crm_chengben)"/>
+									</t>
+								</td>
+							</tr>								
+							</t>
+						</t>
+                      </t>
+                    </tbody>
+                  </table>
+
+                  <!-- ===== 無價版：最後一頁才印總計 + 備註 + 簽名 ===== -->
+                  <t t-if="pidx == page_count - 1">
+                    <!-- 總計 -->
+                    <table class="table table-condensed fixed totals" style="margin-bottom:0px">
+                      <colgroup style="border-top:0 !重要; ">
+                        <col style="width:6%"/><col style="width:48%"/><col style="width:16%"/>
+                        <col style="width:14%"/><col style="width:16%"/>
+                      </colgroup>
+
+                      <t t-if="doc.checkout_order_type == 'a'">
+                        <tbody style="border-top:0 !important; ">
+                          <tr><td></td><td></td><td></td>
+                            <td style="text-align:center;">小計</td>
+                            <td style="text-align:center;">
+                              <span t-esc="'{:,.0f}'.format(doc.record_price)"/>
+                            </td>
+                          </tr>
+                          <t t-if="doc.construction_charge_price &gt; 0">
+                            <tr><td></td><td></td><td></td> 
+                              <td style="text-align:center;">施工費</td>
+                              <td style="text-align:center;">
+                                <span t-esc="'{:,.0f}'.format(doc.construction_charge_price)"/>
+                              </td>
+                            </tr>
+                          </t>
+                          <tr><td></td><td></td><td></td>
+                            <td style="text-align:center;">稅金</td>
+                            <td style="text-align:center;">
+                              <span t-esc="'{:,.0f}'.format(doc.tax_of_price)"/>
+                            </td>
+                          </tr>
+                          <tr><td></td><td></td><td></td>
+                            <td style="text-align:center;">合計</td>
+                            <td style="text-align:center;">
+                              <span t-esc="'{:,.0f}'.format(doc.total_price_added_tax)"/>
+                            </td>
+                          </tr>
+                        </tbody>
+                      </t>
+                      <t t-else="">
+                        <tbody style="border-top:0 !important; ">
+                          <tr><td></td><td></td><td></td>
+                            <td style="text-align:center;">小計</td>
+                            <td style="text-align:center;">
+                              <span t-esc="'{:,.0f}'.format(doc.record_price_and_construction_charge_crm)"/>
+                            </td>
+                          </tr>
+                          <tr><td></td><td></td><td></td>
+                            <td style="text-align:center;">稅金</td>
+                            <td style="text-align:center;">
+                              <span t-esc="'{:,.0f}'.format(doc.tax_of_price_crm)"/>
+                            </td>
+                          </tr>
+                          <tr><td></td><td></td><td></td>
+                            <td style="text-align:center;">合計</td>
+                            <td style="text-align:center;">
+                              <span t-esc="'{:,.0f}'.format(doc.total_price_added_tax_crm)"/>
+                            </td>
+                          </tr>
+                        </tbody>
+                      </t>
+                    </table>
+
+                    <!-- 備註 -->
+                    <div class="row" style="margin-bottom:10px; page-break-inside: avoid;">
+                      <div class="col text-center" style="flex:1; font-weight:bold;">備註</div>
+                      <div class="col text-center" style="flex:20;"></div>
+                    </div>
+                    <t t-set="index" t-value="0"/>
+                    <t t-foreach="data['comments']" t-as="o">
+                      <t t-set="index" t-value="index + 1"/>
+                      <div class="row" style="margin-bottom:10px;">
+                        <div class="col text-center" style="flex:1;"><t t-esc="index"/>.</div>
+                        <div class="col text-start" style="flex:20;"><t t-esc="o.name"/></div>
+                      </div>
+                    </t>
+
+                    <!-- 簽名 -->
+                    <t t-if="doc.is_sign">
+                      <div class="table-section" style="page-break-inside: avoid;">
+                        <div class="row" style="border-bottom:1px solid lightgray;margin-bottom:10px;">
+                          <div class="col-12 text-center" style="background-color:gray">
+                            匯款銀行:玉山銀行808 中和分行0439 戶名:科影數位影像股份有限公司. 帳號:0439940021915
+                          </div>
+                        </div>
+                        <div class="row" style="border-bottom:1px solid lightgray;margin-bottom:10px;">
+                          <div class="col-3">業務</div>
+                          <div class="col-3"><span t-field="doc.user_id.name"/></div>
+                          <div class="col-3">聯絡電話</div>
+                          <div class="col-3">2221-8868</div>
+                        </div>
+						<t t-set="has_zhuguan_sign" t-value="bool(sign_images.get(doc.id, {}).get('zhuguan_sign'))"/>
+						<t t-set="has_manager_sign" t-value="bool(sign_images.get(doc.id, {}).get('manager_sign'))"/>
+						<t t-set="show_second_row" t-value="has_zhuguan_sign and has_manager_sign"/>
+
+						<div class="row"
+							 t-attf-style="border-bottom:1px solid lightgray;margin-bottom:10px; height: #{'160px' if show_second_row else '100px'};">
+						  <div class="col-1" style="display:flex; align-items:center;">主管確認簽章</div>
+
+						  <div class="col-5">
+							<!-- 兩行容器 -->
+							<div style="display:flex; flex-direction:column; height:100%; gap:6px;">
+
+							  <!-- 第一行：公司章 + 主管簽名（若無主管則放經理簽名） -->
+							  <div style="display:flex; align-items:center; justify-content:space-between; gap:6px; height:90px;">
+
+								<!-- 公司章 -->
+								<div style="flex:1; text-align:center;">
+								  <img src="dtsc/static/description/sig.png"
+									   alt="Company Seal"
+									   style="max-height:90px; object-fit:contain;"/>
+								</div>
+
+								<!-- 主管簽名（優先）/ 沒主管就放經理簽名 -->
+								<div style="flex:1; text-align:center;">
+								  <t t-if="has_zhuguan_sign">
+									<img t-att-src="'data:image/png;base64,' + sign_images[doc.id]['zhuguan_sign'].decode('utf-8')"
+										 alt="Supervisor Sign"
+										 style="max-height:80px; object-fit:contain;"/>
+								  </t>
+								  <t t-elif="has_manager_sign">
+									<img t-att-src="'data:image/png;base64,' + sign_images[doc.id]['manager_sign'].decode('utf-8')"
+										 alt="Manager Sign"
+										 style="max-height:80px; object-fit:contain;"/>
+								  </t>
+								</div>
+
+							  </div>
+
+							  <!-- 第二行：只有「主管+經理都存在」才顯示經理簽名 -->
+							  <t t-if="show_second_row">
+								<div style="display:flex; justify-content:center; align-items:center; height:60px;">
+								  <div style="width:50%; text-align:center;">
+									<img t-att-src="'data:image/png;base64,' + sign_images[doc.id]['manager_sign'].decode('utf-8')"
+										 alt="Manager Sign"
+										 style="max-height:55px; object-fit:contain;"/>
+								  </div>
+								</div>
+							  </t>
+
+							</div>
+						  </div>
+
+						  <div class="col-1" style="display:flex; align-items:center;">客戶確認簽章</div>
+						  <div class="col-5"></div>
+						</div>
+                      </div>
+                    </t>
+                  </t> <!-- /最後一頁 -->
+                </div>
+              </t>
+            </t>
+
+          </t>
+        </t>
+      </div>
+    </t>
+  </template>
+
+  <record id="action_report_crm_checkout" model="ir.actions.report">
+    <field name="name">報價單</field>
+    <field name="model">dtsc.checkout</field>
+    <field name="report_type">qweb-pdf</field>
+    <field name="report_name">dtsc.report_crm_checkout_template</field>
+    <field name="report_file">dtsc.report_crm_checkout_template</field>
+    <field name="binding_model_id" ref="model_dtsc_checkout"/>
+    <field name="binding_type">report</field>
+    <field name="print_report_name">
+      '%s-%s-%s-報價單' % (
+        (object.name or '報價單'),
+        (object.is_new_partner and (object.new_partner or '客戶')
+         or (object.customer_id and object.customer_id.name) or '客戶'),
+		 
+        (object.project_name or '')
+      )
+    </field>
+ 	<!-- 排除 dtsc.group_dtsc_mg 权限组，不允许在页面上下载 -->
+	<field name="groups_id" eval="[(6, 0, [ref('dtsc.group_dtsc_yw'), ref('dtsc.group_dtsc_kj'), ref('dtsc.group_dtsc_sc'), ref('dtsc.group_dtsc_ck'), ref('dtsc.group_dtsc_gly')])]"/>
+  </record>
+  
+  <record id="action_report_crm_checkout_no_price_no_sign" model="ir.actions.report">
+    <field name="name">報價單(無價格-無簽名)</field>
+    <field name="model">dtsc.checkout</field>
+    <field name="report_type">qweb-pdf</field>
+    <field name="report_name">dtsc.report_crm_checkout_template_no_price_no_sign</field>
+    <field name="report_file">dtsc.report_crm_checkout_template_no_price_no_sign</field>
+    <field name="binding_model_id" ref="model_dtsc_checkout"/>
+    <field name="binding_type">report</field>
+    <field name="print_report_name">
+      '%s-%s-%s-報價單' % (
+        (object.name or '報價單'),
+        (object.is_new_partner and (object.new_partner or '客戶')
+         or (object.customer_id and object.customer_id.name) or '客戶'),		 
+        (object.project_name or '')
+      )
+    </field>
+  	<!-- 排除 dtsc.group_dtsc_mg 权限组，不允许在页面上下载 -->
+	<field name="groups_id" eval="[(6, 0, [ref('dtsc.group_dtsc_yw'), ref('dtsc.group_dtsc_kj'), ref('dtsc.group_dtsc_sc'), ref('dtsc.group_dtsc_ck'), ref('dtsc.group_dtsc_gly')])]"/>
+   </record>
+  
+  
+    <template id="report_crm_checkout_template_no_price_no_sign">
+    <t t-call="web.html_container">
+
+      <style type="text/css">
+        @page { size: A4 portrait; margin: 10mm; }
+        table.table.fixed { table-layout: fixed; width: 100%; border-collapse: collapse; }
+        thead { display: table-header-group; }
+        tfoot { display: table-footer-group; }
+        tr, td, th, .row { page-break-inside: avoid; }
+
+        /* 一筆明細固定高度（最多顯示兩行文字） */
+        .line-row td{
+          height: 24px;
+          padding: 0 2mm;
+          vertical-align: middle;
+        }
+
+        .cell-2lines{
+          position: relative;
+          height: 24px;
+          max-height: 24px;
+          padding: 0 2mm;
+          overflow: hidden;
+        }
+
+        .clamp-2{
+          position: relative;
+          line-height: 24px;
+          max-height: 24px;
+          word-break: break-word;
+          white-space: normal;
+        }
+
+        .clamp-2.is-long::after{
+          content: '...';
+          position: absolute;
+          right: 1mm;
+          bottom: 0;
+          background: #fff;
+          padding-left: 1mm;
+        }
+
+        .table.totals > :not(:first-child) {
+          border-top: 0 !important;
+        }
+        .table.totals > colgroup + thead,
+        .table.totals > colgroup + tbody,
+        .table.totals > colgroup + tfoot {
+          border-top: 0 !important;
+        }
+      </style>
+
+      <div>
+        <t t-foreach="docs" t-as="doc">
+          <t t-call="dtsc.external_layout_coin">
+
+            <!-- ================== 頂部資訊 ================== -->
+            <table class="table table-condensed" style="margin-bottom:0px">
+              <tbody>
+                <tr>
+                  <td rowspan="2">
+                    <img t-if="company.logo"
+                         t-att-src="'data:image/png;base64,%s' % company.logo.decode('utf-8')"
+                         style="width:50px; max-height:50px"/>
+                    <span t-field="company.name"/>
+                  </td>
+                  <td>報價單</td>
+                  <td><span t-field="company.street"/></td>
+                </tr>
+                <tr>
+                  <td>Mail：<span t-field="company.email"/></td>
+                  <td>Tel：02-22218868 Fax：22218861</td>
+                </tr>
+
+                <tr>
+                  <t t-if="doc.is_new_partner"><td>客戶名稱： <span t-field="doc.new_partner"/></td></t>
+                  <t t-else="1"><td>客戶名稱： <span t-field="doc.customer_id.name"/></td></t>
+
+                  <t t-if="doc.is_new_partner"><td>統一編號： <span t-field="doc.new_vat"/></td></t>
+                  <t t-else="1"><td>統一編號： <span t-field="doc.customer_id.vat"/></td></t>
+
+                  <t t-if="doc.is_new_partner"><td>付款條件： <span t-field="doc.new_property_payment_term_id"/></td></t>
+                  <t t-else="1"><td>付款條件： <span t-field="doc.customer_id.property_payment_term_id"/></td></t>
+                </tr>
+
+                <tr>
+                  <t t-if="doc.is_new_partner"><td>聯絡人： <span t-field="doc.new_custom_contact_person"/></td></t>
+                  <t t-else="1"><td>聯絡人： <span t-field="doc.customer_id.custom_contact_person"/></td></t>
+
+                  <t t-if="doc.is_new_partner"><td>電話： <span t-field="doc.new_phone"/></td></t>
+                  <t t-else="1"><td>電話： <span t-field="doc.customer_id.phone"/></td></t>
+
+                  <t t-if="doc.is_new_partner"><td>收款方式： <span t-field="doc.new_custom_pay_mode"/></td></t>
+                  <t t-else="1"><td>收款方式： <span t-field="doc.customer_id.custom_pay_mode"/></td></t>
+                </tr>
+
+                <tr>
+                  <t t-if="doc.is_new_partner"><td>地址： <span t-field="doc.new_street"/></td></t>
+                  <t t-else="1"><td>地址：<span t-field="doc.customer_id.street"/></td></t>
+
+                  <t t-if="doc.is_new_partner"><td>傳真： <span t-field="doc.new_custom_fax"/></td></t>
+                  <t t-else="1"><td>傳真：<span t-field="doc.customer_id.custom_fax"/></td></t>
+
+                  <td>報價日期： <span t-field="doc.crm_date"/></td>
+                </tr>
+
+                <tr>
+                  <t t-if="doc.is_new_partner"><td>E-mail： <span t-field="doc.new_email"/></td></t>
+                  <t t-else="1"><td>E-mail： <span t-field="doc.customer_id.email"/></td></t>
+
+                  <t t-if="doc.is_new_partner"><td>行動電話： <span t-field="doc.new_mobile"/></td></t>
+                  <t t-else="1"><td>行動電話： <span t-field="doc.customer_id.mobile"/></td></t>
+
+                  <td>有效期限： <span t-field="doc.crm_effective_date" /></td>
+                </tr>
+              </tbody>
+            </table>
+
+            <!-- ========== 先在 QWeb 把明細分頁：依字數算行數 ========== -->
+            <!-- 首頁 28 行，其後每頁 34 行 -->
+            <t t-set="MAX_FIRST" t-value="26"/>
+            <t t-set="MAX_NEXT" t-value="33"/>
+
+            <!-- 有價用 25 字、無價用 30 字當兩行的門檻 -->
+            <t t-set="NAME_LIMIT" t-value="20 if doc.is_show_price else 30"/>
+
+            <t t-set="pages" t-value="[]"/>
+            <t t-set="current_page" t-value="[]"/>
+            <t t-set="current_lines" t-value="0"/> 
+            <t t-set="page_index" t-value="0"/>
+			
+			
+            <t t-foreach="doc.product_ids" t-as="order">
+              <!-- 文字長度：專案名 + 品名 + multi_chose + 有效屬性 -->
+              <t t-set="text_len"
+                 t-value="len(order.project_product_name or '') 
+                          + len(order.product_id.name or '') 
+                          + len(order.multi_chose_ids or '') 
+                          + sum(len(a.name or '') for a in order.product_atts if a.attribute_id and a.attribute_id.name != '冷裱')
+
+						  "/>
+
+			  <t t-if="order.crm_chengben_comment or (order.crm_chengben or 0) != 0">
+				<t t-set="row_lines" t-value="2 if text_len &gt; NAME_LIMIT else 1
+										+ (1.5 if (doc.checkout_order_type == 'd' and not doc.is_sign) else 0)
+										"/>
+			  </t>
+			  <t t-else="1">
+				<t t-set="row_lines" t-value="2 if text_len &gt; NAME_LIMIT else 1"/>
+			  </t>
+              <t t-set="limit" t-value="MAX_FIRST if page_index == 0 else MAX_NEXT"/>
+
+              <t t-if="current_lines + row_lines &gt; limit">
+                <!-- 目前頁塞不下，先關一頁 -->
+                <t t-set="pages" t-value="pages + [current_page]"/>
+                <t t-set="current_page" t-value="[order]"/>
+                <t t-set="current_lines" t-value="row_lines"/>
+                <t t-set="page_index" t-value="page_index + 1"/>
+              </t>
+              <t t-else="">
+                <!-- 還放得下，繼續加在同一頁 -->
+                <t t-set="current_page" t-value="current_page + [order]"/>
+                <t t-set="current_lines" t-value="current_lines + row_lines"/>
+              </t>
+            </t>
+
+            <!-- 把最後一頁補進去 -->
+            <t t-if="current_page">
+              <t t-set="pages" t-value="pages + [current_page]"/>
+            </t>
+
+            <t t-set="page_count" t-value="len(pages)"/>
+
+            <!-- ================= 明細表格（有價版本） ================= -->
+			
+            <t t-if="0">
+              <t t-foreach="range(page_count)" t-as="pidx">
+                <t t-set="page_lines" t-value="pages[pidx]"/>
+
+                <!-- 除了最後一頁以外，都強制換頁 -->
+                <div t-attf-style="page-break-after: #{ 'always' if pidx &lt; page_count - 1 else 'auto' };">
+
+                  <table class="table table-condensed fixed" style="margin-bottom:0px">
+                    <colgroup>
+                      <col style="width:5%"/>
+                      <col style="width:36%"/>
+                      <col style="width:11%"/>
+                      <col style="width:8%"/>
+                      <col style="width:8%"/>
+                      <col style="width:8%"/>
+                      <col style="width:8%"/>
+                      <col style="width:8%"/>
+                      <col style="width:8%"/>
+                    </colgroup>
+                    <thead>
+                      <tr>
+                        <th style="text-align: center;vertical-align: middle;">項</th>
+                        <th style="text-align: center;vertical-align: middle;">製作内容</th>
+                        <th style="text-align: center;vertical-align: middle;">尺寸cm</th>
+                        <th style="text-align: center;vertical-align: middle;">才數</th>
+                        <th style="text-align: center;vertical-align: middle;">數量</th>
+                        <th style="text-align: center;vertical-align: middle;">施工費</th>
+                        <th style="text-align: center;vertical-align: middle;">單價</th>
+                        <th style="text-align: center;vertical-align: middle;">其它</th>
+                        <th style="text-align: center;vertical-align: middle;">小計</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <t t-foreach="page_lines" t-as="order">
+                        <tr class="line-row">
+                          <!-- 再算一次同樣的 text_len，讓顯示與分頁一致 -->
+                          <t t-set="text_len"
+                             t-value="len(order.project_product_name or '') 
+                                      + len(order.product_id.name or '') 
+                                      + len(order.multi_chose_ids or '') 
+                                      + sum(len(a.name or '') for a in order.product_atts if a.attribute_id and a.attribute_id.name != '冷裱')"/>
+
+                          <td style="text-align: center;vertical-align: middle;">
+                            <span t-field="order.sequence"/>
+                          </td>
+
+                          <!-- 製作內容：最多兩行，超過顯示 ... -->
+                          <td class="cell-2lines" style="text-align: center;">
+                            <t t-set="name_len" t-value="text_len"/>
+                            <div t-attf-class="clamp-2 #{ 'is-long' if name_len &gt; NAME_LIMIT else '' }">
+                              <t t-set="lv" t-value="False"/>
+
+                              <t t-if="order.project_product_name">
+                                <span t-esc="order.project_product_name"/><t t-set="lv" t-value="True"/>
+                              </t>
+
+                              <t t-if="order.product_id.name">
+                                <t t-if="lv"><t t-raw="'/'"/></t>
+                                <span t-esc="order.product_id.name"/><t t-set="lv" t-value="True"/>
+                              </t>
+
+                              <t t-foreach="order.product_atts" t-as="attr">
+                                <t t-if="attr.attribute_id and attr.attribute_id.name != '冷裱'">
+                                  <t t-if="lv"><t t-raw="'/'"/></t>
+                                  <span t-esc="attr.name"/><t t-set="lv" t-value="True"/>
+                                </t>
+                              </t>
+
+                              <t t-if="order.multi_chose_ids">
+                                <t t-if="lv"><t t-raw="'/'"/></t>
+                                <span t-esc="order.multi_chose_ids"/>
+                              </t>
+                            </div>
+                          </td>
+
+                          <td style="text-align: center;vertical-align: middle;">
+                            <span t-field="order.product_width"/>x<span t-field="order.product_height"/>
+                          </td>
+
+                          <td style="text-align: center;vertical-align: middle;">
+                            <span t-esc="'{:,.0f}'.format(order.total_units)"/>
+                          </td>
+                          <td style="text-align: center;vertical-align: middle;">
+                            <span t-esc="'{:,.0f}'.format(order.quantity)"/>
+                          </td>
+
+                          <!-- 施工費：還原為 install_price -->
+                          <td style="text-align: center;vertical-align: middle;">
+                            <span t-esc="'{:,.0f}'.format(order.install_price)"/>
+                          </td>
+
+                          <td style="text-align: center;vertical-align: middle;">
+                            <span t-esc="'{:,.0f}'.format(order.units_price)"/>
+                          </td>
+                          <td style="text-align: center;vertical-align: middle;">
+                            <span t-esc="'{:,.0f}'.format(order.total_make_price + order.peijian_price)"/>
+                          </td>
+                          <td style="text-align: center;vertical-align: middle;">
+                            <span t-esc="'{:,.0f}'.format(order.price + order.install_price)"/>
+
+                          </td>
+                        </tr>
+						<t t-if="doc.checkout_order_type == 'd' and not doc.is_sign ">
+							<t t-if="order.crm_chengben_comment or (order.crm_chengben or 0) != 0">
+								<tr>
+									<td colspan="8" style="text-align: center;vertical-align: middle;">
+										<span t-esc="order.crm_chengben_comment"/>
+									</td>
+									<td style="text-align: center;vertical-align: middle;">
+										<t t-if="(order.crm_chengben or 0) != 0">
+											<span t-esc="'{:,.0f}'.format(order.crm_chengben)"/>
+										</t>
+									</td>
+								</tr>								
+							</t>
+						</t>
+                      </t>
+                    </tbody>
+                  </table>
+
+                  <!-- ===== 只有最後一頁才印總計 + 備註 + 簽名 ===== -->
+                  <t t-if="pidx == page_count - 1">
+                    <!-- 總計 -->
+                    <table class="table table-condensed fixed totals" style="margin-bottom:0px">
+                      <colgroup style="border-top:0 !important; border-color:transparent !important;">
+                        <col style="width:5%"/><col style="width:36%"/><col style="width:11%"/>
+                        <col style="width:8%"/><col style="width:8%"/><col style="width:8%"/>
+                        <col style="width:8%"/><col style="width:8%"/><col style="width:8%"/>
+                      </colgroup>
+
+                      <t t-if="doc.checkout_order_type == 'a'">
+                        <tbody style="border-top:0 !important; ">
+                          <tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td>
+                            <td style="text-align:center;">小計</td>
+                            <td style="text-align:center;">
+                              <span t-esc="'{:,.0f}'.format(doc.record_price)"/>
+                            </td>
+                          </tr>
+                          <t t-if="doc.construction_charge_price &gt; 0">
+                            <tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td>
+                              <td style="text-align:center;">施工費</td>
+                              <td style="text-align:center;">
+                                <span t-esc="'{:,.0f}'.format(doc.construction_charge_price)"/>
+                              </td>
+                            </tr>
+                          </t>
+                          <tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td>
+                            <td style="text-align:center;">稅金</td>
+                            <td style="text-align:center;">
+                              <span t-esc="'{:,.0f}'.format(doc.tax_of_price)"/>
+                            </td>
+                          </tr>
+                          <tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td>
+                            <td style="text-align:center;">合計</td>
+                            <td style="text-align:center;">
+                              <span t-esc="'{:,.0f}'.format(doc.total_price_added_tax)"/>
+                            </td>
+                          </tr>
+                        </tbody>
+                      </t>
+                      <t t-else="">
+                        <tbody style="border-top:0 !important; border-color:transparent !important;">
+                          <tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td>
+                            <td style="text-align:center;">小計</td>
+                            <td style="text-align:center;">
+                              <span t-esc="'{:,.0f}'.format(doc.record_price_and_construction_charge_crm)"/>
+                            </td>
+                          </tr>
+                          <tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td>
+                            <td style="text-align:center;">稅金</td>
+                            <td style="text-align:center;">
+                              <span t-esc="'{:,.0f}'.format(doc.tax_of_price_crm)"/>
+                            </td>
+                          </tr>
+                          <tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td>
+                            <td style="text-align:center;">合計</td>
+                            <td style="text-align:center;">
+                              <span t-esc="'{:,.0f}'.format(doc.total_price_added_tax_crm)"/>
+                            </td>
+                          </tr>
+                        </tbody>
+                      </t>
+                    </table>
+
+                    <!-- 備註區塊：跟著最後一頁 -->
+                    <div class="row" style="margin-bottom:10px; page-break-inside: avoid;">
+                      <div class="col text-center" style="flex:1; font-weight:bold;">備註</div>
+                      <div class="col text-center" style="flex:20;"></div>
+                    </div>
+                    <t t-set="index" t-value="0"/>
+                    <t t-foreach="data['comments']" t-as="o">
+                      <t t-set="index" t-value="index + 1"/>
+                      <div class="row" style="margin-bottom:10px;">
+                        <div class="col text-center" style="flex:1;"><t t-esc="index"/>.</div>
+                        <div class="col text-start" style="flex:20;"><t t-esc="o.name"/></div>
+                      </div>
+                    </t>
+
+
+                  </t> <!-- / if last page -->
+                </div>
+              </t>
+            </t>
+
+            <!-- ================= 明細表格（無價版本） ================= -->
+            <t t-else="">
+              <t t-foreach="range(page_count)" t-as="pidx">
+                <t t-set="page_lines" t-value="pages[pidx]"/>
+
+                <div t-attf-style="page-break-after: #{ 'always' if pidx &lt; page_count - 1 else 'auto' };">
+
+                  <table class="table table-condensed fixed" style="margin-bottom:0px">
+                    <colgroup>
+                      <col style="width:6%"/>
+                      <col style="width:48%"/>
+                      <col style="width:16%"/>
+                      <col style="width:14%"/>
+                      <col style="width:16%"/>
+                    </colgroup>
+                    <thead>
+                      <tr>
+                        <th style="text-align: center;vertical-align: middle;">項</th>
+                        <th style="text-align: center;vertical-align: middle;">製作内容</th>
+                        <th style="text-align: center;vertical-align: middle;">尺寸cm</th>
+                        <th style="text-align: center;vertical-align: middle;">數量</th>
+                        <th style="text-align: center;vertical-align: middle;">小計</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <t t-foreach="page_lines" t-as="order">
+                        <tr class="line-row">
+                          <!-- 無價版一樣用 NAME_LIMIT（此時是 30） -->
+                          <t t-set="text_len"
+                             t-value="len(order.project_product_name or '') 
+                                      + len(order.product_id.name or '') 
+                                      + len(order.multi_chose_ids or '') 
+                                      + sum(len(a.name or '') for a in order.product_atts if a.attribute_id and a.attribute_id.name != '冷裱')"/>
+
+                          <td style="text-align: center;vertical-align: middle;">
+                            <span t-field="order.sequence"/>
+                          </td>
+
+                          <td class="cell-2lines" style="text-align: center;">
+                            <t t-set="name_len" t-value="text_len"/>
+                            <div t-attf-class="clamp-2 #{ 'is-long' if name_len &gt; NAME_LIMIT else '' }">
+                              <t t-set="lv" t-value="False"/>
+
+                              <t t-if="order.project_product_name">
+                                <span t-esc="order.project_product_name"/><t t-set="lv" t-value="True"/>
+                              </t>
+
+                              <t t-if="order.product_id.name">
+                                <t t-if="lv"><t t-raw="'/'"/></t>
+                                <span t-esc="order.product_id.name"/><t t-set="lv" t-value="True"/>
+                              </t>
+
+                              <t t-foreach="order.product_atts" t-as="attr">
+                                <t t-if="attr.attribute_id and attr.attribute_id.name != '冷裱'">
+                                  <t t-if="lv"><t t-raw="'/'"/></t>
+                                  <span t-esc="attr.name"/><t t-set="lv" t-value="True"/>
+                                </t>
+                              </t>
+
+                              <t t-if="order.multi_chose_ids">
+                                <t t-if="lv"><t t-raw="'/'"/></t>
+                                <span t-esc="order.multi_chose_ids"/>
+                              </t>
+                            </div>
+                          </td>
+
+                          <td style="text-align: center;vertical-align: middle;">
+                            <span t-field="order.product_width"/>x<span t-field="order.product_height"/>
+                          </td>
+                          <td style="text-align: center;vertical-align: middle;">
+                            <span t-esc="'{:,.0f}'.format(order.quantity)"/>
+                          </td>
+                          <td style="text-align: center;vertical-align: middle;">
+                            <span t-esc="'{:,.0f}'.format(order.price + order.install_price)"/>
+							<!-- <t t-if="doc.checkout_order_type == 'd' and not doc.is_sign"> -->
+								<!-- (<span t-esc="'{:,.0f}'.format(order.crm_chengben)"/>) -->
+							<!-- </t> -->
+                          </td>
+                        </tr>
+						<t t-if="doc.checkout_order_type == 'd' and not doc.is_sign">
+							<t t-if="order.crm_chengben_comment or (order.crm_chengben or 0) != 0">
+							<tr>
+								<td colspan="4" style="text-align: center;vertical-align: middle;">
+									<span t-esc="order.crm_chengben_comment"/>
+								</td>
+								<td style="text-align: center;vertical-align: middle;">
+									<t t-if="(order.crm_chengben or 0) != 0">
+										<span t-esc="'{:,.0f}'.format(order.crm_chengben)"/>
+									</t>
+								</td>
+							</tr>								
+							</t>
+						</t>
+                      </t>
+                    </tbody>
+                  </table>
+
+                  <!-- ===== 無價版：最後一頁才印總計 + 備註 + 簽名 ===== -->
+                  <t t-if="pidx == page_count - 1">
+                    <!-- 總計 -->
+                    <table class="table table-condensed fixed totals" style="margin-bottom:0px">
+                      <colgroup style="border-top:0 !重要; ">
+                        <col style="width:6%"/><col style="width:48%"/><col style="width:16%"/>
+                        <col style="width:14%"/><col style="width:16%"/>
+                      </colgroup>
+
+                      <t t-if="doc.checkout_order_type == 'a'">
+                        <tbody style="border-top:0 !important; ">
+                          <tr><td></td><td></td><td></td>
+                            <td style="text-align:center;">小計</td>
+                            <td style="text-align:center;">
+                              <span t-esc="'{:,.0f}'.format(doc.record_price)"/>
+                            </td>
+                          </tr>
+                          <t t-if="doc.construction_charge_price &gt; 0">
+                            <tr><td></td><td></td><td></td> 
+                              <td style="text-align:center;">施工費</td>
+                              <td style="text-align:center;">
+                                <span t-esc="'{:,.0f}'.format(doc.construction_charge_price)"/>
+                              </td>
+                            </tr>
+                          </t>
+                          <tr><td></td><td></td><td></td>
+                            <td style="text-align:center;">稅金</td>
+                            <td style="text-align:center;">
+                              <span t-esc="'{:,.0f}'.format(doc.tax_of_price)"/>
+                            </td>
+                          </tr>
+                          <tr><td></td><td></td><td></td>
+                            <td style="text-align:center;">合計</td>
+                            <td style="text-align:center;">
+                              <span t-esc="'{:,.0f}'.format(doc.total_price_added_tax)"/>
+                            </td>
+                          </tr>
+                        </tbody>
+                      </t>
+                      <t t-else="">
+                        <tbody style="border-top:0 !important; ">
+                          <tr><td></td><td></td><td></td>
+                            <td style="text-align:center;">小計</td>
+                            <td style="text-align:center;">
+                              <span t-esc="'{:,.0f}'.format(doc.record_price_and_construction_charge_crm)"/>
+                            </td>
+                          </tr>
+                          <tr><td></td><td></td><td></td>
+                            <td style="text-align:center;">稅金</td>
+                            <td style="text-align:center;">
+                              <span t-esc="'{:,.0f}'.format(doc.tax_of_price_crm)"/>
+                            </td>
+                          </tr>
+                          <tr><td></td><td></td><td></td>
+                            <td style="text-align:center;">合計</td>
+                            <td style="text-align:center;">
+                              <span t-esc="'{:,.0f}'.format(doc.total_price_added_tax_crm)"/>
+                            </td>
+                          </tr>
+                        </tbody>
+                      </t>
+                    </table>
+
+                    <!-- 備註 -->
+                    <div class="row" style="margin-bottom:10px; page-break-inside: avoid;">
+                      <div class="col text-center" style="flex:1; font-weight:bold;">備註</div>
+                      <div class="col text-center" style="flex:20;"></div>
+                    </div>
+                    <t t-set="index" t-value="0"/>
+                    <t t-foreach="data['comments']" t-as="o">
+                      <t t-set="index" t-value="index + 1"/>
+                      <div class="row" style="margin-bottom:10px;">
+                        <div class="col text-center" style="flex:1;"><t t-esc="index"/>.</div>
+                        <div class="col text-start" style="flex:20;"><t t-esc="o.name"/></div>
+                      </div>
+                    </t>
+
+                    <!-- 簽名 -->
+                    <t t-if="doc.is_sign">
+                      <div class="table-section" style="page-break-inside: avoid;">
+                        <div class="row" style="border-bottom:1px solid lightgray;margin-bottom:10px;">
+                          <div class="col-12 text-center" style="background-color:gray">
+                            匯款銀行:玉山銀行808 中和分行0439 戶名:科影數位影像股份有限公司. 帳號:0439940021915
+                          </div>
+                        </div>
+                        <div class="row" style="border-bottom:1px solid lightgray;margin-bottom:10px;">
+                          <div class="col-3">業務</div>
+                          <div class="col-3"><span t-field="doc.user_id.name"/></div>
+                          <div class="col-3">聯絡電話</div>
+                          <div class="col-3">2221-8868</div>
+                        </div>
+					<t t-set="has_manager_sign" t-value="bool(sign_images.get(doc.id, {}).get('manager_sign'))"/>
+
+					<div class="row"
+						 t-attf-style="border-bottom:1px solid lightgray;margin-bottom:10px; height: #{'160px' if has_manager_sign else '100px'};">
+					  <div class="col-1" style="display:flex; align-items:center;">主管確認簽章</div>
+
+					  <div class="col-5">
+						<!-- 兩行容器 -->
+						<div style="display:flex; flex-direction:column; height:100%; gap:6px;">
+
+						  <!-- 第一行：公司章 + 主管簽名 -->
+						  <div style="display:flex; align-items:center; justify-content:space-between; gap:6px; height: #{'90px' if not has_manager_sign else '90px'};">
+							<!-- 公司章 -->
+							<div style="flex:1; text-align:center;">
+							  <img src="dtsc/static/description/sig.png"
+								   alt="Company Seal"
+								   style="max-height:90px; object-fit:contain;"/>
+							</div>
+
+							<!-- 主管簽名 -->
+							<div style="flex:1; text-align:center;">
+							  <t t-if="sign_images.get(doc.id, {}).get('zhuguan_sign')">
+								<img t-att-src="'data:image/png;base64,' + sign_images[doc.id]['zhuguan_sign'].decode('utf-8')"
+									 alt="Supervisor Sign"
+									 style="max-height:80px; object-fit:contain;"/>
+							  </t>
+							</div>
+						  </div> 
+
+						  <!-- 第二行：有經理簽名才顯示（置中） -->
+						  <t t-if="has_manager_sign">
+							<div style="display:flex; justify-content:center; align-items:center; height:60px;">
+							  <div style="width:50%; text-align:center;">
+								<img t-att-src="'data:image/png;base64,' + sign_images[doc.id]['manager_sign'].decode('utf-8')"
+									 alt="Manager Sign"
+									 style="max-height:55px; object-fit:contain;"/>
+							  </div>
+							</div>
+						  </t>
+
+						</div>
+					  </div>
+
+					  <div class="col-1" style="display:flex; align-items:center;">客戶確認簽章</div>
+					  <div class="col-5"></div>
+					</div>
+                      </div>
+                    </t>
+                  </t> <!-- /最後一頁 -->
+                </div>
+              </t>
+            </t>
+
+          </t>
+        </t>
+      </div>
+    </t>
+  </template>
+</odoo>

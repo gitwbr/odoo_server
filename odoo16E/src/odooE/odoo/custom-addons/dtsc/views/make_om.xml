@@ -1,0 +1,222 @@
+<odoo>	
+    <record id="view_makeom_tree" model="ir.ui.view">
+        <field name="name">dtsc.makeom.tree</field>
+        <field name="model">dtsc.makeom</field>
+        <field name="arch" type="xml">
+            <tree create="false" decoration-danger="install_state == 'cancel'">
+				<field name="name" readonly="1"/>
+                <field name="customer_name" readonly="1"/>
+                <field name="supplier_id" readonly="1"/>
+                <field name="project_name" readonly="1"/>
+                <field name="order_date" readonly="1"/>
+                <field name="delivery_date_show" readonly="1"/>
+                <field name="delivery_method" readonly="1"/>
+                <field name="total_size" string="總才數" readonly="1"/>
+                <field name="install_state" readonly="1"/>
+            </tree>
+        </field>
+    </record>
+    
+	<!-- <record id="action_to_excel_makeout_list" model="ir.actions.server"> -->
+		<!-- <field name="name">統計表生成Excel(完整)</field> -->
+		<!-- <field name="model_id" ref="model_dtsc_makeout"/> -->
+		<!-- <field name="state">code</field> -->
+		<!-- <field name="code"> -->
+			<!-- action = env['dtsc.makeout'].with_context(env.context).action_to_excel() -->
+		<!-- </field> -->
+		<!-- <field name="binding_model_id" ref="model_dtsc_makeout"/> -->
+		<!-- <field name="binding_type">action</field> -->
+		<!-- <field name="binding_view_types">list</field> -->
+        <!-- <field name="groups_id" eval="[(4, ref('dtsc.group_dtsc_mg'))]"/> -->
+	<!-- </record> -->
+	
+    <!-- Updated form view definition -->
+    <record id="view_makeom_form" model="ir.ui.view">
+        <field name="name">dtsc.makeom.form</field>
+        <field name="model">dtsc.makeom</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+					<button name="send_install_list" type="object" class="oe_highlight" string="派單" attrs="{'invisible': [('install_state', 'not in', ['draft'])]}" groups="dtsc.group_dtsc_mg"/>
+					<button name="outgoing_send" type="object" class="oe_highlight" string="外站下單" attrs="{'invisible': [('install_state', 'not in', ['draft'])]}"/>
+					<button name="btn_send" type="object" class="oe_highlight" string="完成" attrs="{'invisible': [('install_state', 'not in', ['installing'])]}" groups="dtsc.group_dtsc_sc"/>
+					<button name="del_install_list" type="object" class="oe_highlight" string="作廢"  confirm="是否確定作廢此工單？" attrs="{'invisible': [('install_state', 'in', ['cancel'])]}" groups="dtsc.group_dtsc_mg"/>
+					<field name="install_state" widget="statusbar" statusbar_visible="draft,installing,succ,cancel"/>
+				</header>
+                <sheet>
+					<!-- <div class="oe_title" style="text-align: center;"> -->
+					<div style="text-align: center;">
+						<h1>代工單</h1>
+					</div>
+					<group col="12">
+						<group colspan="10">
+							<field name="company_id" readonly="1" widget='selection'/> 
+                            <field name="supplier_id" groups="dtsc.group_dtsc_mg" options="{'no_create': True, 'no_create_edit': True}"/>
+						</group>
+						<group colspan="2">
+							<field name="name" readonly="1"/>
+						</group>
+					</group>
+					<div style="width:100%; border-top:1px solid black; margin-top:5px; margin-bottom:5px;"></div>
+					<group col="12">
+						<group colspan="4">
+							<field name="customer_name" readonly="1"/>
+							<field name="contact_person" groups="dtsc.group_dtsc_yw,dtsc.group_dtsc_mg,dtsc.group_dtsc_kj"/>
+							<field name="phone" />
+							<field name="is_recheck" invisible="1"/>
+							<field name="source_name" attrs="{'invisible': [('source_name', '=', False)]}" readonly="1"/>
+							<field name="scan_type" attrs="{'invisible': [('is_open_makeom_qrcode', '=', False)]}"/>
+							<field name="scan_modes" options="{'no_create': True, 'no_create_edit': True}" widget="many2many_tags" domain="[('name','in',['後製','品管','完成包裝','已出貨'])]" attrs="{'invisible': ['|',('is_open_makeom_qrcode', '=', False),('scan_type', '!=', 'gun')]}"/>
+							<field name="scan_input" attrs="{'invisible': ['|',('is_open_makeom_qrcode', '=', False),('scan_type', '!=', 'gun')]}"/>
+						</group>
+						<group colspan="4">
+							<field name="order_date" readonly="1"/>
+							<field name="fax" />
+							<field name="recheck_groups" attrs="{'invisible': [('is_recheck', '=', False)]}" widget="many2many_tags"  readonly="1"/>
+							<field name="recheck_comment" attrs="{'invisible': [('is_recheck', '=', False)]}" readonly="1"/>
+							<!-- <field name="is_aftermake" /> -->
+							<!-- <field name="factory" /> -->
+						</group><group colspan="4">
+							<field name="speed_type" />
+							<field name="delivery_date" />
+							<field name="out_side_delivery_date" />
+							<field name="out_side_checkout_name" />
+                            <field name="is_in_by_gly" invisible="1"/>
+							<field name="delivery_method" readonly="1"/>
+							<field name="recheck_user" attrs="{'invisible': [('is_recheck', '=', False)]}" widget="many2many_tags"  readonly="1"/>
+						</group>						
+					</group>
+					<!--  <notebook>
+						<page string=""> -->
+							<div id="qr-modal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); display: none; justify-content: center; align-items: center; z-index: 1000;">
+
+								<div style="position: relative; width: 70%; background: white; border-radius: 8px; padding: 10px;">
+        <!-- 二维码读取器区域 -->							
+
+								<div id="qr-reader" style="width: 100%; background: white;  border-radius: 8px;">
+								
+								
+								</div>
+								<input id="close_qr_modal_btn" type="button" style="position: absolute; top: 10px; right: 10px; background: #000; color: white; border: none; padding: 5px 10px; border-radius: 5px; cursor: pointer;" value="關閉"/>
+									
+								</div>
+							</div>
+							<field name="is_open_makeom_qrcode" invisible="1"/>
+
+						
+						
+							<field name="order_ids">
+								<tree editable="bottom" create="false" delete="false">
+									<field name="is_select" attrs="{'invisible': [('parent.is_open_makeom_qrcode', '=', False)]}"/>
+									<field name="sequence" readonly="1"/>
+									<field name="file_name" readonly="1"/>
+									<field name="output_material" readonly="1"/>
+									<field name="production_size" readonly="1"/>
+									<field name="processing_method" widget='text' readonly="1"/>
+									<field name="is_aftermake" string="外站發送"/>
+									<field name="lengbiao" readonly="1"/>
+									<field name="quantity" readonly="1"/>
+									<field name="total_size" readonly="1"/>
+                                    <field name="recheck_id_name"  attrs="{'column_invisible': [('parent.is_recheck', '!=', True)]}" />
+									<field name="barcode" readonly="1"/>
+									
+								</tree> 
+							</field>
+							<group col="12">
+								<group colspan="12">
+									<field name="comment"/>
+									<field name="factory_comment"/>
+									
+								</group>
+							</group>
+							<group col="12">
+								<group colspan="9">
+									<field name="project_name" readonly="1"/>
+									<!-- <field name="factory_comment"/> -->
+									<!-- <field name="comment" readonly="1"/> -->
+								</group>
+								<group colspan="3">
+									<field name="total_quantity" readonly="1"/>
+									<field name="total_size" readonly="1"/>
+								</group>
+							</group>
+							<group col="12">
+							
+								<group colspan="3">									
+									<field name="user_id" readonly="1" />
+								</group>
+								<group colspan="3">
+									
+									<field name="kaidan" readonly="1" />
+								</group>
+								<group colspan="3">
+									
+								</group>
+								<group colspan="3">
+									<field name="pinguanman" options="{'no_create': True, 'no_create_edit': True}" widget="many2many_tags"  attrs="{'invisible': [('is_open_makeom_qrcode', '=', True)]}"/> 
+									
+								</group>
+							</group>
+					<!-- 	</page>
+					</notebook> -->
+                </sheet>
+            </form>
+        </field>
+    </record>
+	
+	<record id="search_makeom" model="ir.ui.view">
+		<field name="name">dtsc.makeom.search</field>
+		<field name="model">dtsc.makeom</field>
+		<field name="arch" type="xml">
+			<search>
+				<searchpanel>
+					<field name="report_year" string="年"  select="multi"/>
+					<field name="report_month" string="月" context="{'group_by': 'report_year'}" select="multi"/>
+
+				</searchpanel>
+				<field name="search_line_name" string="所有訊息"/>
+				
+				<separator/>
+				
+				<filter name="進單日-明日" string="進單日-明日" domain="[('date_labels.name', '=', '進單日-明日')]"/>
+				<filter name="進單日-今日" string="進單日-今日" domain="[('date_labels.name', '=', '進單日-今日')]"/>
+				<filter name="進單日-本周" string="進單日-本周" domain="[('date_labels.name', '=', '進單日-本周')]"/>
+                <filter name="進單日-10日内" string="進單日-10日内" domain="[('date_labels.name', '=', '進單日-10日内')]"/>
+                <filter name="進單日-本月" string="進單日-本月" domain="[('date_labels.name', '=', '進單日-本月')]"/>
+                <filter name="進單日-前月" string="進單日-前月" domain="[('date_labels.name', '=', '進單日-前月')]"/>
+                <!-- <filter name="進單日-其他" string="進單日-其他" domain="[('date_labels.name', '=', '進單日-其他')]"/> -->
+				
+				<separator/>
+				<filter name="出貨日-明日" string="出貨日-明日" domain="[('date_labels.name', '=', '出貨日-明日')]"/>
+				<filter name="出貨日-今日" string="出貨日-今日" domain="[('date_labels.name', '=', '出貨日-今日')]"/>
+				<filter name="出貨日-本周" string="出貨日-本周" domain="[('date_labels.name', '=', '出貨日-本周')]"/>
+                <filter name="出貨日-10日内" string="出貨日-10日内" domain="[('date_labels.name', '=', '出貨日-10日内')]"/>
+                <filter name="出貨日-本月" string="出貨日-本月" domain="[('date_labels.name', '=', '出貨日-本月')]"/>
+                <filter name="出貨日-前月" string="出貨日-前月" domain="[('date_labels.name', '=', '出貨日-前月')]"/>
+                <!-- <filter name="出貨日-其他" string="出貨日-其他" domain="[('date_labels.name', '=', '出貨日-其他')]"/> -->
+                       
+			</search>
+		</field>		
+	</record>
+	<record id="ir_cron_makeom" model="ir.cron">
+        <field name="name">Every Minute Computation Job</field>
+        <field name="model_id" ref="model_dtsc_makeom"/>
+        <field name="state">code</field>
+        <field name="code">model.everyday_set()</field> 
+        <field name="interval_number">5</field> 
+        <field name="interval_type">minutes</field>
+        <field name="numbercall">-1</field>
+        <field name="nextcall" eval="(datetime.now() + timedelta(minutes=5)).strftime('%Y-%m-%d %H:%M:%S')"/>
+    </record>
+	
+	
+    <record id="action_report_makeom" model="ir.actions.report">
+        <field name="name">委外訂單</field>
+        <field name="model">dtsc.makeom</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">dtsc.report_makeom_template</field>
+        <field name="report_file">dtsc.report_makeom_template</field>
+        <field name="binding_model_id" ref="model_dtsc_makeom"/>
+        <field name="binding_type">report</field>
+    </record>
+</odoo>

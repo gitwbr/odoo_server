@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="InstallProduct.ListButtons" t-inherit="web.ListView.Buttons">
+
+       <!-- hr.expense and hr.expense.sheet -->
+        <xpath expr="//button[hasclass('o_list_export_xlsx')]" position="after">
+            <button type="button" class="btn btn-secondary" style="margin-left: 10px;" t-on-click="OnTestClick">
+                下載月度報表
+            </button>
+        </xpath>
+	</t>
+	<t t-name="Attendance.ListButtons" t-inherit="web.ListView.Buttons">
+        <xpath expr="//button[hasclass('o_list_export_xlsx')]" position="after">
+            <button type="button" class="btn btn-secondary" style="margin-left: 10px;" t-on-click="OnTestClick">
+                刷新
+            </button>
+        </xpath>
+	</t>
+</templates>

@@ -1,0 +1,10 @@
+l10n_*
+*.l10n
+*.l10n.ts
+*.l10n.tsx                                                      
+*.po
+*.pot
+*.mo
+*.mo.ts
+*.mo.tsx
+dtsc1

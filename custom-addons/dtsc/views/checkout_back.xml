@@ -352,7 +352,7 @@
                                 	<button string="全選施工" type="object" name="set_boolean_field_true"   style="margin-right:20px" help="全選施工" groups="dtsc.group_dtsc_mg"/>
 									<button string="取消施工" type="object" name="set_boolean_field_false"  help="取消施工" groups="dtsc.group_dtsc_mg"/>									
 									<button string="複製最後一條" type="object" name="copy_last_record" groups="dtsc.group_dtsc_mg"/>															
-									<button string="項次序號整理" type="object" name="seq_reset" attrs="{'invisible': [('checkout_order_state', 'not in', ['waiting_confirmation','draft','quoting'])]}" />	
+									<button string="項次序號整理" type="object" name="seq_reset" attrs="{'invisible': [('checkout_order_state', 'not in', ['waiting_confirmation','draft','quoting','producing'])]}" /> 	
                                 	<button string="全選重製" type="object" name="set_cz_field_true"   style="margin-right:20px" help="全選重製" groups="dtsc.group_dtsc_mg"/>														
                                 	<button string="取消重製" type="object" name="set_cz_field_false"   style="margin-right:20px" help="取消重製" groups="dtsc.group_dtsc_mg"/>														
 									<field name="set_all_machine_id" />															

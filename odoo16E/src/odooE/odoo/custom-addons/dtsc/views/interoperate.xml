@@ -1,0 +1,44 @@
+<odoo>
+    <record id="view_interoperate_tree" model="ir.ui.view">
+        <field name="name">dtsc.interoperate.tree</field>
+        <field name="model">dtsc.interoperate</field>
+        <field name="arch" type="xml">
+            <tree>
+				<field name="name" readonly="1"/>
+
+            </tree>
+        </field>
+    </record>
+	
+	
+    <record id="view_interoperate_form" model="ir.ui.view">
+        <field name="name">dtsc.interoperate.form</field>
+        <field name="model">dtsc.interoperate</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+					<button name="action_verify_connection" type="object" string="驗證連線" class="oe_highlight"/>
+                </header>
+				<sheet>
+					<group>
+						<field name="name"/>
+					</group>
+					
+					<group string="發起">
+						<field name="outgoing_name"/>
+						<field name="outgoing_api_key" password="True"/>
+						<field name="outgoing_bianhao"/>
+						<field name="outgoing_jianchen"/> 
+						<field name="outgoing_state"/>
+					</group>
+					<group string="接收">
+						<field name="incoming_api_key" password="True"/>
+						<field name="alias"/>
+						<field name="code"/>
+						<field name="incoming_state"/>
+					</group>
+				</sheet>
+			</form>
+        </field>
+    </record>
+</odoo>

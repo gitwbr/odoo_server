@@ -129,4 +129,15 @@
         <field name="binding_model_id" ref="model_dtsc_deliveryorder"/>
         <field name="binding_type">report</field>
     </record>
+
+    <!-- 預打印出貨單（不落資料）：從 dtsc.checkout 直接列印出貨單版型 -->
+    <record id="action_report_checkout_deliveryorder" model="ir.actions.report">
+        <field name="name">預打印出貨單</field>
+        <field name="model">dtsc.checkout</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">dtsc.checkout_delivery_order</field>
+        <field name="report_file">dtsc.checkout_delivery_order</field>
+        <field name="binding_model_id" ref="model_dtsc_checkout"/>
+        <field name="binding_type">report</field>
+    </record>
 </odoo>

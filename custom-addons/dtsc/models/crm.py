@@ -729,7 +729,7 @@ class CheckoutInherit(models.Model):
                     'custom_pay_mode':new_checkout.new_custom_pay_mode,
                     'custom_invoice_form':new_checkout.new_custom_invoice_form,
                     'is_customer' : True,
-                    'sell_user' : new_checkout.user_id.id,
+                    'sell_user' : record.user_id.id,
                     'custom_init_name' : new_checkout.new_init,
                 }   
                 
@@ -748,6 +748,7 @@ class CheckoutInherit(models.Model):
             
             # 修改状态为草稿
             new_checkout.checkout_order_state = 'draft'
+            new_checkout.user_id = record.user_id
             
             invoice_due_date = self.env['ir.config_parameter'].sudo().get_param('dtsc.invoice_due_date')
         

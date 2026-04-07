@@ -1,0 +1,35 @@
+<!-- 在 product_price_table.xml 文件中 -->
+<odoo>
+	<record id="view_price_table_kanban" model="ir.ui.view">
+		<field name="name">product.price.table.kanban</field>
+		<field name="model">dtsc.productpricetable</field>
+		<field name="arch" type="xml">
+			<kanban class="o_kanban_dashboard">
+				<templates>
+					<t t-name="kanban-box">
+						<div class="oe_kanban_global_click o_kanban_card">
+							<!-- 你的Kanban卡片内容 -->
+							<div class="o_kanban_image">
+								<!-- 可以放一个图像，例如模块的图标 -->
+							</div>
+							<div class="o_kanban_details">
+								<!-- 例如： -->
+								<field name="name"/>
+								<!-- 其他你想展示的字段 -->
+							</div>
+						</div>
+					</t>
+				</templates>
+			</kanban>
+		</field>
+	</record>
+	<record id="dtsc.action_product_price_table" model="ir.actions.act_window">
+		<field name="name">價格表匯入</field>
+		<field name="res_model">dtsc.productpricetable</field>
+		<field name="view_mode">kanban</field>
+		<field name="view_id" ref="dtsc.view_price_table_kanban"/>
+	</record>
+
+
+</odoo>
+ 

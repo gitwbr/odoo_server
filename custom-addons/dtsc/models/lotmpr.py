@@ -383,7 +383,10 @@ class LotMpr(models.Model):
                 qty_done_cai = record.yujixiaohao
             else: 
                 qty_done_cai = record.sjkl
-
+            
+            if qty_done_cai == 0:
+                record.state = "succ"
+                continue
 
             # if (now_stock_p - record.yujixiaohao) < 0 :
             if (now_stock_p - qty_done_cai) < 0 :
@@ -528,7 +531,10 @@ class LotMprLine(models.Model):
         for record in self:
             # print(record.state)
             if record.state == "succ":
-                if not record.picking_id or record.picking_id.state != 'done':
+            
+                if not record.picking_id:
+                    continue
+                if record.picking_id.state != 'done':
                     raise UserError('无有效的完成拣货操作，无法回退。')
                 
                 reverse_picking_vals = {

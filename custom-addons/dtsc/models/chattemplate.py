@@ -456,6 +456,21 @@ class CheckOut(models.Model):
         _logger = logging.getLogger(__name__)
         _logger.info("Action Context: %s", action['context'])
         return action
+        
+    @api.model
+    def action_chart_dashboard_yubaojia(self):
+        """返回带动态上下文的Action"""
+        action = self.env.ref('dtsc.action_chart_dashboard_yubaojia').read()[0]
+        dates = self.get_26_to_25_dates()
+        action['context'] = {
+            'default_start_date': dates['start_date'],
+            'default_end_date': dates['end_date'],
+            'search_default_custom_26_to_25': 1,
+            'group_by': 'display_name_reportt'
+        }
+        _logger = logging.getLogger(__name__)
+        _logger.info("Action Context: %s", action['context'])
+        return action
 
     @api.model
     def action_sales_chart_dashboard(self):
