@@ -535,7 +535,13 @@ class Checkout(models.Model):
     installproduct_ids = fields.One2many("dtsc.installproduct","checkout_id")
     sequence_count = fields.Integer(string="項數",compute="_compute_sequence_count",store=True)
     is_dayang = fields.Boolean('打樣')
-    lock_price = fields.Boolean('價格鎖定')
+    lock_price = fields.Boolean('價格鎖定')    
+    
+    
+    # delivery_address = fields.Char("送貨地址")
+    # contact_person =  fields.Char("聯絡人")
+    # contact_phone = fields.Char("電話")
+    
     
     @api.depends("name")
     def _compute_checkout_order_type(self):

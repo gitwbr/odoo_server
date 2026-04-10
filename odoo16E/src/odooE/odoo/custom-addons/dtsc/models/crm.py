@@ -17,6 +17,7 @@ import hmac
 import hashlib
 import time
 import secrets
+from odoo.exceptions import ValidationError
 class CrmUserComment(models.Model):
     _name = "dtsc.crmusercomment"
     _order = "sequence"
@@ -688,7 +689,16 @@ class CheckoutInherit(models.Model):
             
             if new_checkout.is_new_partner:
                 if not new_checkout.new_partner:
-                    raise ValueError("請輸入新用戶名") 
+                    raise ValidationError("請輸入新用戶名") 
+                    
+                # 只檢查「客戶」是否重名，供應商可同名
+                exist_customer = self.env['res.partner'].search([
+                    ('name', '=', new_checkout.new_partner),
+                    ('customer_rank', '>', 0),
+                ], limit=1)
+
+                if exist_customer:
+                    raise ValidationError(f"客戶名稱【{new_checkout.new_partner}】已存在，請勿重複建立。")
                 
                 partner_vals = {
                     'name': new_checkout.new_partner,

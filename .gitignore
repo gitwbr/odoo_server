@@ -93,3 +93,5 @@ backup/
 logs/
 addons_backup/
 backup/
+
+/odoo16E/backups/
