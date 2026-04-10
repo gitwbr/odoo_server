@@ -540,6 +540,11 @@ class Checkout(models.Model):
     is_dayang = fields.Boolean('打樣')
     lock_price = fields.Boolean('價格鎖定')
     
+    delivery_address = fields.Char("送貨地址")
+    contact_person =  fields.Char("聯絡人")
+    contact_phone = fields.Char("電話")
+    
+    
     @api.depends("name")
     def _compute_checkout_order_type(self):
         mapping = {'A': 'a', 'F': 'f', 'D': 'd', 'M': 'm', 'E': 'e'}

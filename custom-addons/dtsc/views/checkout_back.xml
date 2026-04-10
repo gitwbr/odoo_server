@@ -311,6 +311,10 @@
 							<field name="recheck_groups" widget="many2many_tags"  attrs="{'invisible': [('is_recheck', '=', False)]}" />
 							<field name="del_reason" attrs="{'invisible': [('checkout_order_state', 'not in', 'cancel')]}" />
 							<field name="hebing_comment" readonly="1" attrs="{'invisible': [('hebing_type', 'not in', ['1','2'])]}"/>
+							
+							<field name="delivery_address" attrs="{'invisible': [('checkout_order_state', 'in', ['waiting_confirmation'])]}"/>
+							<field name="contact_person" attrs="{'invisible': [('checkout_order_state', 'in', ['waiting_confirmation'])]}"/>
+							<field name="contact_phone" attrs="{'invisible': [('checkout_order_state', 'in', ['waiting_confirmation'])]}"/>
 							<!-- <field name="account_payment_id" readonly="1" attrs="{'invisible':[('payment_first','=',False)]}"/> -->
 							<!-- <field name="prepaid" string="客戶應付訂金" attrs="{'invisible':[('payment_first','=',False)],'readonly':[('checkout_order_state','not in',['draft'])]}"/> -->
 						</group>

@@ -1,0 +1,434 @@
+odoo16E/src/odooE/odoo/osv/expression.py:932:                    subselect = "SELECT res_id FROM ir_attachment WHERE res_model=%s AND res_field=%s"
+odoo16E/src/odooE/odoo/fields.py:2357:            ('res_model', '=', records._name),
+odoo16E/src/odooE/odoo/fields.py:2379:                    'res_model': self.model_name,
+odoo16E/src/odooE/odoo/fields.py:2414:                    ('res_model', '=', self.model_name),
+odoo16E/src/odooE/odoo/fields.py:2427:                            'res_model': record._name,
+odoo16E/src/odooE/odoo/fields.py:2744:    ``"res_model,res_id"`` in database.
+odoo16E/src/odooE/odoo/fields.py:2761:            res_model, res_id = value.split(',')
+odoo16E/src/odooE/odoo/fields.py:2762:            if not validate or res_model in self.get_values(record.env):
+odoo16E/src/odooE/odoo/fields.py:2763:                if record.env[res_model].browse(int(res_id)).exists():
+odoo16E/src/odooE/odoo/fields.py:2773:            res_model, res_id = value.split(',')
+odoo16E/src/odooE/odoo/fields.py:2774:            return record.env[res_model].browse(int(res_id))
+odoo16E/src/odooE/odoo/fields.py:3121:        model_ids = self._record_ids_per_res_model(records)
+odoo16E/src/odooE/odoo/fields.py:3141:        model_ids = self._record_ids_per_res_model(records)
+odoo16E/src/odooE/odoo/fields.py:3159:    def _record_ids_per_res_model(self, records):
+odoo16E/src/odooE/odoo/fields.py:3636:            res_model = property_definition.get('comodel')
+odoo16E/src/odooE/odoo/fields.py:3662:            elif property_type == 'many2one' and property_value and res_model in env:
+odoo16E/src/odooE/odoo/fields.py:3666:            elif property_type == 'many2many' and property_value and res_model in env:
+odoo16E/src/odooE/odoo/fields.py:4322:                # integer inverses (res_model/res_id pairs) are not supported
+odoo16E/src/odooE/odoo/models.py:3606:            query = 'SELECT id FROM ir_attachment WHERE res_model=%s AND res_id IN %s'
+odoo16E/src/odooE/odoo/import_xml.rng:280:            <rng:attribute name="res_model" />
+odoo16E/src/odooE/odoo/api.py:587:        res_model, res_id = self['ir.model.data']._xmlid_to_res_model_res_id(
+odoo16E/src/odooE/odoo/api.py:591:        if res_model and res_id:
+odoo16E/src/odooE/odoo/api.py:592:            record = self[res_model].browse(res_id)
+odoo16E/src/odooE/odoo/custom-addons/dtsc/views/product_price_table.xml:28:		<field name="res_model">dtsc.productpricetable</field>
+custom-addons/dtsc/views/product_price_table.xml:28:		<field name="res_model">dtsc.productpricetable</field>
+odoo16E/src/odooE/odoo/custom-addons/dtsc/views/customclass.xml:165:		<field name="res_model">dtsc.customclass</field>
+odoo16E/src/odooE/odoo/custom-addons/dtsc/views/make_type.xml:18:		<field name="res_model">dtsc.maketype</field>
+odoo16E/src/odooE/odoo/cli/templates/default/views/views.xml.template:24:      <field name="res_model">{{model}}</field>
+odoo16E/src/odooE/odoo/cli/templates/default/views/views.xml.template:39:          "res_model": model._name,
+odoo16E/src/odooE/odoo/tools/convert.py:344:        res_model = rec.get('res_model')
+odoo16E/src/odooE/odoo/tools/convert.py:372:            'res_model': res_model,
+odoo16E/src/odooE/odoo/tools/convert.py:399:            'res_model': res_model,
+odoo16E/src/odooE/odoo/tools/convert.py:687:        return self.env['ir.model.data']._xmlid_to_res_model_res_id(id_str, raise_if_not_found=raise_if_not_found)
+custom-addons/dtsc/views/customclass.xml:165:		<field name="res_model">dtsc.customclass</field>
+custom-addons/dtsc/views/make_type.xml:19:		<field name="res_model">dtsc.maketype</field>
+odoo16E/src/odooE/odoo/custom-addons/dtsc/views/res_partner_templates.xml:24:		<field name="res_model">product.supplierinfo</field>
+odoo16E/src/odooE/odoo/tools/test_reports.py:143:            for key in ('res_id', 'res_model', 'view_mode',
+odoo16E/src/odooE/odoo/tools/test_reports.py:165:            assert datas['res_model'], "Cannot use the view without a model"
+odoo16E/src/odooE/odoo/tools/test_reports.py:168:                        view_type, datas['res_model'], view_id or '?')
+odoo16E/src/odooE/odoo/tools/test_reports.py:170:            model = env[datas['res_model']]
+odoo16E/src/odooE/odoo/tools/test_reports.py:231:                datas['res_id'] = env[datas['res_model']].create(view_data).id
+odoo16E/src/odooE/odoo/tools/test_reports.py:248:                    rec = env[datas['res_model']].browse(datas['res_id'])
+odoo16E/src/odooE/odoo/tools/test_reports.py:251:                        _logger.error("The %s model doesn't have a %s attribute!", datas['res_model'], b['name'])
+odoo16E/src/odooE/odoo/custom-addons/dtsc/views/product_price_calculator.xml:33:    <field name="res_model">dtsc.productpricecalculator</field>
+odoo16E/src/odooE/odoo/custom-addons/dtsc/views/report_invoice_bk.xml:364:					'res_model': 'dtsc.accountreportwizard',
+custom-addons/dtsc/views/res_partner_templates.xml:24:		<field name="res_model">product.supplierinfo</field>
+custom-addons/dtsc/views/product_price_calculator.xml:33:    <field name="res_model">dtsc.productpricecalculator</field>
+odoo16E/src/odooE/odoo/custom-addons/dtsc/views/product_attribute_value_views.xml:34:        <field name="res_model">product.attribute.value</field>
+custom-addons/dtsc/views/product_attribute_value_views.xml:49:        <field name="res_model">product.attribute.value</field>
+odoo16E/src/odooE/odoo/custom-addons/dtsc/views/views.xml:9:		<field name="res_model">dtsc.checkout</field>
+odoo16E/src/odooE/odoo/custom-addons/dtsc/views/views.xml:23:		  <!-- <field name="res_model">dtsc.checkoutreport</field> -->
+odoo16E/src/odooE/odoo/custom-addons/dtsc/views/views.xml:30:      <!-- <field name="res_model">dtsc.book</field> -->
+odoo16E/src/odooE/odoo/custom-addons/dtsc/views/views.xml:36:      <field name="res_model">dtsc.makein</field>
+odoo16E/src/odooE/odoo/custom-addons/dtsc/views/views.xml:43:      <field name="res_model">dtsc.makeout</field>
+odoo16E/src/odooE/odoo/custom-addons/dtsc/views/views.xml:51:      <field name="res_model">dtsc.makeom</field>
+odoo16E/src/odooE/odoo/custom-addons/dtsc/views/views.xml:58:      <field name="res_model">dtsc.installproduct</field>
+odoo16E/src/odooE/odoo/custom-addons/dtsc/views/views.xml:65:      <field name="res_model">dtsc.deliveryorder</field>
+odoo16E/src/odooE/odoo/custom-addons/dtsc/views/views.xml:73:      <field name="res_model">dtsc.book</field>
+odoo16E/src/odooE/odoo/custom-addons/dtsc/views/views.xml:83:		<field name="res_model">res.partner</field>
+odoo16E/src/odooE/odoo/custom-addons/dtsc/views/views.xml:92:		<field name="res_model">res.partner</field>
+odoo16E/src/odooE/odoo/custom-addons/dtsc/views/views.xml:102:      <field name="res_model">product.template</field>
+odoo16E/src/odooE/odoo/custom-addons/dtsc/views/views.xml:121:      <field name="res_model">dtsc.book</field>
+odoo16E/src/odooE/odoo/custom-addons/dtsc/views/views.xml:128:		<field name="res_model">product.template</field>
+odoo16E/src/odooE/odoo/custom-addons/dtsc/views/views.xml:136:		<!-- <field name="res_model">mrp.bom</field> -->
+odoo16E/src/odooE/odoo/custom-addons/dtsc/views/views.xml:143:		<field name="res_model">product.attribute.value</field>
+odoo16E/src/odooE/odoo/custom-addons/dtsc/views/views.xml:151:		<field name="res_model">dtsc.machineprice</field>
+odoo16E/src/odooE/odoo/custom-addons/dtsc/views/views.xml:159:		<field name="res_model">dtsc.userlistbefore</field>
+odoo16E/src/odooE/odoo/custom-addons/dtsc/views/views.xml:165:		<field name="res_model">dtsc.userlist</field>
+odoo16E/src/odooE/odoo/custom-addons/dtsc/views/views.xml:171:		<field name="res_model">dtsc.reworklist</field>
+odoo16E/src/odooE/odoo/custom-addons/dtsc/views/views.xml:177:		<field name="res_model">dtsc.producttype</field>
+odoo16E/src/odooE/odoo/custom-addons/dtsc/views/views.xml:182:		<field name="res_model">dtsc.workqrcode</field>
+odoo16E/src/odooE/odoo/custom-addons/dtsc/views/views.xml:189:		<field name="res_model">dtsc.vatlogin</field>
+odoo16E/src/odooE/odoo/custom-addons/dtsc/views/views.xml:196:      <field name="res_model">product.category</field>
+odoo16E/src/odooE/odoo/custom-addons/dtsc/views/views.xml:202:      <field name="res_model">product.attribute</field>
+odoo16E/src/odooE/odoo/custom-addons/dtsc/views/views.xml:208:      <field name="res_model">product.product</field>
+odoo16E/src/odooE/odoo/custom-addons/dtsc/views/views.xml:215:      <field name="res_model">purchase.order</field>
+odoo16E/src/odooE/odoo/custom-addons/dtsc/views/views.xml:233:      <field name="res_model">stock.lot</field>
+odoo16E/src/odooE/odoo/custom-addons/dtsc/views/views.xml:243:      <field name="res_model">stock.move.line</field>
+odoo16E/src/odooE/odoo/custom-addons/dtsc/views/views.xml:251:      <field name="res_model">stock.quant</field>
+odoo16E/src/odooE/odoo/custom-addons/dtsc/views/views.xml:262:      <field name="res_model">stock.picking</field>
+odoo16E/src/odooE/odoo/custom-addons/dtsc/views/views.xml:271:      <field name="res_model">product.supplierinfo</field>
+odoo16E/src/odooE/odoo/custom-addons/dtsc/views/views.xml:278:      <field name="res_model">dtsc.linebot</field>
+odoo16E/src/odooE/odoo/custom-addons/dtsc/views/views.xml:284:      <field name="res_model">dtsc.department</field>
+odoo16E/src/odooE/odoo/custom-addons/dtsc/views/views.xml:289:      <field name="res_model">dtsc.factory</field>
+odoo16E/src/odooE/odoo/custom-addons/dtsc/views/views.xml:296:      <field name="res_model">dtsc.interoperate</field>
+odoo16E/src/odooE/odoo/custom-addons/dtsc/views/views.xml:303:      <field name="res_model">dtsc.normalsettings</field>
+odoo16E/src/odooE/odoo/custom-addons/dtsc/views/views.xml:308:        <field name="res_model">stock.warehouse.orderpoint</field>
+odoo16E/src/odooE/odoo/custom-addons/dtsc/views/views.xml:316:        <field name="res_model">stock.warehouse.orderpoint</field>
+odoo16E/src/odooE/odoo/custom-addons/dtsc/views/views.xml:325:      <field name="res_model">dtsc.mpr</field>
+odoo16E/src/odooE/odoo/custom-addons/dtsc/views/views.xml:331:      <field name="res_model">dtsc.lotmprscancode</field>
+odoo16E/src/odooE/odoo/custom-addons/dtsc/views/views.xml:337:      <field name="res_model">dtsc.lotmpr</field>
+odoo16E/src/odooE/odoo/custom-addons/dtsc/views/views.xml:345:		<field name="res_model">account.move</field>
+odoo16E/src/odooE/odoo/custom-addons/dtsc/views/views.xml:356:      <field name="res_model">dtsc.billinvoice</field>
+odoo16E/src/odooE/odoo/custom-addons/dtsc/views/views.xml:361:      <field name="res_model">dtsc.allowances</field>
+odoo16E/src/odooE/odoo/custom-addons/dtsc/views/views.xml:368:		<field name="res_model">dtsc.checkoutline</field>
+odoo16E/src/odooE/odoo/custom-addons/dtsc/views/views.xml:379:		<field name="res_model">account.move</field>
+odoo16E/src/odooE/odoo/custom-addons/dtsc/views/views.xml:388:		<field name="res_model">dtsc.checkout</field>
+odoo16E/src/odooE/odoo/custom-addons/dtsc/views/views.xml:408:		<field name="res_model">dtsc.checkout</field>
+odoo16E/src/odooE/odoo/custom-addons/dtsc/views/views.xml:425:		<field name="res_model">dtsc.checkout</field>
+odoo16E/src/odooE/odoo/custom-addons/dtsc/views/views.xml:442:		<field name="res_model">dtsc.checkoutline</field>
+odoo16E/src/odooE/odoo/custom-addons/dtsc/views/views.xml:460:		<!-- <field name="res_model">dtsc.checkoutline</field> -->
+odoo16E/src/odooE/odoo/custom-addons/dtsc/views/views.xml:468:		<field name="res_model">dtsc.worktime</field>
+odoo16E/src/odooE/odoo/custom-addons/dtsc/views/views.xml:478:		<field name="res_model">dtsc.checkoutline</field>
+odoo16E/src/odooE/odoo/custom-addons/dtsc/views/views.xml:495:		<field name="res_model">dtsc.makeout</field>
+odoo16E/src/odooE/odoo/custom-addons/dtsc/views/views.xml:512:		<field name="res_model">dtsc.order.preview</field>
+odoo16E/src/odooE/odoo/custom-addons/dtsc/views/views.xml:518:		<field name="res_model">dtsc.checkoutline</field>
+odoo16E/src/odooE/odoo/custom-addons/dtsc/views/views.xml:529:		<field name="res_model">dtsc.worktime</field>
+odoo16E/src/odooE/odoo/custom-addons/dtsc/views/views.xml:534:		<field name="res_model">dtsc.attendance</field>
+odoo16E/src/odooE/odoo/custom-addons/dtsc/views/views.xml:539:		<field name="res_model">dtsc.leave</field>
+odoo16E/src/odooE/odoo/custom-addons/dtsc/views/views.xml:544:		<field name="res_model">dtsc.pettymanager</field>
+odoo16E/src/odooE/odoo/custom-addons/dtsc/views/views.xml:551:		<field name="res_model">dtsc.yklcomment</field>
+odoo16E/src/odooE/odoo/custom-addons/dtsc/views/views.xml:559:		<field name="res_model">dtsc.calendar</field>
+odoo16E/src/odooE/odoo/custom-addons/dtsc/views/views.xml:565:		<field name="res_model">dtsc.performance</field>
+odoo16E/src/odooE/odoo/custom-addons/dtsc/views/views.xml:572:		<field name="res_model">dtsc.workqrcode</field>
+odoo16E/src/odooE/odoo/custom-addons/dtsc/views/views.xml:578:		<field name="res_model">dtsc.insurancelist</field>
+odoo16E/src/odooE/odoo/custom-addons/dtsc/views/views.xml:583:		<!-- <field name="res_model">dtsc.makeout</field> -->
+odoo16E/src/odooE/odoo/custom-addons/dtsc/views/views.xml:602:		<field name="res_model">dtsc.reportcenter</field>
+odoo16E/src/odooE/odoo/custom-addons/dtsc/views/report_invoice.xml:656:					'res_model': 'dtsc.accountreportwizard',
+odoo16E/src/odooE/odoo/custom-addons/dtsc/views/account_move.xml:397:            <!-- <field name="res_model">res.config.settings</field> -->
+custom-addons/dtsc/views/report_invoice.xml:650:					'res_model': 'dtsc.accountreportwizard',
+odoo16E/src/odooE/odoo/custom-addons/dtsc/views/unit_conversion.xml:51:    <field name="res_model">dtsc.unit_conversion</field>
+custom-addons/dtsc/views/account_move.xml:457:            <!-- <field name="res_model">res.config.settings</field> -->
+odoo16E/src/odooE/odoo/custom-addons/dtsc/views/installproduct.xml:185:		<field name="res_model">dtsc.imagelist</field>
+odoo16E/src/odooE/odoo/custom-addons/dtsc/views/checkout_back.xml:576:		<field name="res_model">dtsc.checkoutlineaftermakepricelist</field>
+odoo16E/src/odooE/odoo/custom-addons/dtsc/views/statement.xml:5:		<field name="res_model">account.move</field>
+odoo16E/src/odooE/odoo/custom-addons/dtsc/views/statement.xml:22:		<field name="res_model">account.move</field>
+local_dep/c1/custom-addons/dtsc/views/product_price_table.xml:28:		<field name="res_model">dtsc.productpricetable</field>
+custom-addons/dtsc/views/installproduct.xml:185:		<field name="res_model">dtsc.imagelist</field>
+custom-addons/dtsc/views/statement.xml:5:		<field name="res_model">account.move</field>
+custom-addons/dtsc/views/statement.xml:22:		<field name="res_model">account.move</field>
+odoo16E/src/odooE/odoo/custom-addons/dtsc/views/stock_quant.xml:41:				'res_model': 'dtsc.stockreportwizard',
+odoo16E/src/odooE/odoo/custom-addons/dtsc/views/crm.xml:155:			<field name="res_model">dtsc.checkout</field>
+odoo16E/src/odooE/odoo/custom-addons/dtsc/views/crm.xml:201:			<field name="res_model">dtsc.crmusercomment</field>
+custom-addons/dtsc/views/stock_quant.xml:30:				'res_model': 'dtsc.stockreportwizard',
+local_dep/c1/custom-addons/dtsc/views/account_move.xml:448:            <!-- <field name="res_model">res.config.settings</field> -->
+local_dep/c1/custom-addons/dtsc/views/customclass.xml:165:		<field name="res_model">dtsc.customclass</field>
+local_dep/c1/custom-addons/dtsc/views/make_type.xml:19:		<field name="res_model">dtsc.maketype</field>
+local_dep/c1/custom-addons/dtsc/views/installproduct.xml:179:		<field name="res_model">dtsc.imagelist</field>
+custom-addons/dtsc/views/report_invoice_bk.xml:364:					'res_model': 'dtsc.accountreportwizard',
+local_dep/c1/custom-addons/dtsc/views/statement.xml:5:		<field name="res_model">account.move</field>
+local_dep/c1/custom-addons/dtsc/views/statement.xml:22:		<field name="res_model">account.move</field>
+local_dep/c1/custom-addons/dtsc/views/stock_quant.xml:30:				'res_model': 'dtsc.stockreportwizard',
+local_dep/c1/custom-addons/dtsc/views/crm.xml:148:			<field name="res_model">dtsc.checkout</field>
+local_dep/c1/custom-addons/dtsc/views/crm.xml:194:			<field name="res_model">dtsc.crmusercomment</field>
+local_dep/c1/custom-addons/dtsc/views/res_partner_templates.xml:24:		<field name="res_model">product.supplierinfo</field>
+local_dep/c1/custom-addons/dtsc/views/report_invoice_bk.xml:364:					'res_model': 'dtsc.accountreportwizard',
+custom-addons/dtsc/views/views.xml:9:		<field name="res_model">dtsc.checkout</field>
+custom-addons/dtsc/views/views.xml:23:		  <!-- <field name="res_model">dtsc.checkoutreport</field> -->
+custom-addons/dtsc/views/views.xml:30:      <!-- <field name="res_model">dtsc.book</field> -->
+custom-addons/dtsc/views/views.xml:36:      <field name="res_model">dtsc.makein</field>
+custom-addons/dtsc/views/views.xml:43:      <field name="res_model">dtsc.makeout</field>
+custom-addons/dtsc/views/views.xml:50:      <field name="res_model">dtsc.makeom</field>
+custom-addons/dtsc/views/views.xml:57:      <field name="res_model">dtsc.installproduct</field>
+custom-addons/dtsc/views/views.xml:64:      <field name="res_model">dtsc.deliveryorder</field>
+custom-addons/dtsc/views/views.xml:72:      <field name="res_model">dtsc.book</field>
+custom-addons/dtsc/views/views.xml:82:		<field name="res_model">res.partner</field>
+custom-addons/dtsc/views/views.xml:92:		<field name="res_model">res.partner</field>
+custom-addons/dtsc/views/views.xml:102:      <field name="res_model">product.template</field>
+custom-addons/dtsc/views/views.xml:121:      <field name="res_model">dtsc.book</field>
+custom-addons/dtsc/views/views.xml:128:		<field name="res_model">product.template</field>
+custom-addons/dtsc/views/views.xml:136:		<!-- <field name="res_model">mrp.bom</field> -->
+custom-addons/dtsc/views/views.xml:143:		<field name="res_model">product.attribute.value</field>
+custom-addons/dtsc/views/views.xml:151:		<field name="res_model">dtsc.machineprice</field>
+custom-addons/dtsc/views/views.xml:159:		<field name="res_model">dtsc.userlistbefore</field>
+custom-addons/dtsc/views/views.xml:165:		<field name="res_model">dtsc.userlist</field>
+custom-addons/dtsc/views/views.xml:171:		<field name="res_model">dtsc.reworklist</field>
+custom-addons/dtsc/views/views.xml:177:		<field name="res_model">dtsc.producttype</field>
+custom-addons/dtsc/views/views.xml:182:		<field name="res_model">dtsc.workqrcode</field>
+custom-addons/dtsc/views/views.xml:189:		<field name="res_model">dtsc.vatlogin</field>
+custom-addons/dtsc/views/views.xml:196:      <field name="res_model">product.category</field>
+custom-addons/dtsc/views/views.xml:202:      <field name="res_model">product.attribute</field>
+custom-addons/dtsc/views/views.xml:208:      <field name="res_model">product.product</field>
+custom-addons/dtsc/views/views.xml:215:      <field name="res_model">purchase.order</field>
+custom-addons/dtsc/views/views.xml:224:      <field name="res_model">stock.lot</field>
+custom-addons/dtsc/views/views.xml:234:      <field name="res_model">stock.move.line</field>
+custom-addons/dtsc/views/views.xml:249:      <field name="res_model">stock.quant</field>
+custom-addons/dtsc/views/views.xml:267:      <field name="res_model">stock.picking</field>
+custom-addons/dtsc/views/views.xml:276:      <field name="res_model">product.supplierinfo</field>
+custom-addons/dtsc/views/views.xml:283:      <field name="res_model">dtsc.linebot</field>
+custom-addons/dtsc/views/views.xml:289:      <field name="res_model">dtsc.department</field>
+custom-addons/dtsc/views/views.xml:295:      <field name="res_model">dtsc.factory</field>
+custom-addons/dtsc/views/views.xml:300:      <field name="res_model">dtsc.interoperate</field>
+custom-addons/dtsc/views/views.xml:305:      <field name="res_model">dtsc.normalsettings</field>
+custom-addons/dtsc/views/views.xml:310:        <field name="res_model">stock.warehouse.orderpoint</field>
+custom-addons/dtsc/views/views.xml:318:        <field name="res_model">stock.warehouse.orderpoint</field>
+custom-addons/dtsc/views/views.xml:327:      <field name="res_model">dtsc.mpr</field>
+custom-addons/dtsc/views/views.xml:333:      <field name="res_model">dtsc.lotmprscancode</field>
+custom-addons/dtsc/views/views.xml:339:      <field name="res_model">dtsc.lotmpr</field>
+custom-addons/dtsc/views/views.xml:347:		<field name="res_model">account.move</field>
+custom-addons/dtsc/views/views.xml:358:      <field name="res_model">dtsc.billinvoice</field>
+custom-addons/dtsc/views/views.xml:363:      <field name="res_model">dtsc.allowances</field>
+custom-addons/dtsc/views/views.xml:370:		<field name="res_model">dtsc.checkoutline</field>
+custom-addons/dtsc/views/views.xml:381:		<field name="res_model">account.move</field>
+custom-addons/dtsc/views/views.xml:390:		<field name="res_model">dtsc.checkout</field>
+custom-addons/dtsc/views/views.xml:408:		<field name="res_model">dtsc.checkout</field>
+custom-addons/dtsc/views/views.xml:425:		<field name="res_model">dtsc.checkout</field>
+custom-addons/dtsc/views/views.xml:442:		<field name="res_model">dtsc.checkoutline</field>
+custom-addons/dtsc/views/views.xml:460:		<field name="res_model">dtsc.checkoutline</field>
+custom-addons/dtsc/views/views.xml:477:		<field name="res_model">dtsc.makeout</field>
+custom-addons/dtsc/views/views.xml:494:		<field name="res_model">dtsc.order.preview</field>
+custom-addons/dtsc/views/views.xml:500:		<field name="res_model">dtsc.checkoutline</field>
+custom-addons/dtsc/views/views.xml:511:		<field name="res_model">dtsc.worktime</field>
+custom-addons/dtsc/views/views.xml:516:		<field name="res_model">dtsc.attendance</field>
+custom-addons/dtsc/views/views.xml:521:		<field name="res_model">dtsc.leave</field>
+custom-addons/dtsc/views/views.xml:526:		<field name="res_model">dtsc.pettymanager</field>
+custom-addons/dtsc/views/views.xml:534:		<field name="res_model">dtsc.yklcomment</field>
+custom-addons/dtsc/views/views.xml:542:		<field name="res_model">dtsc.calendar</field>
+custom-addons/dtsc/views/views.xml:548:		<field name="res_model">dtsc.performance</field>
+custom-addons/dtsc/views/views.xml:555:		<field name="res_model">dtsc.workqrcode</field>
+custom-addons/dtsc/views/views.xml:561:		<field name="res_model">dtsc.insurancelist</field>
+custom-addons/dtsc/views/views.xml:566:		<!-- <field name="res_model">dtsc.makeout</field> -->
+custom-addons/dtsc/views/views.xml:585:		<field name="res_model">dtsc.reportcenter</field>
+odoo16E/src/odooE/odoo/custom-addons/dtsc/models/stock.py:53:            'res_model': 'stock.quant',
+odoo16E/src/odooE/odoo/custom-addons/dtsc/models/stock.py:84:                # 'res_model': 'stock.quant',
+odoo16E/src/odooE/odoo/custom-addons/dtsc/models/stock.py:630:                'res_model': 'stock.inventory.conflict',
+odoo16E/src/odooE/odoo/custom-addons/dtsc/models/stock.py:641:                'res_model': 'stock.track.confirmation',
+odoo16E/src/odooE/odoo/custom-addons/dtsc/models/stock.py:1163:            'res_model': 'stock.move.line',
+local_dep/c1/custom-addons/dtsc/views/product_price_calculator.xml:33:    <field name="res_model">dtsc.productpricecalculator</field>
+custom-addons/dtsc/views/unit_conversion.xml:51:    <field name="res_model">dtsc.unit_conversion</field>
+odoo16E/src/odooE/odoo/custom-addons/dtsc/models/pettycash.py:254:            'res_model': 'dtsc.pettymanager',
+local_dep/c1/custom-addons/dtsc/views/views.xml:9:		<field name="res_model">dtsc.checkout</field>
+local_dep/c1/custom-addons/dtsc/views/views.xml:23:		  <!-- <field name="res_model">dtsc.checkoutreport</field> -->
+local_dep/c1/custom-addons/dtsc/views/views.xml:30:      <!-- <field name="res_model">dtsc.book</field> -->
+local_dep/c1/custom-addons/dtsc/views/views.xml:36:      <field name="res_model">dtsc.makein</field>
+local_dep/c1/custom-addons/dtsc/views/views.xml:43:      <field name="res_model">dtsc.makeout</field>
+local_dep/c1/custom-addons/dtsc/views/views.xml:51:      <field name="res_model">dtsc.installproduct</field>
+local_dep/c1/custom-addons/dtsc/views/views.xml:58:      <field name="res_model">dtsc.deliveryorder</field>
+local_dep/c1/custom-addons/dtsc/views/views.xml:66:      <field name="res_model">dtsc.book</field>
+local_dep/c1/custom-addons/dtsc/views/views.xml:76:		<field name="res_model">res.partner</field>
+local_dep/c1/custom-addons/dtsc/views/views.xml:86:		<field name="res_model">res.partner</field>
+local_dep/c1/custom-addons/dtsc/views/views.xml:96:      <field name="res_model">product.template</field>
+local_dep/c1/custom-addons/dtsc/views/views.xml:115:      <field name="res_model">dtsc.book</field>
+local_dep/c1/custom-addons/dtsc/views/views.xml:122:		<field name="res_model">product.template</field>
+local_dep/c1/custom-addons/dtsc/views/views.xml:130:		<!-- <field name="res_model">mrp.bom</field> -->
+local_dep/c1/custom-addons/dtsc/views/views.xml:137:		<field name="res_model">product.attribute.value</field>
+local_dep/c1/custom-addons/dtsc/views/views.xml:145:		<field name="res_model">dtsc.machineprice</field>
+local_dep/c1/custom-addons/dtsc/views/views.xml:152:		<field name="res_model">dtsc.userlistbefore</field>
+local_dep/c1/custom-addons/dtsc/views/views.xml:158:		<field name="res_model">dtsc.userlist</field>
+local_dep/c1/custom-addons/dtsc/views/views.xml:164:		<field name="res_model">dtsc.reworklist</field>
+local_dep/c1/custom-addons/dtsc/views/views.xml:170:		<field name="res_model">dtsc.producttype</field>
+local_dep/c1/custom-addons/dtsc/views/views.xml:175:		<field name="res_model">dtsc.workqrcode</field>
+local_dep/c1/custom-addons/dtsc/views/views.xml:180:		<field name="res_model">dtsc.vatlogin</field>
+local_dep/c1/custom-addons/dtsc/views/views.xml:187:      <field name="res_model">product.category</field>
+local_dep/c1/custom-addons/dtsc/views/views.xml:193:      <field name="res_model">product.attribute</field>
+local_dep/c1/custom-addons/dtsc/views/views.xml:199:      <field name="res_model">product.product</field>
+local_dep/c1/custom-addons/dtsc/views/views.xml:206:      <field name="res_model">purchase.order</field>
+local_dep/c1/custom-addons/dtsc/views/views.xml:215:      <field name="res_model">stock.lot</field>
+local_dep/c1/custom-addons/dtsc/views/views.xml:225:      <field name="res_model">stock.move.line</field>
+local_dep/c1/custom-addons/dtsc/views/views.xml:240:      <field name="res_model">stock.quant</field>
+local_dep/c1/custom-addons/dtsc/views/views.xml:258:      <field name="res_model">stock.picking</field>
+local_dep/c1/custom-addons/dtsc/views/views.xml:267:      <field name="res_model">product.supplierinfo</field>
+local_dep/c1/custom-addons/dtsc/views/views.xml:274:      <field name="res_model">dtsc.linebot</field>
+local_dep/c1/custom-addons/dtsc/views/views.xml:280:        <field name="res_model">stock.warehouse.orderpoint</field>
+local_dep/c1/custom-addons/dtsc/views/views.xml:288:        <field name="res_model">stock.warehouse.orderpoint</field>
+local_dep/c1/custom-addons/dtsc/views/views.xml:297:      <field name="res_model">dtsc.mpr</field>
+local_dep/c1/custom-addons/dtsc/views/views.xml:303:      <field name="res_model">dtsc.lotmprscancode</field>
+local_dep/c1/custom-addons/dtsc/views/views.xml:309:      <field name="res_model">dtsc.lotmpr</field>
+local_dep/c1/custom-addons/dtsc/views/views.xml:317:		<field name="res_model">account.move</field>
+local_dep/c1/custom-addons/dtsc/views/views.xml:328:      <field name="res_model">dtsc.billinvoice</field>
+local_dep/c1/custom-addons/dtsc/views/views.xml:333:      <field name="res_model">dtsc.allowances</field>
+local_dep/c1/custom-addons/dtsc/views/views.xml:340:		<field name="res_model">dtsc.checkoutline</field>
+local_dep/c1/custom-addons/dtsc/views/views.xml:351:		<field name="res_model">account.move</field>
+local_dep/c1/custom-addons/dtsc/views/views.xml:360:		<field name="res_model">dtsc.checkout</field>
+local_dep/c1/custom-addons/dtsc/views/views.xml:378:		<field name="res_model">dtsc.checkout</field>
+local_dep/c1/custom-addons/dtsc/views/views.xml:395:		<field name="res_model">dtsc.checkoutline</field>
+local_dep/c1/custom-addons/dtsc/views/views.xml:413:		<field name="res_model">dtsc.checkoutline</field>
+local_dep/c1/custom-addons/dtsc/views/views.xml:430:		<field name="res_model">dtsc.makeout</field>
+local_dep/c1/custom-addons/dtsc/views/views.xml:447:		<field name="res_model">dtsc.order.preview</field>
+local_dep/c1/custom-addons/dtsc/views/views.xml:453:		<field name="res_model">dtsc.checkoutline</field>
+local_dep/c1/custom-addons/dtsc/views/views.xml:464:		<field name="res_model">dtsc.worktime</field>
+local_dep/c1/custom-addons/dtsc/views/views.xml:469:		<field name="res_model">dtsc.attendance</field>
+local_dep/c1/custom-addons/dtsc/views/views.xml:474:		<field name="res_model">dtsc.pettymanager</field>
+local_dep/c1/custom-addons/dtsc/views/views.xml:482:		<field name="res_model">dtsc.yklcomment</field>
+local_dep/c1/custom-addons/dtsc/views/views.xml:490:		<field name="res_model">dtsc.calendar</field>
+local_dep/c1/custom-addons/dtsc/views/views.xml:496:		<!-- <field name="res_model">dtsc.makeout</field> -->
+custom-addons/dtsc/views/checkout_back.xml:556:		<field name="res_model">dtsc.checkoutlineaftermakepricelist</field>
+local_dep/c1/custom-addons/dtsc/views/product_attribute_value_views.xml:49:        <field name="res_model">product.attribute.value</field>
+odoo16E/src/odooE/odoo/custom-addons/dtsc/models/linebot.py:1006:            'res_model': 'dtsc.checkout',
+local_dep/c1/custom-addons/dtsc/views/unit_conversion.xml:51:    <field name="res_model">dtsc.unit_conversion</field>
+odoo16E/src/odooE/odoo/custom-addons/dtsc/models/saleorder.py:14:            'res_model': 'dtsc.setpro',
+local_dep/c1/custom-addons/dtsc/static/src/js/tree_button.js:67:          res_model: 'dtsc.reportmounthinstall',
+local_dep/c1/custom-addons/dtsc/static/src/js/tree_button.js:72:            // res_model: mainObject.model,
+local_dep/c1/custom-addons/dtsc/views/checkout_back.xml:497:		<field name="res_model">dtsc.checkoutlineaftermakepricelist</field>
+custom-addons/dtsc/views/crm.xml:155:			<field name="res_model">dtsc.checkout</field>
+custom-addons/dtsc/views/crm.xml:201:			<field name="res_model">dtsc.crmusercomment</field>
+odoo16E/src/odooE/odoo/custom-addons/dtsc/models/res_partner.py:40:        if self.res_model == 'res.partner':
+odoo16E/src/odooE/odoo/custom-addons/dtsc/models/res_partner.py:45:            model = self.env[self.res_model]
+odoo16E/src/odooE/odoo/custom-addons/dtsc/models/res_partner.py:498:            'res_model': 'dtsc.checkout',
+local_dep/c1/custom-addons/dtsc/views/report_invoice.xml:649:					'res_model': 'dtsc.accountreportwizard',
+odoo16E/src/odooE/odoo/custom-addons/dtsc/models/installproduct.py:106:            'res_model': 'dtsc.installproduct',
+odoo16E/src/odooE/odoo/custom-addons/dtsc/models/installproduct.py:260:            'res_model': 'dtsc.installproduct',
+local_dep/c1/custom-addons/dtsc/models/chattemplate.py:55:            'res_model': 'dtsc.yklcomment',
+odoo16E/src/odooE/odoo/custom-addons/dtsc/models/models.py:520:            'res_model': 'purchase.order',
+odoo16E/src/odooE/odoo/custom-addons/dtsc/models/models.py:1063:            'res_model': 'dtsc.billdate',
+odoo16E/src/odooE/odoo/custom-addons/dtsc/models/product_template.py:70:            'res_model': 'dtsc.maketypeselection',
+local_dep/c1/custom-addons/dtsc/models/make_out.py:461:            'res_model': 'dtsc.makeout',
+odoo16E/src/odooE/odoo/custom-addons/dtsc/models/worker_qrcode.py:254:                    'res_model': 'dtsc.makein',
+odoo16E/src/odooE/odoo/custom-addons/dtsc/models/worker_qrcode.py:265:                    'res_model': 'dtsc.makeout',
+local_dep/c1/custom-addons/dtsc/static/src/js/inventory_report_list_controller.js:30:            res_model: "stock.quantity.history",
+local_dep/c1/custom-addons/dtsc/models/stock.py:54:            'res_model': 'stock.quant',
+local_dep/c1/custom-addons/dtsc/models/stock.py:88:            'res_model': 'stock.quant',
+local_dep/c1/custom-addons/dtsc/models/stock.py:112:                # 'res_model': 'stock.quant',
+local_dep/c1/custom-addons/dtsc/models/stock.py:674:                'res_model': 'stock.inventory.conflict',
+local_dep/c1/custom-addons/dtsc/models/stock.py:685:                'res_model': 'stock.track.confirmation',
+local_dep/c1/custom-addons/dtsc/models/stock.py:1166:            'res_model': 'stock.move.line',
+local_dep/c1/custom-addons/dtsc/models/stock.py:1217:            'res_model': 'stock.move.line',
+custom-addons/dtsc/models/stock.py:54:            'res_model': 'stock.quant',
+custom-addons/dtsc/models/stock.py:88:            'res_model': 'stock.quant',
+custom-addons/dtsc/models/stock.py:112:                # 'res_model': 'stock.quant',
+custom-addons/dtsc/models/stock.py:674:                'res_model': 'stock.inventory.conflict',
+custom-addons/dtsc/models/stock.py:685:                'res_model': 'stock.track.confirmation',
+custom-addons/dtsc/models/stock.py:1170:            'res_model': 'stock.move.line',
+custom-addons/dtsc/models/stock.py:1225:            'res_model': 'stock.move.line',
+odoo16E/src/odooE/odoo/custom-addons/dtsc/models/customclass.py:131:                'res_model' : 'dtsc.aftermakepricelist',
+odoo16E/src/odooE/odoo/custom-addons/dtsc/models/customclass.py:164:                'res_model' : 'dtsc.pricelist',
+odoo16E/src/odooE/odoo/custom-addons/dtsc/models/customclass.py:188:                'res_model' : 'dtsc.quotation',
+odoo16E/src/odooE/odoo/custom-addons/dtsc/models/customclass.py:202:                'res_model' : 'dtsc.customwizard',         
+odoo16E/src/odooE/odoo/custom-addons/dtsc/static/src/js/tree_button.js:22:          res_model: 'dtsc.reportmounthinstall',
+odoo16E/src/odooE/odoo/custom-addons/dtsc/static/src/js/tree_button.js:27:            // res_model: mainObject.model,
+custom-addons/dtsc/models/pettycash.py:254:            'res_model': 'dtsc.pettymanager',
+local_dep/c1/custom-addons/dtsc/models/checkout.py:186:            'res_model': 'dtsc.deliveryorder',
+local_dep/c1/custom-addons/dtsc/models/checkout.py:737:            'res_model': 'dtsc.checkout',
+local_dep/c1/custom-addons/dtsc/models/checkout.py:1009:            'res_model': 'dtsc.yinshoudate',
+local_dep/c1/custom-addons/dtsc/models/checkout.py:1190:            'res_model': 'dtsc.deliverydate',
+local_dep/c1/custom-addons/dtsc/models/checkout.py:1417:            "res_model" : 'dtsc.purchasecheck',
+local_dep/c1/custom-addons/dtsc/models/checkout.py:1702:                'res_model' : 'dtsc.makein',
+local_dep/c1/custom-addons/dtsc/models/checkout.py:1779:                'res_model' : 'dtsc.makeout',
+local_dep/c1/custom-addons/dtsc/models/checkout.py:1858:            'res_model' : 'dtsc.installproduct',
+local_dep/c1/custom-addons/dtsc/models/checkout.py:1995:            'res_model': 'dtsc.deliveryorder',
+local_dep/c1/custom-addons/dtsc/models/checkout.py:2003:            # 'res_model' : 'dtsc.deliveryorder',
+local_dep/c1/custom-addons/dtsc/models/checkout.py:2018:                'res_model': 'dtsc.delreason',
+local_dep/c1/custom-addons/dtsc/models/checkout.py:2298:            'res_model': 'dtsc.checkoutlineaftermakepricelist',
+local_dep/c1/custom-addons/dtsc/models/checkout.py:2390:            'res_model': 'dtsc.checkoutline',
+local_dep/c1/custom-addons/dtsc/models/checkout.py:2418:            'res_model': 'dtsc.checkoutlineaftermakepricelist',
+local_dep/c1/custom-addons/dtsc/models/pettycash.py:254:            'res_model': 'dtsc.pettymanager',
+odoo16E/src/odooE/odoo/custom-addons/dtsc/models/crm.py:78:            'res_model': 'dtsc.checkout',
+odoo16E/src/odooE/odoo/custom-addons/dtsc/models/crm.py:514:                'res_model': 'dtsc.checkout',
+odoo16E/src/odooE/odoo/custom-addons/dtsc/models/crm.py:572:                'res_model': 'dtsc.checkout',
+odoo16E/src/odooE/odoo/custom-addons/dtsc/models/crm.py:783:                'res_model': 'dtsc.checkout',
+odoo16E/src/odooE/odoo/custom-addons/dtsc/models/crm.py:1065:            'res_model': 'dtsc.checkout',
+local_dep/c1/custom-addons/dtsc/models/customproductwizard.py:123:            'res_model': 'dtsc.quotation',
+local_dep/c1/custom-addons/dtsc/models/customproductwizard.py:197:            'res_model' : 'dtsc.quotation', 
+custom-addons/dtsc/models/linebot.py:1011:            'res_model': 'dtsc.checkout',
+odoo16E/src/odooE/odoo/custom-addons/dtsc/models/chattemplate.py:61:            'res_model': 'dtsc.yklcomment',
+custom-addons/dtsc/static/src/js/tree_button.js:55:          res_model: 'dtsc.reportmounthinstall',
+custom-addons/dtsc/models/saleorder.py:14:            'res_model': 'dtsc.setpro',
+local_dep/c1/custom-addons/dtsc/models/deliveryorder.py:71:            # 'res_model': 'dtsc.deliveryorder',  # 替换为模型名
+local_dep/c1/custom-addons/dtsc/models/deliveryorder.py:123:                'res_model': 'dtsc.deliveryorder',
+local_dep/c1/custom-addons/dtsc/models/saleorder.py:14:            'res_model': 'dtsc.setpro',
+custom-addons/dtsc/models/res_partner.py:41:        if self.res_model == 'res.partner':
+custom-addons/dtsc/models/res_partner.py:46:            model = self.env[self.res_model]
+custom-addons/dtsc/models/res_partner.py:492:            'res_model': 'dtsc.checkout',
+local_dep/c1/custom-addons/dtsc/models/lotmpr.py:61:                    'res_model' : 'dtsc.lotmpr',
+custom-addons/dtsc/models/installproduct.py:106:            'res_model': 'dtsc.installproduct',
+custom-addons/dtsc/models/installproduct.py:260:            'res_model': 'dtsc.installproduct',
+local_dep/c1/custom-addons/dtsc/models/res_partner.py:16:        if self.res_model == 'res.partner':
+local_dep/c1/custom-addons/dtsc/models/res_partner.py:21:            model = self.env[self.res_model]
+odoo16E/src/odooE/odoo/custom-addons/dtsc/models/performance.py:637:                "res_model": record._name,
+custom-addons/dtsc/models/models.py:113:            'res_model': 'product.attribute.value',
+custom-addons/dtsc/models/models.py:1236:            'res_model': 'dtsc.billdate',
+local_dep/c1/custom-addons/dtsc/models/worker_qrcode.py:175:                    'res_model': 'dtsc.makein',
+local_dep/c1/custom-addons/dtsc/models/worker_qrcode.py:186:                    'res_model': 'dtsc.makeout',
+custom-addons/dtsc/models/product_template.py:116:            'res_model': 'dtsc.maketypeselection',
+local_dep/c1/custom-addons/dtsc/models/customclass.py:131:                'res_model' : 'dtsc.aftermakepricelist',
+local_dep/c1/custom-addons/dtsc/models/customclass.py:164:                'res_model' : 'dtsc.pricelist',
+local_dep/c1/custom-addons/dtsc/models/customclass.py:188:                'res_model' : 'dtsc.quotation',
+local_dep/c1/custom-addons/dtsc/models/customclass.py:202:                'res_model' : 'dtsc.customwizard',         
+odoo16E/src/odooE/odoo/custom-addons/dtsc/models/make_out.py:469:            'res_model': 'dtsc.makeout',
+local_dep/c1/custom-addons/dtsc/models/installproduct.py:106:            'res_model': 'dtsc.installproduct',
+local_dep/c1/custom-addons/dtsc/models/installproduct.py:257:            'res_model': 'dtsc.installproduct',
+custom-addons/dtsc/static/src/js/inventory_report_list_controller.js:30:            res_model: "stock.quantity.history",
+local_dep/c1/custom-addons/dtsc/models/crm.py:70:            'res_model': 'dtsc.checkout',
+local_dep/c1/custom-addons/dtsc/models/crm.py:144:                'res_model': 'dtsc.checkout',
+local_dep/c1/custom-addons/dtsc/models/crm.py:203:                'res_model': 'dtsc.checkout',
+local_dep/c1/custom-addons/dtsc/models/crm.py:409:                'res_model': 'dtsc.checkout',
+local_dep/c1/custom-addons/dtsc/models/crm.py:675:            'res_model': 'dtsc.checkout',
+local_dep/c1/custom-addons/dtsc/models/models.py:105:            'res_model': 'product.attribute.value',
+local_dep/c1/custom-addons/dtsc/models/models.py:1008:            'res_model': 'dtsc.billdate',
+custom-addons/dtsc/models/worker_qrcode.py:246:                    'res_model': 'dtsc.makein',
+custom-addons/dtsc/models/worker_qrcode.py:257:                    'res_model': 'dtsc.makeout',
+custom-addons/dtsc/models/customclass.py:137:            'res_model': 'dtsc.aftermakepricelist',
+custom-addons/dtsc/models/customclass.py:172:            'res_model': 'dtsc.pricelist',
+custom-addons/dtsc/models/customclass.py:196:                'res_model': 'dtsc.quotation',
+custom-addons/dtsc/models/customclass.py:210:                'res_model': 'dtsc.customwizard',
+odoo16E/src/odooE/odoo/custom-addons/dtsc/models/checkout.py:393:            'res_model': 'dtsc.deliveryorder',
+odoo16E/src/odooE/odoo/custom-addons/dtsc/models/checkout.py:1025:            'res_model': 'dtsc.checkout',
+odoo16E/src/odooE/odoo/custom-addons/dtsc/models/checkout.py:1309:            'res_model': 'dtsc.yinshoudate',
+odoo16E/src/odooE/odoo/custom-addons/dtsc/models/checkout.py:1487:            'res_model': 'dtsc.deliverydate',
+odoo16E/src/odooE/odoo/custom-addons/dtsc/models/checkout.py:1707:            "res_model" : 'dtsc.purchasecheck',
+odoo16E/src/odooE/odoo/custom-addons/dtsc/models/checkout.py:1993:                'res_model' : 'dtsc.makein',
+odoo16E/src/odooE/odoo/custom-addons/dtsc/models/checkout.py:2076:                'res_model' : 'dtsc.makeom',
+odoo16E/src/odooE/odoo/custom-addons/dtsc/models/checkout.py:2153:                'res_model' : 'dtsc.makeout',
+odoo16E/src/odooE/odoo/custom-addons/dtsc/models/checkout.py:2232:            'res_model' : 'dtsc.installproduct',
+odoo16E/src/odooE/odoo/custom-addons/dtsc/models/checkout.py:2528:            'res_model': 'dtsc.deliveryorder',
+odoo16E/src/odooE/odoo/custom-addons/dtsc/models/checkout.py:2536:            # 'res_model' : 'dtsc.deliveryorder',
+odoo16E/src/odooE/odoo/custom-addons/dtsc/models/checkout.py:2551:                'res_model': 'dtsc.delreason',
+odoo16E/src/odooE/odoo/custom-addons/dtsc/models/checkout.py:2853:            'res_model': 'dtsc.checkoutlineaftermakepricelist',
+odoo16E/src/odooE/odoo/custom-addons/dtsc/models/checkout.py:2991:            'res_model': 'dtsc.checkoutline',
+odoo16E/src/odooE/odoo/custom-addons/dtsc/models/checkout.py:3019:            'res_model': 'dtsc.checkoutlineaftermakepricelist',
+local_dep/c1/custom-addons/dtsc/models/product_template.py:116:            'res_model': 'dtsc.maketypeselection',
+odoo16E/src/odooE/odoo/custom-addons/dtsc/models/customproductwizard.py:105:            'res_model': 'dtsc.quotation',
+odoo16E/src/odooE/odoo/custom-addons/dtsc/models/customproductwizard.py:179:            'res_model' : 'dtsc.quotation', 
+custom-addons/dtsc/models/crm.py:103:            'res_model': 'dtsc.checkout',
+custom-addons/dtsc/models/crm.py:538:                'res_model': 'dtsc.checkout',
+custom-addons/dtsc/models/crm.py:598:                'res_model': 'dtsc.checkout',
+custom-addons/dtsc/models/crm.py:808:                'res_model': 'dtsc.checkout',
+custom-addons/dtsc/models/crm.py:1074:            'res_model': 'dtsc.checkout',
+custom-addons/dtsc/models/chattemplate.py:55:            'res_model': 'dtsc.yklcomment',
+odoo16E/src/odooE/odoo/custom-addons/dtsc/static/src/js/inventory_report_list_controller.js:30:            res_model: "stock.quantity.history",
+odoo16E/src/odooE/odoo/custom-addons/dtsc/models/deliveryorder.py:71:            # 'res_model': 'dtsc.deliveryorder',  # 替换为模型名
+odoo16E/src/odooE/odoo/custom-addons/dtsc/models/deliveryorder.py:123:                'res_model': 'dtsc.deliveryorder',
+odoo16E/src/odooE/odoo/custom-addons/dtsc/models/lotmpr.py:58:                    'res_model' : 'dtsc.lotmpr',
+custom-addons/dtsc/models/performance.py:637:                "res_model": record._name,
+custom-addons/dtsc/models/make_out.py:471:            'res_model': 'dtsc.makeout',
+custom-addons/dtsc/models/checkout.py:396:            'res_model': 'dtsc.deliveryorder',
+custom-addons/dtsc/models/checkout.py:1038:            'res_model': 'dtsc.checkout',
+custom-addons/dtsc/models/checkout.py:1328:            'res_model': 'dtsc.yinshoudate',
+custom-addons/dtsc/models/checkout.py:1505:            'res_model': 'dtsc.deliverydate',
+custom-addons/dtsc/models/checkout.py:1728:            "res_model" : 'dtsc.purchasecheck',
+custom-addons/dtsc/models/checkout.py:2014:                'res_model' : 'dtsc.makein',
+custom-addons/dtsc/models/checkout.py:2097:                'res_model' : 'dtsc.makeom',
+custom-addons/dtsc/models/checkout.py:2176:                'res_model' : 'dtsc.makeout',
+custom-addons/dtsc/models/checkout.py:2255:            'res_model' : 'dtsc.installproduct',
+custom-addons/dtsc/models/checkout.py:2551:            'res_model': 'dtsc.deliveryorder',
+custom-addons/dtsc/models/checkout.py:2559:            # 'res_model' : 'dtsc.deliveryorder',
+custom-addons/dtsc/models/checkout.py:2574:                'res_model': 'dtsc.delreason',
+custom-addons/dtsc/models/checkout.py:2883:            'res_model': 'dtsc.checkoutlineaftermakepricelist',
+custom-addons/dtsc/models/checkout.py:3019:            'res_model': 'dtsc.checkoutline',
+custom-addons/dtsc/models/checkout.py:3047:            'res_model': 'dtsc.checkoutlineaftermakepricelist',
+custom-addons/dtsc/models/customproductwizard.py:123:            'res_model': 'dtsc.quotation',
+custom-addons/dtsc/models/customproductwizard.py:197:            'res_model' : 'dtsc.quotation', 
+custom-addons/dtsc/models/deliveryorder.py:71:            # 'res_model': 'dtsc.deliveryorder',  # 替换为模型名
+custom-addons/dtsc/models/deliveryorder.py:123:                'res_model': 'dtsc.deliveryorder',
+custom-addons/dtsc/models/lotmpr.py:61:                    'res_model' : 'dtsc.lotmpr',

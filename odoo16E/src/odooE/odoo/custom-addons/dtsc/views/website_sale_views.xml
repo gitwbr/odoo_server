@@ -202,11 +202,13 @@
 		</xpath>
 	</template>
 	
-	<!-- 修改付款完成显示的单号 -->
-	<!-- <template id="dtsc_confirmation_inherit" inherit_id="website_sale.confirmation">
-		<xpath expr="//h1/em[@t-field='order.name']" position="replace">
-			<em t-field="order.checkout_id.name" />
+	<template id="dtsc_confirmation_order_numbers" inherit_id="website_sale.confirmation">
+		<xpath expr="//h1" position="after">
+			<p t-if="order.checkout_id and not order.checkout_id.is_invisible" class="mb-3 text-muted">
+				<span>大圖訂單：</span>
+				<strong t-field="order.checkout_id.name" />
+			</p>
 		</xpath>
-	</template> -->
+	</template>
 
 </odoo>

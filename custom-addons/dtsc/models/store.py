@@ -22,4 +22,21 @@ class PricelistItem(models.Model):
                 record.checkout_allowed_product_atts = self.env['product.template.attribute.value'].search([('product_tmpl_id', '=', record.checkout_product_id.id)]).product_attribute_value_id
             else:
                 record.checkout_allowed_product_atts = self.env['product.template.attribute.value'].product_attribute_value_id
-    
+
+
+class DtscCheckout(models.Model):
+    _inherit = "dtsc.checkout"
+
+    website_comment = fields.Text("商城備註")
+
+
+class DtscCheckoutLine(models.Model):
+    _inherit = "dtsc.checkoutline"
+
+    store_product_template_id = fields.Many2one('product.template', string="商城產品")
+
+
+class SaleOrder(models.Model):
+    _inherit = "sale.order"
+
+    checkout_id = fields.Many2one('dtsc.checkout', string='Checkout Record')

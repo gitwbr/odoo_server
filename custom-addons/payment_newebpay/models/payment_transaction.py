@@ -252,67 +252,6 @@ class PaymentTransaction(models.Model):
         self.ensure_one()
         if self.provider_code != 'newebpay':
             return
-        #加入大圖訂單
-        # print("-----------------------------------")
-        
-        sale_order_name = self.reference.split('-')[0]
-        print(sale_order_name)
-        saleorder_obj = self.env["sale.order"].search([('name',"=",self.reference.split('-')[0])],limit=1)
-        
-        Checkout = self.env['dtsc.checkout']
-        Checkout_line = self.env['dtsc.checkoutline']
-        
-        checkout = Checkout.create({
-            'customer_id':saleorder_obj.partner_id.id,
-            'is_online' : True,
-            'project_name' : "商城訂單",  
-            'sale_order_id': saleorder_obj.id,              
-        })
-        for record in saleorder_obj.order_line:
-            # print("======================================")
-            # print(record.product_id.id)
-            
-            
-            
-            
-            pricelist_obj = self.env["product.pricelist.item"].search([('product_id',"=",record.product_id.id)],limit=1)
-            
-            maketype_names = ""
-            
-            names = [maketype.name for maketype in pricelist_obj.checkout_maketype]
-            maketype_names = '-'.join(names)
-                
-            # print(pricelist_obj.checkout_product_id.id)
-            # print("======================================")
-            if pricelist_obj.checkout_product_id.id:
-                Checkout_line.create({
-                    "project_product_name" : pricelist_obj.product_id.name,
-                    "product_id": pricelist_obj.checkout_product_id.id,
-                    'product_atts': [(4, att.id) for att in pricelist_obj.checkout_product_atts],
-                    "checkout_product_id" : checkout.id,
-                    "quantity" : record.product_uom_qty, 
-                    "product_width" : pricelist_obj.checkout_width,
-                    "product_height" : pricelist_obj.checkout_height,  
-                    "units_price" : pricelist_obj.fixed_price,
-                    "manual_total_make_price":0,
-                    "manual_total_make_price_flag":True,
-                    "multi_chose_ids":maketype_names,                    
-                })   
-            else:
-                # print("~~~~~~~~~~~~~")
-                # print(record.product_id.id)
-                # print(record.list_price)
-                Checkout_line.create({
-                    "product_id": record.product_template_id.id,
-                    "checkout_product_id" : checkout.id,
-                    "quantity" : 1,  
-                    "units_price" : record.price_unit,
-                    "manual_total_make_price":0,
-                    "manual_total_make_price_flag":True,
-                })   
-            
-       
-        #加入大圖訂單
         notification_data = {'reference': self.reference, 'simulated_state': 'done'}
         self._handle_notification_data('newebpay', notification_data)
 
