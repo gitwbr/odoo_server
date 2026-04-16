@@ -177,6 +177,8 @@ class SaleOrderCustom(models.Model):
 class SaleOrderLine(models.Model):
     _inherit = 'sale.order.line'
 
+    project_product_name = fields.Text(string='檔名', copy=False)
+    image_url = fields.Char(string='檔案鏈接', copy=False)
     min_quantity = fields.Integer(
         string='Min Quantity',
         compute='_compute_min_quantity',

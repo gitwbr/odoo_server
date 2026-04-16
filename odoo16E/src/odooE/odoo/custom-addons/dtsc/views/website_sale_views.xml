@@ -1,4 +1,8 @@
 <odoo>
+	<record id="website_sale.extra_info_option" model="ir.ui.view">
+		<field name="active">False</field>
+	</record>
+
     <record id="view_delivery_carrier_form_custom" model="ir.ui.view">
         <field name="name">delivery.carrier.form.custom</field>
         <field name="model">delivery.carrier</field>
@@ -208,6 +212,176 @@
 				<span>大圖訂單：</span>
 				<strong t-field="order.checkout_id.name" />
 			</p>
+		</xpath>
+	</template>
+
+	<template id="dtsc_shop_payment_line_upload" inherit_id="website_sale.payment">
+		<xpath expr="//div[@id='oe_structure_website_sale_payment_1']" position="replace">
+			<t t-set="upload_lines" t-value="website_sale_order._get_website_sale_lines_for_checkout()"/>
+			<section class="mt-3 o_dtsc_shop_line_upload" data-upload-url="/shop/payment/upload_line_file">
+				<div class="card border-0">
+					<div class="card-body px-0">
+						<div class="mb-3">
+							<h4 class="mb-2">按品項上傳稿件</h4>
+							<p class="text-muted mb-0">每個商品行各自上傳一份稿件，檔案將直接存到 FTP，付款完成後帶入大圖訂單。</p>
+						</div>
+
+						<t t-if="upload_lines">
+							<t t-foreach="upload_lines" t-as="line">
+								<div class="card mb-3 o_dtsc_upload_line" t-att-data-line-id="line.id" t-att-data-default-name="line.product_id.display_name or line.name">
+									<div class="card-body">
+										<div class="d-flex justify-content-between align-items-start mb-3">
+											<div>
+												<h5 class="mb-1">
+													<span t-esc="line.product_id.display_name or line.name"/>
+												</h5>
+												<div class="text-muted small">
+													數量：
+													<span t-esc="int(line.product_uom_qty) == line.product_uom_qty and int(line.product_uom_qty) or line.product_uom_qty"/>
+												</div>
+											</div>
+										</div>
+
+										<div class="row g-3">
+											<div class="col-12 col-lg-4">
+												<label class="form-label">檔名</label>
+												<input
+													type="text"
+													class="form-control o_dtsc_project_product_name"
+													t-att-value="line.project_product_name or line.product_id.display_name or line.name"
+													placeholder="請輸入檔名"
+												/>
+											</div>
+											<div class="col-12 col-lg-5">
+												<label class="form-label">稿件檔案</label>
+												<input
+													type="file"
+													class="form-control o_dtsc_line_file"
+													accept=".ai,.ps,.pdf,.svg,.png,.jpg,.jpeg,.tif,.tiff"
+												/>
+											</div>
+											<div class="col-12 col-lg-3 d-flex align-items-end">
+												<div class="w-100 d-flex gap-2">
+													<button type="button" class="btn btn-primary flex-grow-1 o_dtsc_upload_btn">上傳檔案</button>
+													<button type="button" class="btn btn-outline-secondary o_dtsc_cancel_file d-none">取消</button>
+												</div>
+											</div>
+										</div>
+
+										<div class="mt-3 small text-muted o_dtsc_current_file">
+											<t t-if="line.image_url">
+												目前檔案：
+												<span class="o_dtsc_current_filename_text" t-esc="line.image_url"/>
+											</t>
+											<t t-else="">
+												<span class="o_dtsc_current_filename_text">尚未上傳檔案</span>
+											</t>
+										</div>
+										<div class="upload-status d-none mt-2"></div>
+										<progress class="uploadProgressBar mt-2" value="0" max="100" style="width: 100%; display: none"/>
+									</div>
+								</div>
+							</t>
+						</t>
+						<t t-else="">
+							<div class="alert alert-info mb-0">
+								目前沒有需要上傳稿件的商品行。
+							</div>
+						</t>
+					</div>
+				</div>
+			</section>
+		</xpath>
+	</template>
+
+	<template id="dtsc_shop_extra_info_by_line" inherit_id="website_sale.extra_info">
+		<xpath expr="//section[hasclass('s_website_form')]" position="replace">
+			<t t-set="upload_lines" t-value="website_sale_order._get_website_sale_lines_for_checkout()"/>
+			<section class="o_dtsc_shop_extra_info">
+				<div class="container">
+					<form action="/shop/extra_info/save_line_uploads" method="post" class="o_dtsc_shop_extra_info_form" data-upload-url="/shop/extra_info/upload_line_file">
+						<input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+						<div class="mb-3">
+							<h4 class="mb-2">按品項上傳稿件</h4>
+							<p class="text-muted mb-0">每個商品行各自上傳一份稿件，檔案將直接存到 FTP，付款完成後帶入大圖訂單。</p>
+						</div>
+
+						<t t-if="upload_lines">
+							<t t-foreach="upload_lines" t-as="line">
+								<div class="card mb-3 o_dtsc_upload_line" t-att-data-line-id="line.id" t-att-data-default-name="line.product_id.display_name or line.name">
+									<div class="card-body">
+										<input type="hidden" name="line_id" t-att-value="line.id"/>
+										<div class="d-flex justify-content-between align-items-start mb-3">
+											<div>
+												<h5 class="mb-1">
+													<span t-esc="line.product_id.display_name or line.name"/>
+												</h5>
+												<div class="text-muted small">
+													數量：
+													<span t-esc="int(line.product_uom_qty) == line.product_uom_qty and int(line.product_uom_qty) or line.product_uom_qty"/>
+												</div>
+											</div>
+										</div>
+
+										<div class="row g-3">
+											<div class="col-12 col-lg-4">
+												<label class="form-label">檔名</label>
+												<input
+													type="text"
+													name="project_product_name"
+													class="form-control o_dtsc_project_product_name"
+													t-att-value="line.project_product_name or line.product_id.display_name or line.name"
+													placeholder="請輸入檔名"
+												/>
+											</div>
+											<div class="col-12 col-lg-5">
+												<label class="form-label">稿件檔案</label>
+												<input
+													type="file"
+													class="form-control o_dtsc_line_file"
+													accept=".ai,.ps,.pdf,.svg,.png,.jpg,.jpeg,.tif,.tiff"
+												/>
+											</div>
+											<div class="col-12 col-lg-3 d-flex align-items-end">
+												<div class="w-100 d-flex gap-2">
+													<button type="button" class="btn btn-primary flex-grow-1 o_dtsc_upload_btn">上傳檔案</button>
+													<button type="button" class="btn btn-outline-secondary o_dtsc_cancel_file d-none">取消</button>
+												</div>
+											</div>
+										</div>
+
+										<div class="mt-3 small text-muted o_dtsc_current_file">
+											<t t-if="line.image_url">
+												目前檔案：
+												<span class="o_dtsc_current_filename_text" t-esc="line.image_url"/>
+											</t>
+											<t t-else="">
+												<span class="o_dtsc_current_filename_text">尚未上傳檔案</span>
+											</t>
+										</div>
+										<div class="upload-status d-none mt-2"></div>
+										<progress class="uploadProgressBar mt-2" value="0" max="100" style="width: 100%; display: none"/>
+									</div>
+								</div>
+							</t>
+						</t>
+						<t t-else="">
+							<div class="alert alert-info">
+								目前沒有需要上傳稿件的商品行。
+							</div>
+						</t>
+
+						<div class="d-flex justify-content-between mt-4">
+							<a role="button" href="/shop/checkout" class="btn btn-secondary">
+								<span class="fa fa-chevron-left"/> Previous
+							</a>
+							<button type="submit" class="btn btn-primary o_dtsc_extra_info_next">
+								Next <span class="fa fa-chevron-right"/>
+							</button>
+						</div>
+					</form>
+				</div>
+			</section>
 		</xpath>
 	</template>
 

@@ -95,17 +95,19 @@ class SaleOrder(models.Model):
     def _prepare_website_checkout_line_vals(self, sale_line, checkout):
         self.ensure_one()
         pricelist_item = self._get_checkout_pricelist_item(sale_line)
+        project_product_name = sale_line.project_product_name or sale_line.name
         line_vals = {
             'checkout_product_id': checkout.id,
             'sale_order_line_id': sale_line.id,
             'store_product_template_id': sale_line.product_template_id.id,
             'quantity': sale_line.product_uom_qty,
             'jijiamoshi': 'forshuliang',
-            'project_product_name': sale_line.name,
+            'project_product_name': project_product_name,
+            'image_url': sale_line.image_url,
         }
         if pricelist_item and pricelist_item.checkout_product_id:
             line_vals.update({
-                'project_product_name': pricelist_item.product_id.display_name or sale_line.name,
+                'project_product_name': sale_line.project_product_name or pricelist_item.product_id.display_name or sale_line.name,
                 'product_id': pricelist_item.checkout_product_id.id,
                 'product_atts': [(6, 0, pricelist_item.checkout_product_atts.ids)],
                 'product_width': pricelist_item.checkout_width or '1',

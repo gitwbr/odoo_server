@@ -125,6 +125,7 @@
             'dtsc/static/src/js/checkout_view.js', 
             'dtsc/static/src/css/custom_styles.css',
             'dtsc/static/src/js/website_custom.js',
+            'dtsc/static/src/js/website_sale_extra_info.js',
         ],
     },
     # only loaded in demonstration mode

@@ -33,6 +33,7 @@ from . import delivery_carrier
 from . import chattemplate 
 from . import worker_qrcode 
 from . import crm 
+from . import res_groups
 from . import website_sale 
 from . import order_preview 
 #from . import purchase_order

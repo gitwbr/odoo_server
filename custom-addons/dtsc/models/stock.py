@@ -92,6 +92,21 @@ class StockQuant(models.Model):
             'domain' : [('quantity', '!=', 0),('location_id.usage', 'in', ['internal'])],
             'context' : {'group_by' : 'product_id', 'default_is_set_date': False},
         }
+
+    @api.model
+    def action_view_inventory(self):
+        """
+        取消庫存盤點頁面的「我的盤點」預設篩選。
+        原生 stock 會對非管理員加上 search_default_my_count=True。
+        """
+        action = super().action_view_inventory()
+        ctx = dict(action.get("context") or {})
+        ctx.pop("search_default_my_count", None)
+        for key in list(ctx.keys()):
+            if key.startswith("search_default_") and "my_count" in key:
+                ctx.pop(key, None)
+        action["context"] = ctx
+        return action
     
     # @api.depends()
     # def _compute_is_open_full_checkoutorder(self):

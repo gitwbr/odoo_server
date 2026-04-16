@@ -53,6 +53,41 @@ class UploadController(http.Controller):
     TOLERANCE = 0.1  # 允許的誤差範圍（毫米）
     MAX_SIZE_DIFF = 5.0  # 允許的最大尺寸差異（毫米）
 
+    def _json_response(self, payload, status=200):
+        return Response(
+            json.dumps(payload),
+            content_type='application/json;charset=utf-8',
+            status=status,
+        )
+
+    def _sanitize_path_part(self, value, fallback='其它'):
+        value = re.sub(r'[<>:"/\\|?*\s]+', '_', (value or '').strip()).strip('._')
+        return value or fallback
+
+    def _build_shop_requested_filename(self, original_filename, requested_name=''):
+        original_name = os.path.basename(original_filename or 'upload')
+        original_root, original_ext = os.path.splitext(original_name)
+        requested_name = (requested_name or '').strip()
+        requested_root, requested_ext = os.path.splitext(requested_name)
+        safe_root = self._sanitize_path_part(
+            requested_root or requested_name or original_root,
+            'file'
+        )
+        return f"{safe_root}{requested_ext or original_ext}"
+
+    def _build_shop_final_filename(self, original_filename, requested_name=''):
+        current_time = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        if requested_name and requested_name.strip():
+            return f"{current_time}-{requested_name.strip()}"
+        return f"{current_time}-{os.path.basename(original_filename)}"
+
+    def _resolve_shop_upload_folder(self, order):
+        partner = order.partner_id.commercial_partner_id
+        return self._sanitize_path_part(
+            partner.custom_init_name or partner.name or '其它',
+            '其它',
+        )
+
     def check_image(self, file_content, file_extension, filename):
         # 收集所有錯誤的列表
         errors = []
@@ -561,6 +596,56 @@ class UploadController(http.Controller):
         else:
             _logger.warning('沒有收到檔案')
             return Response(json.dumps({'success': False, 'message': 'No file provided'}), content_type='application/json;charset=utf-8', status=400)
+
+    @http.route('/shop/payment/upload_line_file', type='http', auth='public', methods=['POST'], website=True, csrf=False)
+    def shop_payment_upload_line_file(self):
+        order = request.website.sale_get_order()
+        if not order or order.state != 'draft':
+            return self._json_response({'success': False, 'message': '購物車訂單不存在或已失效'}, status=403)
+
+        try:
+            line_id = int(request.params.get('line_id', 0))
+        except (TypeError, ValueError):
+            return self._json_response({'success': False, 'message': '訂單行參數錯誤'}, status=400)
+
+        line = order.order_line.filtered(
+            lambda l: l.id == line_id and not l.display_type and not getattr(l, 'is_delivery', False)
+        )[:1]
+        if not line:
+            return self._json_response({'success': False, 'message': '找不到可上傳的商城訂單行'}, status=403)
+
+        upload_file = request.httprequest.files.get('custom_file')
+        if not upload_file:
+            return self._json_response({'success': False, 'message': '請先選擇檔案'}, status=400)
+
+        project_product_name = (
+            request.params.get('project_product_name', '').strip()
+            or getattr(line, 'project_product_name', False)
+            or line.product_id.display_name
+            or line.name
+        )
+        requested_filename = self._build_shop_requested_filename(upload_file.filename, project_product_name)
+        final_filename = self._build_shop_final_filename(upload_file.filename, requested_filename)
+        folder = self._resolve_shop_upload_folder(order)
+        file_content = upload_file.read()
+
+        uploader = request.env['upload.model']
+        success = uploader.upload_to_ftp(file_content, final_filename, folder)
+        if not success:
+            return self._json_response({
+                'success': False,
+                'message': '檔案上傳失敗，請檢查FTP連接和權限設置',
+            }, status=200)
+
+        line.sudo().write({
+            'project_product_name': project_product_name,
+            'image_url': final_filename,
+        })
+        return self._json_response({
+            'success': True,
+            'message': 'File uploaded successfully',
+            'filename': final_filename,
+        }, status=200)
 
     @http.route('/dtsc/payment_upload_file', type='http', auth='user', methods=['POST'], csrf=False)
     def test_endpoint(self, **kwargs):

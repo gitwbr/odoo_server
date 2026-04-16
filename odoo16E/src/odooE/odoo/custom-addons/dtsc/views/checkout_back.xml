@@ -420,7 +420,7 @@
 										<field name="jijiamoshi" attrs="{'readonly': [('parent.is_in_by_yw', '=', False)]}" groups="dtsc.group_dtsc_yw,dtsc.group_dtsc_kj"/> 
 										
 										<!-- <field name="name" /> -->
-										<!-- <field name="project_name" /> -->
+										<!-- <field name="project_name" /> -->  
 										<field name="product_details"  optional="hide" />
 										<field name="comment" optional="hide"/>
 										<!-- <field name="product_name" /> -->
@@ -433,10 +433,11 @@
 										<field name="recheck_id_name" attrs="{'column_invisible':[('parent.is_recheck','!=',True)]}"/>
 										
 										<!-- <field name="product_total_price" sum="輸出金額" attrs="{'readonly': ['|',('parent.is_in_by_yw', '=', False),('parent.checkout_order_state','in',['receivable_assigned'])] ,'column_invisible':['|','|',('parent.is_current_user', '=', False),('parent.is_recheck','=',True),('parent.is_dayang','=',True)]}" groups="dtsc.group_dtsc_yw,dtsc.group_dtsc_kj"/>  -->
-										<field name="product_total_price" sum="輸出金額" attrs="{'column_invisible':['|','|',('parent.is_current_user', '=', False),('parent.is_recheck','=',True),('parent.is_dayang','=',True)]}" groups="dtsc.group_dtsc_yw,dtsc.group_dtsc_kj"/> 
-										
-										<field name="total_make_price" sum="加工總價" attrs="{'readonly': ['|',('parent.is_in_by_yw', '=', False),('parent.checkout_order_state','in',['receivable_assigned'])] ,'column_invisible':['|','|',('parent.is_current_user', '=', False),('parent.is_recheck','=',True),('parent.is_dayang','=',True)]}" groups="dtsc.group_dtsc_yw,dtsc.group_dtsc_kj"/> 
-										<field name="price" sum="價錢" attrs="{'readonly': ['|',('parent.is_in_by_yw', '=', False),('parent.checkout_order_state','in',['receivable_assigned'])] ,'column_invisible':['|','|',('parent.is_current_user', '=', False),('parent.is_recheck','=',True),('parent.is_dayang','=',True)]}" groups="dtsc.group_dtsc_yw,dtsc.group_dtsc_kj"/> 
+										<field name="product_total_price" sum="輸出金額" attrs="{'column_invisible':['|','|',('parent.is_current_user', '=', False),('parent.is_recheck','=',True),('parent.is_dayang','=',True)]}" groups="dtsc.group_dtsc_yw,dtsc.group_dtsc_kj"/>
+
+										<field name="total_make_price" sum="加工總價" attrs="{'readonly': ['|',('parent.is_in_by_yw', '=', False),('parent.checkout_order_state','in',['receivable_assigned'])] ,'column_invisible':['|','|',('parent.is_current_user', '=', False),('parent.is_recheck','=',True),('parent.is_dayang','=',True)]}" groups="dtsc.group_dtsc_yw,dtsc.group_dtsc_kj"/>
+										<field name="price" sum="價錢" attrs="{'readonly': ['|',('parent.is_in_by_yw', '=', False),('parent.checkout_order_state','in',['receivable_assigned'])] ,'column_invisible':['|','|',('parent.is_current_user', '=', False),('parent.is_recheck','=',True),('parent.is_dayang','=',True)]}" groups="dtsc.group_dtsc_yw,dtsc.group_dtsc_kj"/>
+										<field name="image_url" string="檔案鏈接" readonly="1" optional="hide"/>
 									</tree>
 								</field>
 								<group col="6">

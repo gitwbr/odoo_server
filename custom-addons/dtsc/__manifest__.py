@@ -118,6 +118,7 @@
             'dtsc/static/src/js/inventory_report_list_model.js', 
             'dtsc/static/src/js/hide_dev_user_menu.js',
             'dtsc/static/src/js/user_menu_documentation_patch.js',
+            'dtsc/static/src/js/product_template_form_confirm.js',
             # 'dtsc/static/src/xml/hide_dev_tools.xml',  # ← 加这行            
         ],
         'web.assets_frontend': [
@@ -127,6 +128,7 @@
             'dtsc/static/src/js/checkout_view.js', 
             'dtsc/static/src/css/custom_styles.css',
             'dtsc/static/src/js/website_custom.js',
+            'dtsc/static/src/js/website_sale_extra_info.js',
             'dtsc/static/src/js/html5-qrcode.min.js',
         ]
     },

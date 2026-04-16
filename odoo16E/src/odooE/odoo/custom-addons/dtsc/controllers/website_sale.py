@@ -159,6 +159,38 @@ class CustomWebsiteSale(WebsiteSale):
         })
         # 返回原始 shop_payment 的結果
         return result
+
+    @http.route(['/shop/extra_info/save_line_uploads'], type='http', auth='public', website=True, methods=['POST'])
+    def save_line_uploads(self, **post):
+        extra_step = request.website.viewref('website_sale.extra_info_option')
+        if not extra_step.active:
+            return request.redirect('/shop/payment')
+
+        order = request.website.sale_get_order()
+        redirection = self.checkout_redirection(order)
+        if redirection:
+            return redirection
+
+        line_ids = request.httprequest.form.getlist('line_id')
+        project_names = request.httprequest.form.getlist('project_product_name')
+
+        for line_id, project_name in zip(line_ids, project_names):
+            try:
+                line_id = int(line_id)
+            except (TypeError, ValueError):
+                continue
+
+            line = order.order_line.filtered(
+                lambda l: l.id == line_id and not l.display_type and not getattr(l, 'is_delivery', False)
+            )[:1]
+            if not line:
+                continue
+
+            line.sudo().write({
+                'project_product_name': (project_name or '').strip() or False,
+            })
+
+        return request.redirect('/shop/payment')
         
         
 class CustomWebsiteSaleVariantController(VariantController):
