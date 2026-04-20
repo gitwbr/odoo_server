@@ -38,4 +38,4 @@ class DtscCheckoutLine(models.Model):
 class SaleOrder(models.Model):
     _inherit = "sale.order"
     
-    checkout_id = fields.Many2one('dtsc.checkout', string='Checkout Record')
+    checkout_id = fields.Many2one('dtsc.checkout', string='Checkout Record') 

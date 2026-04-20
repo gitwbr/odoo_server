@@ -117,6 +117,7 @@
             'dtsc/static/src/js/stock_color.js',  
             'dtsc/static/src/js/inventory_report_list_controller.js',  
             'dtsc/static/src/js/inventory_report_list_model.js',  
+            'dtsc/static/src/js/product_template_form_confirm.js',
         ],
         'web.assets_frontend': [            
             'dtsc/static/src/js/checkout.js',

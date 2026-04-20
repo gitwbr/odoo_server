@@ -70,6 +70,22 @@ class StockQuant(models.Model):
    
     is_set_date = fields.Boolean(store=False)
     
+    
+    @api.model
+    def action_view_inventory(self):
+        """
+        取消庫存盤點頁面的「我的盤點」預設篩選。
+        原生 stock 會對非管理員加上 search_default_my_count=True。
+        """
+        action = super().action_view_inventory()
+        ctx = dict(action.get("context") or {})
+        ctx.pop("search_default_my_count", None)
+        for key in list(ctx.keys()):
+            if key.startswith("search_default_") and "my_count" in key:
+                ctx.pop(key, None)
+        action["context"] = ctx
+        return action
+    
     @api.model
     def is_set_color(self, name):
         return name
