@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <record id="view_dtsc_ai_check_log_search" model="ir.ui.view">
+            <field name="name">dtsc.ai.check.log.search</field>
+            <field name="model">dtsc.ai.check.log</field>
+            <field name="arch" type="xml">
+                <search string="AI 檢測日誌">
+                    <field name="partner_id"/>
+                    <field name="customer_name"/>
+                    <field name="original_filename"/>
+                    <field name="checked_filename"/>
+                    <field name="create_date"/>
+                    <filter string="通過" name="filter_success" domain="[('status', '=', 'success')]"/>
+                    <filter string="失敗" name="filter_failed" domain="[('status', '=', 'failed')]"/>
+                    <group string="Group By">
+                        <filter string="使用者" name="group_user" domain="[]" context="{'group_by': 'user_id'}"/>
+                        <filter string="會員" name="group_partner" domain="[]" context="{'group_by': 'partner_id'}"/>
+                        <filter string="結果" name="group_status" domain="[]" context="{'group_by': 'status'}"/>
+                        <filter string="日期" name="group_date" domain="[]" context="{'group_by': 'create_date:day'}"/>
+                    </group>
+                </search>
+            </field>
+        </record>
+
+        <record id="view_dtsc_ai_check_log_tree" model="ir.ui.view">
+            <field name="name">dtsc.ai.check.log.tree</field>
+            <field name="model">dtsc.ai.check.log</field>
+            <field name="arch" type="xml">
+                <tree string="AI 檢測日誌" create="0" edit="0" delete="0">
+                    <field name="create_date" string="時間"/>
+                    <field name="partner_id"/>
+                    <field name="customer_name" optional="hide"/>
+                    <field name="original_filename"/>
+                    <field name="checked_filename" optional="hide"/>
+                    <field name="input_width" optional="hide"/>
+                    <field name="input_height" optional="hide"/>
+                    <field name="status"/>
+                    <field name="message"/>
+                    <field name="ip_address" optional="hide"/>
+                </tree>
+            </field>
+        </record>
+
+        <record id="view_dtsc_ai_check_log_form" model="ir.ui.view">
+            <field name="name">dtsc.ai.check.log.form</field>
+            <field name="model">dtsc.ai.check.log</field>
+            <field name="arch" type="xml">
+                <form string="AI 檢測日誌" create="0" edit="0" delete="0">
+                    <sheet>
+                        <group>
+                            <group>
+                                <field name="create_date" string="時間"/>
+                                <field name="status"/>
+                                <field name="user_id"/>
+                                <field name="partner_id"/>
+                                <field name="customer_name"/>
+                                <field name="website_id"/>
+                                <field name="ip_address"/>
+                            </group>
+                            <group>
+                                <field name="original_filename"/>
+                                <field name="checked_filename"/>
+                                <field name="input_width"/>
+                                <field name="input_height"/>
+                                <field name="actual_width_mm"/>
+                                <field name="actual_height_mm"/>
+                            </group>
+                        </group>
+                        <group>
+                            <field name="message" nolabel="1"/>
+                        </group>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <record id="action_dtsc_ai_check_log" model="ir.actions.act_window">
+            <field name="name">AI 檢測日誌</field>
+            <field name="res_model">dtsc.ai.check.log</field>
+            <field name="view_mode">tree,form</field>
+            <field name="search_view_id" ref="view_dtsc_ai_check_log_search"/>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_empty_folder">
+                    尚無 AI 檢測記錄
+                </p>
+            </field>
+        </record>
+
+        <menuitem
+            id="menu_dtsc_ai_check_log"
+            name="AI 檢測日誌"
+            parent="website.menu_reporting"
+            action="action_dtsc_ai_check_log"
+            sequence="35"
+        />
+    </data>
+</odoo>

@@ -101,6 +101,7 @@ odoo.define('dtsc.public_web_order', function (require) {
   //var session = require('web.session'); 
   var Widget = require('web.Widget');
   var rpc = require('web.rpc');
+  var fileNameHelper = require('dtsc.file_name_helper');
   function debugLog(message, data) {
     if (debugMode) console.log(message, data);
   }
@@ -512,28 +513,7 @@ odoo.define('dtsc.public_web_order', function (require) {
       if (width && height && quantity) {
         parts.push(`${width}x${height}x${quantity}`);
       }
-
-      // 5. 獲取原始文件擴展名
-      var originalName = file.name;
-      var extension = '';
-      if (originalName && originalName.includes('.')) {
-        extension = originalName.substring(originalName.lastIndexOf('.'));
-      } else {
-        extension = '.unknown';
-      }
-
-      // 組合文件名
-      var customFileName = parts.join('-') + extension;
-
-      // 清理文件名中的特殊字符，替換為下劃線
-      customFileName = customFileName.replace(/[<>:"/\\|?*\s]/g, '_');
-
-      // 避免文件名過長
-      if (customFileName.length > 200) {
-        var nameWithoutExt = customFileName.substring(0, customFileName.lastIndexOf('.'));
-        nameWithoutExt = nameWithoutExt.substring(0, 200 - extension.length);
-        customFileName = nameWithoutExt + extension;
-      }
+      var customFileName = fileNameHelper.buildCustomFileName(parts, file && file.name);
 
       debugLog('生成的文件名各部分:', parts);
       debugLog('最終文件名:', customFileName);

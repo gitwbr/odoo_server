@@ -137,3 +137,26 @@ tr.tr_product_attribute_class td:nth-child(9) {
 	width: 80px;	
 	display: inline-block;
 }
+
+@media (min-width: 1200px) {
+    #wrapwrap > header .container,
+    #top .container,
+    nav.navbar .container,
+    #top_menu_container {
+        max-width: 1480px;
+    }
+
+    .o_my_checkout_entry_group {
+        display: inline-flex !important;
+        align-items: center !important;
+        gap: 10px !important;
+        flex-wrap: nowrap !important;
+        white-space: nowrap;
+    }
+
+    .o_my_checkout_entry_group > a,
+    .o_my_checkout_entry_group .btn {
+        flex: 0 0 auto;
+        white-space: nowrap;
+    }
+}

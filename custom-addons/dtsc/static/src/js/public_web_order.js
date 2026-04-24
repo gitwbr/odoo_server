@@ -98,9 +98,10 @@ odoo.define('dtsc.public_web_order', function (require) {
   "use strict";
   var debugMode = true;
   //var debugMode = false;
-  //var session = require('web.session'); 
+  //var session = require('web.session');
   var Widget = require('web.Widget');
   var rpc = require('web.rpc');
+  var fileNameHelper = require('dtsc.file_name_helper');
   function debugLog(message, data) {
     if (debugMode) console.log(message, data);
   }
@@ -512,28 +513,7 @@ odoo.define('dtsc.public_web_order', function (require) {
       if (width && height && quantity) {
         parts.push(`${width}x${height}x${quantity}`);
       }
-
-      // 5. 獲取原始文件擴展名
-      var originalName = file.name;
-      var extension = '';
-      if (originalName && originalName.includes('.')) {
-        extension = originalName.substring(originalName.lastIndexOf('.'));
-      } else {
-        extension = '.unknown';
-      }
-
-      // 組合文件名
-      var customFileName = parts.join('-') + extension;
-
-      // 清理文件名中的特殊字符，替換為下劃線
-      customFileName = customFileName.replace(/[<>:"/\\|?*\s]/g, '_');
-
-      // 避免文件名過長
-      if (customFileName.length > 200) {
-        var nameWithoutExt = customFileName.substring(0, customFileName.lastIndexOf('.'));
-        nameWithoutExt = nameWithoutExt.substring(0, 200 - extension.length);
-        customFileName = nameWithoutExt + extension;
-      }
+      var customFileName = fileNameHelper.buildCustomFileName(parts, file && file.name);
 
       debugLog('生成的文件名各部分:', parts);
       debugLog('最終文件名:', customFileName);
@@ -764,12 +744,12 @@ if (mismatchMessages.length > 0) {
           flag: 1,
           product_details: product_details,
           aftermakepricelist_lines: [],
-          //image_url : uploadedFileName,  
+          //image_url : uploadedFileName,
           //peijian_price : fields.Float("配件加價")
           //units_price : $table.find("#base_price").val(),
           //product_total_price : fields.Float("產品總價")
           //total_make_price : fields.Float("加工總價")
-          //price = fields.Float("價錢") 
+          //price = fields.Float("價錢")
         }]);
         $table.find("input[name='multiple[]']:checked").each(function () {
           let aftermakepricelistId = $(this).closest('div').attr('id');
@@ -1445,7 +1425,7 @@ if (mismatchMessages.length > 0) {
 
         /////////////////////////
         var horizontalSeparator = $('<hr>').addClass('customer-detail mb-4');
-        //var placeholderParagraph = $('<p></p>'); 
+        //var placeholderParagraph = $('<p></p>');
 
         var warningModal = $('<div class="modal fade modal_shown" id="exampleModal" tabindex="-1" role="dialog" style="display: none;" aria-hidden="true">').append(
           $('<div class="modal-dialog" role="document">').addClass('customer-detail').append(
@@ -1466,7 +1446,7 @@ if (mismatchMessages.length > 0) {
             )
           )
         );
-        //预览前				
+        //预览前
         $(document).off('click', '.btn.btn-primary.btn-lg.model_order_line').on('click', '.btn.btn-primary.btn-lg.model_order_line', function () {
           var missingFields = []; // 用于存储缺失字段的数组
 

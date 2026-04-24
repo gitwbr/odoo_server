@@ -16,7 +16,7 @@
 
 /* 訂單內容栏位 */
 .custom-order-table th:nth-child(3), .custom-order-table td:nth-child(3) {
-    width: 20%; /* 为訂單內容分配 20% 的宽度 */
+    width: 5%; /* 为訂單內容分配 20% 的宽度 */
 }
 
 /* 金額栏位 */
@@ -24,14 +24,14 @@
     width: 8%; /* 为金額分配 8% 的宽度 */
 }
 
-/* 訂單狀態栏位 
+/* 訂單狀態栏位
 .custom-order-table th:nth-child(5), .custom-order-table td:nth-child(5) {
-    width: 10%; 
+    width: 10%;
 }*/
 
 /* 進度表栏位 */
 .custom-order-table th:nth-child(5), .custom-order-table td:nth-child(5) {
-    width: 22%; /* 为進度表分配 25% 的宽度，以适应进度条显示 */
+    width: 37%; /* 为進度表分配 25% 的宽度，以适应进度条显示 */
 }
 
 /* 取消訂單原因栏位 */
@@ -95,37 +95,37 @@ select.form-control {
 
 tr.tr_product_attribute_class th:nth-child(1),
 tr.tr_product_attribute_class td:nth-child(1) {
-    width: 15%; 
+    width: 15%;
 }
 
 tr.tr_product_attribute_class th:nth-child(2),
 tr.tr_product_attribute_class td:nth-child(2) {
-    width: 15%; 
+    width: 15%;
 }
 
 tr.tr_product_attribute_class th:nth-child(3),
 tr.tr_product_attribute_class td:nth-child(3) {
-    width: 20%; 
+    width: 20%;
 }
 
 tr.tr_product_attribute_class th:nth-child(4),
 tr.tr_product_attribute_class td:nth-child(4) {
-    width: 10%; 
+    width: 10%;
 }
 
 tr.tr_product_attribute_class th:nth-child(5),
 tr.tr_product_attribute_class td:nth-child(5) {
-    width: 10%; 
+    width: 10%;
 }
 
 /* tr.tr_product_attribute_class th:nth-child(8),
 tr.tr_product_attribute_class td:nth-child(8) {
-    width: 40%; 
+    width: 40%;
 } */
 
 tr.tr_product_attribute_class th:nth-child(9),
 tr.tr_product_attribute_class td:nth-child(9) {
-    width: 30%; 
+    width: 30%;
 }
 
 .custom-file-label {
@@ -134,6 +134,29 @@ tr.tr_product_attribute_class td:nth-child(9) {
 
 .formula_calculation {
 	text-align: center;
-	width: 80px;	
+	width: 80px;
 	display: inline-block;
+}
+
+@media (min-width: 1200px) {
+    #wrapwrap > header .container,
+    #top .container,
+    nav.navbar .container,
+    #top_menu_container {
+        max-width: 1480px;
+    }
+
+    .o_my_checkout_entry_group {
+        display: inline-flex !important;
+        align-items: center !important;
+        gap: 10px !important;
+        flex-wrap: nowrap !important;
+        white-space: nowrap;
+    }
+
+    .o_my_checkout_entry_group > a,
+    .o_my_checkout_entry_group .btn {
+        flex: 0 0 auto;
+        white-space: nowrap;
+    }
 }

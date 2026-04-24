@@ -1,0 +1,645 @@
+<odoo>
+    <data>
+        <template id="ai_member_login_entry" name="AI Member Login Entry">
+            <t t-call="website.layout">
+                <section class="o_ai_member_entry_page">
+                    <style>
+                        .o_ai_member_entry_page {
+                            background:
+                                radial-gradient(circle at top left, rgba(244, 217, 172, 0.24), transparent 34%),
+                                linear-gradient(180deg, #f7fbfb 0%, #ffffff 320px);
+                            padding: 72px 0;
+                        }
+
+                        .o_ai_member_entry_wrap {
+                            max-width: 620px;
+                            margin: 0 auto;
+                            padding: 0 20px;
+                        }
+
+                        .o_ai_member_entry_card {
+                            background: #fff;
+                            border: 1px solid rgba(47, 143, 150, 0.14);
+                            border-radius: 28px;
+                            padding: 42px 36px;
+                            box-shadow: 0 24px 70px rgba(25, 52, 58, 0.08);
+                            text-align: center;
+                        }
+
+                        .o_ai_member_entry_eyebrow {
+                            display: inline-flex;
+                            align-items: center;
+                            gap: 8px;
+                            padding: 8px 14px;
+                            border-radius: 999px;
+                            background: rgba(47, 143, 150, 0.1);
+                            color: #21686d;
+                            font-size: 14px;
+                            font-weight: 700;
+                            margin-bottom: 18px;
+                        }
+
+                        .o_ai_member_entry_title {
+                            font-size: 38px;
+                            line-height: 1.1;
+                            color: #19343a;
+                            margin-bottom: 12px;
+                            font-weight: 800;
+                        }
+
+                        .o_ai_member_entry_desc {
+                            color: #5f7a80;
+                            font-size: 16px;
+                            margin-bottom: 28px;
+                        }
+
+                        .o_ai_member_entry_actions {
+                            display: grid;
+                            grid-template-columns: 1fr;
+                            gap: 14px;
+                        }
+
+                        .o_ai_member_entry_btn {
+                            display: inline-flex;
+                            justify-content: center;
+                            align-items: center;
+                            min-height: 52px;
+                            padding: 12px 18px;
+                            border-radius: 14px;
+                            text-decoration: none !important;
+                            font-weight: 700;
+                            transition: transform .16s ease, box-shadow .16s ease;
+                        }
+
+                        .o_ai_member_entry_btn:hover {
+                            transform: translateY(-1px);
+                        }
+
+                        .o_ai_member_entry_btn--member {
+                            background: #2f8f96;
+                            color: #fff !important;
+                            box-shadow: 0 12px 28px rgba(47, 143, 150, 0.2);
+                        }
+
+                        .o_ai_member_entry_btn--custom {
+                            background: #f5fbfb;
+                            border: 1px solid rgba(47, 143, 150, 0.18);
+                            color: #21686d !important;
+                        }
+                    </style>
+
+                    <div class="o_ai_member_entry_wrap">
+                        <div class="o_ai_member_entry_card">
+                            <div class="o_ai_member_entry_eyebrow">會員專屬功能</div>
+                            <h1 class="o_ai_member_entry_title">AI 印前檢測</h1>
+                            <p class="o_ai_member_entry_desc">這是新的會員檢測頁入口。舊的 AI 檢測頁保留不動，這裡只走新頁流程。</p>
+
+                            <div class="o_ai_member_entry_actions">
+                                <a t-att-href="member_login_url" class="o_ai_member_entry_btn o_ai_member_entry_btn--member">
+                                    商城會員登入
+                                </a>
+                                <a t-att-href="custom_login_url" class="o_ai_member_entry_btn o_ai_member_entry_btn--custom">
+                                    統編客戶登入
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </t>
+        </template>
+
+        <template id="ai_member_check_page" name="AI Member Check Page">
+            <t t-call="website.layout">
+                <t t-call-assets="web.assets_common"/>
+
+                <section class="o_ai_member_page">
+                    <style>
+                        .o_ai_member_page {
+                            --ai-primary: #2f8f96;
+                            --ai-primary-dark: #21686d;
+                            --ai-ink: #19343a;
+                            --ai-muted: #6b8287;
+                            --ai-line: #dce9ea;
+                            --ai-warn: #fff7e7;
+                            --ai-warn-text: #996c00;
+                            background:
+                                radial-gradient(circle at top left, rgba(244, 217, 172, 0.25), transparent 34%),
+                                linear-gradient(180deg, #f7fbfb 0%, #ffffff 360px);
+                            padding: 52px 0 76px;
+                        }
+
+                        .o_ai_member_wrap {
+                            max-width: 1160px;
+                            margin: 0 auto;
+                            padding: 0 20px;
+                        }
+
+                        .o_ai_member_hero {
+                            display: flex;
+                            justify-content: space-between;
+                            align-items: flex-start;
+                            gap: 20px;
+                            background: linear-gradient(135deg, #ffffff 0%, #f7fbfb 100%);
+                            border: 1px solid rgba(47, 143, 150, 0.12);
+                            border-radius: 28px;
+                            padding: 30px 32px;
+                            box-shadow: 0 24px 70px rgba(25, 52, 58, 0.08);
+                            margin-bottom: 24px;
+                        }
+
+                        .o_ai_member_eyebrow {
+                            display: inline-flex;
+                            align-items: center;
+                            gap: 8px;
+                            padding: 8px 14px;
+                            border-radius: 999px;
+                            background: rgba(47, 143, 150, 0.1);
+                            color: var(--ai-primary-dark);
+                            font-size: 14px;
+                            font-weight: 700;
+                            margin-bottom: 14px;
+                        }
+
+                        .o_ai_member_title {
+                            margin: 0 0 10px;
+                            font-size: 40px;
+                            line-height: 1.08;
+                            color: var(--ai-ink);
+                            font-weight: 800;
+                        }
+
+                        .o_ai_member_desc {
+                            margin: 0;
+                            color: var(--ai-muted);
+                            font-size: 16px;
+                            max-width: 760px;
+                        }
+
+                        .o_ai_member_actions {
+                            display: flex;
+                            gap: 12px;
+                            flex-wrap: wrap;
+                            justify-content: flex-end;
+                        }
+
+                        .o_ai_member_action {
+                            display: inline-flex;
+                            align-items: center;
+                            justify-content: center;
+                            min-height: 48px;
+                            padding: 10px 18px;
+                            border-radius: 14px;
+                            text-decoration: none !important;
+                            font-weight: 700;
+                            white-space: nowrap;
+                        }
+
+                        .o_ai_member_action--ghost {
+                            background: #fff;
+                            border: 1px solid rgba(47, 143, 150, 0.16);
+                            color: var(--ai-primary-dark) !important;
+                        }
+
+                        .o_ai_member_panel {
+                            background: #fff;
+                            border: 1px solid rgba(47, 143, 150, 0.12);
+                            border-radius: 28px;
+                            padding: 28px;
+                            box-shadow: 0 24px 70px rgba(25, 52, 58, 0.06);
+                        }
+
+                        .o_ai_member_panel_head {
+                            display: flex;
+                            justify-content: space-between;
+                            align-items: flex-start;
+                            gap: 16px;
+                            margin-bottom: 22px;
+                        }
+
+                        .o_ai_member_panel_title {
+                            margin: 0 0 8px;
+                            color: var(--ai-ink);
+                            font-size: 28px;
+                            font-weight: 800;
+                        }
+
+                        .o_ai_member_panel_hint {
+                            margin: 0;
+                            color: var(--ai-muted);
+                            font-size: 15px;
+                        }
+
+                        .o_ai_member_add_btn {
+                            border: 0;
+                            background: var(--ai-primary);
+                            color: #fff;
+                            border-radius: 14px;
+                            min-height: 46px;
+                            padding: 10px 18px;
+                            font-weight: 700;
+                            white-space: nowrap;
+                        }
+
+                        .o_ai_member_customer_box {
+                            display: grid;
+                            grid-template-columns: 1fr;
+                            gap: 8px;
+                            margin-bottom: 24px;
+                        }
+
+                        .o_ai_member_customer_label {
+                            font-size: 14px;
+                            font-weight: 700;
+                            color: var(--ai-ink);
+                        }
+
+                        .o_ai_member_customer_input,
+                        .o_ai_member_field {
+                            width: 100%;
+                            min-height: 48px;
+                            border: 1px solid var(--ai-line);
+                            border-radius: 14px;
+                            padding: 12px 14px;
+                            font-size: 15px;
+                            color: var(--ai-ink);
+                            background: #fff;
+                        }
+
+                        .o_ai_member_notice {
+                            border: 1px solid rgba(153, 108, 0, 0.16);
+                            background: var(--ai-warn);
+                            color: var(--ai-warn-text);
+                            border-radius: 18px;
+                            padding: 16px 18px;
+                            margin-bottom: 24px;
+                            font-size: 14px;
+                            line-height: 1.7;
+                        }
+
+                        .o_ai_member_panel_tools {
+                            display: flex;
+                            align-items: center;
+                            gap: 12px;
+                            flex-wrap: wrap;
+                        }
+
+                        .o_ai_member_select_all_wrap,
+                        .o_ai_member_item_check {
+                            display: inline-flex;
+                            align-items: center;
+                            gap: 8px;
+                            color: var(--ai-primary-dark);
+                            font-size: 14px;
+                            font-weight: 700;
+                            margin: 0;
+                        }
+
+                        .o_ai_member_select_all_wrap input,
+                        .o_ai_member_item_check input {
+                            width: 18px;
+                            height: 18px;
+                            accent-color: var(--ai-primary);
+                        }
+
+                        .o_ai_member_batch_detect_btn {
+                            border: 0;
+                            background: var(--ai-ink);
+                            color: #fff;
+                            border-radius: 14px;
+                            min-height: 46px;
+                            padding: 10px 18px;
+                            font-weight: 700;
+                            white-space: nowrap;
+                        }
+
+                        .o_ai_member_batch_status {
+                            color: var(--ai-muted);
+                            font-size: 14px;
+                            font-weight: 600;
+                        }
+
+                        .o_ai_member_items {
+                            display: grid;
+                            gap: 18px;
+                        }
+
+                        .o_ai_member_item {
+                            border: 1px solid var(--ai-line);
+                            border-radius: 24px;
+                            background: linear-gradient(180deg, #ffffff 0%, #fbfdfd 100%);
+                            overflow: hidden;
+                        }
+
+                        .o_ai_member_item_head {
+                            display: flex;
+                            justify-content: space-between;
+                            align-items: center;
+                            gap: 14px;
+                            padding: 18px 20px;
+                            border-bottom: 1px solid rgba(47, 143, 150, 0.09);
+                            background: rgba(47, 143, 150, 0.04);
+                        }
+
+                        .o_ai_member_item_head_main {
+                            flex: 1 1 auto;
+                            min-width: 0;
+                        }
+
+                        .o_ai_member_item_title {
+                            margin: 0;
+                            font-size: 22px;
+                            font-weight: 800;
+                            color: var(--ai-ink);
+                        }
+
+                        .o_ai_member_item_desc {
+                            margin: 4px 0 0;
+                            color: var(--ai-muted);
+                            font-size: 14px;
+                        }
+
+                        .o_ai_member_remove_btn {
+                            border: 0;
+                            background: transparent;
+                            color: #cb4b4b;
+                            font-weight: 700;
+                            padding: 8px 10px;
+                        }
+
+                        .o_ai_member_item_body {
+                            padding: 20px;
+                        }
+
+                        .o_ai_member_grid {
+                            display: grid;
+                            grid-template-columns: 1.3fr 1fr 1fr;
+                            gap: 16px;
+                        }
+
+                        .o_ai_member_field_group {
+                            display: grid;
+                            gap: 8px;
+                        }
+
+                        .o_ai_member_field_label {
+                            font-size: 14px;
+                            font-weight: 700;
+                            color: var(--ai-ink);
+                        }
+
+                        .o_ai_member_file_row {
+                            display: flex;
+                            gap: 12px;
+                            align-items: center;
+                            flex-wrap: wrap;
+                        }
+
+                        .o_ai_member_file_name {
+                            color: var(--ai-muted);
+                            font-size: 14px;
+                            word-break: break-all;
+                        }
+
+                        .o_ai_member_current_file {
+                            color: var(--ai-primary-dark);
+                            font-size: 13px;
+                            word-break: break-all;
+                        }
+
+                        .o_ai_member_size_row {
+                            display: grid;
+                            grid-template-columns: 1fr 1fr;
+                            gap: 10px;
+                        }
+
+                        .o_ai_member_actions_row {
+                            display: flex;
+                            align-items: center;
+                            gap: 12px;
+                            margin-top: 18px;
+                            flex-wrap: wrap;
+                        }
+
+                        .o_ai_member_detect_btn {
+                            border: 0;
+                            background: var(--ai-primary);
+                            color: #fff;
+                            border-radius: 14px;
+                            min-height: 46px;
+                            padding: 10px 20px;
+                            font-weight: 700;
+                            white-space: nowrap;
+                        }
+
+                        .o_ai_member_status_text {
+                            color: var(--ai-muted);
+                            font-size: 14px;
+                            font-weight: 600;
+                        }
+
+                        .o_ai_member_result {
+                            display: none;
+                            margin-top: 18px;
+                            border-radius: 18px;
+                            padding: 16px 18px;
+                        }
+
+                        .o_ai_member_result.is-visible {
+                            display: block;
+                        }
+
+                        .o_ai_member_result--success {
+                            background: #edf8f4;
+                            border: 1px solid rgba(56, 142, 99, 0.18);
+                            color: #25653f;
+                        }
+
+                        .o_ai_member_result--error {
+                            background: #fff1f1;
+                            border: 1px solid rgba(203, 75, 75, 0.18);
+                            color: #a13939;
+                        }
+
+                        .o_ai_member_result_title {
+                            font-size: 16px;
+                            font-weight: 800;
+                            margin-bottom: 8px;
+                        }
+
+                        .o_ai_member_result_message {
+                            line-height: 1.7;
+                            white-space: pre-line;
+                        }
+
+                        .o_ai_member_result_meta {
+                            display: grid;
+                            grid-template-columns: repeat(2, minmax(0, 1fr));
+                            gap: 10px 18px;
+                            margin-top: 12px;
+                            font-size: 14px;
+                        }
+
+                        .o_ai_member_result_meta strong {
+                            color: var(--ai-ink);
+                            margin-right: 6px;
+                        }
+
+                        @media (max-width: 991px) {
+                            .o_ai_member_hero,
+                            .o_ai_member_panel_head,
+                            .o_ai_member_item_head {
+                                flex-direction: column;
+                                align-items: flex-start;
+                            }
+
+                            .o_ai_member_actions {
+                                justify-content: flex-start;
+                            }
+
+                            .o_ai_member_grid,
+                            .o_ai_member_result_meta {
+                                grid-template-columns: 1fr;
+                            }
+                        }
+
+                        @media (max-width: 575px) {
+                            .o_ai_member_page {
+                                padding: 34px 0 52px;
+                            }
+
+                            .o_ai_member_wrap {
+                                padding: 0 14px;
+                            }
+
+                            .o_ai_member_hero,
+                            .o_ai_member_panel {
+                                border-radius: 22px;
+                                padding: 20px;
+                            }
+
+                            .o_ai_member_title {
+                                font-size: 30px;
+                            }
+                        }
+                    </style>
+
+                    <div class="o_ai_member_wrap">
+                        <div class="o_ai_member_hero">
+                            <div>
+                                <div class="o_ai_member_eyebrow">
+                                    <t t-esc="'統編客戶登入｜%s' % (partner.name or '未命名客戶') if is_custom_login else '商城會員登入｜%s' % (partner.name or '未命名會員')"/>
+                                </div>
+                            </div>
+                            <div class="o_ai_member_actions">
+                                <a href="/my/checkout-orders?order_prefix=A" class="o_ai_member_action o_ai_member_action--ghost">返回 A 單列表</a>
+                                <a t-if="is_custom_login" t-att-href="'/custom/logout?redirect=/my/ai-check/%s' % order.id" class="o_ai_member_action o_ai_member_action--ghost">統編登出</a>
+                            </div>
+                        </div>
+
+                        <div class="o_ai_member_panel o_dtsc_ai_member_page" data-check-url="/my/ai-check/item">
+                            <div class="o_ai_member_panel_head">
+                                <div class="o_ai_member_panel_hint">
+                                    訂單：<strong><t t-esc="order.name"/></strong>
+                                </div>
+                                <div class="o_ai_member_panel_tools">
+                                    <label class="o_ai_member_select_all_wrap">
+                                        <input type="checkbox" class="o_ai_member_select_all"/>
+                                        <span>全選</span>
+                                    </label>
+                                    <button type="button" class="o_ai_member_batch_detect_btn">批量檢測並上傳</button>
+                                    <span class="o_ai_member_batch_status">尚未勾選項目</span>
+                                </div>
+                            </div>
+
+                            <div class="o_ai_member_items">
+                                <t t-if="line_cards">
+                                    <t t-foreach="line_cards" t-as="card">
+                                        <div class="o_ai_member_item"
+                                             t-att-data-item-index="card_index + 1"
+                                             t-att-data-item-no="card['item_no']"
+                                             t-att-data-order-name="order.name or ''"
+                                             t-att-data-line-id="card['line'].id"
+                                             t-att-data-width="card['line'].product_width or ''"
+                                             t-att-data-height="card['line'].product_height or ''"
+                                             t-att-data-project-name="card['title']">
+                                            <div class="o_ai_member_item_head">
+                                                <label class="o_ai_member_item_check">
+                                                    <input type="checkbox" class="o_ai_member_item_checkbox"/>
+                                                    <span>加入批量</span>
+                                                </label>
+                                                <div class="o_ai_member_item_head_main">
+                                                    <h3 class="o_ai_member_item_title">
+                                                        項次 <t t-esc="card['item_no']"/>｜<t t-esc="card['title']"/>
+                                                    </h3>
+                                                    <p class="o_ai_member_item_desc">
+                                                        商品：<t t-esc="card['product_name']"/>｜
+                                                        訂單尺寸：<t t-esc="card['size_text']"/>
+                                                    </p>
+                                                </div>
+                                            </div>
+
+                                            <div class="o_ai_member_item_body">
+                                                <div class="o_ai_member_grid">
+                                                    <div class="o_ai_member_field_group">
+                                                        <label class="o_ai_member_field_label">選擇檔案</label>
+                                                        <div class="o_ai_member_file_row">
+                                                            <input type="file"
+                                                                   class="o_ai_member_file_input"
+                                                                   accept=".ai,.pdf,.svg,.jpg,.jpeg,.png,.tif,.tiff,.ps"/>
+                                                            <span class="o_ai_member_file_name">尚未選擇檔案</span>
+                                                        </div>
+                                                        <t t-if="card['current_image_url']">
+                                                            <div class="o_ai_member_current_file">
+                                                                目前檔案：<span class="o_ai_member_uploaded_filename"><t t-esc="card['current_image_url']"/></span>
+                                                            </div>
+                                                        </t>
+                                                        <t t-else="">
+                                                            <div class="o_ai_member_current_file">
+                                                                目前檔案：<span class="o_ai_member_uploaded_filename">尚未上傳</span>
+                                                            </div>
+                                                        </t>
+                                                    </div>
+
+                                                    <div class="o_ai_member_field_group">
+                                                        <label class="o_ai_member_field_label">檔案名稱</label>
+                                                        <input type="text" class="o_ai_member_field o_ai_member_filename" readonly="readonly"/>
+                                                    </div>
+
+                                                    <div class="o_ai_member_field_group">
+                                                        <label class="o_ai_member_field_label">檢測尺寸</label>
+                                                        <input type="text" class="o_ai_member_field" t-att-value="card['size_text']" readonly="readonly"/>
+                                                    </div>
+                                                </div>
+
+                                                <div class="o_ai_member_actions_row">
+                                                    <button type="button" class="o_ai_member_detect_btn">檢測並上傳</button>
+                                                    <span class="o_ai_member_status_text"></span>
+                                                </div>
+
+                                                <div class="o_ai_member_result o_ai_member_result_box">
+                                                    <div class="o_ai_member_result_title"></div>
+                                                    <div class="o_ai_member_result_message"></div>
+                                                    <div class="o_ai_member_result_meta">
+                                                        <div><strong>檔案名稱</strong><span class="o_ai_member_checked_filename">-</span></div>
+                                                        <div><strong>實際尺寸</strong><span class="o_ai_member_actual_size">-</span></div>
+                                                        <div><strong>像素</strong><span class="o_ai_member_actual_pixels">-</span></div>
+                                                        <div><strong>要求尺寸</strong><span class="o_ai_member_expected_size">-</span></div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </t>
+                                </t>
+                                <t t-else="">
+                                    <div class="o_ai_member_notice" style="margin-bottom: 0;">
+                                        這張 A 單目前沒有可檢測的訂單行。
+                                    </div>
+                                </t>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </t>
+        </template>
+    </data>
+</odoo>

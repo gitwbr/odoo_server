@@ -1,0 +1,167 @@
+<odoo>
+    <data>
+        <template id="ai_file_check_page" name="AI File Check Page">
+            <t t-call="website.layout">
+                <t t-call-assets="web.assets_common"/>
+
+                <style>
+                    .detail-row {
+                        display: flex;
+                        justify-content: space-between;
+                        margin-top: 10px;
+                    }
+
+                    .detail-label, .detail-input {
+                        width: 23%;
+                        box-sizing: border-box;
+                    }
+
+                    .detail-input {
+                        padding: 5px;
+                        border: 1px solid #ccc;
+                    }
+
+                    .detail-row-full {
+                        display: flex;
+                        justify-content: space-between;
+                        margin-top: 10px;
+                    }
+
+                    .detail-label-full, .detail-input-full {
+                        width: 100%;
+                        box-sizing: border-box;
+                    }
+
+                    .detail-input-full {
+                        padding: 5px;
+                        border: 1px solid #ccc;
+                    }
+
+                    .form-control {
+                        appearance: auto !important;
+                    }
+
+                    .table-active, .table-active > th, .table-active > td {
+                        background-color: rgba(0, 0, 0, 0.075);
+                    }
+
+                    .table > :not(caption) > * > * {
+                        box-shadow: none !important;
+                        padding: initial;
+                    }
+
+                    .table > :not(:first-child) {
+                        border-top: none !important;
+                    }
+
+                    .invalid-feedback {
+                        display: none;
+                        width: 100%;
+                        margin-top: 0.25rem;
+                        font-size: 80%;
+                        color: #dc3545;
+                    }
+
+                    .table th, .table td {
+                        padding: 0.75rem;
+                        padding-left: 0;
+                        padding-right: 0;
+                    }
+
+                    .o_dtsc_ai_result_box {
+                        border: 1px solid #dee2e6;
+                        padding: 1rem;
+                        margin-top: 1rem;
+                        border-radius: 4px;
+                        background: #fff;
+                    }
+
+                    .o_dtsc_ai_result_box .result-title {
+                        font-weight: bold;
+                        margin-bottom: 0.5rem;
+                    }
+                </style>
+
+                <div class="banner_service_form_ai_file_check o_dtsc_ai_file_check_page">
+                    <div class="container">
+                        <div class="py-5 text-center">
+                            <h2>
+                                <b>檔案檢測</b>
+                            </h2>
+                        </div>
+
+                        <div class="mb-3" id="content">
+                            <input
+                                name="search"
+                                type="text"
+                                class="form-control o_dtsc_ai_customer_name"
+                                t-att-value="customer_name or ''"
+                                placeholder="使用者名稱"
+                            />
+
+                            <form class="o_dtsc_ai_check_form mt-3" data-check-url="/ai/check_file">
+                                <table class="table customer-detail banner_table" style="width: 100%;">
+                                    <tr>
+                                        <td colspan="10" style="text-align:left;">
+                                            <div class="custom-file mb-3" style="margin-left: 0;">
+                                                <input
+                                                    type="file"
+                                                    id="ai_check_file"
+                                                    name="custom_file"
+                                                    class="custom-file-input o_dtsc_ai_file"
+                                                    accept=".ai,.pdf,.svg,.jpg,.jpeg,.png,.tif,.tiff,.ps"
+                                                    required="required"
+                                                />
+                                                <label class="custom-file-label" for="ai_check_file">限制500M，超過請聯繫管理員<br/></label>
+
+                                            </div>
+                                        </td>
+                                    </tr>
+
+                                    <tr class="product_attribute_class input_row_class tr_product_attribute_class">
+                                        <td style="width: 25%;">
+                                            <input
+                                                type="text"
+                                                class="form-control o_dtsc_ai_width"
+                                                id="ai_check_width"
+                                                name="width"
+                                                placeholder="寬度"
+                                            />
+                                        </td>
+                                        <td style="width: 25%;">
+                                            <input
+                                                type="text"
+                                                class="form-control o_dtsc_ai_height"
+                                                id="ai_check_height"
+                                                name="height"
+                                                placeholder="高度"
+                                            />
+                                        </td>
+                                        <td style="width: 25%;"/>
+                                        <td style="width: 25%;"/>
+                                    </tr>
+                                </table>
+
+                                <div class="text-center mt-4">
+                                    <button type="submit" class="btn btn-primary o_dtsc_ai_submit">
+                                        檢測檔案
+                                    </button>
+                                </div>
+                            </form>
+
+                            <div class="alert alert-danger d-none mt-4 o_dtsc_ai_result_error"/>
+                            <div class="alert alert-success d-none mt-4 o_dtsc_ai_result_success"/>
+
+                            <div class="o_dtsc_ai_result_box d-none o_dtsc_ai_result_info">
+                                <div class="result-title">檢測結果</div>
+                                <div>實際尺寸：<span class="o_dtsc_ai_actual_width_mm">-</span> x <span class="o_dtsc_ai_actual_height_mm">-</span> mm</div>
+                                <div>像素：<span class="o_dtsc_ai_actual_pixels">-</span></div>
+                                <div>輸入要求尺寸：<span class="o_dtsc_ai_expected_width_mm">-</span> x <span class="o_dtsc_ai_expected_height_mm">-</span> mm</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </t>
+        </template>
+    </data>
+</odoo>

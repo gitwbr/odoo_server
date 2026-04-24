@@ -81,6 +81,49 @@ class UploadController(http.Controller):
             return f"{current_time}-{requested_name.strip()}"
         return f"{current_time}-{os.path.basename(original_filename)}"
 
+    def _get_checkout_line_item_no(self, line):
+        ordered_lines = line.checkout_product_id.product_ids.sorted(lambda l: (l.sequence or 0, l.id))
+        if line.sequence:
+            return line.sequence
+        if line.id in ordered_lines.ids:
+            return ordered_lines.ids.index(line.id) + 1
+        return line.id
+
+    def _resolve_checkout_upload_folder(self, order):
+        partner = order.customer_id.commercial_partner_id
+        return self._sanitize_path_part(
+            partner.custom_init_name or partner.name or '其它',
+            '其它',
+        )
+
+    def _build_ai_check_base_filename(self, original_filename, line):
+        original_name = os.path.basename(original_filename or 'upload')
+        original_root, original_ext = os.path.splitext(original_name)
+        order_name = (line.checkout_product_id.name or '').strip() or 'A_ORDER'
+        item_no = self._get_checkout_line_item_no(line)
+        display_root = (
+            f"{order_name}-項次{item_no}-{(original_root or 'file').strip()}-"
+            f"{(line.product_width or '').strip()}x{(line.product_height or '').strip()}"
+        )
+        return self._build_shop_requested_filename(
+            original_filename,
+            f"{display_root}{original_ext}",
+        )
+
+    def _build_ai_check_check_filename(self, original_filename, line):
+        original_name = os.path.basename(original_filename or 'upload')
+        original_root, original_ext = os.path.splitext(original_name)
+        order_name = (line.checkout_product_id.name or '').strip() or 'A_ORDER'
+        item_no = self._get_checkout_line_item_no(line)
+        check_root = (
+            f"{order_name}-項次{item_no}-{(original_root or 'file').strip()}-"
+            f"{(line.product_width or '').strip()}x{(line.product_height or '').strip()}x1"
+        )
+        return self._build_shop_requested_filename(
+            original_filename,
+            f"{check_root}{original_ext}",
+        )
+
     def _resolve_shop_upload_folder(self, order):
         partner = order.partner_id.commercial_partner_id
         return self._sanitize_path_part(
@@ -88,7 +131,44 @@ class UploadController(http.Controller):
             '其它',
         )
 
-    def check_image(self, file_content, file_extension, filename):
+    def _get_request_ip(self):
+        forwarded_for = request.httprequest.headers.get('X-Forwarded-For')
+        if forwarded_for:
+            return forwarded_for.split(',')[0].strip()
+        return request.httprequest.remote_addr
+
+    def _create_ai_check_log(
+        self,
+        status,
+        message,
+        upload_file=None,
+        check_filename='',
+        image_info=None,
+        input_width='',
+        input_height='',
+    ):
+        user = request.env.user
+        customer_name = request.params.get('customer_name', '').strip()
+        image_info = image_info or {}
+        input_width = (input_width or request.params.get('width', '') or '').strip()
+        input_height = (input_height or request.params.get('height', '') or '').strip()
+        request.env['dtsc.ai.check.log'].sudo().create({
+            'user_id': user.id if user and user.id else False,
+            'partner_id': user.partner_id.id if user and user.partner_id else False,
+            'website_id': request.website.id if request.website else False,
+            'customer_name': customer_name or user.partner_id.name or user.name or '',
+            'original_filename': getattr(upload_file, 'filename', False) or '',
+            'checked_filename': check_filename or '',
+            'input_width': input_width,
+            'input_height': input_height,
+            'actual_width_mm': image_info.get('width_mm') or False,
+            'actual_height_mm': image_info.get('height_mm') or False,
+            'status': status,
+            'message': message or '',
+            'ip_address': self._get_request_ip(),
+        })
+
+    def check_image(self, file_content, file_extension, filename, expected_width=None, expected_height=None):
         # 收集所有錯誤的列表
         errors = []
         image_info = {}
@@ -163,45 +243,65 @@ class UploadController(http.Controller):
                     if not has_outlines:
                         _logger.warning('未檢測到文本對象，建議在Illustrator中確認')
 
-            # 檢查2：檢查文件名中的尺寸格式
-            # 新的正则表达式（用于自定义文件名格式：檔案名稱-材質-屬性1-屬性2...屬性n-寬x高x數量.擴展名）
-            size_pattern = r'(\d+(?:\.\d+)?)\s*[x×]\s*(\d+(?:\.\d+)?)\s*[x×]\s*(\d+)'
-
-            _logger.info('使用的正則表達式: %s', size_pattern)
-            _logger.info('檢查的文件名稱: %s', filename)
-
-            match = re.search(size_pattern, filename, re.IGNORECASE)
             width_mm = None
             height_mm = None
+            explicit_width = str(expected_width or '').strip()
+            explicit_height = str(expected_height or '').strip()
 
-            if not match:
-                _logger.warning('檔案名稱 %s 不包含有效的尺寸格式', filename)
-                errors.append('檔案名稱必須包含尺寸信息，格式如：檔案名稱-材質-屬性-寬x高x數量.擴展名')
-            else:
-                # 提取尺寸信息
+            if explicit_width and explicit_height:
                 try:
-                    width = float(match.group(1))
-                    height = float(match.group(2))
-                    quantity = int(match.group(3))  # 新增：提取数量
-                    # 新的文件名格式不包含单位，默认使用cm
-                    unit = 'cm'
-
-                    _logger.info('成功匹配尺寸信息：寬度=%s, 高度=%s, 數量=%s, 單位=%s',
-                                 width, height, quantity, unit)
-
-                    # 轉換為毫米
-                    if unit == 'cm':
-                        width_mm = width * 10
-                        height_mm = height * 10
-                    else:  # 已經是毫米
-                        width_mm = width
-                        height_mm = height
-
-                    _logger.info('檔案名稱中的尺寸: %sx%s%s (轉換為毫米: %sx%smm)',
-                                 width, height, unit, width_mm, height_mm)
+                    width = float(explicit_width)
+                    height = float(explicit_height)
+                    width_mm = width * 10
+                    height_mm = height * 10
+                    _logger.info(
+                        '使用顯式要求尺寸：寬度=%s, 高度=%s (轉換為毫米: %sx%smm)',
+                        width,
+                        height,
+                        width_mm,
+                        height_mm,
+                    )
                 except Exception as e:
-                    _logger.error('提取尺寸信息錯誤: %s', str(e))
-                    errors.append(f'無法從檔案名稱提取尺寸信息: {str(e)}')
+                    _logger.error('顯式尺寸解析錯誤: %s', str(e))
+                    errors.append(f'無法解析要求尺寸: {str(e)}')
+            else:
+                # 檢查2：檢查文件名中的尺寸格式
+                # 新的正则表达式（用于自定义文件名格式：檔案名稱-材質-屬性1-屬性2...屬性n-寬x高x數量.擴展名）
+                size_pattern = r'(\d+(?:\.\d+)?)\s*[x×]\s*(\d+(?:\.\d+)?)\s*[x×]\s*(\d+)'
+
+                _logger.info('使用的正則表達式: %s', size_pattern)
+                _logger.info('檢查的文件名稱: %s', filename)
+
+                match = re.search(size_pattern, filename, re.IGNORECASE)
+
+                if not match:
+                    _logger.warning('檔案名稱 %s 不包含有效的尺寸格式', filename)
+                    errors.append('檔案名稱必須包含尺寸信息，格式如：檔案名稱-材質-屬性-寬x高x數量.擴展名')
+                else:
+                    # 提取尺寸信息
+                    try:
+                        width = float(match.group(1))
+                        height = float(match.group(2))
+                        quantity = int(match.group(3))  # 新增：提取数量
+                        # 新的文件名格式不包含单位，默认使用cm
+                        unit = 'cm'
+
+                        _logger.info('成功匹配尺寸信息：寬度=%s, 高度=%s, 數量=%s, 單位=%s',
+                                     width, height, quantity, unit)
+
+                        # 轉換為毫米
+                        if unit == 'cm':
+                            width_mm = width * 10
+                            height_mm = height * 10
+                        else:  # 已經是毫米
+                            width_mm = width
+                            height_mm = height
+
+                        _logger.info('檔案名稱中的尺寸: %sx%s%s (轉換為毫米: %sx%smm)',
+                                     width, height, unit, width_mm, height_mm)
+                    except Exception as e:
+                        _logger.error('提取尺寸信息錯誤: %s', str(e))
+                        errors.append(f'無法從檔案名稱提取尺寸信息: {str(e)}')
 
             # 檢查3：檢查文件實際尺寸（只有在文件名格式正確時才檢查）
             if width_mm is not None and height_mm is not None:
@@ -394,7 +494,7 @@ class UploadController(http.Controller):
             if folder == "false":
                 folder = "其它"
 
-            _logger.info('處理第 %s/%s 個分片，檔案名稱: %s, 擴展名: %s, 檔案夾: %s', 
+            _logger.info('處理第 %s/%s 個分片，檔案名稱: %s, 擴展名: %s, 檔案夾: %s',
                       chunk_index + 1, total_chunks, user_filename, file_extension, folder)
 
             temp_folder = "/tmp/odoo/"  # 臨時檔案夾路徑
@@ -414,7 +514,7 @@ class UploadController(http.Controller):
                     current_time = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
                     new_filename = f"{current_time}.{file_extension}"
                     _logger.info('使用備用檔案名稱: %s', new_filename)
-                
+
                 with open(filename_storage_file, "w") as f:
                     f.write(new_filename)
             else:
@@ -645,6 +745,192 @@ class UploadController(http.Controller):
             'success': True,
             'message': 'File uploaded successfully',
             'filename': final_filename,
+        }, status=200)
+
+    @http.route('/ai/check_file', type='http', auth='public', methods=['POST'], website=True, csrf=False)
+    def ai_check_file(self):
+        if request.website.is_public_user():
+            return self._json_response({
+                'success': False,
+                'message': '請先登入後再檢測檔案',
+                'redirect_url': '/web/login?redirect=/ai',
+            }, status=403)
+
+        upload_file = request.httprequest.files.get('custom_file')
+        if not upload_file:
+            return self._json_response({
+                'success': False,
+                'message': '請先選擇檔案',
+            }, status=400)
+
+        requested_name = request.params.get('filename', '').strip()
+        check_filename = self._build_shop_requested_filename(upload_file.filename, requested_name)
+        _, file_extension = os.path.splitext(upload_file.filename or '')
+        file_content = upload_file.read()
+        check_result = self.check_image(file_content, file_extension, check_filename)
+
+        if not check_result.get('success'):
+            self._create_ai_check_log(
+                status='failed',
+                message=check_result.get('error', '檔案檢測失敗'),
+                upload_file=upload_file,
+                check_filename=check_filename,
+                image_info=check_result.get('image_info'),
+            )
+            return self._json_response({
+                'success': False,
+                'message': check_result.get('error', '檔案檢測失敗'),
+                'errors': check_result.get('errors', []),
+                'image_info': check_result.get('image_info'),
+                'checked_filename': check_filename,
+            }, status=200)
+
+        image_info = {k: v for k, v in check_result.items() if k != 'success'}
+        self._create_ai_check_log(
+            status='success',
+            message='檔案檢測通過',
+            upload_file=upload_file,
+            check_filename=check_filename,
+            image_info=image_info,
+        )
+        return self._json_response({
+            'success': True,
+            'message': '檔案檢測通過',
+            'checked_filename': check_filename,
+            'image_info': image_info,
+        }, status=200)
+
+    @http.route('/my/ai-check/item', type='http', auth='public', methods=['POST'], website=True, csrf=False)
+    def ai_member_check_item(self):
+        partner = request.env['res.partner']
+        partner_id = request.session.get('partner_id')
+
+        if partner_id:
+            partner = request.env['res.partner'].sudo().browse(partner_id)
+        elif not request.website.is_public_user() and request.env.user.partner_id:
+            partner = request.env.user.partner_id.sudo()
+
+        if not partner or not partner.exists():
+            return self._json_response({
+                'success': False,
+                'message': '請先登入後再檢測檔案',
+                'redirect_url': '/my/ai-check',
+            }, status=403)
+
+        upload_file = request.httprequest.files.get('custom_file')
+        if not upload_file:
+            return self._json_response({
+                'success': False,
+                'message': '請先選擇檔案',
+            }, status=400)
+
+        try:
+            line_id = int(request.params.get('line_id') or 0)
+        except (TypeError, ValueError):
+            line_id = 0
+        if not line_id:
+            return self._json_response({
+                'success': False,
+                'message': '缺少檢測項目資料',
+            }, status=400)
+
+        line = request.env['dtsc.checkoutline'].sudo().search([
+            ('id', '=', line_id),
+        ], limit=1)
+        if not line or not line.checkout_product_id:
+            return self._json_response({
+                'success': False,
+                'message': '找不到對應的訂單項目',
+            }, status=404)
+
+        order = line.checkout_product_id
+        if order.customer_id.id != partner.id or not (order.name or '').startswith('A'):
+            return self._json_response({
+                'success': False,
+                'message': '你沒有這筆案件的檢測權限',
+                'redirect_url': '/my/checkout-orders?order_prefix=A',
+            }, status=403)
+
+        width = (line.product_width or '').strip()
+        height = (line.product_height or '').strip()
+        if not width or not height:
+            return self._json_response({
+                'success': False,
+                'message': '此訂單項目沒有設定尺寸，無法檢測',
+            }, status=400)
+
+        upload_filename = self._build_ai_check_base_filename(upload_file.filename, line)
+        upload_folder = self._resolve_checkout_upload_folder(order)
+        _, file_extension = os.path.splitext(upload_file.filename or '')
+        file_content = upload_file.read()
+        check_filename = upload_filename
+        check_result = self.check_image(
+            file_content,
+            file_extension,
+            check_filename,
+            expected_width=width,
+            expected_height=height,
+        )
+
+        if not check_result.get('success'):
+            self._create_ai_check_log(
+                status='failed',
+                message=check_result.get('error', '檔案檢測失敗'),
+                upload_file=upload_file,
+                check_filename=check_filename,
+                image_info=check_result.get('image_info'),
+                input_width=width,
+                input_height=height,
+            )
+            return self._json_response({
+                'success': False,
+                'message': check_result.get('error', '檔案檢測失敗'),
+                'errors': check_result.get('errors', []),
+                'image_info': check_result.get('image_info'),
+                'checked_filename': check_filename,
+                'upload_filename': upload_filename,
+            }, status=200)
+
+        image_info = {k: v for k, v in check_result.items() if k != 'success'}
+        uploader = request.env['upload.model']
+        upload_success = uploader.upload_to_ftp(file_content, upload_filename, upload_folder)
+        if not upload_success:
+            self._create_ai_check_log(
+                status='failed',
+                message='檔案檢測通過，但 FTP 上傳失敗',
+                upload_file=upload_file,
+                check_filename=check_filename,
+                image_info=image_info,
+                input_width=width,
+                input_height=height,
+            )
+            return self._json_response({
+                'success': False,
+                'message': '檔案檢測通過，但 FTP 上傳失敗',
+                'checked_filename': check_filename,
+                'upload_filename': upload_filename,
+                'image_info': image_info,
+            }, status=200)
+
+        line.sudo().write({
+            'image_url': upload_filename,
+        })
+        self._create_ai_check_log(
+            status='success',
+            message='檔案檢測通過並已上傳',
+            upload_file=upload_file,
+            check_filename=check_filename,
+            image_info=image_info,
+            input_width=width,
+            input_height=height,
+        )
+        return self._json_response({
+            'success': True,
+            'message': '檔案檢測通過並已上傳',
+            'checked_filename': check_filename,
+            'upload_filename': upload_filename,
+            'upload_folder': upload_folder,
+            'image_info': image_info,
         }, status=200)
 
     @http.route('/dtsc/payment_upload_file', type='http', auth='user', methods=['POST'], csrf=False)
