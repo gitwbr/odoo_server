@@ -81,6 +81,7 @@ class CrmLead(models.Model):
     
     crm_comment_ids = fields.One2many("dtsc.crmcomment","crmlead_id")
     # crm_usercomment = fields.Many2many("dtsc.crmusercomment")
+    is_show = fields.Boolean(default=True) 
 
     @api.depends('checkout_id')
     def _compute_checkout_count(self):

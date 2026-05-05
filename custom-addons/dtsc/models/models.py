@@ -685,7 +685,7 @@ class PurchaseOrder(models.Model):
         ('4', '已轉應付'),
         ('5', '作廢'),
     ], string='狀態', default='1')
-    partner_id = fields.Many2one('res.partner', string='Vendor', required=False, change_default=True, tracking=True, domain="['|', ('company_id', '=', False), ('company_id', '=', company_id)]", help="You can find a vendor by its Name, TIN, Email or Internal Reference.")
+    partner_id = fields.Many2one('res.partner', string='供應商', required=False, change_default=True, tracking=True, domain="['|', ('company_id', '=', False), ('company_id', '=', company_id)]", help="You can find a vendor by its Name, TIN, Email or Internal Reference.")
     
     partner_display_name = fields.Char(string='Partner Display Name', compute='_compute_partner_display_name' ,store=True)
     custom_id = fields.Char(related = "partner_id.custom_id",string="供應商編號")
@@ -707,6 +707,29 @@ class PurchaseOrder(models.Model):
         ('no', '未簽核'),
         ('default','不顯示'),
     ], default='default',string='簽核')  
+    
+    @api.model
+    def open_my_purchase_orders(self):
+        domain = self._get_restricted_domain()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': '採購',
+            'res_model': 'purchase.order',
+            'view_mode': 'tree,form,kanban',
+            'domain': domain,
+            'context': {
+                'group_by': 'partner_display_name',
+                'search_default_no_5': 1,
+            }
+        }
+    
+    @api.model
+    def _get_restricted_domain(self):
+        if self.env.user.login == 'han.yang@coinimaging.com.tw':#該賬號特殊處理可以看到請購單
+            return [('my_state', 'in', ['1','2'])]
+        else:
+            # return [('my_state', '!=', '5')]
+            return []
     
     def action_view_picking(self):
         if self.is_sign == "no":
