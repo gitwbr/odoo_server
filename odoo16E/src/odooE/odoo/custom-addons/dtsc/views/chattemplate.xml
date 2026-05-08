@@ -139,6 +139,7 @@
 				<!-- <group expand="1" string="分組結果">			 -->
 					<field name="display_name_reportt" readonly="1"  />
 					<field name="name" readonly="1"  />
+					<field name="create_date" string="進單日" readonly="1"  />
 					<field name="delivery_date" readonly="1"  />
 					<field name="total_quantity" string="數量"  readonly="1"  />
 					<field name="total_size" string="才數"  readonly="1"  />
@@ -362,10 +363,12 @@
 		<field name="arch" type="xml">
 			<search>
 				<searchpanel>
-                    <field name="report_year" string="年" select="multi"/>
-                    <field name="report_month" string="月" context="{'group_by': 'report_year'}" select="multi"/>
+                    <field name="makeout_year" string="年" select="multi"/>
+                    <field name="makeout_month" string="月" context="{'group_by': 'report_year'}" select="multi"/>
 
             </searchpanel>
+			
+			<field name="search_line_name" string="所有訊息"/>
 			<filter string="當月數據" name="custom_26_to_25" 
 				domain="[('delivery_date', '>=', context.get('default_start_date')), ('delivery_date', '&lt;=', context.get('default_end_date'))]"/>	
 			</search>

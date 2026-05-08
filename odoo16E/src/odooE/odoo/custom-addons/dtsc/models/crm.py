@@ -710,7 +710,7 @@ class CheckoutInherit(models.Model):
                     'email': new_checkout.new_email,
                     'custom_contact_person': new_checkout.new_custom_contact_person,
                     'custom_fax':new_checkout.new_custom_fax,
-                    'property_payment_term_id' : new_checkout.new_property_payment_term_id,
+                    'property_payment_term_id' : new_checkout.new_property_payment_term_id.id,
                     'custom_pay_mode':new_checkout.new_custom_pay_mode,
                     'custom_invoice_form':new_checkout.new_custom_invoice_form,
                     'is_customer' : True,
