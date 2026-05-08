@@ -98,6 +98,40 @@ class MakeOut(models.Model):
     
     report_year = fields.Many2one("dtsc.year",string="年",related="checkout_id.report_year",store=True)
     report_month = fields.Many2one("dtsc.month",string="月",related="checkout_id.report_month",store=True)
+    makeout_year = fields.Many2one("dtsc.year",string="年",compute="_compute_year_month",store=True)
+    makeout_month = fields.Many2one("dtsc.month",string="月",compute="_compute_year_month",store=True)
+    
+    
+    @api.depends("create_date")
+    def _compute_year_month(self):
+        # invoice_due_date = self.env['ir.config_parameter'].sudo().get_param('dtsc.invoice_due_date')
+        tz = pytz.timezone("Asia/Taipei")  # 台湾 +8，如果你想用上海也可以 Asia/Shanghai
+        for record in self:
+            if not record.create_date:
+                record.makeout_year = False
+                record.makeout_month = False
+                continue        
+    # create_date 是 UTC，需要先转成 datetime
+            utc_date = fields.Datetime.to_datetime(record.create_date)
+
+            # Odoo 的 datetime 通常是 naive UTC，需要补上 UTC 时区
+            if utc_date.tzinfo is None:
+                utc_date = pytz.UTC.localize(utc_date)
+
+            # 转成 +8 时区
+            local_date = utc_date.astimezone(tz)
+
+            year_str = str(local_date.year)
+
+            # 如果你的 dtsc.month.name 是 01、02、03，用这个
+            month_str = local_date.strftime("%m")
+
+            year_record = self.env['dtsc.year'].search([('name', '=', year_str)], limit=1)
+            month_record = self.env['dtsc.month'].search([('name', '=', month_str)], limit=1)
+
+            record.makeout_year = year_record.id if year_record else False
+            record.makeout_month = month_record.id if month_record else False
+    
     @api.model
     def action_printexcel_makeout(self):
         # print(self._context)

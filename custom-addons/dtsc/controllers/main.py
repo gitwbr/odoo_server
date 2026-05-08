@@ -276,6 +276,10 @@ class Checkout(CheckoutPortalMixin, http.Controller):
     def public_web_order(self, **kwargs):
         return http.request.render('dtsc.public_web_order_page', {})
 
+    @http.route(['/check-image-resolution'], type='http', auth="public", website=True, sitemap=True)
+    def image_resolution_check(self, **kwargs):
+        return http.request.render('dtsc.image_resolution_check_page', {})
+
     @http.route(['/ai-entry'], type='http', auth="public", website=True, sitemap=False)
     def ai_entry(self, **kwargs):
         target_path = '/ai'

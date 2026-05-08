@@ -88,6 +88,7 @@ addons_backup/
 instances/
 client*/
 backup/
+docs/
 
 # 忽略日志和备份
 logs/
