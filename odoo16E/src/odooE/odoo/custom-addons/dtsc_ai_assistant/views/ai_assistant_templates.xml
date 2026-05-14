@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <template id="ai_assistant_floating_widget" inherit_id="website.layout" name="DTS-C AI Floating Assistant">
+            <xpath expr="//body" position="inside">
+                <div class="o_dtsc_ai_assistant o_dtsc_ai_float"
+                     data-query-url="/dtsc/ai_assistant/query"
+                     data-history-url="/dtsc/ai_assistant/history">
+                    <input type="checkbox" id="o_dtsc_ai_float_toggle" class="o_dtsc_ai_toggle"/>
+                    <label for="o_dtsc_ai_float_toggle" class="o_dtsc_ai_float_button" role="button" tabindex="0" aria-label="AI 助手">
+                        <span>AI</span>
+                        <strong>助手</strong>
+                    </label>
+                    <section class="o_dtsc_ai_float_panel" aria-hidden="true">
+                        <div class="o_dtsc_ai_resize_handle" title="拖曳調整大小"></div>
+                        <header>
+                            <div>
+                                <strong>AI 大圖訂單助手</strong>
+                            </div>
+                            <label for="o_dtsc_ai_float_toggle" class="o_dtsc_ai_close" role="button" tabindex="0" aria-label="關閉">×</label>
+                        </header>
+                        <div class="o_dtsc_ai_form" role="search">
+                            <div class="o_dtsc_ai_thread" aria-live="polite"></div>
+                            <div class="o_dtsc_ai_prompt_helper">
+                                <span>可直接問</span>
+                                <span class="o_dtsc_ai_prompt_chip">我的訂單</span>
+                                <span class="o_dtsc_ai_prompt_chip">我的 D 單</span>
+                                <span class="o_dtsc_ai_prompt_chip">生產中</span>
+                                <span class="o_dtsc_ai_prompt_chip">訂單明細</span>
+                            </div>
+                            <div class="o_dtsc_ai_input_row">
+                                <input class="o_dtsc_ai_question"
+                                       type="text"
+                                       placeholder="直接輸入問題"/>
+                                <button class="o_dtsc_ai_submit" type="button">查詢</button>
+                            </div>
+                        </div>
+                        <div class="o_dtsc_ai_tools d-none">
+                            <h2>可用工具</h2>
+                            <div class="o_dtsc_ai_tool_grid">
+                                <div class="o_dtsc_ai_tool_card">
+                                    <strong>search_checkout_orders</strong>
+                                    <span>搜尋大圖訂單</span>
+                                </div>
+                                <div class="o_dtsc_ai_tool_card">
+                                    <strong>get_checkout_order_detail</strong>
+                                    <span>查訂單明細</span>
+                                </div>
+                                <div class="o_dtsc_ai_tool_card">
+                                    <strong>scope_resolver</strong>
+                                    <span>限制查詢範圍</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="o_dtsc_ai_context"></div>
+                        <div class="o_dtsc_ai_answer"></div>
+                        <div class="o_dtsc_ai_status"></div>
+                        <div class="o_dtsc_ai_runtime d-none"></div>
+                        <div class="o_dtsc_ai_results"></div>
+                    </section>
+                </div>
+            </xpath>
+        </template>
+
+        <template id="ai_assistant_page" name="DTS-C AI Assistant Page">
+            <t t-call="website.layout">
+                <div class="o_dtsc_ai_assistant"
+                     data-query-url="/dtsc/ai_assistant/query"
+                     data-history-url="/dtsc/ai_assistant/history">
+                    <section class="o_dtsc_ai_hero">
+                        <div class="container">
+                            <div class="o_dtsc_ai_shell">
+                                <div class="o_dtsc_ai_badge">
+                                    <span t-esc="actor.get('label')"/>
+                                    <span>｜</span>
+                                    <span t-esc="actor.get('display_name')"/>
+                                </div>
+                                <h1>AI 大圖訂單助手</h1>
+                                <p>第一版先做只讀查詢：輸入大圖訂單號、客戶、案名或檔名，系統會依你的登入身份限制查詢範圍。</p>
+
+                                <div class="o_dtsc_ai_form" role="search">
+                                    <div class="o_dtsc_ai_thread" aria-live="polite"></div>
+                                    <div class="o_dtsc_ai_prompt_helper">
+                                        <span>可直接問</span>
+                                        <span class="o_dtsc_ai_prompt_chip">我的訂單</span>
+                                        <span class="o_dtsc_ai_prompt_chip">我的 D 單</span>
+                                        <span class="o_dtsc_ai_prompt_chip">生產中</span>
+                                        <span class="o_dtsc_ai_prompt_chip">訂單明細</span>
+                                    </div>
+                                    <div class="o_dtsc_ai_input_row">
+                                        <input class="o_dtsc_ai_question"
+                                               type="text"
+                                               placeholder="直接輸入問題"/>
+                                        <button class="o_dtsc_ai_submit" type="button">查詢</button>
+                                    </div>
+                                </div>
+
+                                <div t-attf-class="o_dtsc_ai_tools #{'' if show_debug else 'd-none'}">
+                                    <h2>目前可用工具</h2>
+                                    <div class="o_dtsc_ai_tool_grid">
+                                        <div class="o_dtsc_ai_tool_card">
+                                            <strong>search_checkout_orders</strong>
+                                            <span>依客戶、案名、檔名、狀態搜尋大圖訂單。</span>
+                                        </div>
+                                        <div class="o_dtsc_ai_tool_card">
+                                            <strong>get_checkout_order_detail</strong>
+                                            <span>依訂單號查詢大圖訂單與產品明細。</span>
+                                        </div>
+                                        <div class="o_dtsc_ai_tool_card">
+                                            <strong>scope_resolver</strong>
+                                            <span>依登入身份限制查詢範圍，避免跨客戶查資料。</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="o_dtsc_ai_context"></div>
+                                <div class="o_dtsc_ai_answer"></div>
+                                <div class="o_dtsc_ai_status"></div>
+                                <div t-attf-class="o_dtsc_ai_runtime #{'' if show_debug else 'd-none'}"></div>
+                                <div class="o_dtsc_ai_results"></div>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+            </t>
+        </template>
+    </data>
+</odoo>

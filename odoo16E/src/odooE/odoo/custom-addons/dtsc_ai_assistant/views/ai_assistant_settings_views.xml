@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <record id="view_dtsc_ai_assistant_settings_form" model="ir.ui.view">
+            <field name="name">dtsc.ai.assistant.settings.form</field>
+            <field name="model">dtsc.ai.assistant.settings</field>
+            <field name="arch" type="xml">
+                <form string="AI助手設定" create="0" edit="1">
+                    <sheet>
+                        <div class="oe_title">
+                            <h1>AI助手設定</h1>
+                            <p class="text-muted">
+                                此頁會寫入 AI Gateway 使用的系統參數，不需要開啟 debug 模式。
+                            </p>
+                        </div>
+                        <group>
+                            <group string="模型設定">
+                                <field name="provider"/>
+                                <field name="model_name" placeholder="例如：gpt-4o-mini"/>
+                                <field name="api_key" password="True" placeholder="sk-..."/>
+                                <field name="base_url" placeholder="OpenAI 官方可留空；第三方 compatible 服務才填"/>
+                            </group>
+                            <group string="Gateway 服務">
+                                <field name="gateway_url" placeholder="http://127.0.0.1:8071/v1/agent/run"/>
+                                <field name="gateway_token" password="True" placeholder="留空保存時自動產生"/>
+                                <field name="odoo_base_url" placeholder="留空時使用 web.base.url"/>
+                                <div class="text-muted">
+                                    Gateway 服務隨專案部署，但以獨立 Python 3.11 進程執行；模型與 API Key 仍由本頁配置。
+                                </div>
+                            </group>
+                        </group>
+                        <group>
+                            <group string="執行設定">
+                                <field name="timeout"/>
+                                <field name="max_retries"/>
+                                <field name="temperature"/>
+                                <div class="text-muted">
+                                    Temperature 控制模型回答隨機性；大圖訂單查詢建議維持 0。
+                                </div>
+                            </group>
+                        </group>
+                        <group string="對應系統參數">
+                            <div>
+                                <p><code>dtsc_ai_gateway.service_url</code></p>
+                                <p><code>dtsc_ai_gateway.service_token</code></p>
+                                <p><code>dtsc_ai_gateway.model</code></p>
+                                <p><code>dtsc_ai_gateway.api_key</code></p>
+                                <p><code>dtsc_ai_gateway.base_url</code></p>
+                            </div>
+                        </group>
+                    </sheet>
+                    <footer>
+                        <button name="action_save" string="保存" type="object" class="btn-primary"/>
+                        <button string="關閉" special="cancel" class="btn-secondary"/>
+                    </footer>
+                </form>
+            </field>
+        </record>
+
+        <record id="action_dtsc_ai_assistant_settings" model="ir.actions.act_window">
+            <field name="name">AI助手設定</field>
+            <field name="res_model">dtsc.ai.assistant.settings</field>
+            <field name="view_mode">form</field>
+            <field name="view_id" ref="view_dtsc_ai_assistant_settings_form"/>
+            <field name="target">current</field>
+            <field name="context">{'form_view_initial_mode': 'edit'}</field>
+        </record>
+
+        <menuitem
+            id="menu_dtsc_ai_assistant_settings"
+            name="AI助手設定"
+            parent="dtsc.menu_setting"
+            action="action_dtsc_ai_assistant_settings"
+            sequence="17"
+            groups="dtsc.group_dtsc_gly"
+        />
+    </data>
+</odoo>

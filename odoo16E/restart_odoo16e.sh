@@ -7,10 +7,12 @@ WEB_NAME="odoo16e-web"
 IMAGE_NAME="odoo16e-runner"
 DB_NAME="${DB_NAME:-coinimaging}"
 HEALTH_URL="${HEALTH_URL:-http://127.0.0.1:8070/web/login}"
+AI_GATEWAY_HEALTH_URL="${AI_GATEWAY_HEALTH_URL:-http://127.0.0.1:8071/health}"
 WAIT_SECONDS="${WAIT_SECONDS:-120}"
 
 UPGRADE_MODULES=""
 REFRESH_GROUPS=false
+FULL_UPGRADE_MODULES="dtsc,dtsc_ai_gateway,dtsc_ai_assistant"
 
 usage() {
   cat <<EOF
@@ -20,7 +22,7 @@ Usage:
 Options:
   --upgrade [modules]   Upgrade modules before starting web. Default module is dtsc.
   --refresh-groups      Refresh dynamic user groups view after restart.
-  --full                Equivalent to: --upgrade dtsc --refresh-groups
+  --full                Equivalent to: --upgrade ${FULL_UPGRADE_MODULES}
   --db NAME             Override database name. Default: ${DB_NAME}
   --wait SECONDS        Wait timeout for web health check. Default: ${WAIT_SECONDS}
   -h, --help            Show this help.
@@ -30,6 +32,7 @@ Examples:
   $(basename "$0") --upgrade dtsc
   $(basename "$0") --refresh-groups
   $(basename "$0") --full
+  $(basename "$0") --full --refresh-groups
 EOF
 }
 
@@ -73,8 +76,7 @@ while [[ $# -gt 0 ]]; do
       shift
       ;;
     --full)
-      UPGRADE_MODULES="dtsc"
-      REFRESH_GROUPS=true
+      UPGRADE_MODULES="$FULL_UPGRADE_MODULES"
       shift
       ;;
     --db)
@@ -127,6 +129,17 @@ until curl -fsS "$HEALTH_URL" >/dev/null 2>&1; do
   if (( SECONDS >= deadline )); then
     echo "Timed out waiting for $HEALTH_URL" >&2
     docker logs --tail 100 "$WEB_NAME" >&2 || true
+    exit 1
+  fi
+  sleep 2
+done
+
+echo "Waiting for AI gateway service..."
+deadline=$((SECONDS + WAIT_SECONDS))
+until curl -fsS "$AI_GATEWAY_HEALTH_URL" >/dev/null 2>&1; do
+  if (( SECONDS >= deadline )); then
+    echo "Timed out waiting for $AI_GATEWAY_HEALTH_URL" >&2
+    docker logs --tail 100 odoo16e-ai-gateway >&2 || true
     exit 1
   fi
   sleep 2

@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <record id="view_dtsc_ai_gateway_log_tree" model="ir.ui.view">
+            <field name="name">dtsc.ai.gateway.log.tree</field>
+            <field name="model">dtsc.ai.gateway.log</field>
+            <field name="arch" type="xml">
+                <tree string="AI Gateway Log" create="0" edit="0" delete="0">
+                    <field name="create_date" string="時間"/>
+                    <field name="status"/>
+                    <field name="user_id"/>
+                    <field name="partner_id"/>
+                    <field name="provider"/>
+                    <field name="model_name"/>
+                    <field name="tool_names"/>
+                    <field name="duration_ms"/>
+                </tree>
+            </field>
+        </record>
+
+        <record id="view_dtsc_ai_gateway_log_form" model="ir.ui.view">
+            <field name="name">dtsc.ai.gateway.log.form</field>
+            <field name="model">dtsc.ai.gateway.log</field>
+            <field name="arch" type="xml">
+                <form string="AI Gateway Log" create="0" edit="0" delete="0">
+                    <sheet>
+                        <group>
+                            <group>
+                                <field name="create_date" string="時間"/>
+                                <field name="status"/>
+                                <field name="user_id"/>
+                                <field name="partner_id"/>
+                                <field name="provider"/>
+                                <field name="model_name"/>
+                                <field name="duration_ms"/>
+                            </group>
+                            <group>
+                                <field name="tool_names"/>
+                                <field name="error_message"/>
+                            </group>
+                        </group>
+                        <group string="請求">
+                            <field name="request_text" nolabel="1"/>
+                        </group>
+                        <group string="回覆">
+                            <field name="response_text" nolabel="1"/>
+                        </group>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <record id="action_dtsc_ai_gateway_log" model="ir.actions.act_window">
+            <field name="name">AI Gateway Log</field>
+            <field name="res_model">dtsc.ai.gateway.log</field>
+            <field name="view_mode">tree,form</field>
+        </record>
+
+        <menuitem id="menu_dtsc_ai_gateway_root"
+                  name="AI Gateway"
+                  parent="base.menu_custom"
+                  sequence="90"
+                  groups="base.group_system"/>
+        <menuitem id="menu_dtsc_ai_gateway_log"
+                  name="呼叫日誌"
+                  parent="menu_dtsc_ai_gateway_root"
+                  action="action_dtsc_ai_gateway_log"
+                  sequence="10"
+                  groups="base.group_system"/>
+    </data>
+</odoo>
+

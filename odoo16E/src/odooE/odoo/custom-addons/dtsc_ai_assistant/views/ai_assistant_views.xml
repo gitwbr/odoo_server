@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <record id="action_dtsc_ai_assistant_page" model="ir.actions.act_url">
+            <field name="name">AI 助手</field>
+            <field name="url">/dtsc/ai_assistant</field>
+            <field name="target">self</field>
+        </record>
+
+        <menuitem id="menu_dtsc_ai_assistant"
+                  name="AI 助手"
+                  parent="dtsc.menu_root"
+                  action="action_dtsc_ai_assistant_page"
+                  sequence="6"
+                  groups="dtsc.group_dtsc_mg,dtsc.group_dtsc_yw,dtsc.group_dtsc_kj,dtsc.group_dtsc_sc,dtsc.group_dtsc_ck"/>
+
+        <record id="view_dtsc_ai_assistant_session_tree" model="ir.ui.view">
+            <field name="name">dtsc.ai.assistant.session.tree</field>
+            <field name="model">dtsc.ai.assistant.session</field>
+            <field name="arch" type="xml">
+                <tree string="AI 助手記錄" create="0" edit="0" delete="0">
+                    <field name="create_date" string="時間"/>
+                    <field name="status"/>
+                    <field name="actor_type"/>
+                    <field name="user_id"/>
+                    <field name="partner_id"/>
+                    <field name="question"/>
+                    <field name="thread_id"/>
+                    <field name="gateway_log_id"/>
+                </tree>
+            </field>
+        </record>
+
+        <record id="view_dtsc_ai_assistant_session_form" model="ir.ui.view">
+            <field name="name">dtsc.ai.assistant.session.form</field>
+            <field name="model">dtsc.ai.assistant.session</field>
+            <field name="arch" type="xml">
+                <form string="AI 助手記錄" create="0" edit="0" delete="0">
+                    <sheet>
+                        <group>
+                            <group>
+                                <field name="create_date" string="時間"/>
+                                <field name="status"/>
+                                <field name="actor_type"/>
+                                <field name="user_id"/>
+                                <field name="partner_id"/>
+                                <field name="thread_id"/>
+                                <field name="gateway_log_id"/>
+                            </group>
+                        </group>
+                        <group string="問題">
+                            <field name="question" nolabel="1"/>
+                        </group>
+                        <group string="回答">
+                            <field name="answer" nolabel="1"/>
+                        </group>
+                        <group string="查詢資料">
+                            <field name="result_json" nolabel="1"/>
+                        </group>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <record id="action_dtsc_ai_assistant_session" model="ir.actions.act_window">
+            <field name="name">AI 助手記錄</field>
+            <field name="res_model">dtsc.ai.assistant.session</field>
+            <field name="view_mode">tree,form</field>
+        </record>
+
+        <menuitem id="menu_dtsc_ai_assistant_session"
+                  name="AI 助手記錄"
+                  parent="menu_dtsc_ai_assistant"
+                  action="action_dtsc_ai_assistant_session"
+                  sequence="20"
+                  groups="base.group_system"/>
+
+        <!-- Keep dtsc_ai_gateway reusable, but place its logs under this business entry when
+             the DTS-C assistant module is installed. -->
+        <record id="dtsc_ai_gateway.menu_dtsc_ai_gateway_root" model="ir.ui.menu">
+            <field name="active" eval="False"/>
+        </record>
+
+        <record id="dtsc_ai_gateway.menu_dtsc_ai_gateway_log" model="ir.ui.menu">
+            <field name="name">Gateway 呼叫日誌</field>
+            <field name="parent_id" ref="menu_dtsc_ai_assistant"/>
+            <field name="sequence">30</field>
+        </record>
+    </data>
+</odoo>
