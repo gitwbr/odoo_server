@@ -10,15 +10,15 @@
 		  break-inside:avoid !important;
 		}
 
-		/* 明细列：固定行高 78px，足够显示 3 行（含行距） */
+		/* 明细列：固定行高 92px，足够显示 3 行（含行距） */
 		.report-crm-checkout-detail .pdf-row,
 		.report-crm-checkout-detail .row.pdf-row.fixed-3{
 		  display:table !important;
 		  width:100% !important;
 		  table-layout:fixed !important;
-		  height:78px !important;
-		  min-height:78px !important;
-		  max-height:78px !important;
+		  height:92px !important;
+		  min-height:92px !important;
+		  max-height:92px !important;
 		  margin:0 !important;
 		  box-sizing:border-box !important;
 		}
@@ -27,9 +27,9 @@
 		  display:table-cell !important;
 		  float:none !important;
 		  vertical-align:middle !important;
-		  height:78px !important;
-		  min-height:78px !important;
-		  max-height:78px !important;
+		  height:92px !important;
+		  min-height:92px !important;
+		  max-height:92px !important;
 		  padding:0 2mm 0 2mm !important;
 		  margin:0 !important;
 		  overflow:hidden !important;
@@ -37,15 +37,15 @@
 		}
 
 		.report-crm-checkout-detail .cell-3{
-		  height:78px !important;
-		  max-height:78px !important;
-		  min-height:78px !important;
+		  height:92px !important;
+		  max-height:92px !important;
+		  min-height:92px !important;
 		  margin:0 !important;
 		  padding:0 !important;
 		  overflow:hidden !important;
 		  box-sizing:border-box !important;
 		}
-		/* 多行格：行高 24px，3 行=72px，不超出 78px */
+		/* 多行格：行高 24px，3 行=72px，不超出 92px */
 		.report-crm-checkout-detail .cell-3.multi,
 		.report-crm-checkout-detail .cell-3.multi *{
 		  margin:0 !important;
@@ -73,22 +73,22 @@
 		  .report-crm-checkout-detail .pdf-row,
 		  .report-crm-checkout-detail .row.pdf-row.fixed-3{
 		    display:table !important;
-		    height:78px !important;
-		    min-height:78px !important;
-		    max-height:78px !important;
+		    height:92px !important;
+		    min-height:92px !important;
+		    max-height:92px !important;
 		  }
 		  .report-crm-checkout-detail .pdf-row > .col,
 		  .report-crm-checkout-detail .pdf-row > [class*="col-"]{
-		    height:78px !important;
-		    min-height:78px !important;
-		    max-height:78px !important;
+		    height:92px !important;
+		    min-height:92px !important;
+		    max-height:92px !important;
 		    padding:0 2mm 0 2mm !important;
 		    margin:0 !important;
 		  }
 		  .report-crm-checkout-detail .cell-3{
-		    height:78px !important;
-		    min-height:78px !important;
-		    max-height:78px !important;
+		    height:92px !important;
+		    min-height:92px !important;
+		    max-height:92px !important;
 		    margin:0 !important;
 		    padding:0 !important;
 		  }
@@ -181,7 +181,7 @@
 								<t t-set="has_chengben" t-value="doc.checkout_order_type == 'd' and not doc.is_sign and doc.checkout_order_state == 'waiting_confirmation' and (order.crm_chengben_comment or (order.crm_chengben or 0) != 0)"/>
 								<t t-set="row_count_after" t-value="row_count + 1 + (1 if has_chengben else 0)"/>
 								<!-- 换页后（累计13、29、45…行之后）先输出表头 -->
-								<t t-if="row_count == 13 or ((row_count - 13) % 16 == 0 and row_count &gt; 13)">
+								<t t-if="row_count == 11 or ((row_count - 11) % 14 == 0 and row_count &gt; 11)">
 									<div class="row" style="border-bottom: 2px solid black; margin-bottom:10px;">
 										<div class="col text-center" style="flex: 1;">項</div>
 										<div class="col text-center" style="flex: 4;">製作内容</div>
@@ -198,7 +198,7 @@
 									</div>
 								</t>
 								<div class="keep-together">
-								<div class="row pdf-row fixed-3" style="border-bottom:1px solid lightgray; height:78px; min-height:78px;">
+								<div class="row pdf-row fixed-3" style="border-bottom:1px solid lightgray; height:92px; min-height:92px;">
 									<div class="col text-center" style="flex: 1;">
 										<div class="cell-3 center">
 											<span t-field="order.sequence" />
@@ -284,7 +284,7 @@
 									<t t-if="doc.checkout_order_state == 'waiting_confirmation'">
 										<t t-if="order.crm_chengben_comment or (order.crm_chengben or 0) != 0">
 											<div class="keep-together">
-											<div class="row pdf-row fixed-3" style="border-bottom:1px solid lightgray; height:78px; min-height:78px;">
+											<div class="row pdf-row fixed-3" style="border-bottom:1px solid lightgray; height:92px; min-height:92px;">
 
 												<div class="col text-center" style="flex: 10;">
 													<div class="cell-3 multi">
@@ -307,7 +307,7 @@
 									</t>
 								</t>
 								<!-- 第一页 13 行后换页，之后每 16 行换页（行数含成本行） -->
-								<t t-if="row_count_after == 13 or ((row_count_after - 13) % 16 == 0 and row_count_after &gt; 13)">
+								<t t-if="row_count_after == 11 or ((row_count_after - 11) % 14 == 0 and row_count_after &gt; 11)">
 									<div style="page-break-after:always;"></div>
 								</t>
 								<t t-set="row_count" t-value="row_count_after"/>
@@ -622,15 +622,15 @@
 		  break-inside:avoid !important;
 		}
 
-		/* 明细列：固定行高 78px，足够显示 3 行（含行距） */
+		/* 明细列：固定行高 92px，足够显示 3 行（含行距） */
 		.report-crm-checkout-detail .pdf-row,
 		.report-crm-checkout-detail .row.pdf-row.fixed-3{
 		  display:table !important;
 		  width:100% !important;
 		  table-layout:fixed !important;
-		  height:78px !important;
-		  min-height:78px !important;
-		  max-height:78px !important;
+		  height:92px !important;
+		  min-height:92px !important;
+		  max-height:92px !important;
 		  margin:0 !important;
 		  box-sizing:border-box !important;
 		}
@@ -639,9 +639,9 @@
 		  display:table-cell !important;
 		  float:none !important;
 		  vertical-align:middle !important;
-		  height:78px !important;
-		  min-height:78px !important;
-		  max-height:78px !important;
+		  height:92px !important;
+		  min-height:92px !important;
+		  max-height:92px !important;
 		  padding:0 2mm 0 2mm !important;
 		  margin:0 !important;
 		  overflow:hidden !important;
@@ -649,15 +649,15 @@
 		}
 
 		.report-crm-checkout-detail .cell-3{
-		  height:78px !important;
-		  max-height:78px !important;
-		  min-height:78px !important;
+		  height:92px !important;
+		  max-height:92px !important;
+		  min-height:92px !important;
 		  margin:0 !important;
 		  padding:0 !important;
 		  overflow:hidden !important;
 		  box-sizing:border-box !important;
 		}
-		/* 多行格：行高 24px，3 行=72px，不超出 78px */
+		/* 多行格：行高 24px，3 行=72px，不超出 92px */
 		.report-crm-checkout-detail .cell-3.multi,
 		.report-crm-checkout-detail .cell-3.multi *{
 		  margin:0 !important;
@@ -685,22 +685,22 @@
 		  .report-crm-checkout-detail .pdf-row,
 		  .report-crm-checkout-detail .row.pdf-row.fixed-3{
 		    display:table !important;
-		    height:78px !important;
-		    min-height:78px !important;
-		    max-height:78px !important;
+		    height:92px !important;
+		    min-height:92px !important;
+		    max-height:92px !important;
 		  }
 		  .report-crm-checkout-detail .pdf-row > .col,
 		  .report-crm-checkout-detail .pdf-row > [class*="col-"]{
-		    height:78px !important;
-		    min-height:78px !important;
-		    max-height:78px !important;
+		    height:92px !important;
+		    min-height:92px !important;
+		    max-height:92px !important;
 		    padding:0 2mm 0 2mm !important;
 		    margin:0 !important;
 		  }
 		  .report-crm-checkout-detail .cell-3{
-		    height:78px !important;
-		    min-height:78px !important;
-		    max-height:78px !important;
+		    height:92px !important;
+		    min-height:92px !important;
+		    max-height:92px !important;
 		    margin:0 !important;
 		    padding:0 !important;
 		  }
@@ -793,7 +793,7 @@
 								<t t-set="has_chengben" t-value="doc.checkout_order_type == 'd' and not doc.is_sign and doc.checkout_order_state == 'waiting_confirmation' and (order.crm_chengben_comment or (order.crm_chengben or 0) != 0)"/>
 								<t t-set="row_count_after" t-value="row_count + 1 + (1 if has_chengben else 0)"/>
 								<!-- 换页后（累计13、29、45…行之后）先输出表头 -->
-								<t t-if="row_count == 13 or ((row_count - 13) % 16 == 0 and row_count &gt; 13)">
+								<t t-if="row_count == 11 or ((row_count - 11) % 14 == 0 and row_count &gt; 11)">
 									<div class="row" style="border-bottom: 2px solid black; margin-bottom:10px;">
 										<div class="col text-center" style="flex: 1;">項</div>
 										<div class="col text-center" style="flex: 4;">製作内容</div>
@@ -810,7 +810,7 @@
 									</div>
 								</t>
 								<div class="keep-together">
-								<div class="row pdf-row fixed-3" style="border-bottom:1px solid lightgray; height:78px; min-height:78px;">
+								<div class="row pdf-row fixed-3" style="border-bottom:1px solid lightgray; height:92px; min-height:92px;">
 									<div class="col text-center" style="flex: 1;">
 										<div class="cell-3 center">
 											<span t-field="order.sequence" />
@@ -896,7 +896,7 @@
 									<t t-if="doc.checkout_order_state == 'waiting_confirmation'">
 										<t t-if="order.crm_chengben_comment or (order.crm_chengben or 0) != 0">
 											<div class="keep-together">
-											<div class="row pdf-row fixed-3" style="border-bottom:1px solid lightgray; height:78px; min-height:78px;">
+											<div class="row pdf-row fixed-3" style="border-bottom:1px solid lightgray; height:92px; min-height:92px;">
 
 												<div class="col text-center" style="flex: 10;">
 													<div class="cell-3 multi">
@@ -919,7 +919,7 @@
 									</t>
 								</t>
 								<!-- 第一页 13 行后换页，之后每 16 行换页（行数含成本行） -->
-								<t t-if="row_count_after == 13 or ((row_count_after - 13) % 16 == 0 and row_count_after &gt; 13)">
+								<t t-if="row_count_after == 11 or ((row_count_after - 11) % 14 == 0 and row_count_after &gt; 11)">
 									<div style="page-break-after:always;"></div>
 								</t>
 								<t t-set="row_count" t-value="row_count_after"/>

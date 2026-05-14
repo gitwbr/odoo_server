@@ -411,7 +411,7 @@
 										<field name="product_atts"  options="{'no_create': True, 'no_create_edit': True}" widget="many2many_tags" domain="[('id' , 'in' , allowed_product_atts )]"/> 
 										<button name="new_aftermake" string="後"  type="object" class="btn-primary"/>
 										<field name="multi_chose_ids" style="width:100px;white-space: normal;" />
-										<field name="install_price" attrs="{'invisible': [('parent.checkout_order_state', 'not in', ['waiting_confirmation'])]}" />
+										<field name="install_price" groups="dtsc.group_dtsc_yw,dtsc.group_dtsc_kj" attrs="{'invisible': [('parent.checkout_order_state', 'not in', ['waiting_confirmation'])]}" />
 										<field name="quantity" sum="數量" />
 										<field name="quantity_peijian" />
 										<field name="single_units" />
