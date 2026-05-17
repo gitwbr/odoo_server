@@ -323,6 +323,16 @@ class UploadController(http.Controller):
                             return False, "larger"
                     return True, "ok"
 
+                def get_pdf_work_area_rect(page):
+                    """Return the Illustrator/PDF work area box, excluding bleed when available."""
+                    for box_name in ('trimbox', 'artbox'):
+                        rect = getattr(page, box_name, None)
+                        if callable(rect):
+                            rect = rect()
+                        if rect and rect.width > 0 and rect.height > 0:
+                            return rect, box_name
+                    return page.rect, 'rect'
+
                 # 創建一個字節流對象
                 file_stream = io.BytesIO(file_content)
                 _logger.info('開始檢查圖片檔案，檔案擴展名: %s', file_extension)
@@ -335,15 +345,15 @@ class UploadController(http.Controller):
                         doc = fitz.open(stream=file_content, filetype="pdf")
                         if doc.page_count > 0:
                             page = doc[0]
-                            rect = page.rect
+                            rect, pdf_box_name = get_pdf_work_area_rect(page)
                             width_px = rect.width
                             height_px = rect.height
                             width_mm_actual = rect.width * 0.352778  # 轉換為毫米
                             height_mm_actual = rect.height * 0.352778  # 轉換為毫米
                             doc.close()
 
-                            _logger.info('AI/PDF檔案實際尺寸: %sx%s像素, %sx%s毫米',
-                                         width_px, height_px, width_mm_actual, height_mm_actual)
+                            _logger.info('AI/PDF工作區尺寸(%s): %sx%s點, %sx%s毫米',
+                                         pdf_box_name, width_px, height_px, width_mm_actual, height_mm_actual)
 
                             # 保存圖片信息
                             image_info = {
@@ -351,6 +361,7 @@ class UploadController(http.Controller):
                                 'height_px': height_px,
                                 'width_mm': width_mm_actual,
                                 'height_mm': height_mm_actual,
+                                'pdf_box': pdf_box_name,
                                 'filename_size': {
                                     'width_mm': width_mm,
                                     'height_mm': height_mm
