@@ -12,7 +12,7 @@ The system SHALL provide a backend menu item named `概覽畫面` in the `印刷
 #### Scenario: Phase 1 page shell
 - **GIVEN** Phase 1 is implemented
 - **WHEN** the user opens `概覽畫面`
-- **THEN** the system SHALL show a dashboard shell with KPI, chart, ranking, and alert sections
+- **THEN** the system SHALL show a dashboard shell with a clearly separated quick menu, filter area, KPI area, category chart area, ranking area, and alert area
 - **AND** the system SHALL NOT require full statistical data to be implemented yet
 
 ### Requirement: Phased Delivery
@@ -28,29 +28,52 @@ The system SHALL deliver the overview dashboard in multiple phases, with Phase 1
 - **THEN** the system SHALL add data blocks according to the approved phase plan
 - **AND** each data block SHALL declare its source model and metric口徑
 
+### Requirement: Quick Menu And Filter Separation
+The system SHALL visually separate quick navigation menus from global filters.
+
+#### Scenario: Quick menu is separate from filters
+- **WHEN** the overview page is displayed
+- **THEN** the system SHALL show a quick menu for major business areas such as total overview, big orders, work order status, receivables/payables, purchase, star products, material consumption, people/administration, and alerts
+- **AND** the system SHALL show filters in a separate area for date range, customer, salesperson, product, category, and status
+
+#### Scenario: Menu category chart groups
+- **WHEN** a user selects or navigates to a quick menu category
+- **THEN** the system SHALL present multiple chart blocks for that business category
+- **AND** the chart blocks SHALL be visually more technology-oriented than plain Odoo native lists while still fitting the backend layout
+
 ### Requirement: Big Order Metrics
 The system SHALL support overview metrics for `dtsc.checkout` big orders.
 
 #### Scenario: Big order KPI
 - **WHEN** the overview loads big order metrics
-- **THEN** the system SHALL be able to show order count, order state distribution, order type distribution, untaxed amount, tax amount, total amount, total quantity, total units, and overdue-not-delivered count
+- **THEN** the system SHALL be able to show order count, order state distribution, order type distribution, untaxed amount, tax amount, total amount, total quantity, total units, mother-order delivery progress, and overdue-not-delivered count
 - **AND** the metrics SHALL be based on `dtsc.checkout` fields such as `checkout_order_state`, `checkout_order_type`, `record_price_and_construction_charge`, `tax_of_price`, `total_price_added_tax`, `quantity`, `unit_all`, `estimated_date`, and `is_delivery`
 
 ### Requirement: Delivery Metrics
-The system SHALL support overview metrics for delivery orders and delivery progress.
+The system SHALL support delivery detail analysis as an extension of big-order delivery metrics.
 
 #### Scenario: Delivery KPI
 - **WHEN** the overview loads delivery metrics
-- **THEN** the system SHALL be able to show delivery order count, generated delivery orders, not-yet-generated deliveries, today deliveries, overdue deliveries, delivery quantity, and delivery units
-- **AND** the metrics SHALL be based on `dtsc.deliveryorder` and `dtsc.checkout` delivery fields
+- **THEN** the system SHALL be able to show delivery detail source distribution, delivery quantity, delivery units, and delivery method distribution when the delivery detail extension is implemented
+- **AND** the metrics SHALL be based on `dtsc.deliveryorder`, `dtsc.deliveryorderline.make_orderid`, and linked `dtsc.checkout` records
+- **AND** S delivery detail analysis SHALL NOT replace the mother-order delivery metrics because B/C/G/T records are downstream extension orders, not replacements for the original checkout
+
+### Requirement: Work Order Status Metrics
+The system SHALL support overview metrics for B/C/G/T downstream work orders generated from big orders.
+
+#### Scenario: Work order KPI
+- **WHEN** the overview loads work order status metrics
+- **THEN** the system SHALL be able to show B internal work order, C outsourcing work order, G subcontract order, and T installation order demand, generated count, pending conversion count, pending completion count, completed count, and status distribution
+- **AND** the metrics SHALL use `dtsc.checkoutline` demand flags and downstream models linked by `checkout_id`
 
 ### Requirement: Receivable Metrics
-The system SHALL support overview metrics for receivable status and receivable amounts.
+The system SHALL support overview metrics for receivable invoice amounts.
 
 #### Scenario: Receivable KPI
 - **WHEN** the overview loads receivable metrics
-- **THEN** the system SHALL be able to show price-reviewed orders, receivable-assigned orders, receivable amount, tax category distribution, and billing month distribution
-- **AND** the metrics SHALL be based on `dtsc.checkout.checkout_order_state`, `dtsc.checkout.invoice_origin`, `dtsc.checkout.report_year`, `dtsc.checkout.report_month`, and related `account.move` customer invoices
+- **THEN** the system SHALL be able to show receivable invoice count, receivable total, receivable trend, and receivable customer ranking
+- **AND** the metrics SHALL be based on `account.move` records where `move_type = out_invoice`, scoped by `invoice_date`, using `total_price`/`amount_total_signed` and `partner_id`
+- **AND** the system SHALL NOT present unpaid/paid progress for receivables unless a real collection workflow is introduced
 
 ### Requirement: Purchase Metrics
 The system SHALL support overview metrics for purchase orders.
@@ -61,12 +84,21 @@ The system SHALL support overview metrics for purchase orders.
 - **AND** the metrics SHALL be based on Odoo `purchase.order` and `purchase.order.line`
 
 ### Requirement: Payable Metrics
-The system SHALL support overview metrics for vendor bills and payables.
+The system SHALL support overview metrics for vendor bill amounts and receivable/payable comparison.
 
 #### Scenario: Payable KPI
 - **WHEN** the overview loads payable metrics
-- **THEN** the system SHALL be able to show vendor bill count, payable amount, paid/unpaid distribution, and supplier payable ranking
-- **AND** the metrics SHALL be based on `account.move` records where `move_type` is vendor bill related
+- **THEN** the system SHALL be able to show vendor bill count, payable total, payable trend, receivable/payable amount comparison, and payable supplier ranking
+- **AND** the metrics SHALL be based on `account.move` records where `move_type = in_invoice`, scoped by `invoice_date`, using `total_price`/`amount_total_signed` and `partner_id`
+- **AND** the system SHALL NOT present unpaid/paid progress for payables unless a real payment workflow is introduced
+
+### Requirement: People Administration Summary Metrics
+The system SHALL support management-level summary metrics for personnel administration reports without replacing detailed reports.
+
+#### Scenario: People administration summary
+- **WHEN** the overview loads people administration metrics
+- **THEN** the system SHALL be able to show employee performance hours, attendance summary, leave summary, and salary summary at an overview level
+- **AND** the system SHALL NOT expose detailed personnel data beyond the user's allowed backend permissions
 
 ### Requirement: Star Product Metrics
 The system SHALL support ranking metrics for star products.

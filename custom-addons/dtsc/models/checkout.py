@@ -3723,6 +3723,7 @@ class AccountMove(models.Model):
     report_year = fields.Many2one("dtsc.year",string="年",compute="_compute_year_month",store=True)
     report_month = fields.Many2one("dtsc.month",string="月",compute="_compute_year_month",store=True)
     supp_bank_id = fields.Many2one("res.partner.bank", string="銀行")
+    supp_bank_text = fields.Char(string="銀行")
 
 
         

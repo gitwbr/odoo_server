@@ -19,16 +19,20 @@
 ### Phase 1: 菜單與概覽空殼
 - 新增頂部菜單 `概覽畫面`，位置在 `報表` 後面。
 - 建立後台概覽頁入口。
-- 頁面顯示科技感框架：標題、時間篩選占位、KPI 區塊占位、圖表區塊占位、排行榜占位。
+- 頁面顯示貼近 Odoo 後台的概覽式框架：標題、快速菜單、篩選區占位、KPI 區塊占位、分類圖表組占位、排行榜占位。
 - 不做重型統計查詢，只確保菜單、權限、頁面載入正常。
 
-### Phase 2: 大圖訂單、出貨單、應收單核心指標
+### Phase 2: 大圖訂單、工單狀況、財務收付核心指標
 - 大圖訂單來源：`dtsc.checkout`
-- 出貨單來源：`dtsc.deliveryorder`、`dtsc.checkout.is_delivery`、`dtsc.checkout.delivery_order`
-- 應收來源：`dtsc.checkout.checkout_order_state`、`dtsc.checkout.invoice_origin`、`account.move`
+- 大圖訂單內顯示母單層級的出貨結果：`dtsc.checkout.is_delivery`、`dtsc.checkout.delivery_order`、`estimated_date`。
+- 工單狀況包含 B/C/G/T 下游單：B 內部工單、C 委外工單、G 代工單、T 施工工單，依 `checkout_id` 回算母單。
+- 財務收付第一版來源：`dtsc.checkout.checkout_order_state`、`dtsc.checkout.invoice_origin`、`account.move`
 - 優先做 KPI 卡片與狀態分布，因為口徑最穩。
 
-### Phase 3: 採購、應付、明星產品、材料消耗
+### Phase 3: 出貨明細延伸、採購、應付、明星產品、材料消耗
+- 出貨明細來源：`dtsc.deliveryorder`、`dtsc.deliveryorderline.make_orderid`、關聯 `dtsc.checkout`。
+- 出貨明細延伸包含既有報表方向：出貨統計、業務出貨、機台出貨、材料出貨。
+- B/C/G/T 是母單的延伸執行單，不替換 A/F/E/M/D 母單；S 明細若關聯 B/C/G/T，應作為大圖訂單出貨分析的細節來源，不拆成獨立主區塊。
 - 採購來源：`purchase.order`、`purchase.order.line`
 - 應付來源：`account.move` with `move_type = in_invoice`
 - 明星產品來源：`dtsc.checkoutline.product_id`、`price`、`total_units`、`quantity`
@@ -37,28 +41,34 @@
 
 ### Phase 4: 互動與管理洞察
 - 加入時間篩選、部門/業務/客戶篩選。
+- 快速菜單切換不同業務分類圖表組，篩選區只做全局條件。
 - KPI 卡片點擊後跳轉對應清單。
 - 加入異常提示：逾期未出貨、未轉應收、未結案、採購未到、應付逾期。
 - 加入排行榜：客戶排行、業務排行、供應商排行、明星產品、材料消耗。
+- 加入人員行政摘要：員工績效、考勤、請假/薪資摘要；詳細資料仍回到原報表查看。
 
 ## Data Source Plan
 
 | 區塊 | 指標 | 第一版口徑 | 可行性 |
 | --- | --- | --- | --- |
 | 大圖訂單 | 訂單數、狀態、類別、金額、才數 | `dtsc.checkout` | 高 |
-| 出貨單 | 出貨單數、今日/逾期出貨、出貨數量/才數 | `dtsc.deliveryorder` + `dtsc.checkout` | 高 |
+| 母單出貨結果 | 已轉/未轉 S、交期風險、交貨方式 | `dtsc.checkout` | 高 |
+| 工單狀況 | B/C/G/T 需求、已轉、待轉、待完成、已完成 | `dtsc.checkoutline` + 下游模型 `checkout_id` | 高 |
+| 出貨明細延伸 | S 單數、今日/逾期出貨、出貨數量/才數、來源單號分布、業務/機台/材料出貨 | `dtsc.deliveryorder` + `dtsc.deliveryorderline.make_orderid` | 高 |
 | 應收單 | 已轉應收、應收金額、稅別、帳單月 | `dtsc.checkout` + `account.move` | 高 |
 | 採購 | 採購單數、金額、供應商排行 | `purchase.order` | 高 |
 | 應付 | 供應商帳單、未付/已付、應付金額 | `account.move` in_invoice | 高 |
 | 明星產品 | 產品排行、材料排行、才數排行 | `dtsc.checkoutline` | 高 |
 | 材料消耗最快 | 產品/材料使用量與才數增速 | `dtsc.checkoutline` 第一版 | 高 |
+| 人員行政 | 員工績效、考勤、請假/薪資摘要 | 既有 dtsc 人員行政報表口徑 | 中 |
 | 實際庫存消耗 | 真實扣庫消耗速度 | `stock.move`，需另定口徑 | 中 |
 
 ## UI Direction
-- 使用深色科技感局部背景、發光卡片、清楚的狀態色，不做 Odoo 原生灰色圖標風格。
-- 上方：總覽 KPI 卡片。
-- 中段：訂單狀態、出貨趨勢、應收應付金額圖。
-- 下方：明星產品、材料消耗、客戶/供應商排行榜與異常清單。
+- 貼合 Odoo 後台：白底、淺灰區塊、Odoo 紫色作為主色，避免做成獨立深色大屏。
+- 左側：快速菜單，按管理者查看習慣切換大類。
+- 上方：全局篩選區，和快速菜單分離。
+- 中間：總覽 KPI、分類圖表組、排行榜與異常清單。
+- 圖表區可做得更科技感，但不破壞後台一致性。
 
 ## Permissions
 - 第一版沿用 `dtsc` 後台權限群組。

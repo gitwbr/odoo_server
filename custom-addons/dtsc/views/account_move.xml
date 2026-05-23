@@ -127,7 +127,8 @@
 				<field name="supp_invoice_form"  attrs="{'invisible':[('move_type','=','out_invoice')]}" readonly="1"/>
 				<field name="vat_num" attrs="{'invisible':[('move_type','=','out_invoice')]}"/> 
 				<field name="comment_infu"  attrs="{'invisible':[('move_type','=','out_invoice')]}" />
-				<field name="supp_bank_id"  attrs="{'invisible':[('move_type','=','out_invoice')]}" options="{'no_create': True, 'no_create_edit': True}" domain="[('partner_id', '=', partner_id)]"/>
+				<!-- <field name="supp_bank_id"  attrs="{'invisible':[('move_type','=','out_invoice')]}" options="{'no_create': True, 'no_create_edit': True}" domain="[('partner_id', '=', partner_id)]"/> -->
+				<field name="supp_bank_text"  attrs="{'invisible':[('move_type','=','out_invoice')]}"/>
 			</xpath>
 
 			<xpath expr="//label[@for='ref']" position="attributes">

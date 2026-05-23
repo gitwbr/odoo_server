@@ -206,6 +206,8 @@ class Billdate(models.TransientModel):
         supp_bank_id = False
         if partner_id.bank_ids:
             supp_bank_id = partner_id.bank_ids[0].id
+            if partner_id.bank_ids[0].acc_number and partner_id.bank_ids[0].bank_id.name:
+                supp_bank_text = partner_id.bank_ids[0].acc_number + ' - ' +  partner_id.bank_ids[0].bank_id.name
         
         combined_invoice_vals = {
             'invoice_line_ids': [],
@@ -220,6 +222,7 @@ class Billdate(models.TransientModel):
             'payment_reference': '',
             'move_type': 'in_invoice',
             'supp_bank_id': supp_bank_id,
+            'supp_bank_text': supp_bank_text,
             'invoice_date': self.selected_date,
             'ref': '',
         }

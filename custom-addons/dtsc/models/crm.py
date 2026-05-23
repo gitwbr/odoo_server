@@ -679,6 +679,7 @@ class CheckoutInherit(models.Model):
             # record.action_copy_checkout()
             new_checkout = record.with_context(from_crm=True).copy(default={})
 
+            new_checkout.write({"lock_price":False}) #crm转大图 价格锁定关闭
             # 2. 逐筆複製 checkoutline
             for line in record.product_ids:
                 line_data = line.copy_data()[0]

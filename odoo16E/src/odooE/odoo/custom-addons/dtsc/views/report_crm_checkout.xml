@@ -155,8 +155,11 @@
 									<!-- <td>行動電話:<span t-field="doc.customer_id.mobile" /></td> -->
 									<td>有效期限： <span t-field="doc.crm_effective_date" /></td>
                                 </tr>
+                                <tr>
+									<td colspan="3">案件摘要： <span t-field="doc.project_name" /></td>
+                                </tr>
                             </tbody>
-                        </table>	
+                        </table>
 
 						<t t-set="SHOW_PRICE" t-value="doc.is_show_price or (doc.checkout_order_type == 'd' and not doc.is_sign)"/>						
 						<div class="report-crm-checkout-detail">
@@ -767,8 +770,11 @@
 									<!-- <td>行動電話:<span t-field="doc.customer_id.mobile" /></td> -->
 									<td>有效期限： <span t-field="doc.crm_effective_date" /></td>
                                 </tr>
+                                <tr>
+									<td colspan="3">案件摘要： <span t-field="doc.project_name" /></td>
+                                </tr>
                             </tbody>
-                        </table>	
+                        </table>
 
 						<t t-set="SHOW_PRICE" t-value="doc.is_show_price or (doc.checkout_order_type == 'd' and not doc.is_sign)"/>						
 						<div class="report-crm-checkout-detail">

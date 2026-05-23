@@ -97,3 +97,5 @@ backup/
 
 /odoo16E/backups/
 /.codex
+.codex-home/
+.codex-wrapper/

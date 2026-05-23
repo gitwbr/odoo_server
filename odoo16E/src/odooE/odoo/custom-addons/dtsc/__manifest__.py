@@ -99,6 +99,7 @@
         'views/report_performance.xml',
         'views/factory.xml',
         'views/normalsettings.xml',
+        'views/overview_dashboard.xml',
         'views/views.xml',
     ],
 	'assets': {
@@ -122,6 +123,9 @@
             'dtsc/static/src/js/inventory_report_list_controller.js',  
             'dtsc/static/src/js/inventory_report_list_model.js',  
             'dtsc/static/src/js/product_template_form_confirm.js',
+            'dtsc/static/src/js/overview_dashboard.js',
+            'dtsc/static/src/css/overview_dashboard.css',
+            'dtsc/static/src/css/overview_dashboard_native.css',
         ],
         'web.assets_frontend': [            
             'dtsc/static/src/js/checkout.js',
