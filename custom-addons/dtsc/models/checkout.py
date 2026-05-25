@@ -2730,8 +2730,19 @@ class Checkout(models.Model):
                 new_record_values['checkout_product_id'] = self.id  # 确保关联正确
                 new_record_values['product_atts'] = None  # 确保关联正确
                 new_record_values['is_copy_last'] = 1  # 是否是复制最后一条
-                new_record_values['sequence'] = last_record.sequence + 1  
+                new_record_values['sequence'] = last_record.sequence + 1
                 product_atts_ids = last_record.product_atts.ids
+                if self.lock_price:
+                    new_record_values.pop('flag', None)
+                    new_record_values.update({
+                        'units_price': 0,
+                        'product_total_price': 0,
+                        'total_make_price': 0,
+                        'peijian_price': 0,
+                        'install_price': 0,
+                        'price': 0,
+                        'machine_cai_price': 0,
+                    })
                 # pprint(new_record_values)
                 # print(self.customer_class_id.id)
                 quotation = self.env["dtsc.quotation"].search([("product_id","=" ,new_record_values["product_id"]),("customer_class_id","=" ,self.customer_class_id.id)],limit=1)  # 确保关联正确
@@ -2742,8 +2753,10 @@ class Checkout(models.Model):
 
                 # 创建新的子记录
                 new_record =  self.product_ids.create(new_record_values)
-                new_record.write({'product_atts': [(6, 0, product_atts_ids)],
-                              'units_price': last_record.units_price})
+                write_values = {'product_atts': [(6, 0, product_atts_ids)]}
+                if not self.lock_price:
+                    write_values['units_price'] = last_record.units_price
+                new_record.write(write_values)
             except Exception as e:
                 _logger.error(f"Error copying last record: {str(e)}")
                 raise
@@ -2898,6 +2911,7 @@ class CheckOutLine(models.Model):
     
     outside_comment = fields.Text(string="站外訂單備註")
     checkout_product_id = fields.Many2one("dtsc.checkout",ondelete='cascade')
+    lock_price = fields.Boolean(related="checkout_product_id.lock_price", string="價格鎖定")
     origin_checkout_id = fields.Many2one('dtsc.checkout', string="原始訂單")
     origin_checkout_name = fields.Char(related='origin_checkout_id.name', string="原始訂單",store=True)
     # checkout_product_wizard_id = fields.Many2one("dtsc.copycheckoutrecord",ondelete='cascade')
@@ -2988,6 +3002,17 @@ class CheckOutLine(models.Model):
                 new_record_values['sequence'] = last_record.sequence + 1
 
                 product_atts_ids = last_record.product_atts.ids
+                if self.checkout_product_id.lock_price:
+                    new_record_values.pop('flag', None)
+                    new_record_values.update({
+                        'units_price': 0,
+                        'product_total_price': 0,
+                        'total_make_price': 0,
+                        'peijian_price': 0,
+                        'install_price': 0,
+                        'price': 0,
+                        'machine_cai_price': 0,
+                    })
 
                 quotation = self.env["dtsc.quotation"].search([
                     ("product_id", "=", new_record_values["product_id"]),
@@ -2996,16 +3021,19 @@ class CheckOutLine(models.Model):
 
                 new_line = self.env['dtsc.checkoutline'].create(new_record_values)
 
-                new_line.write({
-                    'product_atts': [(6, 0, product_atts_ids)],
-                    'units_price': last_record.units_price
-                })
+                write_values = {'product_atts': [(6, 0, product_atts_ids)]}
+                if not self.checkout_product_id.lock_price:
+                    write_values['units_price'] = last_record.units_price
+                new_line.write(write_values)
 
             except Exception as e:
                 _logger.error(f"[checkoutline] copy_last_record error: {str(e)}")
                 raise
                 
     def update_price(self):
+        if self.checkout_product_id.lock_price:
+            raise UserError("此訂單已鎖定價格，無法修改價格相關欄位。")
+
         # 如果勾选了“同材質”，则更新同一 checkout 中所有相同 product_id 的行
         if self.same_material:
             # 找出当前 checkout 中 product_id 相同的所有记录
@@ -3141,8 +3169,12 @@ class CheckOutLine(models.Model):
         group_dtsc_mg = self.env.ref('dtsc.group_dtsc_mg', raise_if_not_found=False)
         group_dtsc_gly = self.env.ref('dtsc.group_dtsc_gly', raise_if_not_found=False)
         user = self.env.user
+        locked_price_fields = {'units_price', 'price', 'product_total_price', 'total_make_price', 'peijian_price', 'install_price'}
+        if locked_price_fields.intersection(vals) and any(line.checkout_product_id.lock_price for line in self):
+            raise UserError("此訂單已鎖定價格，無法修改價格相關欄位。")
+
         if self.checkout_product_id.checkout_order_state in ["receivable_assigned"]:
-            allowed_fields = {"is_selected"}
+            allowed_fields = {'small_image_new','small_image',"is_selected"}
             disallowed = set(vals.keys()) - allowed_fields
             if disallowed:
                 raise UserError("此訂單已轉應收，無法修改任何内容。")
@@ -3963,4 +3995,3 @@ class AccountMoveLine(models.Model):
                 # int(total_price * 0.05 + 0.5) #四舍五入
             else:
                 line.price_total = line.price_subtotal = subtotal 
-    

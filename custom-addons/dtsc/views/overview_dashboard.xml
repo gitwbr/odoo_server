@@ -1,0 +1,682 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <record id="overview_dashboard_singleton" model="dtsc.overview.dashboard">
+            <field name="name">概覽畫面</field>
+        </record>
+
+        <record id="view_dtsc_overview_dashboard_form" model="ir.ui.view">
+            <field name="name">dtsc.overview.dashboard.form</field>
+            <field name="model">dtsc.overview.dashboard</field>
+            <field name="arch" type="xml">
+                <form string="概覽畫面" create="0" edit="0" delete="0">
+                    <sheet class="o_dtsc_overview_sheet">
+                        <field name="name" invisible="1"/>
+                        <div class="o_dtsc_overview">
+                            <section class="o_dtsc_overview_header">
+                                <div>
+                                    <div class="o_dtsc_overview_eyebrow">DTSC Overview</div>
+                                    <h1>概覽畫面</h1>
+                                    <p>快速查看訂單、工單、財務、採購、產品、扣料與人員行政摘要。</p>
+                                </div>
+                                <div class="o_dtsc_overview_status">
+                                    <span>分區口徑</span>
+                                    <strong>營運概覽</strong>
+                                </div>
+                            </section>
+
+                            <section class="o_dtsc_overview_filters">
+                                <div class="o_dtsc_overview_filter_title">口徑</div>
+                                <div class="o_dtsc_overview_filter_chip">各區塊獨立篩選</div>
+                                <div class="o_dtsc_overview_filter_chip">扣料 / 庫存：目前狀態</div>
+                                <div class="o_dtsc_overview_filter_chip">人員行政：報表月份</div>
+                                <div class="o_dtsc_overview_filter_hint">期間與月份請在各區塊標題右側調整</div>
+                            </section>
+
+                            <div class="o_dtsc_overview_body">
+                                <aside class="o_dtsc_overview_menu">
+                                    <div class="o_dtsc_overview_menu_title">快速菜單</div>
+                                    <a href="#" data-target="o_dtsc_section_checkout" class="o_dtsc_overview_menu_item active">大圖訂單</a>
+                                    <a href="#" data-target="o_dtsc_section_workorder" class="o_dtsc_overview_menu_item">工單狀況</a>
+                                    <a href="#" data-target="o_dtsc_section_receivable" class="o_dtsc_overview_menu_item">財務收付</a>
+                                    <a href="#" data-target="o_dtsc_section_purchase" class="o_dtsc_overview_menu_item">採購</a>
+                                    <a href="#" data-target="o_dtsc_section_product" class="o_dtsc_overview_menu_item">明星產品</a>
+                                    <a href="#" data-target="o_dtsc_section_material" class="o_dtsc_overview_menu_item">材料消耗</a>
+                                    <a href="#" data-target="o_dtsc_section_people" class="o_dtsc_overview_menu_item">人員行政</a>
+                                    <a href="#" data-target="o_dtsc_section_alert" class="o_dtsc_overview_menu_item">異常提醒</a>
+                                </aside>
+
+                                <main class="o_dtsc_overview_content">
+                                    <section id="o_dtsc_section_checkout" class="o_dtsc_overview_section">
+                                        <div class="o_dtsc_overview_section_head">
+                                            <div>
+                                                <span>大圖訂單</span>
+                                                <h2>趨勢、產能與出貨</h2>
+                                            </div>
+                                            <div class="o_dtsc_section_head_tools">
+                                                <small>依進單日</small>
+                                                <div class="o_dtsc_section_period_filter" data-filter-scope="checkout">
+                                                    <a href="#" data-filter-period="last_7_days">7天</a>
+                                                    <a href="#" data-filter-period="last_30_days">30天</a>
+                                                    <a href="#" data-filter-period="last_90_days">90天</a>
+                                                    <a href="#" data-filter-period="last_365_days">365天</a>
+                                                    <a href="#" data-filter-period="custom">自訂</a>
+                                                </div>
+                                                <div class="o_dtsc_section_custom_range o_dtsc_hidden" data-custom-range-scope="checkout">
+                                                    <input type="date" data-filter-date-from="checkout"/>
+                                                    <span>至</span>
+                                                    <input type="date" data-filter-date-to="checkout"/>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="o_dtsc_overview_kpis o_dtsc_overview_section_kpis">
+                                            <article class="o_dtsc_overview_kpi o_dtsc_overview_kpi_clickable" data-action-model="dtsc.checkout" data-action-domain-key="checkout_today_domain" data-action-name="今日大圖訂單">
+                                                <span>今日訂單</span>
+                                                <strong><span data-metric="checkout_today_count">--</span></strong>
+                                                <p>依進單日統計</p>
+                                            </article>
+                                            <article class="o_dtsc_overview_kpi o_dtsc_overview_kpi_clickable" data-action-model="dtsc.checkout" data-action-domain-key="checkout_period_domain" data-action-name="期間大圖訂單">
+                                                <span>期間訂單</span>
+                                                <strong><span data-metric="checkout_period_count">--</span></strong>
+                                                <p>依本區塊期間：<span data-metric="checkout_period_label">--</span></p>
+                                            </article>
+                                            <article class="o_dtsc_overview_kpi o_dtsc_overview_kpi_clickable" data-action-model="dtsc.checkout" data-action-domain-key="checkout_period_domain" data-action-name="期間大圖訂單金額">
+                                                <span>期間含稅金額</span>
+                                                <strong><span data-metric="checkout_period_total">--</span></strong>
+                                                <p>未稅 <span data-metric="checkout_period_untaxed">--</span> / 稅額 <span data-metric="checkout_period_tax">--</span></p>
+                                            </article>
+                                            <article class="o_dtsc_overview_kpi o_dtsc_overview_kpi_clickable" data-action-model="dtsc.checkout" data-action-domain-key="checkout_period_domain" data-action-name="期間大圖訂單才數">
+                                                <span>期間總才數</span>
+                                                <strong><span data-metric="checkout_period_units">--</span></strong>
+                                                <p>依產品清單才數加總</p>
+                                            </article>
+                                        </div>
+                                        <div class="o_dtsc_overview_chart_grid">
+                                            <article class="o_dtsc_chart_tile o_dtsc_chart_tile_hero">
+                                                <div class="o_dtsc_chart_title">訂單 / 金額雙軸趨勢（含稅 / 未稅）</div>
+                                                <div class="o_dtsc_chart_visual o_dtsc_dynamic_dual_axes" data-chart-source="checkout_trend_items">
+                                                    <div class="o_dtsc_chart_empty">載入中...</div>
+                                                </div>
+                                            </article>
+                                            <article class="o_dtsc_chart_tile">
+                                                <div class="o_dtsc_chart_title">交期風險</div>
+                                                <div class="o_dtsc_chart_visual o_dtsc_dynamic_risk" data-chart="checkout_risk_items" data-action-model="dtsc.checkout">
+                                                    <div class="o_dtsc_chart_empty">載入中...</div>
+                                                </div>
+                                            </article>
+                                            <article class="o_dtsc_chart_tile">
+                                                <div class="o_dtsc_chart_title">母單出貨進度</div>
+                                                <div class="o_dtsc_chart_visual o_dtsc_dynamic_stack" data-chart="checkout_delivery_progress_items" data-action-model="dtsc.checkout">
+                                                    <div class="o_dtsc_chart_empty">載入中...</div>
+                                                </div>
+                                            </article>
+                                            <article class="o_dtsc_chart_tile">
+                                                <div class="o_dtsc_chart_title">母單交貨方式排行</div>
+                                                <div class="o_dtsc_chart_visual o_dtsc_dynamic_bars" data-chart="checkout_delivery_carrier_items" data-action-model="dtsc.checkout">
+                                                    <div class="o_dtsc_chart_empty">載入中...</div>
+                                                </div>
+                                            </article>
+                                            <article class="o_dtsc_chart_tile">
+                                                <div class="o_dtsc_chart_title">產能趨勢</div>
+                                                <div class="o_dtsc_chart_visual o_dtsc_dynamic_trend o_dtsc_dynamic_trend_compact" data-chart="checkout_units_trend" data-chart-source="checkout_trend_items" data-chart-value="total_units">
+                                                    <div class="o_dtsc_chart_empty">載入中...</div>
+                                                </div>
+                                            </article>
+                                            <article class="o_dtsc_chart_tile o_dtsc_chart_tile_wide">
+                                                <div class="o_dtsc_chart_title">狀態漏斗</div>
+                                                <div class="o_dtsc_chart_visual o_dtsc_dynamic_funnel" data-chart="checkout_funnel_items" data-action-model="dtsc.checkout">
+                                                    <div class="o_dtsc_chart_empty">載入中...</div>
+                                                </div>
+                                            </article>
+                                            <article class="o_dtsc_chart_tile">
+                                                <div class="o_dtsc_chart_title">訂單類別排行</div>
+                                                <div class="o_dtsc_chart_visual o_dtsc_dynamic_bars" data-chart="checkout_type_items" data-action-model="dtsc.checkout">
+                                                    <div class="o_dtsc_chart_empty">載入中...</div>
+                                                </div>
+                                            </article>
+                                        </div>
+                                    </section>
+
+                                    <section id="o_dtsc_section_workorder" class="o_dtsc_overview_section">
+                                        <div class="o_dtsc_overview_section_head">
+                                            <div>
+                                                <span>工單狀況</span>
+                                                <h2>製程與委外圖表</h2>
+                                            </div>
+                                            <div class="o_dtsc_section_head_tools">
+                                                <small>依母單進單日</small>
+                                                <div class="o_dtsc_section_period_filter" data-filter-scope="workorder">
+                                                    <a href="#" data-filter-period="last_7_days">7天</a>
+                                                    <a href="#" data-filter-period="last_30_days">30天</a>
+                                                    <a href="#" data-filter-period="last_90_days">90天</a>
+                                                    <a href="#" data-filter-period="last_365_days">365天</a>
+                                                    <a href="#" data-filter-period="custom">自訂</a>
+                                                </div>
+                                                <div class="o_dtsc_section_custom_range o_dtsc_hidden" data-custom-range-scope="workorder">
+                                                    <input type="date" data-filter-date-from="workorder"/>
+                                                    <span>至</span>
+                                                    <input type="date" data-filter-date-to="workorder"/>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="o_dtsc_overview_kpis o_dtsc_overview_section_kpis">
+                                            <article class="o_dtsc_overview_kpi">
+                                                <span>下游需求</span>
+                                                <strong><span data-metric="checkout_workorder_need_total">--</span></strong>
+                                                <p>B/C/G/T 涉及母單數</p>
+                                            </article>
+                                            <article class="o_dtsc_overview_kpi">
+                                                <span>已轉工單</span>
+                                                <strong><span data-metric="checkout_workorder_generated_total">--</span></strong>
+                                                <p>已建立 B/C/G/T</p>
+                                            </article>
+                                            <article class="o_dtsc_overview_kpi">
+                                                <span>待轉工單</span>
+                                                <strong><span data-metric="checkout_workorder_pending_convert_total">--</span></strong>
+                                                <p>需求尚未生成</p>
+                                            </article>
+                                            <article class="o_dtsc_overview_kpi">
+                                                <span>待完成</span>
+                                                <strong><span data-metric="checkout_workorder_pending_complete_total">--</span></strong>
+                                                <p>已轉但未完成</p>
+                                            </article>
+                                            <article class="o_dtsc_overview_kpi">
+                                                <span>已完成</span>
+                                                <strong><span data-metric="checkout_workorder_completed_total">--</span></strong>
+                                                <p>下游完成回算母單</p>
+                                            </article>
+                                        </div>
+                                        <div class="o_dtsc_overview_chart_grid">
+                                            <article class="o_dtsc_chart_tile o_dtsc_chart_tile_hero">
+                                                <div class="o_dtsc_chart_title">工單流向</div>
+                                                <div class="o_dtsc_chart_visual o_dtsc_dynamic_workflow" data-workorder-flow="1" data-action-model="dtsc.checkout">
+                                                    <div class="o_dtsc_chart_empty">載入中...</div>
+                                                </div>
+                                            </article>
+                                            <article class="o_dtsc_chart_tile">
+                                                <div class="o_dtsc_chart_title">下游需求分布</div>
+                                                <div class="o_dtsc_chart_visual o_dtsc_dynamic_bars" data-chart="checkout_workorder_need_items" data-action-model="dtsc.checkout">
+                                                    <div class="o_dtsc_chart_empty">載入中...</div>
+                                                </div>
+                                            </article>
+                                            <article class="o_dtsc_chart_tile">
+                                                <div class="o_dtsc_chart_title">已轉工單分布</div>
+                                                <div class="o_dtsc_chart_visual o_dtsc_dynamic_bars" data-chart="checkout_workorder_generated_items" data-action-model="dtsc.checkout">
+                                                    <div class="o_dtsc_chart_empty">載入中...</div>
+                                                </div>
+                                            </article>
+                                            <article class="o_dtsc_chart_tile">
+                                                <div class="o_dtsc_chart_title">下游完成分布</div>
+                                                <div class="o_dtsc_chart_visual o_dtsc_dynamic_bars" data-chart="checkout_workorder_completed_items" data-action-model="dtsc.checkout">
+                                                    <div class="o_dtsc_chart_empty">載入中...</div>
+                                                </div>
+                                            </article>
+                                            <article class="o_dtsc_chart_tile">
+                                                <div class="o_dtsc_chart_title">待轉缺口</div>
+                                                <div class="o_dtsc_chart_visual o_dtsc_dynamic_bars" data-chart="checkout_workorder_pending_convert_items" data-action-model="dtsc.checkout">
+                                                    <div class="o_dtsc_chart_empty">載入中...</div>
+                                                </div>
+                                            </article>
+                                            <article class="o_dtsc_chart_tile">
+                                                <div class="o_dtsc_chart_title">待完成缺口</div>
+                                                <div class="o_dtsc_chart_visual o_dtsc_dynamic_bars" data-chart="checkout_workorder_pending_complete_items" data-action-model="dtsc.checkout">
+                                                    <div class="o_dtsc_chart_empty">載入中...</div>
+                                                </div>
+                                            </article>
+                                            <article class="o_dtsc_chart_tile o_dtsc_chart_tile_wide">
+                                                <div class="o_dtsc_chart_title">工單狀態分布</div>
+                                                <div class="o_dtsc_chart_visual o_dtsc_dynamic_bars" data-chart="checkout_workorder_state_items">
+                                                    <div class="o_dtsc_chart_empty">載入中...</div>
+                                                </div>
+                                            </article>
+                                        </div>
+                                    </section>
+
+                                    <section id="o_dtsc_section_receivable" class="o_dtsc_overview_section">
+                                        <div class="o_dtsc_overview_section_head">
+                                            <div>
+                                                <span>財務收付</span>
+                                                <h2>應收、應付與現金壓力</h2>
+                                            </div>
+                                            <div class="o_dtsc_section_head_tools">
+                                                <small>依帳單日期</small>
+                                                <div class="o_dtsc_section_period_filter" data-filter-scope="finance">
+                                                    <a href="#" data-filter-period="last_7_days">7天</a>
+                                                    <a href="#" data-filter-period="last_30_days">30天</a>
+                                                    <a href="#" data-filter-period="last_90_days">90天</a>
+                                                    <a href="#" data-filter-period="last_365_days">365天</a>
+                                                    <a href="#" data-filter-period="custom">自訂</a>
+                                                </div>
+                                                <div class="o_dtsc_section_custom_range o_dtsc_hidden" data-custom-range-scope="finance">
+                                                    <input type="date" data-filter-date-from="finance"/>
+                                                    <span>至</span>
+                                                    <input type="date" data-filter-date-to="finance"/>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="o_dtsc_overview_kpis o_dtsc_overview_section_kpis">
+                                            <article class="o_dtsc_overview_kpi o_dtsc_overview_kpi_clickable" data-action-model="account.move" data-action-domain-key="finance_receivable_domain" data-action-name="期間應收帳單">
+                                                <span>期間應收含稅</span>
+                                                <strong><span data-metric="finance_receivable_total">--</span></strong>
+                                                <p>未稅 <span data-metric="finance_receivable_untaxed_total">--</span> / <span data-metric="finance_receivable_count">--</span> 張</p>
+                                            </article>
+                                            <article class="o_dtsc_overview_kpi o_dtsc_overview_kpi_clickable" data-action-model="account.move" data-action-domain-key="finance_payable_domain" data-action-name="期間應付帳單">
+                                                <span>期間應付含稅</span>
+                                                <strong><span data-metric="finance_payable_total">--</span></strong>
+                                                <p>未稅 <span data-metric="finance_payable_untaxed_total">--</span> / <span data-metric="finance_payable_count">--</span> 張</p>
+                                            </article>
+                                            <article class="o_dtsc_overview_kpi o_dtsc_overview_kpi_clickable" data-action-model="account.move" data-action-domain-key="finance_period_move_domain" data-action-name="期間收付帳單">
+                                                <span>收付差額含稅</span>
+                                                <strong><span data-metric="finance_net_gap">--</span></strong>
+                                                <p>未稅差額 <span data-metric="finance_net_untaxed_gap">--</span> / <span data-metric="finance_period_label">--</span></p>
+                                            </article>
+                                        </div>
+                                        <div class="o_dtsc_overview_chart_grid">
+                                            <article class="o_dtsc_chart_tile">
+                                                <div class="o_dtsc_chart_title">收付對比（含稅 / 未稅）</div>
+                                                <div class="o_dtsc_chart_visual o_dtsc_dynamic_waterfall" data-chart="finance_cash_gap_items" data-action-model="account.move">
+                                                    <div class="o_dtsc_chart_empty">載入中...</div>
+                                                </div>
+                                            </article>
+                                            <article class="o_dtsc_chart_tile o_dtsc_chart_tile_hero">
+                                                <div class="o_dtsc_chart_title">應收趨勢（含稅 / 未稅）</div>
+                                                <div class="o_dtsc_chart_visual o_dtsc_dynamic_trend" data-chart="finance_receivable_trend" data-chart-source="finance_receivable_trend_items" data-chart-value="total_amount" data-action-model="account.move" data-action-name="應收帳單趨勢">
+                                                    <div class="o_dtsc_chart_empty">載入中...</div>
+                                                </div>
+                                            </article>
+                                            <article class="o_dtsc_chart_tile">
+                                                <div class="o_dtsc_chart_title">應付趨勢（含稅 / 未稅）</div>
+                                                <div class="o_dtsc_chart_visual o_dtsc_dynamic_trend o_dtsc_dynamic_trend_compact" data-chart="finance_payable_trend" data-chart-source="finance_payable_trend_items" data-chart-value="total_amount" data-action-model="account.move" data-action-name="應付帳單趨勢">
+                                                    <div class="o_dtsc_chart_empty">載入中...</div>
+                                                </div>
+                                            </article>
+                                            <article class="o_dtsc_chart_tile">
+                                                <div class="o_dtsc_chart_title">應收客戶排行（含稅 / 未稅）</div>
+                                                <div class="o_dtsc_chart_visual o_dtsc_dynamic_bars" data-chart="finance_receivable_customer_items" data-action-model="account.move" data-action-name="客戶應收帳單">
+                                                    <div class="o_dtsc_chart_empty">載入中...</div>
+                                                </div>
+                                            </article>
+                                            <article class="o_dtsc_chart_tile">
+                                                <div class="o_dtsc_chart_title">應付供應商排行（含稅 / 未稅）</div>
+                                                <div class="o_dtsc_chart_visual o_dtsc_dynamic_bars" data-chart="finance_payable_vendor_items" data-action-model="account.move" data-action-name="供應商應付帳單">
+                                                    <div class="o_dtsc_chart_empty">載入中...</div>
+                                                </div>
+                                            </article>
+                                        </div>
+                                    </section>
+
+                                    <section id="o_dtsc_section_purchase" class="o_dtsc_overview_section">
+                                        <div class="o_dtsc_overview_section_head">
+                                            <div>
+                                                <span>採購</span>
+                                                <h2>採購、到貨與供應商</h2>
+                                            </div>
+                                            <div class="o_dtsc_section_head_tools">
+                                                <small>依採購日期</small>
+                                                <div class="o_dtsc_section_period_filter" data-filter-scope="purchase">
+                                                    <a href="#" data-filter-period="last_7_days">7天</a>
+                                                    <a href="#" data-filter-period="last_30_days">30天</a>
+                                                    <a href="#" data-filter-period="last_90_days">90天</a>
+                                                    <a href="#" data-filter-period="last_365_days">365天</a>
+                                                    <a href="#" data-filter-period="custom">自訂</a>
+                                                </div>
+                                                <div class="o_dtsc_section_custom_range o_dtsc_hidden" data-custom-range-scope="purchase">
+                                                    <input type="date" data-filter-date-from="purchase"/>
+                                                    <span>至</span>
+                                                    <input type="date" data-filter-date-to="purchase"/>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="o_dtsc_overview_kpis o_dtsc_overview_section_kpis">
+                                            <article class="o_dtsc_overview_kpi o_dtsc_overview_kpi_clickable" data-action-model="purchase.order" data-action-domain-key="purchase_period_domain" data-action-name="期間採購單">
+                                                <span>期間採購單</span>
+                                                <strong><span data-metric="purchase_period_count">--</span></strong>
+                                                <p>採購區間：<span data-metric="purchase_period_label">--</span></p>
+                                            </article>
+                                            <article class="o_dtsc_overview_kpi o_dtsc_overview_kpi_clickable" data-action-model="purchase.order" data-action-domain-key="purchase_period_domain" data-action-name="期間採購未稅金額">
+                                                <span>期間採購未稅金額</span>
+                                                <strong><span data-metric="purchase_period_total">--</span></strong>
+                                                <p>對齊採購列表不含稅總價</p>
+                                            </article>
+                                            <article class="o_dtsc_overview_kpi o_dtsc_overview_kpi_clickable" data-action-model="purchase.order" data-action-domain-key="purchase_period_domain" data-action-name="期間採購含稅金額">
+                                                <span>期間採購含稅金額</span>
+                                                <strong><span data-metric="purchase_period_taxed_total">--</span></strong>
+                                                <p>採購單含稅總額</p>
+                                            </article>
+                                            <article class="o_dtsc_overview_kpi o_dtsc_overview_kpi_clickable" data-action-model="purchase.order" data-action-domain-key="purchase_wait_confirm_domain" data-action-name="待確認採購單">
+                                                <span>待確認</span>
+                                                <strong><span data-metric="purchase_wait_confirm_count">--</span></strong>
+                                                <p>採購狀態：詢價單</p>
+                                            </article>
+                                            <article class="o_dtsc_overview_kpi o_dtsc_overview_kpi_clickable" data-action-model="purchase.order" data-action-domain-key="purchase_wait_receipt_domain" data-action-name="待收貨採購單">
+                                                <span>待收貨</span>
+                                                <strong><span data-metric="purchase_wait_receipt_count">--</span></strong>
+                                                <p>採購狀態：待收貨</p>
+                                            </article>
+                                            <article class="o_dtsc_overview_kpi o_dtsc_overview_kpi_clickable" data-action-model="purchase.order" data-action-domain-key="purchase_to_bill_domain" data-action-name="未轉應付採購單">
+                                                <span>未轉應付</span>
+                                                <strong><span data-metric="purchase_to_bill_count">--</span></strong>
+                                                <p>採購狀態：未轉應付</p>
+                                            </article>
+                                            <article class="o_dtsc_overview_kpi o_dtsc_overview_kpi_clickable" data-action-model="purchase.order" data-action-domain-key="purchase_billed_domain" data-action-name="已轉應付採購單">
+                                                <span>已轉應付</span>
+                                                <strong><span data-metric="purchase_billed_count">--</span></strong>
+                                                <p>採購狀態：已轉應付</p>
+                                            </article>
+                                        </div>
+                                        <div class="o_dtsc_overview_chart_grid">
+                                            <article class="o_dtsc_chart_tile o_dtsc_chart_tile_hero">
+                                                <div class="o_dtsc_chart_title">採購單趨勢</div>
+                                                <div class="o_dtsc_chart_visual o_dtsc_dynamic_trend" data-chart="purchase_count_trend" data-chart-source="purchase_trend_items" data-chart-value="purchase_count" data-action-model="purchase.order" data-action-name="採購單趨勢明細">
+                                                    <div class="o_dtsc_chart_empty">載入中...</div>
+                                                </div>
+                                            </article>
+                                            <article class="o_dtsc_chart_tile">
+                                                <div class="o_dtsc_chart_title">採購狀態分布</div>
+                                                <div class="o_dtsc_chart_visual o_dtsc_dynamic_stack" data-chart="purchase_state_items" data-action-model="purchase.order" data-action-name="採購狀態明細">
+                                                    <div class="o_dtsc_chart_empty">載入中...</div>
+                                                </div>
+                                            </article>
+                                            <article class="o_dtsc_chart_tile o_dtsc_chart_tile_hero">
+                                                <div class="o_dtsc_chart_title">採購金額趨勢（含稅 / 未稅）</div>
+                                                <div class="o_dtsc_chart_visual o_dtsc_dynamic_trend" data-chart="purchase_amount_trend" data-chart-source="purchase_trend_items" data-chart-value="total_amount" data-action-model="purchase.order" data-action-name="採購金額趨勢明細">
+                                                    <div class="o_dtsc_chart_empty">載入中...</div>
+                                                </div>
+                                            </article>
+                                            <article class="o_dtsc_chart_tile">
+                                                <div class="o_dtsc_chart_title">供應商採購金額排行（含稅 / 未稅）</div>
+                                                <div class="o_dtsc_chart_visual o_dtsc_dynamic_bars" data-chart="purchase_supplier_items" data-action-model="purchase.order" data-action-name="供應商採購單">
+                                                    <div class="o_dtsc_chart_empty">載入中...</div>
+                                                </div>
+                                            </article>
+                                            <article class="o_dtsc_chart_tile o_dtsc_chart_tile_wide">
+                                                <div class="o_dtsc_chart_title">採購產品金額排行（含稅 / 未稅）</div>
+                                                <div class="o_dtsc_chart_visual o_dtsc_dynamic_bars" data-chart="purchase_product_amount_items" data-action-model="purchase.order.line" data-action-name="採購產品明細">
+                                                    <div class="o_dtsc_chart_empty">載入中...</div>
+                                                </div>
+                                            </article>
+                                            <article class="o_dtsc_chart_tile">
+                                                <div class="o_dtsc_chart_title">採購產品數量排行</div>
+                                                <div class="o_dtsc_chart_visual o_dtsc_dynamic_bars" data-chart="purchase_product_qty_items" data-action-model="purchase.order.line" data-action-name="採購產品明細">
+                                                    <div class="o_dtsc_chart_empty">載入中...</div>
+                                                </div>
+                                            </article>
+                                        </div>
+                                    </section>
+
+                                    <section id="o_dtsc_section_product" class="o_dtsc_overview_section">
+                                        <div class="o_dtsc_overview_section_head">
+                                            <div>
+                                                <span>明星產品</span>
+                                                <h2>產品銷售、才數與數量排行</h2>
+                                            </div>
+                                            <div class="o_dtsc_section_head_tools">
+                                                <small>依大圖訂單進單日</small>
+                                                <div class="o_dtsc_section_period_filter" data-filter-scope="product">
+                                                    <a href="#" data-filter-period="last_7_days">7天</a>
+                                                    <a href="#" data-filter-period="last_30_days">30天</a>
+                                                    <a href="#" data-filter-period="last_90_days">90天</a>
+                                                    <a href="#" data-filter-period="last_365_days">365天</a>
+                                                    <a href="#" data-filter-period="custom">自訂</a>
+                                                </div>
+                                                <div class="o_dtsc_section_custom_range o_dtsc_hidden" data-custom-range-scope="product">
+                                                    <input type="date" data-filter-date-from="product"/>
+                                                    <span>至</span>
+                                                    <input type="date" data-filter-date-to="product"/>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="o_dtsc_overview_kpis o_dtsc_overview_section_kpis">
+                                            <article class="o_dtsc_overview_kpi o_dtsc_overview_kpi_clickable" data-action-model="product.template" data-action-domain-key="star_product_product_domain" data-action-name="期間產品">
+                                                <span>產品數</span>
+                                                <strong><span data-metric="star_product_count">--</span></strong>
+                                                <p>產品區間：<span data-metric="product_period_label">--</span></p>
+                                            </article>
+                                            <article class="o_dtsc_overview_kpi o_dtsc_overview_kpi_clickable" data-action-model="dtsc.checkoutline" data-action-domain-key="star_product_line_domain" data-action-name="期間產品行">
+                                                <span>產品行數</span>
+                                                <strong><span data-metric="star_product_line_count">--</span></strong>
+                                                <p>大圖訂單產品清單行</p>
+                                            </article>
+                                            <article class="o_dtsc_overview_kpi o_dtsc_overview_kpi_clickable" data-action-model="dtsc.checkoutline" data-action-domain-key="star_product_line_domain" data-action-name="期間產品銷售明細">
+                                                <span>產品銷售未稅金額</span>
+                                                <strong><span data-metric="star_product_amount_total">--</span></strong>
+                                                <p>含稅估算 <span data-metric="star_product_taxed_amount_total">--</span></p>
+                                            </article>
+                                            <article class="o_dtsc_overview_kpi o_dtsc_overview_kpi_clickable" data-action-model="dtsc.checkoutline" data-action-domain-key="star_product_line_domain" data-action-name="期間產品才數明細">
+                                                <span>產品總才數</span>
+                                                <strong><span data-metric="star_product_units_total">--</span></strong>
+                                                <p>依產品行總才數加總</p>
+                                            </article>
+                                            <article class="o_dtsc_overview_kpi o_dtsc_overview_kpi_clickable" data-action-model="dtsc.checkoutline" data-action-domain-key="star_product_line_domain" data-action-name="期間產品數量明細">
+                                                <span>產品總數量</span>
+                                                <strong><span data-metric="star_product_quantity_total">--</span></strong>
+                                                <p>依產品行數量加總</p>
+                                            </article>
+                                        </div>
+                                        <div class="o_dtsc_overview_chart_grid">
+                                            <article class="o_dtsc_chart_tile o_dtsc_chart_tile_hero">
+                                                <div class="o_dtsc_chart_title">產品金額 / 才數矩陣（含稅 / 未稅）</div>
+                                                <div class="o_dtsc_chart_visual o_dtsc_dynamic_scatter" data-chart="star_product_scatter_items" data-action-model="dtsc.checkoutline" data-action-name="產品矩陣明細">
+                                                    <div class="o_dtsc_chart_empty">載入中...</div>
+                                                </div>
+                                            </article>
+                                            <article class="o_dtsc_chart_tile">
+                                                <div class="o_dtsc_chart_title">產品銷售金額排行（含稅 / 未稅）</div>
+                                                <div class="o_dtsc_chart_visual o_dtsc_dynamic_bars" data-chart="star_product_amount_items" data-action-model="dtsc.checkoutline" data-action-name="產品銷售明細">
+                                                    <div class="o_dtsc_chart_empty">載入中...</div>
+                                                </div>
+                                            </article>
+                                            <article class="o_dtsc_chart_tile">
+                                                <div class="o_dtsc_chart_title">產品才數排行</div>
+                                                <div class="o_dtsc_chart_visual o_dtsc_dynamic_bars" data-chart="star_product_units_items" data-action-model="dtsc.checkoutline" data-action-name="產品才數明細">
+                                                    <div class="o_dtsc_chart_empty">載入中...</div>
+                                                </div>
+                                            </article>
+                                            <article class="o_dtsc_chart_tile">
+                                                <div class="o_dtsc_chart_title">產品數量排行</div>
+                                                <div class="o_dtsc_chart_visual o_dtsc_dynamic_bars" data-chart="star_product_quantity_items" data-action-model="dtsc.checkoutline" data-action-name="產品數量明細">
+                                                    <div class="o_dtsc_chart_empty">載入中...</div>
+                                                </div>
+                                            </article>
+                                        </div>
+                                    </section>
+
+                                    <section id="o_dtsc_section_material" class="o_dtsc_overview_section">
+                                        <div class="o_dtsc_overview_section_head">
+                                            <div>
+                                                <span>廠內扣料</span>
+                                                <h2>扣料單待扣與缺料預警</h2>
+                                            </div>
+                                            <small>目前狀態，不吃期間篩選</small>
+                                        </div>
+                                        <div class="o_dtsc_overview_chart_grid">
+                                            <article class="o_dtsc_chart_tile o_dtsc_chart_tile_inventory">
+                                                <div class="o_dtsc_chart_title">廠內扣料表待扣清單</div>
+                                                <div class="o_dtsc_material_scope">
+                                                    <span>資料來源：只讀「廠內扣料表」草稿待扣單</span>
+                                                    <span>每行對應扣料單中的一條材料項次</span>
+                                                    <span>按交貨方式、發貨日、大圖訂單整理</span>
+                                                </div>
+                                                <div class="o_dtsc_material_alerts">
+                                                    <div data-action-model="dtsc.mpr" data-action-domain-key="material_pending_order_domain" data-action-name="待扣單">
+                                                        <span>待扣單</span>
+                                                        <strong data-metric="material_pending_order_count">--</strong>
+                                                    </div>
+                                                    <div data-action-model="dtsc.mprline" data-action-domain-key="material_pending_line_domain" data-action-name="待扣項次">
+                                                        <span>待扣項次</span>
+                                                        <strong data-metric="material_stock_item_count">--</strong>
+                                                    </div>
+                                                    <div data-action-model="dtsc.checkout" data-action-domain-key="material_affected_checkout_domain" data-action-name="關聯大圖訂單">
+                                                        <span>關聯大圖訂單</span>
+                                                        <strong data-metric="material_affected_order_count">--</strong>
+                                                    </div>
+                                                    <div class="danger" data-action-model="dtsc.mprline" data-action-domain-key="material_shortage_line_domain" data-action-name="缺料項次">
+                                                        <span>缺料項次</span>
+                                                        <strong><b data-metric="material_immediate_shortage_count">--</b> 項</strong>
+                                                    </div>
+                                                    <div data-action-model="dtsc.checkout" data-action-domain-key="material_shortage_checkout_domain" data-action-name="缺料訂單">
+                                                        <span>缺料訂單</span>
+                                                        <strong data-metric="material_shortage_order_count">--</strong>
+                                                    </div>
+                                                </div>
+                                                <div class="o_dtsc_material_risk_table" data-material-risk="material_replenishment_table_items" data-action-model="dtsc.mpr" data-action-name="廠內扣料表">
+                                                    <div class="o_dtsc_chart_empty">載入中...</div>
+                                                </div>
+                                            </article>
+                                        </div>
+                                    </section>
+
+                                    <section id="o_dtsc_section_people" class="o_dtsc_overview_section">
+                                        <div class="o_dtsc_overview_section_head">
+                                            <div>
+                                                <span>人員行政</span>
+                                                <h2>人員績效、考勤、請假與薪資摘要</h2>
+                                            </div>
+                                            <div class="o_dtsc_section_head_tools">
+                                                <small>報表月份：<span data-metric="people_month_label">--</span></small>
+                                                <div class="o_dtsc_section_month_filter">
+                                                    <span>月份</span>
+                                                    <input type="month" data-filter-month="people"/>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="o_dtsc_overview_chart_grid">
+                                            <article class="o_dtsc_chart_tile">
+                                                <div class="o_dtsc_chart_title">人員總覽</div>
+                                                <div class="o_dtsc_metric_rows">
+                                                    <div data-action-model="dtsc.workqrcode" data-action-domain-key="people_active_employee_domain" data-action-name="在職人員"><span>在職人員</span><strong data-metric="people_active_employee_count">--</strong></div>
+                                                    <div data-action-model="dtsc.workqrcode" data-action-domain-key="people_line_bound_domain" data-action-name="LINE 綁定人員"><span>LINE 綁定</span><strong data-metric="people_line_bound_count">--</strong></div>
+                                                    <div data-action-model="dtsc.department" data-action-domain-key="people_department_domain" data-action-name="部門"><span>部門數</span><strong data-metric="people_department_count">--</strong></div>
+                                                    <div data-action-model="dtsc.workqrcode" data-action-domain-key="people_worktime_employee_domain" data-action-name="期間有工時人員"><span>期間有工時人員</span><strong data-metric="people_worktime_employee_count">--</strong></div>
+                                                </div>
+                                            </article>
+                                            <article class="o_dtsc_chart_tile">
+                                                <div class="o_dtsc_chart_title">員工績效才數排行</div>
+                                                <div class="o_dtsc_metric_rows">
+                                                    <div data-action-model="dtsc.worktime" data-action-domain-key="people_worktime_domain" data-action-name="期間工時"><span>工時筆數</span><strong data-metric="people_worktime_count">--</strong></div>
+                                                    <div data-action-model="dtsc.worktime" data-action-domain-key="people_worktime_domain" data-action-name="期間績效才數"><span>績效才數</span><strong data-metric="people_worktime_cai_total">--</strong></div>
+                                                    <div data-action-model="dtsc.worktime" data-action-domain-key="people_worktime_domain" data-action-name="期間工時小計"><span>工時小計</span><strong data-metric="people_worktime_hours_total">--</strong></div>
+                                                </div>
+                                                <div class="o_dtsc_chart_visual o_dtsc_dynamic_bars" data-chart="people_worktime_employee_items" data-action-model="dtsc.worktime" data-action-name="員工工時明細">
+                                                    <div class="o_dtsc_chart_empty">載入中...</div>
+                                                </div>
+                                            </article>
+                                            <article class="o_dtsc_chart_tile">
+                                                <div class="o_dtsc_chart_title">工種類型分布</div>
+                                                <div class="o_dtsc_chart_visual o_dtsc_dynamic_bars" data-chart="people_worktype_items" data-action-model="dtsc.worktime" data-action-name="工種類型工時">
+                                                    <div class="o_dtsc_chart_empty">載入中...</div>
+                                                </div>
+                                            </article>
+                                            <article class="o_dtsc_chart_tile">
+                                                <div class="o_dtsc_chart_title">考勤異常</div>
+                                                <div class="o_dtsc_metric_rows">
+                                                    <div data-action-model="dtsc.attendance" data-action-domain-key="people_attendance_domain" data-action-name="考勤記錄"><span>考勤筆數</span><strong data-metric="people_attendance_count">--</strong></div>
+                                                    <div data-action-model="dtsc.attendance" data-action-domain-key="people_attendance_late_domain" data-action-name="遲到記錄"><span>遲到</span><strong data-metric="people_attendance_late_count">--</strong></div>
+                                                    <div data-action-model="dtsc.attendance" data-action-domain-key="people_attendance_early_domain" data-action-name="早退記錄"><span>早退</span><strong data-metric="people_attendance_early_count">--</strong></div>
+                                                    <div data-action-model="dtsc.attendance" data-action-domain-key="people_attendance_missing_domain" data-action-name="缺卡記錄"><span>缺卡</span><strong data-metric="people_attendance_missing_count">--</strong></div>
+                                                </div>
+                                                <div class="o_dtsc_chart_visual o_dtsc_dynamic_risk" data-chart="people_attendance_risk_items" data-action-model="dtsc.attendance" data-action-name="考勤記錄">
+                                                    <div class="o_dtsc_chart_empty">載入中...</div>
+                                                </div>
+                                            </article>
+                                            <article class="o_dtsc_chart_tile">
+                                                <div class="o_dtsc_chart_title">請假摘要</div>
+                                                <div class="o_dtsc_metric_rows">
+                                                    <div data-action-model="dtsc.leave" data-action-domain-key="people_leave_pending_domain" data-action-name="待審請假"><span>待審請假</span><strong data-metric="people_leave_pending_count">--</strong></div>
+                                                    <div data-action-model="dtsc.leave" data-action-domain-key="people_leave_approved_domain" data-action-name="已核准請假"><span>已核准請假單</span><strong data-metric="people_leave_approved_count">--</strong></div>
+                                                    <div data-action-model="dtsc.leave" data-action-domain-key="people_leave_approved_domain" data-action-name="已核准請假時數"><span>已核准時數</span><strong data-metric="people_leave_approved_hours">--</strong></div>
+                                                </div>
+                                                <div class="o_dtsc_chart_visual o_dtsc_dynamic_bars" data-chart="people_leave_type_items" data-action-model="dtsc.leave" data-action-name="請假類型明細">
+                                                    <div class="o_dtsc_chart_empty">載入中...</div>
+                                                </div>
+                                            </article>
+                                            <article class="o_dtsc_chart_tile o_dtsc_salary_tile" data-action-model="dtsc.performance" data-action-domain-key="people_salary_record_domain" data-action-name="薪資總表">
+                                                <div class="o_dtsc_salary_head">
+                                                    <div>
+                                                        <div class="o_dtsc_chart_title">薪資總表</div>
+                                                        <div class="o_dtsc_chart_note">期別：<b data-metric="people_salary_latest_period">--</b></div>
+                                                    </div>
+                                                    <span>不套營業稅</span>
+                                                </div>
+                                                <div class="o_dtsc_salary_hero">
+                                                    <div>
+                                                        <span>實發合計</span>
+                                                        <strong data-metric="people_salary_net_total">--</strong>
+                                                    </div>
+                                                    <div>
+                                                        <span>薪資人數</span>
+                                                        <strong data-metric="people_salary_employee_count">--</strong>
+                                                    </div>
+                                                </div>
+                                                <div class="o_dtsc_salary_strip">
+                                                    <div>
+                                                        <span>扣薪合計</span>
+                                                        <strong data-metric="people_salary_deduction_abs_total">--</strong>
+                                                    </div>
+                                                    <div>
+                                                        <span>人均實發</span>
+                                                        <strong data-metric="people_salary_net_average">--</strong>
+                                                    </div>
+                                                    <div>
+                                                        <span>平均考績</span>
+                                                        <strong data-metric="people_salary_average_score">--</strong>
+                                                    </div>
+                                                </div>
+                                            </article>
+                                            <article class="o_dtsc_chart_tile">
+                                                <div class="o_dtsc_chart_title">部門人數</div>
+                                                <div class="o_dtsc_chart_visual o_dtsc_dynamic_bars" data-chart="people_department_items" data-action-model="dtsc.workqrcode" data-action-name="部門人員">
+                                                    <div class="o_dtsc_chart_empty">載入中...</div>
+                                                </div>
+                                            </article>
+                                        </div>
+                                    </section>
+
+                                    <section id="o_dtsc_section_alert" class="o_dtsc_overview_section">
+                                        <div class="o_dtsc_overview_section_head">
+                                            <div>
+                                                <span>異常提醒</span>
+                                                <h2>待處理風險</h2>
+                                            </div>
+                                            <small>目前風險，不使用區間篩選</small>
+                                        </div>
+                                        <div class="o_dtsc_overview_chart_grid">
+                                            <article class="o_dtsc_chart_tile o_dtsc_chart_tile_hero">
+                                                <div class="o_dtsc_chart_title">逾期未出貨分流</div>
+                                                <div class="o_dtsc_chart_visual o_dtsc_dynamic_sankey" data-chart="alert_overdue_delivery_reason_items" data-action-name="逾期未出貨明細">
+                                                    <div class="o_dtsc_chart_empty">載入中...</div>
+                                                </div>
+                                            </article>
+                                            <article class="o_dtsc_chart_tile">
+                                                <div class="o_dtsc_chart_title">目前風險工作台</div>
+                                                <div class="o_dtsc_chart_note">逾期未出貨已放在分流圖；這裡只列其他獨立風險。</div>
+                                                <div class="o_dtsc_chart_visual o_dtsc_dynamic_risk o_dtsc_alert_cards" data-chart="alert_risk_items">
+                                                    <div class="o_dtsc_chart_empty">載入中...</div>
+                                                </div>
+                                            </article>
+                                            <article class="o_dtsc_chart_tile o_dtsc_chart_tile_wide o_dtsc_chart_tile_compact">
+                                                <div class="o_dtsc_chart_title">其中：未完成工單類型</div>
+                                                <div class="o_dtsc_chart_visual o_dtsc_dynamic_segment" data-chart="alert_workorder_model_items" data-action-name="逾期工單明細">
+                                                    <div class="o_dtsc_chart_empty">載入中...</div>
+                                                </div>
+                                            </article>
+                                        </div>
+                                    </section>
+                                </main>
+                            </div>
+                        </div>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <record id="action_dtsc_overview_dashboard" model="ir.actions.act_window">
+            <field name="name">概覽畫面</field>
+            <field name="res_model">dtsc.overview.dashboard</field>
+            <field name="view_mode">form</field>
+            <field name="view_id" ref="view_dtsc_overview_dashboard_form"/>
+            <field name="res_id" ref="overview_dashboard_singleton"/>
+            <field name="target">current</field>
+        </record>
+    </data>
+</odoo>

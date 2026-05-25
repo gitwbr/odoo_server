@@ -98,6 +98,7 @@
         'views/report_performance.xml',
         'views/factory.xml',
         'views/normalsettings.xml',
+        'views/overview_dashboard.xml',
         'views/views.xml',
     ],
 	'assets': {
@@ -123,6 +124,9 @@
             'dtsc/static/src/js/hide_dev_user_menu.js',
             'dtsc/static/src/js/user_menu_documentation_patch.js',
             'dtsc/static/src/js/product_template_form_confirm.js',
+            'dtsc/static/src/js/overview_dashboard.js',
+            'dtsc/static/src/css/overview_dashboard.css',
+            'dtsc/static/src/css/overview_dashboard_native.css',
             # 'dtsc/static/src/xml/hide_dev_tools.xml',  # ← 加这行            
         ],
         'web.assets_frontend': [
