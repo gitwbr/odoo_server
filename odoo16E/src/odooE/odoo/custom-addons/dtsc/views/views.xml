@@ -699,7 +699,7 @@
 	
 	
 	<menuitem id="menu_chart_dashboard_root1" parent="dtsc.menu_root" name="報表" sequence="10" action="dtsc.action_server_chart_dashboard2"/>
-	<menuitem id="menu_overview_dashboard" parent="dtsc.menu_root" name="概覽畫面" sequence="11" action="dtsc.action_dtsc_overview_dashboard" groups="dtsc.group_dtsc_gly"/>
+	<menuitem id="menu_overview_dashboard" parent="dtsc.menu_root" name="概覽畫面" sequence="11" action="dtsc.action_dtsc_overview_dashboard" groups="dtsc.group_dtsc_yw,dtsc.group_dtsc_sc,dtsc.group_dtsc_kj,dtsc.group_dtsc_cg,dtsc.group_dtsc_gly"/>
     <menuitem id="menu_chart_dashboard" name="出貨統計表" parent="menu_chart_dashboard_root1" action="action_server_chart_dashboard2" sequence="10"/>
     <menuitem id="menu_chart_dashboard_yubaojia" name="預報單價統計表" parent="menu_chart_dashboard_root1" action="action_server_chart_dashboard_yubaojia" sequence="11" groups="dtsc.group_dtsc_gly"/>
     <menuitem id="menu_sales_chart_dashboard" name="業務出貨統計表" parent="menu_chart_dashboard_root1" action="action_server_sales_chart_dashboard" sequence="20"/>

@@ -40,112 +40,175 @@ class DtscOverviewDashboard(models.Model):
         ('is_invisible', '=', False),
         ('checkout_order_state', '!=', 'waiting_confirmation'),
     ]
+    DASHBOARD_SECTION_ORDER = [
+        'checkout',
+        'workorder',
+        'finance',
+        'purchase',
+        'product',
+        'material',
+        'people',
+        'alert',
+    ]
 
     name = fields.Char(default='概覽畫面', required=True)
+
+    def _get_allowed_dashboard_sections(self):
+        user = self.env.user
+        if user.has_group('dtsc.group_dtsc_gly'):
+            return list(self.DASHBOARD_SECTION_ORDER)
+
+        sections = []
+        if user.has_group('dtsc.group_dtsc_yw'):
+            sections.append('checkout')
+        if user.has_group('dtsc.group_dtsc_sc'):
+            sections.extend(['workorder', 'material'])
+        if user.has_group('dtsc.group_dtsc_kj'):
+            sections.append('finance')
+        if user.has_group('dtsc.group_dtsc_cg'):
+            sections.append('purchase')
+
+        section_set = set(sections)
+        return [
+            section for section in self.DASHBOARD_SECTION_ORDER
+            if section in section_set
+        ]
 
     @api.model
     def get_dashboard_metrics(self, filters=None):
         """Return dashboard metrics for each section's own filter state."""
         filters = self._normalize_dashboard_filters(filters)
-        checkout_period = filters['checkout']['period']
-        workorder_period = filters['workorder']['period']
-        finance_period = filters['finance']['period']
-        purchase_period = filters['purchase']['period']
-        product_period = filters['product']['period']
         people_month = filters['people']['month']
+        allowed_sections = self._get_allowed_dashboard_sections()
+        checkout_salesperson = self._get_empty_checkout_salesperson_filter()
+        if 'checkout' in allowed_sections:
+            checkout_salesperson = self._get_checkout_salesperson_filter(filters['checkout'])
+            filters['checkout']['salesperson_id'] = checkout_salesperson['selected_id']
+        metric_tz = self.env.context.get('tz') or self.env.user.sudo().tz or 'UTC'
+        metric_dashboard = self.sudo().with_context(tz=metric_tz)
 
-        Checkout = self.env['dtsc.checkout']
-        base_domain = self._get_checkout_menu_domain()
-        today_domain = base_domain + self._get_date_domain('today')
-        period_domain = base_domain + self._get_filter_field_date_domain(
-            'create_date', filters['checkout']
-        )
-        workorder_domain = base_domain + self._get_filter_field_date_domain(
-            'create_date', filters['workorder']
-        )
-        product_domain = base_domain + self._get_filter_field_date_domain(
-            'create_date', filters['product']
-        )
-        sum_fields = [
-            'record_price_and_construction_charge',
-            'tax_of_price',
-            'total_price_added_tax',
-            'unit_all',
-        ]
-        period_sums = self._read_group_sums(Checkout, period_domain, sum_fields)
-        state_summary = self._read_group_summary(
-            Checkout, period_domain, 'checkout_order_state'
-        )
-        type_summary = self._read_group_summary(
-            Checkout, period_domain, 'checkout_order_type'
-        )
-        state_items = self._read_group_items(
-            Checkout, period_domain, 'checkout_order_state'
-        )
-        type_items = self._read_group_items(
-            Checkout, period_domain, 'checkout_order_type'
-        )
-
-        today_count = Checkout.search_count(today_domain)
-        period_count = Checkout.search_count(period_domain)
-        period_records = Checkout.search(period_domain)
-        workorder_records = period_records if filters['workorder'] == filters['checkout'] else Checkout.search(workorder_domain)
-        product_records = period_records if filters['product'] == filters['checkout'] else Checkout.search(product_domain)
-        trend_items = self._get_checkout_trend_items(period_records, filters['checkout'])
-        risk_items = self._get_delivery_risk_items(Checkout, base_domain)
-        funnel_items = self._get_state_funnel_items(state_items, period_domain)
-        checkout_delivery_metrics = self._get_checkout_delivery_metrics(Checkout, period_domain)
-        checkout_conversion_metrics = self._get_checkout_conversion_metrics(workorder_records)
-        finance_metrics = self._get_finance_metrics(filters['finance'])
-        purchase_metrics = self._get_purchase_metrics(filters['purchase'])
-        star_product_metrics = self._get_star_product_metrics(product_records)
-        people_metrics = self._get_people_admin_metrics(people_month)
-        material_metrics = self._get_material_consumption_metrics()
-        alert_metrics = self._get_alert_metrics(material_metrics)
-        period_quantity = sum(period_records.mapped('quantity'))
-        period_untaxed = period_sums.get('record_price_and_construction_charge', 0)
-        period_tax = period_sums.get('tax_of_price', 0)
-        period_total = period_sums.get('total_price_added_tax', 0)
-        period_units = period_sums.get('unit_all', 0)
-
-        return {
+        metrics = {
             'filters': filters,
-            'period': checkout_period,
-            'period_label': self._get_period_label(filters['checkout']),
-            'checkout_period_label': self._get_period_label(filters['checkout']),
-            'workorder_period_label': self._get_period_label(filters['workorder']),
-            'finance_period_label': self._get_period_label(filters['finance']),
-            'purchase_period_label': self._get_period_label(filters['purchase']),
-            'product_period_label': self._get_period_label(filters['product']),
-            'people_month_label': self._get_month_label(people_month),
-            'checkout_today_count': self._format_number(today_count),
-            'checkout_period_count': self._format_number(period_count),
-            'checkout_period_untaxed': self._format_number(period_untaxed),
-            'checkout_period_tax': self._format_number(period_tax),
-            'checkout_period_total': self._format_number(period_total),
-            'checkout_period_quantity': self._format_number(period_quantity),
-            'checkout_period_units': self._format_number(period_units),
-            'checkout_today_domain': today_domain,
-            'checkout_period_domain': period_domain,
-            'checkout_state_summary': state_summary,
-            'checkout_type_summary': type_summary,
-            'checkout_state_items': state_items,
-            'checkout_type_items': type_items,
-            'checkout_trend_items': trend_items,
-            'checkout_risk_items': risk_items,
-            'checkout_overdue_delivery_count': self._format_number(risk_items[0]['value']),
-            'checkout_today_delivery_due_count': self._format_number(risk_items[1]['value']),
-            'checkout_next_three_days_delivery_due_count': self._format_number(risk_items[2]['value']),
-            'checkout_funnel_items': funnel_items,
-            **checkout_delivery_metrics,
-            **checkout_conversion_metrics,
-            **finance_metrics,
-            **purchase_metrics,
-            **star_product_metrics,
-            **people_metrics,
-            **material_metrics,
-            **alert_metrics,
+            'allowed_sections': allowed_sections,
+            'period': filters['checkout']['period'],
+            'period_label': metric_dashboard._get_period_label(filters['checkout']),
+            'checkout_period_label': metric_dashboard._get_period_label(filters['checkout']),
+            'workorder_period_label': metric_dashboard._get_period_label(filters['workorder']),
+            'finance_period_label': metric_dashboard._get_period_label(filters['finance']),
+            'purchase_period_label': metric_dashboard._get_period_label(filters['purchase']),
+            'product_period_label': metric_dashboard._get_period_label(filters['product']),
+            'people_month_label': metric_dashboard._get_month_label(people_month),
+            'checkout_salesperson_id': checkout_salesperson['selected_id'],
+            'checkout_salesperson_label': checkout_salesperson['selected_label'],
+            'checkout_salesperson_locked': checkout_salesperson['locked'],
+            'checkout_salesperson_options': checkout_salesperson['options'],
         }
+
+        checkout_needed = any(
+            section in allowed_sections
+            for section in ('checkout', 'workorder', 'product', 'alert')
+        )
+        Checkout = None
+        base_domain = []
+        if checkout_needed:
+            Checkout = metric_dashboard.env['dtsc.checkout']
+            base_domain = metric_dashboard._get_checkout_menu_domain()
+
+        if 'checkout' in allowed_sections:
+            checkout_base_domain = base_domain + checkout_salesperson['domain']
+            today_domain = checkout_base_domain + metric_dashboard._get_date_domain('today')
+            period_domain = checkout_base_domain + metric_dashboard._get_filter_field_date_domain(
+                'create_date', filters['checkout']
+            )
+            sum_fields = [
+                'record_price_and_construction_charge',
+                'tax_of_price',
+                'total_price_added_tax',
+                'unit_all',
+            ]
+            period_sums = metric_dashboard._read_group_sums(Checkout, period_domain, sum_fields)
+            state_items = metric_dashboard._read_group_items(
+                Checkout, period_domain, 'checkout_order_state'
+            )
+            type_items = metric_dashboard._read_group_items(
+                Checkout, period_domain, 'checkout_order_type'
+            )
+            today_count = Checkout.search_count(today_domain)
+            period_count = Checkout.search_count(period_domain)
+            period_records = Checkout.search(period_domain)
+            trend_items = metric_dashboard._get_checkout_trend_items(period_records, filters['checkout'])
+            risk_items = metric_dashboard._get_delivery_risk_items(Checkout, checkout_base_domain)
+            funnel_items = metric_dashboard._get_state_funnel_items(state_items, period_domain)
+            period_quantity = sum(period_records.mapped('quantity'))
+            metrics.update({
+                'checkout_today_count': metric_dashboard._format_number(today_count),
+                'checkout_period_count': metric_dashboard._format_number(period_count),
+                'checkout_period_untaxed': metric_dashboard._format_number(
+                    period_sums.get('record_price_and_construction_charge', 0)
+                ),
+                'checkout_period_tax': metric_dashboard._format_number(
+                    period_sums.get('tax_of_price', 0)
+                ),
+                'checkout_period_total': metric_dashboard._format_number(
+                    period_sums.get('total_price_added_tax', 0)
+                ),
+                'checkout_period_quantity': metric_dashboard._format_number(period_quantity),
+                'checkout_period_units': metric_dashboard._format_number(
+                    period_sums.get('unit_all', 0)
+                ),
+                'checkout_today_domain': today_domain,
+                'checkout_period_domain': period_domain,
+                'checkout_state_summary': metric_dashboard._read_group_summary(
+                    Checkout, period_domain, 'checkout_order_state'
+                ),
+                'checkout_type_summary': metric_dashboard._read_group_summary(
+                    Checkout, period_domain, 'checkout_order_type'
+                ),
+                'checkout_state_items': state_items,
+                'checkout_type_items': type_items,
+                'checkout_trend_items': trend_items,
+                'checkout_risk_items': risk_items,
+                'checkout_overdue_delivery_count': metric_dashboard._format_number(risk_items[0]['value']),
+                'checkout_today_delivery_due_count': metric_dashboard._format_number(risk_items[1]['value']),
+                'checkout_next_three_days_delivery_due_count': metric_dashboard._format_number(risk_items[2]['value']),
+                'checkout_funnel_items': funnel_items,
+                **metric_dashboard._get_checkout_delivery_metrics(Checkout, period_domain),
+            })
+
+        if 'workorder' in allowed_sections:
+            workorder_domain = base_domain + metric_dashboard._get_filter_field_date_domain(
+                'create_date', filters['workorder']
+            )
+            workorder_records = Checkout.search(workorder_domain)
+            metrics.update(metric_dashboard._get_checkout_conversion_metrics(workorder_records))
+
+        if 'finance' in allowed_sections:
+            metrics.update(metric_dashboard._get_finance_metrics(filters['finance']))
+
+        if 'purchase' in allowed_sections:
+            metrics.update(metric_dashboard._get_purchase_metrics(filters['purchase']))
+
+        if 'product' in allowed_sections:
+            product_domain = base_domain + metric_dashboard._get_filter_field_date_domain(
+                'create_date', filters['product']
+            )
+            metrics.update(
+                metric_dashboard._get_star_product_metrics(Checkout.search(product_domain))
+            )
+
+        material_metrics = {}
+        if 'material' in allowed_sections or 'alert' in allowed_sections:
+            material_metrics = metric_dashboard._get_material_consumption_metrics()
+            if 'material' in allowed_sections:
+                metrics.update(material_metrics)
+
+        if 'people' in allowed_sections:
+            metrics.update(metric_dashboard._get_people_admin_metrics(people_month))
+
+        if 'alert' in allowed_sections:
+            metrics.update(metric_dashboard._get_alert_metrics(material_metrics))
+
+        return metrics
 
     def _normalize_dashboard_filters(self, filters):
         if isinstance(filters, str):
@@ -184,6 +247,22 @@ class DtscOverviewDashboard(models.Model):
             },
         }
 
+    def _normalize_filter_id(self, value):
+        try:
+            value = int(value or 0)
+        except (TypeError, ValueError):
+            value = 0
+        return value if value > 0 else 0
+
+    def _get_empty_checkout_salesperson_filter(self):
+        return {
+            'selected_id': 0,
+            'selected_label': '全部業務',
+            'locked': False,
+            'options': [],
+            'domain': [],
+        }
+
     def _normalize_section_period_filter(self, section_filter, default_period='last_30_days'):
         if isinstance(section_filter, str):
             section_filter = {'period': section_filter}
@@ -191,6 +270,7 @@ class DtscOverviewDashboard(models.Model):
             section_filter = {}
 
         period = self._normalize_period(section_filter.get('period'), default_period)
+        salesperson_id = self._normalize_filter_id(section_filter.get('salesperson_id'))
         if period == 'custom':
             date_from = self._parse_filter_date(section_filter.get('date_from'))
             date_to = self._parse_filter_date(section_filter.get('date_to'))
@@ -201,6 +281,7 @@ class DtscOverviewDashboard(models.Model):
                     'period': 'custom',
                     'date_from': fields.Date.to_string(date_from),
                     'date_to': fields.Date.to_string(date_to),
+                    'salesperson_id': salesperson_id,
                 }
             period = default_period
 
@@ -209,7 +290,57 @@ class DtscOverviewDashboard(models.Model):
             'period': period,
             'date_from': fields.Date.to_string(start_date),
             'date_to': fields.Date.to_string(end_date - timedelta(days=1)),
+            'salesperson_id': salesperson_id,
         }
+
+    def _get_checkout_salesperson_filter(self, checkout_filter):
+        """Return the effective salesperson filter for the checkout section.
+
+        Business users are always locked to their own sales orders. Management can
+        inspect all salespeople or select a specific one.
+        """
+        user = self.env.user
+        selected_id = self._normalize_filter_id(
+            isinstance(checkout_filter, dict) and checkout_filter.get('salesperson_id')
+        )
+        locked = user.has_group('dtsc.group_dtsc_yw') and not user.has_group('dtsc.group_dtsc_gly')
+        Users = self.env['res.users'].sudo()
+
+        if locked:
+            selected_id = user.id
+            users = Users.browse(user.id)
+            options = [{'id': user.id, 'label': user.name or user.login or '目前使用者'}]
+        else:
+            users = self._get_checkout_salesperson_users()
+            if selected_id and selected_id not in users.ids:
+                selected_id = 0
+            options = [{'id': 0, 'label': '全部業務'}] + [
+                {'id': salesperson.id, 'label': salesperson.name or salesperson.login}
+                for salesperson in users
+            ]
+
+        selected_user = Users.browse(selected_id).exists() if selected_id else Users.browse()
+        selected_label = (
+            selected_user.name or selected_user.login
+            if selected_user else '全部業務'
+        )
+        return {
+            'selected_id': selected_id,
+            'selected_label': selected_label,
+            'locked': locked,
+            'options': options,
+            'domain': [('user_id', '=', selected_id)] if selected_id else [],
+        }
+
+    def _get_checkout_salesperson_users(self):
+        group = self.env.ref('dtsc.group_dtsc_yw', raise_if_not_found=False)
+        if not group:
+            return self.env['res.users'].sudo().browse()
+        return self.env['res.users'].sudo().search([
+            ('groups_id', 'in', group.id),
+            ('share', '=', False),
+            ('active', '=', True),
+        ], order='name, login, id')
 
     def _normalize_period(self, period, default_period='last_30_days'):
         return period if period in dict(self.PERIOD_SELECTION) else default_period
@@ -307,7 +438,7 @@ class DtscOverviewDashboard(models.Model):
         return self._get_period_date_range(period)
 
     def _to_utc_datetime_string(self, local_datetime):
-        timezone_name = self.env.context.get('tz') or self.env.user.tz or 'UTC'
+        timezone_name = self.env.context.get('tz') or self.env.user.sudo().tz or 'UTC'
         timezone = pytz.timezone(timezone_name)
         localized = timezone.localize(local_datetime)
         utc_datetime = localized.astimezone(pytz.UTC).replace(tzinfo=None)

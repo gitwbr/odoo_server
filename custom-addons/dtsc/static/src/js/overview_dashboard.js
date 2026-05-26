@@ -71,12 +71,18 @@ function isValidPeriod(period) {
   return FILTER_PERIODS.includes(period);
 }
 
+function normalizeFilterId(value) {
+  const numberValue = Number.parseInt(value || 0, 10);
+  return Number.isFinite(numberValue) && numberValue > 0 ? numberValue : 0;
+}
+
 function normalizeSectionFilter(rawSection) {
   if (typeof rawSection === "string") {
     rawSection = { period: rawSection };
   }
   const raw = rawSection && typeof rawSection === "object" ? rawSection : {};
   const period = isValidPeriod(raw.period) ? raw.period : DEFAULT_PERIOD;
+  const salespersonId = normalizeFilterId(raw.salesperson_id || raw.salespersonId);
   if (period === "custom") {
     let dateFrom = isValidDateKey(raw.date_from) ? raw.date_from : "";
     let dateTo = isValidDateKey(raw.date_to) ? raw.date_to : "";
@@ -92,11 +98,13 @@ function normalizeSectionFilter(rawSection) {
       period: "custom",
       date_from: dateFrom,
       date_to: dateTo,
+      salesperson_id: salespersonId,
     };
   }
   return {
     period,
     ...getDateRangeForPeriod(period),
+    salesperson_id: salespersonId,
   };
 }
 
@@ -1625,6 +1633,10 @@ function renderCharts(dashboard, metrics) {
   });
 }
 
+function shouldRenderCharts(metrics) {
+  return Object.keys(metrics || {}).some((key) => key.endsWith("_items"));
+}
+
 function openDashboardDomainMetric(metricNode) {
   const dashboard = metricNode.closest(".o_dtsc_overview");
   const metrics = dashboard && dashboard.__dtscOverviewMetrics;
@@ -1646,14 +1658,43 @@ function applyMetrics(dashboard, metrics) {
     setMetricText(dashboard, "data-metric-text", key, value);
   });
 
-  applyFilterControls(dashboard, metrics.filters || getDashboardFilters());
+  applyFilterControls(dashboard, metrics.filters || getDashboardFilters(), metrics);
 
-  if (Object.prototype.hasOwnProperty.call(metrics, "checkout_state_items")) {
+  if (shouldRenderCharts(metrics)) {
     renderCharts(dashboard, metrics);
   }
 }
 
-function applyFilterControls(dashboard, filters) {
+function renderSalespersonFilter(node, options, selectedId, locked) {
+  if (!node) {
+    return;
+  }
+  const normalizedOptions = Array.isArray(options) && options.length
+    ? options
+    : [{ id: 0, label: "全部業務" }];
+  const currentValue = String(normalizeFilterId(selectedId));
+  const nextOptions = normalizedOptions.map((option) => ({
+    id: normalizeFilterId(option.id),
+    label: option.label || "未設定",
+  }));
+  const signature = JSON.stringify(nextOptions);
+  if (node.dataset.optionsSignature !== signature) {
+    node.innerHTML = "";
+    nextOptions.forEach((option) => {
+      const optionNode = document.createElement("option");
+      optionNode.value = String(option.id);
+      optionNode.textContent = option.label;
+      node.appendChild(optionNode);
+    });
+    node.dataset.optionsSignature = signature;
+  }
+  node.value = nextOptions.some((option) => String(option.id) === currentValue)
+    ? currentValue
+    : "0";
+  node.disabled = Boolean(locked) || nextOptions.length <= 1;
+}
+
+function applyFilterControls(dashboard, filters, metrics = {}) {
   const normalized = normalizeFilters(filters);
   dashboard.querySelectorAll("[data-filter-scope]").forEach((group) => {
     const scope = group.dataset.filterScope;
@@ -1688,6 +1729,16 @@ function applyFilterControls(dashboard, filters) {
     if (selectedMonth && node.value !== selectedMonth) {
       node.value = selectedMonth;
     }
+  });
+  dashboard.querySelectorAll("[data-filter-salesperson]").forEach((node) => {
+    const scope = node.dataset.filterSalesperson;
+    const selectedFilter = normalized[scope] || {};
+    renderSalespersonFilter(
+      node,
+      metrics.checkout_salesperson_options,
+      metrics.checkout_salesperson_id || selectedFilter.salesperson_id,
+      metrics.checkout_salesperson_locked
+    );
   });
 }
 
@@ -1874,6 +1925,25 @@ document.addEventListener("click", (event) => {
 });
 
 document.addEventListener("change", (event) => {
+  const salespersonSelect = event.target.closest("[data-filter-salesperson]");
+  if (salespersonSelect) {
+    const dashboard = salespersonSelect.closest(".o_dtsc_overview");
+    const scope = salespersonSelect.dataset.filterSalesperson;
+    const filters = getDashboardFilters();
+    if (scope && filters[scope]) {
+      filters[scope] = normalizeSectionFilter({
+        ...filters[scope],
+        salesperson_id: salespersonSelect.value,
+      });
+      saveDashboardFilters(filters);
+    }
+    if (dashboard) {
+      applyMetrics(dashboard, getFilterMetricPlaceholders(filters));
+      loadMetrics(dashboard, filters);
+    }
+    return;
+  }
+
   const dateInput = event.target.closest("[data-filter-date-from], [data-filter-date-to]");
   if (dateInput) {
     const dashboard = dateInput.closest(".o_dtsc_overview");

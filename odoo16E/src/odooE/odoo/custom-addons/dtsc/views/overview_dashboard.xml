@@ -36,36 +36,49 @@
                             <div class="o_dtsc_overview_body">
                                 <aside class="o_dtsc_overview_menu">
                                     <div class="o_dtsc_overview_menu_title">快速菜單</div>
-                                    <a href="#" data-target="o_dtsc_section_checkout" class="o_dtsc_overview_menu_item active">大圖訂單</a>
-                                    <a href="#" data-target="o_dtsc_section_workorder" class="o_dtsc_overview_menu_item">工單狀況</a>
-                                    <a href="#" data-target="o_dtsc_section_receivable" class="o_dtsc_overview_menu_item">財務收付</a>
-                                    <a href="#" data-target="o_dtsc_section_purchase" class="o_dtsc_overview_menu_item">採購</a>
-                                    <a href="#" data-target="o_dtsc_section_product" class="o_dtsc_overview_menu_item">明星產品</a>
-                                    <a href="#" data-target="o_dtsc_section_material" class="o_dtsc_overview_menu_item">材料消耗</a>
-                                    <a href="#" data-target="o_dtsc_section_people" class="o_dtsc_overview_menu_item">人員行政</a>
-                                    <a href="#" data-target="o_dtsc_section_alert" class="o_dtsc_overview_menu_item">異常提醒</a>
+                                    <a href="#" data-target="o_dtsc_section_checkout" class="o_dtsc_overview_menu_item" groups="dtsc.group_dtsc_yw,dtsc.group_dtsc_gly">大圖訂單</a>
+                                    <a href="#" data-target="o_dtsc_section_workorder" class="o_dtsc_overview_menu_item" groups="dtsc.group_dtsc_sc,dtsc.group_dtsc_gly">工單狀況</a>
+                                    <a href="#" data-target="o_dtsc_section_receivable" class="o_dtsc_overview_menu_item" groups="dtsc.group_dtsc_kj,dtsc.group_dtsc_gly">財務收付</a>
+                                    <a href="#" data-target="o_dtsc_section_purchase" class="o_dtsc_overview_menu_item" groups="dtsc.group_dtsc_cg,dtsc.group_dtsc_gly">採購</a>
+                                    <a href="#" data-target="o_dtsc_section_product" class="o_dtsc_overview_menu_item" groups="dtsc.group_dtsc_gly">明星產品</a>
+                                    <a href="#" data-target="o_dtsc_section_material" class="o_dtsc_overview_menu_item" groups="dtsc.group_dtsc_sc,dtsc.group_dtsc_gly">材料消耗</a>
+                                    <a href="#" data-target="o_dtsc_section_people" class="o_dtsc_overview_menu_item" groups="dtsc.group_dtsc_gly">人員行政</a>
+                                    <a href="#" data-target="o_dtsc_section_alert" class="o_dtsc_overview_menu_item" groups="dtsc.group_dtsc_gly">異常提醒</a>
                                 </aside>
 
                                 <main class="o_dtsc_overview_content">
-                                    <section id="o_dtsc_section_checkout" class="o_dtsc_overview_section">
+                                    <section id="o_dtsc_section_checkout" class="o_dtsc_overview_section" groups="dtsc.group_dtsc_yw,dtsc.group_dtsc_gly">
                                         <div class="o_dtsc_overview_section_head">
                                             <div>
                                                 <span>大圖訂單</span>
                                                 <h2>趨勢、產能與出貨</h2>
                                             </div>
-                                            <div class="o_dtsc_section_head_tools">
-                                                <small>依進單日</small>
-                                                <div class="o_dtsc_section_period_filter" data-filter-scope="checkout">
-                                                    <a href="#" data-filter-period="last_7_days">7天</a>
-                                                    <a href="#" data-filter-period="last_30_days">30天</a>
-                                                    <a href="#" data-filter-period="last_90_days">90天</a>
-                                                    <a href="#" data-filter-period="last_365_days">365天</a>
-                                                    <a href="#" data-filter-period="custom">自訂</a>
-                                                </div>
-                                                <div class="o_dtsc_section_custom_range o_dtsc_hidden" data-custom-range-scope="checkout">
-                                                    <input type="date" data-filter-date-from="checkout"/>
-                                                    <span>至</span>
-                                                    <input type="date" data-filter-date-to="checkout"/>
+                                            <div class="o_dtsc_section_head_tools o_dtsc_section_head_tools_checkout">
+                                                <div class="o_dtsc_filter_panel">
+                                                    <div class="o_dtsc_filter_panel_top">
+                                                        <small>依進單日</small>
+                                                        <span>銷售與期間只套用本區塊</span>
+                                                    </div>
+                                                    <div class="o_dtsc_filter_panel_controls">
+                                                        <div class="o_dtsc_section_salesperson_filter">
+                                                            <span>銷售</span>
+                                                            <select data-filter-salesperson="checkout">
+                                                                <option value="0">載入中...</option>
+                                                            </select>
+                                                        </div>
+                                                        <div class="o_dtsc_section_period_filter" data-filter-scope="checkout">
+                                                            <a href="#" data-filter-period="last_7_days">7天</a>
+                                                            <a href="#" data-filter-period="last_30_days">30天</a>
+                                                            <a href="#" data-filter-period="last_90_days">90天</a>
+                                                            <a href="#" data-filter-period="last_365_days">365天</a>
+                                                            <a href="#" data-filter-period="custom">自訂</a>
+                                                        </div>
+                                                    </div>
+                                                    <div class="o_dtsc_section_custom_range o_dtsc_hidden" data-custom-range-scope="checkout">
+                                                        <input type="date" data-filter-date-from="checkout"/>
+                                                        <span>至</span>
+                                                        <input type="date" data-filter-date-to="checkout"/>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
@@ -137,7 +150,7 @@
                                         </div>
                                     </section>
 
-                                    <section id="o_dtsc_section_workorder" class="o_dtsc_overview_section">
+                                    <section id="o_dtsc_section_workorder" class="o_dtsc_overview_section" groups="dtsc.group_dtsc_sc,dtsc.group_dtsc_gly">
                                         <div class="o_dtsc_overview_section_head">
                                             <div>
                                                 <span>工單狀況</span>
@@ -232,7 +245,7 @@
                                         </div>
                                     </section>
 
-                                    <section id="o_dtsc_section_receivable" class="o_dtsc_overview_section">
+                                    <section id="o_dtsc_section_receivable" class="o_dtsc_overview_section" groups="dtsc.group_dtsc_kj,dtsc.group_dtsc_gly">
                                         <div class="o_dtsc_overview_section_head">
                                             <div>
                                                 <span>財務收付</span>
@@ -305,7 +318,7 @@
                                         </div>
                                     </section>
 
-                                    <section id="o_dtsc_section_purchase" class="o_dtsc_overview_section">
+                                    <section id="o_dtsc_section_purchase" class="o_dtsc_overview_section" groups="dtsc.group_dtsc_cg,dtsc.group_dtsc_gly">
                                         <div class="o_dtsc_overview_section_head">
                                             <div>
                                                 <span>採購</span>
@@ -404,7 +417,7 @@
                                         </div>
                                     </section>
 
-                                    <section id="o_dtsc_section_product" class="o_dtsc_overview_section">
+                                    <section id="o_dtsc_section_product" class="o_dtsc_overview_section" groups="dtsc.group_dtsc_gly">
                                         <div class="o_dtsc_overview_section_head">
                                             <div>
                                                 <span>明星產品</span>
@@ -481,7 +494,7 @@
                                         </div>
                                     </section>
 
-                                    <section id="o_dtsc_section_material" class="o_dtsc_overview_section">
+                                    <section id="o_dtsc_section_material" class="o_dtsc_overview_section" groups="dtsc.group_dtsc_sc,dtsc.group_dtsc_gly">
                                         <div class="o_dtsc_overview_section_head">
                                             <div>
                                                 <span>廠內扣料</span>
@@ -526,7 +539,7 @@
                                         </div>
                                     </section>
 
-                                    <section id="o_dtsc_section_people" class="o_dtsc_overview_section">
+                                    <section id="o_dtsc_section_people" class="o_dtsc_overview_section" groups="dtsc.group_dtsc_gly">
                                         <div class="o_dtsc_overview_section_head">
                                             <div>
                                                 <span>人員行政</span>
@@ -632,7 +645,7 @@
                                         </div>
                                     </section>
 
-                                    <section id="o_dtsc_section_alert" class="o_dtsc_overview_section">
+                                    <section id="o_dtsc_section_alert" class="o_dtsc_overview_section" groups="dtsc.group_dtsc_gly">
                                         <div class="o_dtsc_overview_section_head">
                                             <div>
                                                 <span>異常提醒</span>

@@ -212,11 +212,51 @@
     gap: 8px;
 }
 
+.o_dtsc_filter_panel {
+    min-width: 560px;
+    padding: 10px;
+    border: 1px solid rgba(26, 138, 150, 0.18);
+    border-radius: 20px;
+    background:
+        linear-gradient(135deg, rgba(255, 255, 255, 0.96) 0%, rgba(232, 247, 249, 0.92) 100%);
+    box-shadow: 0 14px 32px rgba(23, 65, 83, 0.08);
+}
+
+.o_dtsc_filter_panel_top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 8px;
+}
+
+.o_dtsc_filter_panel_top span {
+    color: #7b8794;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.o_dtsc_filter_panel_controls {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
 .o_dtsc_section_period_filter {
     display: inline-flex;
     flex-wrap: wrap;
     justify-content: flex-end;
     gap: 6px;
+}
+
+.o_dtsc_filter_panel .o_dtsc_section_period_filter {
+    flex-wrap: nowrap;
+    gap: 2px;
+    padding: 4px;
+    border: 1px solid rgba(26, 138, 150, 0.13);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.72);
 }
 
 .o_dtsc_section_period_filter a {
@@ -234,12 +274,66 @@
     text-decoration: none;
 }
 
+.o_dtsc_filter_panel .o_dtsc_section_period_filter a {
+    min-width: 46px;
+    border: 0;
+    color: #41606a;
+    background: transparent;
+}
+
 .o_dtsc_section_period_filter a:hover,
 .o_dtsc_section_period_filter a.active {
     color: #ffffff;
     text-decoration: none;
     border-color: #1a8a96;
     background: #1a8a96;
+}
+
+.o_dtsc_filter_panel .o_dtsc_section_period_filter a:hover,
+.o_dtsc_filter_panel .o_dtsc_section_period_filter a.active {
+    color: #ffffff;
+    background: linear-gradient(135deg, #178994 0%, #27b4c1 100%);
+    box-shadow: 0 8px 16px rgba(23, 137, 148, 0.2);
+}
+
+.o_dtsc_section_salesperson_filter {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px;
+    border: 1px solid #d9e2e8;
+    border-radius: 999px;
+    background: #ffffff;
+}
+
+.o_dtsc_filter_panel .o_dtsc_section_salesperson_filter {
+    min-height: 38px;
+    padding: 6px 12px;
+    border-color: rgba(26, 138, 150, 0.14);
+    background: rgba(255, 255, 255, 0.86);
+}
+
+.o_dtsc_section_salesperson_filter span {
+    margin: 0;
+    color: #1a8a96;
+    font-size: 12px;
+    font-weight: 800;
+}
+
+.o_dtsc_section_salesperson_filter select {
+    min-width: 116px;
+    max-width: 170px;
+    border: 0;
+    color: #1f2933;
+    background: transparent;
+    font-size: 12px;
+    font-weight: 800;
+    outline: none;
+}
+
+.o_dtsc_section_salesperson_filter select:disabled {
+    color: #6f7d8a;
+    cursor: not-allowed;
 }
 
 .o_dtsc_hidden {
@@ -251,9 +345,16 @@
     align-items: center;
     justify-content: flex-end;
     gap: 6px;
+    margin-top: 8px;
     color: #687785;
     font-size: 12px;
     font-weight: 800;
+}
+
+.o_dtsc_filter_panel .o_dtsc_section_custom_range {
+    width: 100%;
+    padding-top: 8px;
+    border-top: 1px dashed rgba(26, 138, 150, 0.18);
 }
 
 .o_dtsc_section_custom_range input {
@@ -2327,6 +2428,32 @@
     .o_dtsc_section_head_tools {
         align-items: flex-start;
         margin-top: 10px;
+    }
+
+    .o_dtsc_filter_panel {
+        min-width: 0;
+        width: 100%;
+    }
+
+    .o_dtsc_filter_panel_top,
+    .o_dtsc_filter_panel_controls {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .o_dtsc_filter_panel .o_dtsc_section_period_filter {
+        flex-wrap: wrap;
+        justify-content: flex-start;
+    }
+
+    .o_dtsc_filter_panel .o_dtsc_section_salesperson_filter {
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    .o_dtsc_filter_panel .o_dtsc_section_salesperson_filter select {
+        flex: 1 1 auto;
+        max-width: none;
     }
 
     .o_dtsc_section_period_filter {
