@@ -791,34 +791,91 @@ function openActWindowInNewTab(action, viewType) {
     return;
   }
 
-  const previousAction = window.sessionStorage.getItem("current_action");
   const targetViewType = viewType || (action.res_id ? "form" : "list");
-  const hashParts = [
-    `model=${encodeURIComponent(action.res_model)}`,
-    `view_type=${encodeURIComponent(targetViewType)}`,
-  ];
-  if (action.res_id) {
-    hashParts.push(`id=${encodeURIComponent(action.res_id)}`);
-  }
-  const url = `${window.location.origin}/web${window.location.search || ""}#${hashParts.join("&")}`;
-
-  window.sessionStorage.setItem("current_action", JSON.stringify(action));
-  const opened = window.open(url, "_blank");
-  if (previousAction === null) {
-    window.sessionStorage.removeItem("current_action");
-  } else {
-    window.sessionStorage.setItem("current_action", previousAction);
+  const actionLink = buildNewTabActionLink(action, targetViewType);
+  if (isOdooIosApp()) {
+    window.location.assign(actionLink.url);
+    return;
   }
 
-  if (!opened) {
-    window.dispatchEvent(new CustomEvent("do-action", {
-      detail: {
-        action,
-        options: {
-          clear_breadcrumbs: false,
-        },
-      },
-    }));
+  const opened = window.open(actionLink.url, "_blank");
+  if (opened) {
+    try {
+      opened.opener = null;
+    } catch (error) {
+      // Some browsers disallow touching the opener. The new tab can still load.
+    }
+    return;
+  }
+
+  if (actionLink.storageKey) {
+    removeStoredNewTabAction(actionLink.storageKey);
+  }
+}
+
+function isOdooIosApp() {
+  return /OdooMobile \(iOS\)/i.test(window.navigator && window.navigator.userAgent || "");
+}
+
+function buildNewTabActionLink(action, viewType) {
+  const params = new URLSearchParams(window.location.search || "");
+  const storedAction = storeNewTabAction(action);
+  const payload = encodeActionPayload(action);
+  if (storedAction.token) {
+    params.set("token", storedAction.token);
+  }
+  if (!storedAction.token || payload.length < 1800) {
+    params.set("payload", payload);
+  }
+  params.set("view_type", viewType);
+
+  const cids = getCurrentCompanyIds();
+  if (cids) {
+    params.set("cids", cids);
+  }
+
+  return {
+    url: `${window.location.origin}/dtsc/overview/open_action?${params.toString()}`,
+    storageKey: storedAction.key,
+  };
+}
+
+function storeNewTabAction(action) {
+  const token = `${Date.now()}_${Math.random().toString(36).slice(2)}`;
+  const key = `dtsc_overview_action_${token}`;
+  try {
+    window.localStorage.setItem(key, JSON.stringify(action));
+    return { token, key };
+  } catch (error) {
+    return { token: "", key: "" };
+  }
+}
+
+function removeStoredNewTabAction(key) {
+  if (!key) {
+    return;
+  }
+  try {
+    window.localStorage.removeItem(key);
+  } catch (error) {
+    // No cleanup needed when storage is unavailable.
+  }
+}
+
+function encodeActionPayload(action) {
+  const json = JSON.stringify(action);
+  const binary = encodeURIComponent(json).replace(/%([0-9A-F]{2})/g, (match, hex) => {
+    return String.fromCharCode(parseInt(hex, 16));
+  });
+  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+function getCurrentCompanyIds() {
+  try {
+    const hash = window.location.hash ? window.location.hash.slice(1) : "";
+    return new URLSearchParams(hash).get("cids") || "";
+  } catch (error) {
+    return "";
   }
 }
 
