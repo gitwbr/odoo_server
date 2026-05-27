@@ -246,7 +246,9 @@
         <field name="arch" type="xml">
             <form string="請確認帳單日期">
                 <group>
+                    <field name="partner_id" invisible="1"/>
                     <field name="selected_date"/>
+                    <field name="supp_bank_id" options="{'no_create': True, 'no_create_edit': True}"/>
                 </group>
                 <footer>
                     <button string="確認" type="object" name="action_confirm" class="btn-primary"/>

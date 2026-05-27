@@ -164,7 +164,38 @@ class Billdate(models.TransientModel):
     _description = '賬單日期'
 
     selected_date = fields.Date(string='賬單日期')
-    
+    partner_id = fields.Many2one('res.partner', string='供應商', readonly=True)
+    supp_bank_id = fields.Many2one(
+        'res.partner.bank',
+        string='銀行賬戶',
+        domain="[('partner_id', '=', partner_id)]",
+    )
+
+    @api.model
+    def default_get(self, fields_list):
+        res = super().default_get(fields_list)
+        active_ids = self._context.get('active_ids') or []
+        if not active_ids:
+            return res
+        orders = self.env['purchase.order'].browse(active_ids)
+        partner = orders[0].partner_id
+        res['partner_id'] = partner.id
+        if partner.bank_ids:
+            res['supp_bank_id'] = partner.bank_ids[0].id
+        return res
+
+    def _prepare_supp_bank_vals(self, partner):
+        """根據所選銀行賬戶生成應付單冗余字段。"""
+        self.ensure_one()
+        if not self.supp_bank_id:
+            return False, False
+        if self.supp_bank_id.partner_id.commercial_partner_id != partner.commercial_partner_id:
+            raise UserError('所選銀行賬戶不屬於當前供應商，請重新選擇。')
+        bank = self.supp_bank_id
+        parts = [p for p in (bank.acc_number, bank.bank_id.name if bank.bank_id else False) if p]
+        supp_bank_text = ' - '.join(parts) if parts else False
+        return bank.id, supp_bank_text
+
     def action_confirm(self):
         active_ids = self._context.get('active_ids')
         records = self.env["purchase.order"].browse(active_ids)
@@ -203,12 +234,8 @@ class Billdate(models.TransientModel):
             # 如果超過5號，則設置為下個月5號
             pay_date_due = (target_date + relativedelta(months=1)).replace(day=int(pay_due_date))
 
-        supp_bank_id = False
-        if partner_id.bank_ids:
-            supp_bank_id = partner_id.bank_ids[0].id
-            if partner_id.bank_ids[0].acc_number and partner_id.bank_ids[0].bank_id.name:
-                supp_bank_text = partner_id.bank_ids[0].acc_number + ' - ' +  partner_id.bank_ids[0].bank_id.name
-        
+        supp_bank_id, supp_bank_text = self._prepare_supp_bank_vals(partner_id)
+
         combined_invoice_vals = {
             'invoice_line_ids': [],
             'company_id': None,
