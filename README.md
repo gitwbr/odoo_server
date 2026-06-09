@@ -690,7 +690,7 @@ sudo nginx -t
 2. 重启 Nginx 并检查状态：
 ```bash
 sudo systemctl restart nginx
-sudo systemctl status nginx
+sudo systemctl status
 ```
 
 ## SSL 证书管理

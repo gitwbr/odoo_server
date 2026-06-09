@@ -276,6 +276,57 @@ class Checkout(CheckoutPortalMixin, http.Controller):
     def public_web_order(self, **kwargs):
         return http.request.render('dtsc.public_web_order_page', {})
 
+    def _public_web_order_customer_class_id(self, customer_class_id):
+        requested_class_id = int(customer_class_id or 0)
+        if not requested_class_id:
+            return False
+
+        partner_id = request.session.get('partner_id')
+        if partner_id:
+            partner = request.env['res.partner'].sudo().browse(partner_id)
+            if partner.exists() and partner.customclass_id.id == requested_class_id:
+                return requested_class_id
+            return False
+
+        if not request.website.is_public_user() and request.env.user.has_group('base.group_user'):
+            return requested_class_id
+        return False
+
+    def _public_web_order_products(self, customer_class_id, category_id=False):
+        allowed_class_id = self._public_web_order_customer_class_id(customer_class_id)
+        if not allowed_class_id:
+            return request.env['product.template'].sudo().browse()
+
+        quotations = request.env['dtsc.quotation'].sudo().search([
+            ('customer_class_id', '=', allowed_class_id),
+            ('product_id.sale_ok', '=', True),
+        ])
+        products = quotations.mapped('product_id')
+        if category_id:
+            products = products.filtered(lambda product: product.categ_id.id == int(category_id))
+        return products
+
+    @http.route('/dtsc/public_web_order/categories', type='json', auth='public', website=True)
+    def public_web_order_categories(self, customer_class_id=False, **kwargs):
+        products = self._public_web_order_products(customer_class_id)
+        categories = products.mapped('categ_id')
+        return [
+            {'id': category.id, 'name': category.name}
+            for category in categories.sorted(lambda category: category.name or '')
+        ]
+
+    @http.route('/dtsc/public_web_order/products', type='json', auth='public', website=True)
+    def public_web_order_products(self, customer_class_id=False, category_id=False, **kwargs):
+        products = self._public_web_order_products(customer_class_id, category_id=category_id)
+        return [
+            {
+                'id': product.id,
+                'name': product.name,
+                'categ_id': [product.categ_id.id, product.categ_id.name] if product.categ_id else False,
+            }
+            for product in products.sorted(lambda product: product.name or '')
+        ]
+
     @http.route(['/check-image-resolution'], type='http', auth="public", website=True, sitemap=True)
     def image_resolution_check(self, **kwargs):
         return http.request.render('dtsc.image_resolution_check_page', {})

@@ -1208,7 +1208,7 @@
 		<field name="perm_write" eval="False"/>
 		<field name="perm_create" eval="False"/>
 		<field name="perm_unlink" eval="False"/>
-		<field name="domain_force">[("sale_ok", "=", True)]</field>
+		<field name="domain_force">[('is_published', '=', True), ("sale_ok", "=", True)]</field>
 	</record>
 	
 	<record id="model_dtsc_crmusercomment_rule_wb" model="ir.model.access"> 

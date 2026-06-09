@@ -14,6 +14,7 @@ mkdir -p "$BASE_DIR/postgresql" "$BASE_DIR/data" "$BASE_DIR/logs" "$BASE_DIR/run
 if ! docker ps -a --format '{{.Names}}' | grep -qx "$DB_NAME"; then
   docker run -d \
     --name "$DB_NAME" \
+    --restart unless-stopped \
     -e POSTGRES_DB=postgres \
     -e POSTGRES_USER=odoo \
     -e POSTGRES_PASSWORD=odoo \
@@ -50,6 +51,7 @@ if docker ps -a --format '{{.Names}}' | grep -qx "$WEB_NAME"; then
 else
   docker run -d \
     --name "$WEB_NAME" \
+    --restart unless-stopped \
     --network host \
     -v "$BASE_DIR:$BASE_DIR" \
     "$IMAGE_NAME" \
@@ -71,6 +73,7 @@ if docker ps -a --format '{{.Names}}' | grep -qx "$AI_GATEWAY_NAME"; then
 else
   docker run -d \
     --name "$AI_GATEWAY_NAME" \
+    --restart unless-stopped \
     --network host \
     -v "$AI_GATEWAY_DIR:/app" \
     "$AI_GATEWAY_IMAGE" \

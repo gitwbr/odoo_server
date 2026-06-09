@@ -9,6 +9,7 @@ from datetime import datetime, timedelta, date, timezone, time
 from odoo.fields import Datetime
 import re
 from workalendar.asia import Taiwan
+from haversine import haversine, Unit
 import math
 # 你的 LINE Channel Secret
 # LINE_CHANNEL_SECRET = "ae33548b60e9b0bffb982c3a637885a5"
@@ -21,6 +22,38 @@ from urllib.parse import parse_qs, unquote
 import json
 import secrets
 class LineBotController(http.Controller):
+
+    def _validate_gps_checkin(self, linebot, latitude, longitude):
+        if not latitude or not longitude:
+            return False, "打卡失敗：無法取得GPS定位，請允許定位後重新打卡。"
+
+        try:
+            checkin_point = (float(latitude), float(longitude))
+        except (TypeError, ValueError):
+            return False, "打卡失敗：GPS定位資料異常，請重新定位後再打卡。"
+
+        if not linebot.location_ids:
+            return False, "打卡失敗：尚未設定GPS打卡點，請聯絡管理員。"
+
+        has_valid_location = False
+        for location in linebot.location_ids:
+            if not location.lat_lang or not location.latlang_range:
+                continue
+            try:
+                office_point = tuple(map(float, location.lat_lang.split(',')))
+            except (TypeError, ValueError):
+                continue
+            if len(office_point) != 2:
+                continue
+
+            has_valid_location = True
+            distance = haversine(checkin_point, office_point, unit=Unit.METERS)
+            if distance <= location.latlang_range:
+                return True, ""
+
+        if not has_valid_location:
+            return False, "打卡失敗：GPS打卡點設定不完整，請聯絡管理員。"
+        return False, "打卡失敗：GPS定位不在打卡範圍內，請到指定範圍後重新打卡。"
     
     
     @http.route(['/line/login'], type='http', auth='public', methods=['POST'], csrf=False)
@@ -388,6 +421,11 @@ class LineBotController(http.Controller):
         
         if employee.out_company_date != False:
             return json.dumps({'success': True, 'data': "您已離職，不能繼續打卡！"})
+
+        if lineObj.use_type == "gps":
+            gps_valid, gps_message = self._validate_gps_checkin(lineObj, latitude, longitude)
+            if not gps_valid:
+                return json.dumps({'success': False, 'data': gps_message})
         
         if lineObj.use_type == "ip":
             flag = 0
@@ -420,8 +458,8 @@ class LineBotController(http.Controller):
                 else:
                     existing_attendance.sudo().write({
                         'in_time': now_date,
-                        'lat_out': latitude,
-                        'lang_out': longitude,
+                        'lat_in': latitude,
+                        'lang_in': longitude,
                         'att_ip':ip,
                     })
         else:
@@ -430,8 +468,8 @@ class LineBotController(http.Controller):
                 Attendance.sudo().create({
                     'line_user_id': line_id,
                     'out_time': now_date,
-                    'lat_in': latitude,
-                    'lang_in': longitude,
+                    'lat_out': latitude,
+                    'lang_out': longitude,
                     'work_date' : now_date.date(),
                     'att_ip_out':ip,
                 })

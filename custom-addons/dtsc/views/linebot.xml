@@ -1112,6 +1112,29 @@
 				  var now = new Date();
 				  document.getElementById("current-time").innerText = "打卡時間：" + now.toLocaleTimeString();
 			  }
+			  function setCheckinButtonState(state) {
+				  var btn = document.getElementById("checkin-btn");
+				  if (!btn) {
+					  return;
+				  }
+				  if (state === "loading") {
+					  btn.disabled = true;
+					  btn.innerText = "打卡中...";
+				  } else if (state === "success") {
+					  btn.disabled = true;
+					  btn.innerText = "打卡完成";
+				  } else if (state === "retry") {
+					  btn.disabled = false;
+					  btn.innerText = "重新打卡";
+				  } else {
+					  btn.disabled = false;
+					  btn.innerText = "打卡";
+				  }
+			  }
+			  function showCheckinFailure(message) {
+				  alert(message || "打卡失敗，請重新打卡。");
+				  setCheckinButtonState("retry");
+			  }
 			  function sendCheckInData(lat, lng, lineId,type) {
 				  fetch('/incheck', {
 					  method: 'POST',
@@ -1123,9 +1146,15 @@
 				  .then(response => response.json())
 				  .then(data => {
 					  alert(data.data);
+					  if (data.success) {
+						  setCheckinButtonState("success");
+					  } else {
+						  setCheckinButtonState("retry");
+					  }
 				  })
 				  .catch((error) => {
 					  console.error('Error:', error);
+					  showCheckinFailure("打卡失敗：系統連線異常，請重新打卡。");
 				  });
 			  }
 			document.addEventListener("DOMContentLoaded", function() {
@@ -1156,12 +1185,23 @@
 						
 						document.getElementById("checkin-btn").addEventListener("click", function() {
 						//alert("打卡按钮被点击");  检查按钮点击事件是否触发
+						setCheckinButtonState("loading");
 						liff.getProfile()
 						.then(function(profile) {
 						  const lineId = profile.userId;
 						  navigator.geolocation.getCurrentPosition(function(position) {
 							  sendCheckInData(position.coords.latitude, position.coords.longitude, lineId,daka_type);
+						  }, function(error) {
+							  showCheckinFailure("打卡失敗：無法取得GPS定位，請允許定位後重新打卡。");
+						  }, {
+							  enableHighAccuracy: true,
+							  timeout: 10000,
+							  maximumAge: 0
 						  });
+						})
+						.catch(function(error) {
+						  console.error('Error:', error);
+						  showCheckinFailure("打卡失敗：無法取得LINE身份，請重新打卡。");
 						});
 						
 					  });

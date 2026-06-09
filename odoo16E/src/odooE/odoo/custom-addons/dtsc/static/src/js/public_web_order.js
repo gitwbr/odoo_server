@@ -101,6 +101,7 @@ odoo.define('dtsc.public_web_order', function (require) {
   //var session = require('web.session'); 
   var Widget = require('web.Widget');
   var rpc = require('web.rpc');
+  var ajax = require('web.ajax');
   var fileNameHelper = require('dtsc.file_name_helper');
   function debugLog(message, data) {
     if (debugMode) console.log(message, data);
@@ -131,6 +132,15 @@ odoo.define('dtsc.public_web_order', function (require) {
     } catch (error) {
       console.error(`rpc.query错误，模型为${model}:`, error);
       return null;
+    }
+  }
+
+  async function publicWebOrderRpc(route, params) {
+    try {
+      return await ajax.jsonRpc(route, 'call', params || {});
+    } catch (error) {
+      console.error(`public_web_order接口错误，路径为${route}:`, error);
+      return [];
     }
   }
 
@@ -175,12 +185,12 @@ odoo.define('dtsc.public_web_order', function (require) {
           productCategory2.empty();
           productCategory2.append($('<option>').attr({ disabled: '1', selected: '1' }).text('產品'));  // 删掉「請選擇」和「模版」
           try {
-            const dtsc_products = await rpcQuery('dtsc.quotation', 'search_read', [['customer_class_id', '=', self.customer_class_id]], ['product_id']);
-            console.table(dtsc_products);
-            var productIds = dtsc_products.map(item => item.product_id[0]);
-            const all_products = await rpcQuery('product.template', 'search_read', [['id', 'in', productIds]], ['name', 'categ_id']);
+            const all_products = await publicWebOrderRpc('/dtsc/public_web_order/products', {
+              customer_class_id: self.customer_class_id,
+              category_id: parseInt(selectedCategId)
+            });
             $.each(all_products, function (i, product) {
-              if (product.categ_id[0] === parseInt(selectedCategId)) {
+              if (product.categ_id && product.categ_id[0] === parseInt(selectedCategId)) {
                 productCategory2.append($('<option>').val(product.id).text(product.name));
               }
             });
@@ -1313,22 +1323,11 @@ if (mismatchMessages.length > 0) {
         alert('客户资料不完整，无法获取产品分类，请联系管理员！');
         return [];
       }
-      const quotations = await rpcQuery('dtsc.quotation', 'search_read', [['customer_class_id', '=', this.customer_class_id]], ['product_id']);
-      if (!quotations) return;
-      const productIds = quotations.map(quote => quote.product_id?.[0]).filter(Boolean);
-      const uniqueProductIds = [...new Set(productIds)];
-      debugLog("产品ID:", productIds);
-      debugLog("唯一产品ID:", uniqueProductIds);
-      const products = await rpcQuery('product.template', 'search_read', [['id', 'in', uniqueProductIds]], ['categ_id']);
-      debugLog('Products:', products);
-      if (!products) return;
-      const categoryIds = products.map(product => product.categ_id?.[0]).filter(Boolean);
-      const uniqueCategoryIds = [...new Set(categoryIds)];
-      debugLog("分类ID:", categoryIds);
-      debugLog("唯一分类ID:", uniqueCategoryIds);
-      const categories = await rpcQuery('product.category', 'search_read', [['id', 'in', uniqueCategoryIds]], ['name']);
-      if (!categories) return;
-      return categories;
+      const categories = await publicWebOrderRpc('/dtsc/public_web_order/categories', {
+        customer_class_id: this.customer_class_id
+      });
+      debugLog("分类:", categories);
+      return categories || [];
     },
 
 
@@ -1759,7 +1758,9 @@ if (mismatchMessages.length > 0) {
       // 1. 檔案名稱
       $table.find('#project_product_name').val(projectProductName);
       // 2. 先在所有模板中模糊查找产品模板，反查出产品类型
-      const all_products = await rpcQuery('product.template', 'search_read', [], ['id', 'name', 'categ_id']);
+      const all_products = await publicWebOrderRpc('/dtsc/public_web_order/products', {
+        customer_class_id: this.customer_class_id
+      });
       // 优先全字匹配，其次前缀匹配，最后包含匹配，忽略空格和大小写
       let normName = (s) => (s || '').replace(/\s+/g, '').toLowerCase();
       let normTarget = normName(productTemplateName);
