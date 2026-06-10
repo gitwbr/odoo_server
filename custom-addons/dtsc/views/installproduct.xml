@@ -64,6 +64,8 @@
 					<div style="width:100%; border-top:1px solid black; margin-top:5px; margin-bottom:5px;"></div>
 					<group col="6">
 						<group colspan="2">
+							<field name="partner_id"/>
+							<field name="project_name"/>
 							<field name="xcllr"/>
 							<field name="xcllr_phone"/>
 							<field name="address"/>
@@ -81,6 +83,8 @@
 							<field name="checkout_order_state"  invisible="1"/>
 						</group>
 						<group colspan="2">
+							<field name="install_date"/>
+							<field name="install_worker"/>
 							<field name="in_date"/>
 							<field name="in_date_end"/>
 							<field name="is_out_date" />
@@ -144,6 +148,16 @@
 									<field name="image_sgq_new"   widget="image" class="w200" /> 
 									<field name="image_wgt_new" widget="image" class="w200" />
 									<!-- <button name="unlink_record" type="object" string="刪除" icon="fa-trash" class="btn-danger"/> -->
+								</tree>
+							</field>
+						</page> 
+						<page string="異常記錄">
+							<field name="warning_logs_ids">
+								<tree editable="bottom">
+									<field name="warning_name" />
+									<field name="warning_company" />
+									<field name="warning_money" />
+									<field name="warning_logs" />
 								</tree>
 							</field>
 						</page>

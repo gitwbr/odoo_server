@@ -42,6 +42,19 @@
                         <table class="table table-condensed">
                             <tbody>
                                 <tr>
+                                    <td style="width: 13%;"><strong>客戶名稱:</strong></td>
+                                    <td style="width: 17%;"><span t-field="doc.partner_id"/></td>
+                                    <td style="width: 13%;"><strong>案件名稱:</strong></td>
+                                    <td style="width: 17%;"><span t-field="doc.project_name"/></td>
+                                </tr>
+                                <tr>
+                                    <td style="width: 13%;"><strong>施工日期:</strong></td>
+                                    <td style="width: 17%;"><span t-field="doc.install_date"/></td>
+                                    <td style="width: 13%;"><strong>施工人員:</strong></td>
+                                    <td style="width: 17%;"><span t-field="doc.install_worker"/></td>
+                                </tr>
+							
+                                <tr>
                                     <td style="width: 13%;"><strong>現場聯絡人:</strong></td>
                                     <td style="width: 17%;"><span t-field="doc.xcllr"/></td>
                                     <td style="width: 13%;"><strong>承包商聯絡人:</strong></td>
@@ -196,6 +209,172 @@
 								<!-- </t> -->
 							<!-- </div> -->
 						<!-- </t> -->
+
+						<!-- 確認清單 -->
+						<div style="margin-top: 30px; page-break-inside: avoid;">
+							<style>
+								.install-checklist-row {
+									width: 100%;
+									border-collapse: separate;
+									border-spacing: 18px 0;
+									table-layout: fixed;
+								}
+								.install-checklist-col {
+									width: 33.33%;
+									vertical-align: top;
+									padding: 0;
+									height: 100%;
+								}
+								.install-checklist-col-inner {
+									display: flex;
+									flex-direction: column;
+									height: 100%;
+									min-height: 100%;
+								}
+								.install-checklist-wrap {
+									border: 1px solid #333;
+									overflow: hidden;
+									box-sizing: border-box;
+									flex-shrink: 0;
+								}
+								.install-checklist-table {
+									width: 100%;
+									border-collapse: collapse;
+									border: 0;
+									margin: 0;
+									font-size: 12px;
+									table-layout: fixed;
+								}
+								.install-checklist-table th,
+								.install-checklist-table td {
+									border: 0;
+									border-bottom: 1px solid #333;
+									border-right: 1px solid #333;
+									padding: 5px 6px;
+									box-sizing: border-box;
+									word-wrap: break-word;
+								}
+								.install-checklist-table tr th:last-child,
+								.install-checklist-table tr td:last-child {
+									border-right: 0;
+								}
+								.install-checklist-table tbody tr:last-child td {
+									border-bottom: 0;
+								}
+								.install-checklist-table th {
+									text-align: center;
+									background-color: #f0f0f0;
+									font-weight: bold;
+								}
+								.install-checklist-table .check-col {
+									width: 42px;
+									text-align: center;
+								}
+								.install-checklist-box {
+									display: inline-block;
+									width: 12px;
+									height: 12px;
+									border: 1px solid #333;
+									vertical-align: middle;
+								}
+								.install-checklist-sign {
+									flex: 1;
+									margin-top: 8px;
+									padding: 4px 2px 0;
+									font-size: 12px;
+								}
+								.install-checklist-sign-item {
+									line-height: 28px;
+									min-height: 28px;
+									margin-bottom: 14px;
+								}
+								.install-checklist-sign-item:last-child {
+									margin-bottom: 0;
+								}
+								.install-checklist-sign-line {
+									display: inline-block;
+									width: 130px;
+									border-bottom: 1px solid #333;
+									vertical-align: bottom;
+									line-height: 22px;
+								}
+							</style>
+							<table class="install-checklist-row">
+								<tr>
+									<td class="install-checklist-col">
+										<div class="install-checklist-col-inner">
+										<div class="install-checklist-wrap">
+											<table class="install-checklist-table">
+												<thead>
+													<tr><th colspan="2">出車前確認</th></tr>
+													<tr><th>項目</th><th class="check-col">確認</th></tr>
+												</thead>
+												<tbody>
+													<tr><td>成品數量完成</td><td class="check-col"><span class="install-checklist-box"/></td></tr>
+													<tr><td>尺寸確認</td><td class="check-col"><span class="install-checklist-box"/></td></tr>
+													<tr><td>包裝完成</td><td class="check-col"><span class="install-checklist-box"/></td></tr>
+													<tr><td>工具備齊</td><td class="check-col"><span class="install-checklist-box"/></td></tr>
+													<tr><td>材料備齊</td><td class="check-col"><span class="install-checklist-box"/></td></tr>
+													<tr><td>備品攜帶</td><td class="check-col"><span class="install-checklist-box"/></td></tr>
+													<tr><td>車輛安排</td><td class="check-col"><span class="install-checklist-box"/></td></tr>
+													<tr><td>現場聯繫</td><td class="check-col"><span class="install-checklist-box"/></td></tr>
+												</tbody>
+											</table>
+										</div>
+										</div>
+									</td>
+									<td class="install-checklist-col">
+										<div class="install-checklist-col-inner">
+										<div class="install-checklist-wrap">
+											<table class="install-checklist-table">
+												<thead>
+													<tr><th colspan="2">現場施工確認</th></tr>
+													<tr><th>項目</th><th class="check-col">確認</th></tr>
+												</thead>
+												<tbody>
+													<tr><td>現場尺寸複量</td><td class="check-col"><span class="install-checklist-box"/></td></tr>
+													<tr><td>牆面平整</td><td class="check-col"><span class="install-checklist-box"/></td></tr>
+													<tr><td>清潔完成</td><td class="check-col"><span class="install-checklist-box"/></td></tr>
+													<tr><td>電源確認</td><td class="check-col"><span class="install-checklist-box"/></td></tr>
+													<tr><td>梯具安全</td><td class="check-col"><span class="install-checklist-box"/></td></tr>
+													<tr><td>養生膠帶</td><td class="check-col"><span class="install-checklist-box"/></td></tr>
+													<tr><td>拼接方向確認</td><td class="check-col"><span class="install-checklist-box"/></td></tr>
+													<tr><td>客戶最終確認</td><td class="check-col"><span class="install-checklist-box"/></td></tr>
+												</tbody>
+											</table>
+										</div>
+										</div>
+									</td>
+									<td class="install-checklist-col">
+										<div class="install-checklist-col-inner">
+										<div class="install-checklist-wrap">
+											<table class="install-checklist-table">
+												<thead>
+													<tr><th colspan="2">完工確認</th></tr>
+													<tr><th>項目</th><th class="check-col">確認</th></tr>
+												</thead>
+												<tbody>
+													<tr><td>完工拍照</td><td class="check-col"><span class="install-checklist-box"/></td></tr>
+													<tr><td>邊角檢查</td><td class="check-col"><span class="install-checklist-box"/></td></tr>
+													<tr><td>起泡檢查</td><td class="check-col"><span class="install-checklist-box"/></td></tr>
+													<tr><td>現場清潔完成</td><td class="check-col"><span class="install-checklist-box"/></td></tr>
+													<tr><td>客戶驗收簽名</td><td class="check-col"><span class="install-checklist-box"/></td></tr>
+												</tbody>
+											</table>
+										</div>
+										<div class="install-checklist-sign">
+											<div class="install-checklist-sign-item">
+												客戶簽名：<span class="install-checklist-sign-line"/>
+											</div>
+											<div class="install-checklist-sign-item">
+												施工主管：<span class="install-checklist-sign-line"/>
+											</div>
+										</div>
+										</div>
+									</td>
+								</tr>
+							</table>
+						</div>
                     </div>
                 
 				<!-- <t t-set="image_index" t-value="0"/> -->
