@@ -47,3 +47,60 @@ class UserInfoController(http.Controller):
         }
 
         return user_info_client
+
+
+    def _can_public_web_order_search_customers(self):
+        if request.website.is_public_user():
+            return False
+        return any(
+            request.env.user.has_group(group_xmlid)
+            for group_xmlid in (
+                'base.group_user',
+                'dtsc.group_dtsc_bs',
+                'dtsc.group_dtsc_yw',
+                'dtsc.group_dtsc_mg',
+                'dtsc.group_dtsc_sc',
+                'dtsc.group_dtsc_kj',
+                'dtsc.group_dtsc_cg',
+                'dtsc.group_dtsc_ck',
+                'dtsc.group_dtsc_gly',
+            )
+        )
+
+    @http.route('/dtsc/public_web_order/customer_search', type='json', auth="public", website=True)
+    def public_web_order_customer_search(self, keyword='', limit=10):
+        if not self._can_public_web_order_search_customers():
+            return []
+
+        keyword = (keyword or '').strip()
+        if not keyword:
+            return []
+
+        try:
+            limit = max(1, min(int(limit or 10), 30))
+        except (TypeError, ValueError):
+            limit = 10
+
+        partners = request.env['res.partner'].sudo().search([
+            ('customer_rank', '>', 0),
+            ('coin_can_cust', '=', True),
+            '|', '|',
+            ('name', 'ilike', keyword),
+            ('mobile', 'ilike', keyword),
+            ('phone', 'ilike', keyword),
+        ], limit=limit)
+
+        return [{
+            'id': partner.id,
+            'name': partner.name,
+            'mobile': partner.mobile,
+            'phone': partner.phone,
+            'email': partner.email,
+            'street': partner.street,
+            'customclass_id': (
+                [partner.customclass_id.id, partner.customclass_id.display_name]
+                if partner.customclass_id else False
+            ),
+            'custom_init_name': partner.custom_init_name,
+            'nop': partner.nop,
+        } for partner in partners]

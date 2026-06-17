@@ -160,6 +160,7 @@ odoo.define('dtsc.public_web_order', function (require) {
       this.rounding_method = "";
       this._super.apply(this, arguments);
       // 统一入口，先尝试获取当前用户信息，判断类型后决定模式
+      this.bindSearchInputEvent();
       this.fillCurrentUserInfo();
       this.fetchUnitConversion();
       this.bindParamInputEvents();
@@ -1074,7 +1075,7 @@ if (mismatchMessages.length > 0) {
     },
 
     bindSearchInputEvent: function () {
-      $('input[name="search"]').on('input', this.onSearchInput.bind(this));
+      $('input[name="search"]').off('input.dtscPublicWebOrder').on('input.dtscPublicWebOrder', this.onSearchInput.bind(this));
     },
     generateTableContent: function () {
       // 预览弹框内容
@@ -1587,18 +1588,8 @@ if (mismatchMessages.length > 0) {
       var self = this;
       var keyword = $('input[name="search"]').val();
       if (keyword.length >= 1) {
-        rpc.query({
-          model: 'res.partner',
-          method: 'search_read',
-          domain: [
-            '|', '|',
-            ['name', 'ilike', keyword],
-            ['mobile', 'ilike', keyword],
-            ['phone', 'ilike', keyword],
-            ['customer_rank', '>', 0], // 添加的条件为客户
-            ['coin_can_cust', '=', true]
-          ],
-          fields: ['id', 'name', 'mobile', 'phone', 'email', 'street', 'customclass_id', 'custom_init_name', 'nop'],
+        publicWebOrderRpc('/dtsc/public_web_order/customer_search', {
+          keyword: keyword,
           limit: 10,
         }).then(function (customers) {
           var customerList = $('<ul class="customer-list">');
@@ -1612,7 +1603,7 @@ if (mismatchMessages.length > 0) {
                 return;
               }
               self.partner_id = selectedCustomer.id;
-              self.customer_class_id = selectedCustomer.customclass_id[0];
+              self.customer_class_id = selectedCustomer.customclass_id && selectedCustomer.customclass_id[0] || 0;
               self.custom_init_name = selectedCustomer.custom_init_name;
               $('.customer-detail').remove();
               self.showCustomerDetails(selectedCustomer);
@@ -1623,6 +1614,9 @@ if (mismatchMessages.length > 0) {
           });
           $('.customer-list').remove();
           $('input[name="search"]').after(customerList);
+        }).catch(function (error) {
+          console.error('Error searching customers:', error);
+          $('.customer-list').remove();
         });
       }
     },
