@@ -1747,6 +1747,19 @@
         <field name="binding_type">report</field>
     </record>
 
+	<record id="action_makein_detail_to_excel" model="ir.actions.server">
+        <field name="name">明細轉Excel</field>
+        <field name="model_id" ref="model_dtsc_makein"/>
+        <field name="state">code</field>
+        <field name="code">
+            action = env['dtsc.makein'].with_context(env.context).action_printexcel_makein_detail()
+        </field>
+        <field name="binding_model_id" ref="model_dtsc_makein"/>
+        <field name="binding_type">report</field>
+        <field name="binding_view_types">list,form</field>
+        <field name="groups_id" eval="[(4, ref('dtsc.group_dtsc_sc'))]"/>
+    </record>
+
 	<record id="action_qrcode_makeout" model="ir.actions.report">
         <field name="name">項次Qrcode</field>
         <field name="model">dtsc.makeout</field>

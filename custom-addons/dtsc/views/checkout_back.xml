@@ -219,6 +219,7 @@
 				<field name="succ_date" string="完成日" optional="hide"/>
 				<field name="is_online" invisible="1"/>
 				<field name="checkout_order_type" invisible="1"/>
+				<field name="factory_ids" widget="many2many_tags"/>
 				<field name="date_labels" widget="many2many_tags"  optional="hide"/>
 				<!-- <field name="report_month"/> -->
 				<!-- <field name="is_delivery"/> -->
@@ -598,7 +599,7 @@
                     <field name="checkout_order_type" string="大圖訂單類別"/>
                     <field name="report_year" string="年"  select="multi"/>
                     <field name="report_month" string="月" context="{'group_by': 'report_year'}" select="multi"/>
-                    <!-- <field name="factory_ids" string="廠區"/>  -->
+                    <field name="factory_ids" string="廠區" select="multi"/>
                 </searchpanel>
 				
 				<field name="search_line_namee" string="所有訊息"/>

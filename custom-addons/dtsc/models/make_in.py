@@ -579,6 +579,118 @@ class MakeIn(models.Model):
                 else:
                     self.no_mprlist = True
         
+    @api.model
+    def action_printexcel_makein_detail(self):
+        try:
+            import xlsxwriter
+        except ImportError:
+            raise UserError("缺少 xlsxwriter 套件，無法生成Excel")
+
+        active_ids = self._context.get('active_ids') or ([self._context.get('active_id')] if self._context.get('active_id') else [])
+        records = self.env['dtsc.makein'].browse(active_ids).exists()
+        if not records:
+            records = self
+
+        output = BytesIO()
+        workbook = xlsxwriter.Workbook(output, {'in_memory': True})
+        worksheet = workbook.add_worksheet('內部工單明細')
+
+        header_format = workbook.add_format({
+            'bold': True,
+            'border': 1,
+            'align': 'center',
+            'valign': 'vcenter',
+        })
+        cell_format = workbook.add_format({
+            'border': 1,
+            'valign': 'vcenter',
+            'text_wrap': True,
+        })
+
+        headers = [
+            '項',
+            '檔名',
+            '輸出材質',
+            '製作尺寸',
+            '加工方式',
+            '後加工方式',
+            '裱',
+            '數量',
+            '總才數',
+            '條碼',
+        ]
+        widths = [8, 30, 22, 18, 30, 30, 10, 10, 12, 22]
+        show_recheck_name = any(records.mapped('is_recheck'))
+        if show_recheck_name:
+            headers.append('原工單')
+            widths.append(22)
+        for col, width in enumerate(widths):
+            worksheet.set_column(col, col, width)
+        worksheet.freeze_panes(1, 0)
+
+        for col, title in enumerate(headers):
+            worksheet.write(0, col, title, header_format)
+
+        raw_line_values = {}
+        line_ids = records.mapped('order_ids').ids
+        if line_ids:
+            self.env.cr.execute(
+                "SELECT id, quantity, size FROM dtsc_makeinline WHERE id = ANY(%s)",
+                [line_ids],
+            )
+            raw_line_values = {
+                line_id: {
+                    'quantity': quantity,
+                    'size': size,
+                }
+                for line_id, quantity, size in self.env.cr.fetchall()
+            }
+
+        row = 1
+        for record in records.sorted(key=lambda r: r.name or ''):
+            for line in record.order_ids:
+                raw_values = raw_line_values.get(line.id, {})
+                quantity = raw_values.get('quantity') or ''
+                size = raw_values.get('size') or ''
+                barcode_value = ('%s-%s' % (record.name, line.sequence)) if record.name and line.sequence else ''
+                worksheet.write(row, 0, line.sequence or '', cell_format)
+                worksheet.write(row, 1, line.file_name or '', cell_format)
+                worksheet.write(row, 2, line.output_material or '', cell_format)
+                worksheet.write(row, 3, line.production_size or '', cell_format)
+                worksheet.write(row, 4, line.processing_method or '', cell_format)
+                worksheet.write(row, 5, line.processing_method_after or '', cell_format)
+                worksheet.write(row, 6, line.lengbiao or '', cell_format)
+                worksheet.write(row, 7, quantity, cell_format)
+                worksheet.write(row, 8, size, cell_format)
+                worksheet.write(row, 9, barcode_value, cell_format)
+                if show_recheck_name:
+                    worksheet.write(row, 10, line.recheck_id_name or '', cell_format)
+                row += 1
+
+        workbook.close()
+        output.seek(0)
+        excel_data = base64.b64encode(output.read())
+        output.close()
+
+        filename = '內部工單明細.xlsx'
+        if len(records) == 1 and records.name:
+            filename = '%s-明細.xlsx' % records.name
+
+        attachment = self.env['ir.attachment'].create({
+            'name': filename,
+            'type': 'binary',
+            'datas': excel_data,
+            'res_model': 'dtsc.makein',
+            'res_id': records[:1].id if records else False,
+            'mimetype': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        })
+
+        return {
+            'type': 'ir.actions.act_url',
+            'url': '/web/content/%s?download=true' % attachment.id,
+            'target': 'self',
+        }
+        
         
     def set_boolean_field_true(self):
         for record in self.order_ids:
