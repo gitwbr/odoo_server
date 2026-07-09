@@ -89,6 +89,8 @@ instances/
 client*/
 backup/
 docs/
+temporary/
+tmp/
 
 # 忽略日志和备份
 logs/

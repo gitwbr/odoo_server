@@ -821,10 +821,12 @@ class LineBotController(http.Controller):
                     print("in bangding")
                     employee_raw = text.split("綁定")[1].strip()
                     employee_name = re.sub(r"^[\s\+\-]+", "", employee_raw)
-                    employee = request.env["dtsc.workqrcode"].sudo().search([("name", "=", employee_name)])
+                    employee = request.env["dtsc.workqrcode"].sudo().search(
+                        [("name", "=", employee_name)], limit=1
+                    )
                     if employee:
                         if not employee.line_user_id:
-                            employee.sudo().write({"line_user_id": user_id})
+                            employee.write({"line_user_id": user_id})
                             # 回覆綁定成功
                             reply_message = "綁定成功， LINE 帳戶已與員工姓名 " + employee_name + " 綁定！"
                         else:
@@ -1959,11 +1961,29 @@ class LineBotController(http.Controller):
     def notify_manager_for_buka(self, record_id,line_id,fix_type,local_time,comment):
         """推送補卡審核通知給主管"""
         userObj = request.env['dtsc.workqrcode'].sudo().search([('line_user_id', '=', line_id)],limit=1)
-        managers = userObj.department.bmzg
-        # managers = request.env['dtsc.workqrcode'].sudo().search([('is_zg', '=', True)])
+        if not userObj:
+            _logger.warning("找不到補卡申請人（line_id=%s），無法推送補卡審核通知", line_id)
+            return
+
+        daka_approvers = request.env['dtsc.workqrcode'].sudo().search([('is_daka_qh', '=', True)])
+        dept_manager = userObj.department.bmzg if userObj.department else request.env['dtsc.workqrcode']
+        # 申請人自己是部門主管時，改由打卡簽核人員審核
+        if dept_manager and dept_manager.line_user_id == line_id:
+            managers = daka_approvers
+        else:
+            managers = daka_approvers | dept_manager
+
         recordObj = request.env['dtsc.attendance'].sudo().search([('id', '=', record_id)])
         if not managers:
-            _logger.warning("找不到主管群組，無法推送補卡審核通知")
+            _logger.warning(
+                "找不到主管群組，無法推送補卡審核通知。"
+                "申請人=%s, 部門=%s, 部門主管=%s, 打卡簽核人數=%s, 申請人是否部門主管=%s",
+                userObj.name,
+                userObj.department.name if userObj.department else "未設定",
+                dept_manager.name if dept_manager else "未設定",
+                len(daka_approvers),
+                bool(dept_manager and dept_manager.line_user_id == line_id),
+            )
             return
 
         # 取得請假人姓名、請假類型
@@ -2034,15 +2054,16 @@ class LineBotController(http.Controller):
         }
 
         for manager in managers:
-            if manager.line_user_id:
-                data = {
-                    "to": manager.line_user_id,
-                    "messages": [flex_message]
-                }
-                response = requests.post("https://api.line.me/v2/bot/message/push", headers=headers, json=data)
-                _logger.info(f"已推送補卡審核通知給主管 {manager.name}，回應：{response.text}")
-                
-                
+            if not manager.line_user_id:
+                _logger.warning("主管 %s 未綁定 LINE ID，略過補卡審核通知", manager.name)
+                continue
+            data = {
+                "to": manager.line_user_id,
+                "messages": [flex_message]
+            }
+            response = requests.post("https://api.line.me/v2/bot/message/push", headers=headers, json=data)
+            _logger.info(f"已推送補卡審核通知給主管 {manager.name}，回應：{response.text}")
+
     def notify_manager_for_approval(self, leave):
         """推送請假審核通知給主管"""
         userObj = request.env['dtsc.workqrcode'].sudo().search([('line_user_id', '=', line_id)],limit=1)

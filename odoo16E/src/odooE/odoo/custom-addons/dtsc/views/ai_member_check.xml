@@ -312,10 +312,63 @@
                             white-space: nowrap;
                         }
 
+                        .o_ai_member_batch_pick_btn {
+                            border: 0;
+                            background: var(--ai-primary);
+                            color: #fff;
+                            border-radius: 14px;
+                            min-height: 46px;
+                            padding: 10px 18px;
+                            font-weight: 700;
+                            white-space: nowrap;
+                        }
+
+                        .o_ai_member_batch_pick_btn:disabled {
+                            opacity: 0.55;
+                            cursor: not-allowed;
+                        }
+
+                        .o_ai_member_multi_artboard_btn {
+                            border: 0;
+                            background: #7c5c2a;
+                            color: #fff;
+                            border-radius: 14px;
+                            min-height: 46px;
+                            padding: 10px 18px;
+                            font-weight: 700;
+                            white-space: nowrap;
+                        }
+
+                        .o_ai_member_multi_artboard_btn:disabled {
+                            opacity: 0.55;
+                            cursor: not-allowed;
+                        }
+
+                        .o_ai_member_batch_file_input {
+                            display: none;
+                        }
+
+                        .o_ai_member_batch_pick_hint {
+                            margin: -10px 0 18px;
+                            color: var(--ai-muted);
+                            font-size: 13px;
+                            line-height: 1.6;
+                        }
+
+                        .o_ai_member_hint_alert {
+                            color: #d32f2f;
+                            font-weight: 800;
+                        }
+
                         .o_ai_member_batch_status {
                             color: var(--ai-muted);
                             font-size: 14px;
                             font-weight: 600;
+                        }
+
+                        .o_ai_member_batch_status--alert {
+                            color: #d32f2f;
+                            font-weight: 800;
                         }
 
                         .o_ai_member_items {
@@ -484,6 +537,168 @@
                             margin-right: 6px;
                         }
 
+                        .o_ai_member_blur_preview {
+                            display: none;
+                            margin-top: 16px;
+                            padding-top: 14px;
+                            border-top: 1px dashed rgba(203, 75, 75, 0.25);
+                        }
+
+                        .o_ai_member_blur_preview.is-visible {
+                            display: block;
+                        }
+
+                        .o_ai_member_blur_title {
+                            font-size: 15px;
+                            font-weight: 800;
+                            color: #a13939;
+                            margin-bottom: 8px;
+                        }
+
+                        .o_ai_member_blur_hint {
+                            font-size: 13px;
+                            line-height: 1.6;
+                            color: #8b3a3a;
+                            margin-bottom: 10px;
+                        }
+
+                        .o_ai_member_blur_image_wrap {
+                            position: relative;
+                            overflow: hidden;
+                            height: 480px;
+                            border-radius: 14px;
+                            border: 1px solid rgba(203, 75, 75, 0.18);
+                            background: #f1f1f1;
+                            cursor: grab;
+                            user-select: none;
+                            touch-action: none;
+                        }
+
+                        .o_ai_member_blur_image_wrap.is-dragging {
+                            cursor: grabbing;
+                        }
+
+                        .o_ai_member_blur_image_wrap img {
+                            position: absolute;
+                            top: 0;
+                            left: 0;
+                            transform-origin: 0 0;
+                            max-width: none;
+                            pointer-events: none;
+                            -webkit-user-drag: none;
+                        }
+
+                        .o_ai_member_blur_toolbar {
+                            display: flex;
+                            align-items: center;
+                            gap: 8px;
+                            margin: 8px 0 6px;
+                        }
+
+                        .o_ai_member_blur_toolbar button {
+                            border: 1px solid rgba(203, 75, 75, 0.35);
+                            background: #fff;
+                            color: #a13939;
+                            border-radius: 8px;
+                            width: 30px;
+                            height: 30px;
+                            font-size: 16px;
+                            font-weight: 700;
+                            line-height: 1;
+                            cursor: pointer;
+                        }
+
+                        .o_ai_member_blur_toolbar button:hover {
+                            background: #fbeaea;
+                        }
+
+                        .o_ai_member_blur_zoom_label {
+                            font-size: 13px;
+                            color: #8b3a3a;
+                            min-width: 48px;
+                            text-align: center;
+                        }
+
+                        .o_ai_member_blur_issues {
+                            margin-top: 10px;
+                            display: none;
+                        }
+
+                        .o_ai_member_blur_issues.is-visible {
+                            display: block;
+                        }
+
+                        .o_ai_member_blur_issue_item {
+                            font-size: 13px;
+                            line-height: 1.6;
+                            color: #7a3b3b;
+                            padding: 6px 0;
+                            border-top: 1px dashed rgba(203, 75, 75, 0.15);
+                        }
+
+                        .o_ai_member_confirm_upload {
+                            display: none;
+                            margin-top: 14px;
+                            padding: 14px 16px;
+                            border-radius: 12px;
+                            background: rgba(255, 255, 255, 0.7);
+                            border: 1px solid rgba(203, 75, 75, 0.25);
+                        }
+
+                        .o_ai_member_confirm_upload.is-visible {
+                            display: block;
+                        }
+
+                        .o_ai_member_confirm_upload_title {
+                            font-size: 14px;
+                            font-weight: 700;
+                            color: #a13939;
+                            margin-bottom: 10px;
+                        }
+
+                        .o_ai_member_confirm_upload_actions {
+                            display: flex;
+                            gap: 10px;
+                            flex-wrap: wrap;
+                        }
+
+                        .o_ai_member_confirm_upload_btn,
+                        .o_ai_member_cancel_upload_btn {
+                            border: none;
+                            border-radius: 999px;
+                            padding: 8px 18px;
+                            font-size: 14px;
+                            font-weight: 700;
+                            cursor: pointer;
+                        }
+
+                        .o_ai_member_confirm_upload_btn {
+                            background: #c94b4b;
+                            color: #fff;
+                        }
+
+                        .o_ai_member_cancel_upload_btn {
+                            background: #fff;
+                            color: #8b3a3a;
+                            border: 1px solid rgba(203, 75, 75, 0.35);
+                        }
+
+                        .o_ai_member_confirm_upload_status {
+                            margin-top: 8px;
+                            font-size: 13px;
+                            font-weight: 600;
+                            color: #a13939;
+                        }
+
+                        .o_ai_member_blur_stats {
+                            display: grid;
+                            grid-template-columns: repeat(2, minmax(0, 1fr));
+                            gap: 8px 16px;
+                            margin-top: 10px;
+                            font-size: 13px;
+                            color: #7a3b3b;
+                        }
+
                         @media (max-width: 991px) {
                             .o_ai_member_hero,
                             .o_ai_member_panel_head,
@@ -542,14 +757,27 @@
                                     訂單：<strong><t t-esc="order.name"/></strong>
                                 </div>
                                 <div class="o_ai_member_panel_tools">
+                                    <input type="file"
+                                           class="o_ai_member_batch_file_input"
+                                           multiple="multiple"
+                                           accept=".ai,.pdf,.svg,.jpg,.jpeg,.png,.tif,.tiff,.ps"/>
+                                    <button type="button" class="o_ai_member_batch_pick_btn">批量選檔</button>
                                     <label class="o_ai_member_select_all_wrap">
                                         <input type="checkbox" class="o_ai_member_select_all"/>
                                         <span>全選</span>
                                     </label>
                                     <button type="button" class="o_ai_member_batch_detect_btn">批量檢測並上傳</button>
+                                    <button type="button" class="o_ai_member_multi_artboard_btn">多圖批量簡易檢測並上傳</button>
                                     <span class="o_ai_member_batch_status">尚未勾選項目</span>
                                 </div>
                             </div>
+                            <p class="o_ai_member_batch_pick_hint">
+                                批量上傳時，請將檔名設為項次數字（不含副檔名），例如 <strong>1.ai</strong> 對應項次1、<strong>2.pdf</strong> 對應項次2。
+                                <span class="o_ai_member_hint_alert">先按「批量選檔」選擇檔案</span>，系統會自動指派到對應項次並勾選；
+                                <span class="o_ai_member_hint_alert">再按「批量檢測並上傳」</span>執行完整檢測與上傳。
+                                多畫板 <strong>.ai</strong> 檔案可改按
+                                <span class="o_ai_member_hint_alert">「多圖批量簡易檢測並上傳」</span>：先判斷是否多圖，非多圖直接報錯；通過後僅檢查文字轉外框（不檢查尺寸與模糊），成功即上傳。
+                            </p>
 
                             <div class="o_ai_member_items">
                                 <t t-if="line_cards">
@@ -624,6 +852,34 @@
                                                         <div><strong>實際尺寸</strong><span class="o_ai_member_actual_size">-</span></div>
                                                         <div><strong>像素</strong><span class="o_ai_member_actual_pixels">-</span></div>
                                                         <div><strong>要求尺寸</strong><span class="o_ai_member_expected_size">-</span></div>
+                                                    </div>
+                                                    <div class="o_ai_member_blur_preview">
+                                                        <div class="o_ai_member_blur_title">模糊區域標記</div>
+                                                        <div class="o_ai_member_blur_hint">紅色半透明區域標示模糊位置。可拖動預覽、滾輪縮放。</div>
+                                                        <div class="o_ai_member_blur_toolbar">
+                                                            <button type="button" class="o_ai_member_blur_zoom_out" title="縮小">-</button>
+                                                            <span class="o_ai_member_blur_zoom_label">100%</span>
+                                                            <button type="button" class="o_ai_member_blur_zoom_in" title="放大">+</button>
+                                                            <button type="button" class="o_ai_member_blur_zoom_reset" title="重設" style="width:auto;padding:0 10px;">重設</button>
+                                                        </div>
+                                                        <div class="o_ai_member_blur_image_wrap">
+                                                            <img class="o_ai_member_blur_image" alt="模糊區域標記預覽"/>
+                                                        </div>
+                                                        <div class="o_ai_member_blur_issues"></div>
+                                                        <div class="o_ai_member_blur_stats">
+                                                            <div><strong>模糊區域占比</strong><span class="o_ai_member_blur_ratio">-</span></div>
+                                                            <div><strong>清晰度阈值</strong><span class="o_ai_member_blur_threshold">-</span></div>
+                                                            <div><strong>最低清晰度</strong><span class="o_ai_member_blur_avg_score">-</span></div>
+                                                            <div><strong>嵌入位圖 DPI</strong><span class="o_ai_member_blur_min_score">-</span></div>
+                                                        </div>
+                                                    </div>
+                                                    <div class="o_ai_member_confirm_upload">
+                                                        <div class="o_ai_member_confirm_upload_title">是否確認上傳？</div>
+                                                        <div class="o_ai_member_confirm_upload_actions">
+                                                            <button type="button" class="o_ai_member_confirm_upload_btn">是，確認上傳</button>
+                                                            <button type="button" class="o_ai_member_cancel_upload_btn">否</button>
+                                                        </div>
+                                                        <div class="o_ai_member_confirm_upload_status"></div>
                                                     </div>
                                                 </div>
                                             </div>

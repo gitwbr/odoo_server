@@ -25,9 +25,11 @@ libsass==0.20.1
 lxml==4.6.3
 MarkupSafe==1.1.1
 num2words==0.5.9
+numpy==1.26.4
 odfpy==1.4.1
 odoo==16.0.post20250115
 ofxparse==0.19
+opencv-python-headless==4.10.0.84
 passlib==1.7.4
 pdfkit==1.0.0
 pdfminer.six==20200726

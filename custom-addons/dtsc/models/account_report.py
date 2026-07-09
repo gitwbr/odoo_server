@@ -354,13 +354,12 @@ class AccountReportWizard(models.TransientModel):
         column_widths = [20, 15, 15, 40, 15, 30, 10, 10, 10, 15]  # 每列的宽度
         for col_num, width in enumerate(column_widths):
             worksheet.set_column(col_num, col_num, width)
-
-
+        
         # 写入表头
         headers = ["客戶名稱","出貨日期", "出貨單號", "檔名/輸出材質/加工方式", "尺寸(才)", "備註說明", "數量", "單價", "加工", "小計"]
         for col_num, header in enumerate(headers):
             worksheet.write(0, col_num, header)
-
+        
         # 填充數據
         row = 1
         for move in moves:
@@ -393,6 +392,14 @@ class AccountReportWizard(models.TransientModel):
 class AccountReport(models.AbstractModel):
     _name = 'report.dtsc.report_invoice_template'
     
+    
+    def _safe_text(self,v):
+        # Odoo 的空值是 False；且若值是 True/False，一律视为“没有可显示的字串”
+        if v is False or v is None or isinstance(v, bool):
+            return ""
+        return str(v)
+    
+    
     @api.model
     def _get_report_values(self, docids, data=None):
         
@@ -422,7 +429,7 @@ class AccountReport(models.AbstractModel):
             print(partner_id.id)
             # for order in docs:
                 # if order.company_id != company_id:
-                    # raise UserError("只能打印同一家公司的單據！")
+                    # raise UserError("只能列印同一家公司的單據！")
                     
             for order in docs:
                 if order.partner_id != partner_id:
@@ -490,6 +497,8 @@ class AccountReport(models.AbstractModel):
                     key=lambda x: (x.get('delivery_date', datetime.min), x.get('sequence'),x.get('id') )
                 )
                 data["company_details"].append(company_detail)
+                
+
             else:
                 if select_company not in ["not_all","not_all_zero"]:
                     company_id_list = self.env['res.partner'].search([('customer_rank', '>', 0)])
@@ -508,12 +517,16 @@ class AccountReport(models.AbstractModel):
                 
                         if not company_records:
                             continue
-               
+                        
+                        name = self._safe_text(getattr(company, "name", ""))
+                        cid  = self._safe_text(getattr(company, "custom_id", ""))
+                        company_name = name if cid == "" else f"{name} ({cid})"
                         company_detail = {
                                     'title_name' : "對帳單",
                                     'company_id' : company.id,
                                     'move_type' : "out_invoice",
-                                    'company_name' : company.name+"("+company.custom_id+")",
+                                    # 'company_name' : company.name+"("+company.custom_id+")",
+                                    'company_name' : company_name,
                                     'address': company.street,
                                     'phone': company.phone,
                                     'custom_invoice_form': company.custom_invoice_form,
@@ -522,7 +535,7 @@ class AccountReport(models.AbstractModel):
                                     'user_id': company.sell_user.name,
                                     'receive_mode': company.custom_pay_mode,
                                     'invoice_ids':[],
-                                    'custom_id':company.custom_id,  
+                                    'custom_id':cid,  
                                     'sale_price':0,
                                     'tax_price':0,
                                     'total_price':0,
@@ -555,15 +568,15 @@ class AccountReport(models.AbstractModel):
                         
                         company_detail["sale_price"] = sale_price
                         company_detail["tax_price"] = tax_price
-                        company_detail["total_price"] = total_price        
+                        company_detail["total_price"] = total_price  
                         company_detail["invoice_ids"] = sorted(
                             company_detail["invoice_ids"],
                             key=lambda x: (x.get('delivery_date', datetime.min), x.get('sequence'),x.get('id') )
-                        )
+                        )        
                         data["company_details"].append(company_detail)
                    
         else:#應付單
-            #tree頁面直接勾選打印
+            #tree頁面直接勾選列印
             if not start_date:
                 bank_name = ""
                 acc_number = ""
@@ -663,11 +676,14 @@ class AccountReport(models.AbstractModel):
                         if company.bank_ids:
                             bank_name = company.bank_ids[0].bank_id.name
                             acc_number = company.bank_ids[0].acc_number
+                        name = self._safe_text(getattr(company, "name", ""))
+                        cid  = self._safe_text(getattr(company, "custom_id", ""))
+                        company_name = name if cid == "" else f"{name} ({cid})"
                         company_detail = {
                                     'title_name' : "應付單",
                                     'company_id' : company.id,
                                     'move_type' : "in_invoice",
-                                    'company_name' : company.name+"("+company.custom_id+")",
+                                    'company_name' : company_name,
                                     'street': company.street,
                                     'phone': company.phone,
                                     'custom_fax': company.custom_fax,
@@ -732,11 +748,9 @@ class AccountReport(models.AbstractModel):
         
         data["company_details"] = sorted(data["company_details"], key=lambda x: x['company_id'])
 
-       
-
         setting = self.env.ref('dtsc.account_print_comment', raise_if_not_found=False)
         comment = (setting.value or '') if setting else ''
-        # print(data) 
+        # print(data)
         
         company = self.env['res.company']._company_default_get('account.move')
         return {

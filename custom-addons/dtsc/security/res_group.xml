@@ -80,7 +80,22 @@
 		<field name="category_id" ref="module_category_large_image" />
         <field name="implied_ids" eval="[(4,ref('base.group_user')),(4,ref('dtsc.group_dtsc_mg')),(4,ref('dtsc.group_dtsc_yw')),(4,ref('dtsc.group_dtsc_kj')),(4,ref('dtsc.group_dtsc_sc')),(4,ref('dtsc.group_dtsc_cg')),(4,ref('dtsc.group_dtsc_ck')),(4,ref('dtsc.group_dtsc_bs'))]" />
     </record>
-    
+
+    <record id="group_dtsc_rsgl" model="res.groups">
+		<field name="name">人事管理</field>
+		<field name="category_id" ref="module_category_large_image" />
+    </record>
+
+    <!-- 人事管理：base 只读，本组可写 -->
+    <record id="model_dtsc_attendance_rule_rsgl" model="ir.model.access">
+        <field name="name">打卡記錄-人事管理</field>
+        <field name="model_id" ref="model_dtsc_attendance"/>
+        <field name="group_id" ref="dtsc.group_dtsc_rsgl"/>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="True"/>
+        <field name="perm_create" eval="True"/>
+        <field name="perm_unlink" eval="True"/>
+    </record>
     <!-- 定义组 -->
     <!-- 大圖訂單 -->
     <record id="model_dtsc_checkout_rule_mg" model="ir.model.access"> 

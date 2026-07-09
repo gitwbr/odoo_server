@@ -1,8 +1,9 @@
 import warnings
 from werkzeug.serving import WSGIRequestHandler
-from odoo import http
+from odoo import http, _
 from odoo.http import request, Response
 from ..models.upload_ftp import UploadModel
+from ..utils.ai_blur_detector import AiBlurDetector
 import json
 import os
 import datetime
@@ -59,6 +60,14 @@ class UploadController(http.Controller):
             content_type='application/json;charset=utf-8',
             status=status,
         )
+
+    def _is_truthy_param(self, name):
+        raw = request.params.get(name)
+        if raw is None:
+            raw = request.httprequest.form.get(name)
+        if hasattr(raw, 'filename'):
+            return False
+        return str(raw or '').lower() in ('1', 'true', 'yes', 'on')
 
     def _sanitize_path_part(self, value, fallback='其它'):
         value = re.sub(r'[<>:"/\\|?*\s]+', '_', (value or '').strip()).strip('._')
@@ -168,280 +177,317 @@ class UploadController(http.Controller):
             'ip_address': self._get_request_ip(),
         })
 
-    def check_image(self, file_content, file_extension, filename, expected_width=None, expected_height=None):
-        # 收集所有錯誤的列表
-        errors = []
+    def _notify_customer_upload_success(
+        self,
+        customer_name,
+        filename,
+        upload_source,
+        partner_id=False,
+        order_name='',
+        checkout_id=False,
+    ):
+        try:
+            request.env['dtsc.customer.upload.notice'].sudo().create_and_notify({
+                'customer_name': customer_name or _('未命名客戶'),
+                'partner_id': partner_id or False,
+                'order_name': order_name or '',
+                'checkout_id': checkout_id or False,
+                'filename': filename or '',
+                'upload_source': upload_source,
+            })
+        except Exception:
+            _logger.exception('Failed to create customer upload notice')
+
+    def _my_ai_check_extra_validation(
+        self,
+        file_content,
+        file_extension,
+        line,
+        order,
+        upload_filename,
+    ):
+        """
+        Extra validation hook for `/my/ai-check/item` only.
+
+        NOTE:
+        - This hook is intentionally isolated from `check_image`.
+        - Other routes (e.g. `/ai/check_file`) keep using the original checks only.
+        """
+        width = (line.product_width or '').strip()
+        height = (line.product_height or '').strip()
+        detector = AiBlurDetector(request.env)
+        return detector.validate(
+            file_content=file_content,
+            file_extension=file_extension,
+            width_cm=width,
+            height_cm=height,
+        )
+
+    def check_is_multi_artboard_ai(self, file_content, file_extension):
+        """Check whether an .ai file has multiple artboards/pages (page_count >= 2)."""
         image_info = {}
 
+        if file_extension.lower() != '.ai':
+            message = '多圖簡易檢測僅適用 .ai 檔案'
+            return {
+                'success': False,
+                'error': message,
+                'errors': [message],
+                'image_info': image_info,
+            }
+
         try:
-            # 檢查1：如果是AI文件，檢查是否有未轉換的文本對象
-            if file_extension.lower() == '.ai':
-                _logger.info('開始檢查AI文件是否存在未轉換的文本對象')
+            doc = fitz.open(stream=file_content, filetype='pdf')
+            page_count = doc.page_count
+            image_info['page_count'] = page_count
+            doc.close()
+        except Exception as e:
+            _logger.error('多畫板 AI 頁數檢測錯誤: %s', str(e), exc_info=True)
+            message = '多畫板 AI 檔案讀取失敗: %s' % str(e)
+            return {
+                'success': False,
+                'error': message,
+                'errors': [message],
+                'image_info': image_info,
+            }
 
-                # 檢查未轉換為輪廓的文本對象標記
-                text_markers = {
-                    'AI文本標記': [
-                        rb'%%BeginText',              # AI文本開始
-                        rb'%%EndText',                # AI文本結束
-                        rb'%%BeginTextObject',        # 文本對象開始
-                        rb'%%EndTextObject',          # 文本對象結束
-                        rb'<stFnt:fontName>',         # 字體名稱標記
-                        rb'<stFnt:fontFamily>',       # 字體族標記
-                    ]
-                }
+        if page_count < 2:
+            message = '此檔案不是多圖（多畫板），無法使用多圖簡易檢測，請改用「批量檢測並上傳」'
+            return {
+                'success': False,
+                'error': message,
+                'errors': [message],
+                'image_info': image_info,
+            }
 
-                # 檢查是否已轉換為輪廓的標記
-                outline_markers = [
-                    rb'/TextOutlines\s*true',         # 已轉輪廓標記
-                    rb'%%BeginOutline',               # 輪廓開始標記
-                    rb'%%EndOutline',                 # 輪廓結束標記
-                    rb'/Type\s*/OutlineText',         # 輪廓文本類型
-                    rb'/Subtype\s*/Path',             # 路徑類型（通常是輪廓）
-                ]
+        return dict({'success': True, 'page_count': page_count}, **image_info)
 
-                found_text_objects = {}
-                total_count = 0
-                has_outlines = False
+    def check_ai_outline_legacy(self, file_content, file_extension):
+        """Legacy .ai outline check via binary markers (same logic as original check_image)."""
+        if file_extension.lower() != '.ai':
+            return {'success': True, 'errors': []}
 
-                # 檢查是否有輪廓標記
-                for pattern in outline_markers:
-                    try:
-                        if re.search(pattern, file_content, re.DOTALL | re.IGNORECASE):
-                            has_outlines = True
-                            break
-                    except Exception as e:
-                        _logger.error('輪廓標記檢查錯誤: %s', str(e))
+        _logger.info('開始檢查AI文件是否存在未轉換的文本對象')
 
-                # 檢查未轉換的文本對象
-                for category, patterns in text_markers.items():
-                    count = 0
-                    for pattern in patterns:
-                        try:
-                            matches = re.finditer(
-                                pattern, file_content, re.DOTALL | re.IGNORECASE)
-                            for match in matches:
-                                # 檢查這段文本周圍是否有輪廓標記
-                                start = max(0, match.start() - 1000)
-                                end = min(len(file_content),
-                                          match.end() + 1000)
-                                context = file_content[start:end]
+        text_markers = {
+            'AI文本標記': [
+                rb'%%BeginText',
+                rb'%%EndText',
+                rb'%%BeginTextObject',
+                rb'%%EndTextObject',
+                rb'<stFnt:fontName>',
+                rb'<stFnt:fontFamily>',
+            ]
+        }
+        outline_markers = [
+            rb'/TextOutlines\s*true',
+            rb'%%BeginOutline',
+            rb'%%EndOutline',
+            rb'/Type\s*/OutlineText',
+            rb'/Subtype\s*/Path',
+        ]
 
-                                # 如果周圍沒有輪廓標記，則計數
-                                if not any(re.search(outline, context, re.DOTALL | re.IGNORECASE)
-                                           for outline in outline_markers):
-                                    count += 1
-                                    _logger.warning('發現未轉換的%s', category)
-                        except Exception as e:
-                            _logger.error('文本對象檢查錯誤: %s', str(e))
-                    if count > 0:
-                        found_text_objects[category] = count
-                        total_count += count
+        total_count = 0
+        has_outlines = False
 
-                if total_count > 0:
-                    errors.append("檢測到文字未轉外框！")
-                else:
-                    if not has_outlines:
-                        _logger.warning('未檢測到文本對象，建議在Illustrator中確認')
+        for pattern in outline_markers:
+            try:
+                if re.search(pattern, file_content, re.DOTALL | re.IGNORECASE):
+                    has_outlines = True
+                    break
+            except Exception as e:
+                _logger.error('輪廓標記檢查錯誤: %s', str(e))
 
-            width_mm = None
-            height_mm = None
-            explicit_width = str(expected_width or '').strip()
-            explicit_height = str(expected_height or '').strip()
-
-            if explicit_width and explicit_height:
+        for category, patterns in text_markers.items():
+            count = 0
+            for pattern in patterns:
                 try:
-                    width = float(explicit_width)
-                    height = float(explicit_height)
-                    width_mm = width * 10
-                    height_mm = height * 10
+                    matches = re.finditer(
+                        pattern, file_content, re.DOTALL | re.IGNORECASE)
+                    for match in matches:
+                        start = max(0, match.start() - 1000)
+                        end = min(len(file_content), match.end() + 1000)
+                        context = file_content[start:end]
+                        if not any(re.search(outline, context, re.DOTALL | re.IGNORECASE)
+                                   for outline in outline_markers):
+                            count += 1
+                            _logger.warning('發現未轉換的%s', category)
+                except Exception as e:
+                    _logger.error('文本對象檢查錯誤: %s', str(e))
+            total_count += count
+
+        if total_count > 0:
+            message = '檢測到文字未轉外框！'
+            return {
+                'success': False,
+                'error': message,
+                'errors': [message],
+            }
+
+        if not has_outlines:
+            _logger.warning('未檢測到文本對象，建議在Illustrator中確認')
+
+        return {'success': True, 'errors': [], 'has_outlines': has_outlines}
+
+    def check_image_size(self, file_content, file_extension, filename, expected_width=None, expected_height=None):
+        """Parse expected size from filename/order and compare with actual file dimensions."""
+        errors = []
+        image_info = {}
+        width_mm = None
+        height_mm = None
+        explicit_width = str(expected_width or '').strip()
+        explicit_height = str(expected_height or '').strip()
+
+        if explicit_width and explicit_height:
+            try:
+                width = float(explicit_width)
+                height = float(explicit_height)
+                width_mm = width * 10
+                height_mm = height * 10
+                _logger.info(
+                    '使用顯式要求尺寸：寬度=%s, 高度=%s (轉換為毫米: %sx%smm)',
+                    width,
+                    height,
+                    width_mm,
+                    height_mm,
+                )
+            except Exception as e:
+                _logger.error('顯式尺寸解析錯誤: %s', str(e))
+                errors.append('無法解析要求尺寸: %s' % str(e))
+        else:
+            size_pattern = r'(\d+(?:\.\d+)?)\s*[x×]\s*(\d+(?:\.\d+)?)\s*[x×]\s*(\d+)'
+
+            _logger.info('使用的正則表達式: %s', size_pattern)
+            _logger.info('檢查的文件名稱: %s', filename)
+
+            match = re.search(size_pattern, filename, re.IGNORECASE)
+
+            if not match:
+                _logger.warning('檔案名稱 %s 不包含有效的尺寸格式', filename)
+                errors.append('檔案名稱必須包含尺寸信息，格式如：檔案名稱-材質-屬性-寬x高x數量.擴展名')
+            else:
+                try:
+                    width = float(match.group(1))
+                    height = float(match.group(2))
+                    quantity = int(match.group(3))
+                    unit = 'cm'
+
                     _logger.info(
-                        '使用顯式要求尺寸：寬度=%s, 高度=%s (轉換為毫米: %sx%smm)',
-                        width,
-                        height,
-                        width_mm,
-                        height_mm,
+                        '成功匹配尺寸信息：寬度=%s, 高度=%s, 數量=%s, 單位=%s',
+                        width, height, quantity, unit,
+                    )
+
+                    if unit == 'cm':
+                        width_mm = width * 10
+                        height_mm = height * 10
+                    else:
+                        width_mm = width
+                        height_mm = height
+
+                    _logger.info(
+                        '檔案名稱中的尺寸: %sx%s%s (轉換為毫米: %sx%smm)',
+                        width, height, unit, width_mm, height_mm,
                     )
                 except Exception as e:
-                    _logger.error('顯式尺寸解析錯誤: %s', str(e))
-                    errors.append(f'無法解析要求尺寸: {str(e)}')
-            else:
-                # 檢查2：檢查文件名中的尺寸格式
-                # 新的正则表达式（用于自定义文件名格式：檔案名稱-材質-屬性1-屬性2...屬性n-寬x高x數量.擴展名）
-                size_pattern = r'(\d+(?:\.\d+)?)\s*[x×]\s*(\d+(?:\.\d+)?)\s*[x×]\s*(\d+)'
+                    _logger.error('提取尺寸信息錯誤: %s', str(e))
+                    errors.append('無法從檔案名稱提取尺寸信息: %s' % str(e))
 
-                _logger.info('使用的正則表達式: %s', size_pattern)
-                _logger.info('檢查的文件名稱: %s', filename)
+        if width_mm is not None and height_mm is not None:
+            def check_dimensions(width_actual, height_actual, width_expected, height_expected):
+                height_actual_scaled = round(
+                    height_actual * width_expected / width_actual)
+                _logger.info('等比例縮放後的高度: %s', height_actual_scaled)
 
-                match = re.search(size_pattern, filename, re.IGNORECASE)
+                height_expected_rounded = round(height_expected)
+                _logger.info('要求的高度: %s', height_expected_rounded)
+                if str(height_actual_scaled) != str(height_expected_rounded):
+                    if height_actual_scaled < height_expected_rounded:
+                        return False, 'smaller'
+                    return False, 'larger'
+                return True, 'ok'
 
-                if not match:
-                    _logger.warning('檔案名稱 %s 不包含有效的尺寸格式', filename)
-                    errors.append('檔案名稱必須包含尺寸信息，格式如：檔案名稱-材質-屬性-寬x高x數量.擴展名')
-                else:
-                    # 提取尺寸信息
-                    try:
-                        width = float(match.group(1))
-                        height = float(match.group(2))
-                        quantity = int(match.group(3))  # 新增：提取数量
-                        # 新的文件名格式不包含单位，默认使用cm
-                        unit = 'cm'
+            def get_pdf_work_area_rect(page):
+                for box_name in ('trimbox', 'artbox'):
+                    rect = getattr(page, box_name, None)
+                    if callable(rect):
+                        rect = rect()
+                    if rect and rect.width > 0 and rect.height > 0:
+                        return rect, box_name
+                return page.rect, 'rect'
 
-                        _logger.info('成功匹配尺寸信息：寬度=%s, 高度=%s, 數量=%s, 單位=%s',
-                                     width, height, quantity, unit)
+            file_stream = io.BytesIO(file_content)
+            _logger.info('開始檢查圖片檔案，檔案擴展名: %s', file_extension)
 
-                        # 轉換為毫米
-                        if unit == 'cm':
-                            width_mm = width * 10
-                            height_mm = height * 10
-                        else:  # 已經是毫米
-                            width_mm = width
-                            height_mm = height
+            try:
+                if file_extension.lower() in ['.ai', '.pdf']:
+                    _logger.info('處理 AI/PDF 檔案')
+                    doc = fitz.open(stream=file_content, filetype='pdf')
+                    if doc.page_count > 0:
+                        page = doc[0]
+                        rect, pdf_box_name = get_pdf_work_area_rect(page)
+                        width_px = rect.width
+                        height_px = rect.height
+                        width_mm_actual = rect.width * 0.352778
+                        height_mm_actual = rect.height * 0.352778
+                        doc.close()
 
-                        _logger.info('檔案名稱中的尺寸: %sx%s%s (轉換為毫米: %sx%smm)',
-                                     width, height, unit, width_mm, height_mm)
-                    except Exception as e:
-                        _logger.error('提取尺寸信息錯誤: %s', str(e))
-                        errors.append(f'無法從檔案名稱提取尺寸信息: {str(e)}')
+                        _logger.info(
+                            'AI/PDF工作區尺寸(%s): %sx%s點, %sx%s毫米',
+                            pdf_box_name, width_px, height_px, width_mm_actual, height_mm_actual,
+                        )
 
-            # 檢查3：檢查文件實際尺寸（只有在文件名格式正確時才檢查）
-            if width_mm is not None and height_mm is not None:
-                def check_dimensions(width_actual, height_actual, width_expected, height_expected):
-                    """檢查尺寸是否符合要求"""
-                    # 先乘後除計算等比例高度，並四捨五入到毫米整數位
-                    height_actual_scaled = round(
-                        height_actual * width_expected / width_actual)
-                    _logger.info('等比例縮放後的高度: %s', height_actual_scaled)
+                        image_info = {
+                            'width_px': width_px,
+                            'height_px': height_px,
+                            'width_mm': width_mm_actual,
+                            'height_mm': height_mm_actual,
+                            'pdf_box': pdf_box_name,
+                            'filename_size': {
+                                'width_mm': width_mm,
+                                'height_mm': height_mm,
+                            },
+                        }
 
-                    # 將預期高度也四捨五入到毫米整數位
-                    height_expected_rounded = round(height_expected)
-                    _logger.info('要求的高度: %s', height_expected_rounded)
-                    # 轉換為字符串比較，避免浮點數精度問題
-                    if str(height_actual_scaled) != str(height_expected_rounded):
-                        if height_actual_scaled < height_expected_rounded:
-                            return False, "smaller"
-                        else:
-                            return False, "larger"
-                    return True, "ok"
+                        is_valid, reason = check_dimensions(
+                            width_mm_actual, height_mm_actual, width_mm, height_mm)
+                        if not is_valid:
+                            errors.append(
+                                '等比例處理後檔案實際尺寸(%sx%smm)不符合要求尺寸(%sx%smm)' % (
+                                    round(width_mm_actual),
+                                    round(height_mm_actual),
+                                    round(width_mm),
+                                    round(height_mm),
+                                ))
 
-                def get_pdf_work_area_rect(page):
-                    """Return the Illustrator/PDF work area box, excluding bleed when available."""
-                    for box_name in ('trimbox', 'artbox'):
-                        rect = getattr(page, box_name, None)
-                        if callable(rect):
-                            rect = rect()
-                        if rect and rect.width > 0 and rect.height > 0:
-                            return rect, box_name
-                    return page.rect, 'rect'
+                elif file_extension.lower() == '.svg':
+                    _logger.info('處理 SVG 檔案')
+                    temp_file = '/tmp/temp.svg'
+                    with open(temp_file, 'wb') as f:
+                        f.write(file_content)
 
-                # 創建一個字節流對象
-                file_stream = io.BytesIO(file_content)
-                _logger.info('開始檢查圖片檔案，檔案擴展名: %s', file_extension)
+                    tree = ET.parse(temp_file)
+                    root = tree.getroot()
+                    width = root.get('width')
+                    height = root.get('height')
 
-                try:
-                    # 根據文件類型選擇不同的處理方法
-                    if file_extension.lower() in ['.ai', '.pdf']:
-                        # AI文件和PDF文件使用相同的處理方法
-                        _logger.info('處理 AI/PDF 檔案')
-                        doc = fitz.open(stream=file_content, filetype="pdf")
-                        if doc.page_count > 0:
-                            page = doc[0]
-                            rect, pdf_box_name = get_pdf_work_area_rect(page)
-                            width_px = rect.width
-                            height_px = rect.height
-                            width_mm_actual = rect.width * 0.352778  # 轉換為毫米
-                            height_mm_actual = rect.height * 0.352778  # 轉換為毫米
-                            doc.close()
+                    if not width or not height:
+                        viewbox = root.get('viewBox')
+                        if viewbox:
+                            _, _, width, height = map(float, viewbox.split())
 
-                            _logger.info('AI/PDF工作區尺寸(%s): %sx%s點, %sx%s毫米',
-                                         pdf_box_name, width_px, height_px, width_mm_actual, height_mm_actual)
+                    os.remove(temp_file)
 
-                            # 保存圖片信息
-                            image_info = {
-                                'width_px': width_px,
-                                'height_px': height_px,
-                                'width_mm': width_mm_actual,
-                                'height_mm': height_mm_actual,
-                                'pdf_box': pdf_box_name,
-                                'filename_size': {
-                                    'width_mm': width_mm,
-                                    'height_mm': height_mm
-                                }
-                            }
+                    if width and height:
+                        width_px = float(width)
+                        height_px = float(height)
+                        width_mm_actual = width_px * 25.4 / 96
+                        height_mm_actual = height_px * 25.4 / 96
 
-                            # 檢查尺寸
-                            is_valid, reason = check_dimensions(
-                                width_mm_actual, height_mm_actual, width_mm, height_mm)
-                            if not is_valid:
-                                errors.append(
-                                    f'等比例處理後檔案實際尺寸({round(width_mm_actual)}x{round(height_mm_actual)}mm)不符合要求尺寸({round(width_mm)}x{round(height_mm)}mm)')
+                        _logger.info(
+                            'SVG檔案實際尺寸: %sx%s像素, %sx%s毫米',
+                            width_px, height_px, width_mm_actual, height_mm_actual,
+                        )
 
-                    elif file_extension.lower() == '.svg':
-                        # SVG文件處理邏輯
-                        _logger.info('處理 SVG 檔案')
-                        temp_file = '/tmp/temp.svg'
-                        with open(temp_file, 'wb') as f:
-                            f.write(file_content)
-
-                        tree = ET.parse(temp_file)
-                        root = tree.getroot()
-                        width = root.get('width')
-                        height = root.get('height')
-
-                        if not width or not height:
-                            viewbox = root.get('viewBox')
-                            if viewbox:
-                                _, _, width, height = map(
-                                    float, viewbox.split())
-
-                        os.remove(temp_file)
-
-                        if width and height:
-                            width_px = float(width)
-                            height_px = float(height)
-                            width_mm_actual = width_px * \
-                                25.4 / 96  # 轉換為毫米 (假設96DPI)
-                            height_mm_actual = height_px * 25.4 / 96
-
-                            _logger.info('SVG檔案實際尺寸: %sx%s像素, %sx%s毫米',
-                                         width_px, height_px, width_mm_actual, height_mm_actual)
-
-                            # 保存圖片信息
-                            image_info = {
-                                'width_px': width_px,
-                                'height_px': height_px,
-                                'width_mm': width_mm_actual,
-                                'height_mm': height_mm_actual,
-                                'filename_size': {
-                                    'width_mm': width_mm,
-                                    'height_mm': height_mm
-                                }
-                            }
-
-                            # 檢查尺寸
-                            is_valid, reason = check_dimensions(
-                                width_mm_actual, height_mm_actual, width_mm, height_mm)
-                            if not is_valid:
-                                if reason == "smaller":
-                                    errors.append(
-                                        f'檔案實際尺寸({round(width_mm_actual)}x{round(height_mm_actual)}mm)小於要求尺寸({round(width_mm)}x{round(height_mm)}mm)')
-                                else:
-                                    errors.append(
-                                        f'檔案實際尺寸({round(width_mm_actual)}x{round(height_mm_actual)}mm)超過要求尺寸({round(width_mm)}x{round(height_mm)}mm)5mm以上')
-                        else:
-                            errors.append('無法從SVG文件中讀取尺寸信息')
-                    else:
-                        # 其他圖片格式使用PIL處理
-                        _logger.info('處理普通圖片檔案')
-                        img = Image.open(file_stream)
-                        width_px, height_px = img.size
-                        width_mm_actual = width_px * \
-                            25.4 / 72  # 轉換為毫米 (假設72DPI)
-                        height_mm_actual = height_px * 25.4 / 72
-
-                        _logger.info('圖片檔案實際尺寸: %sx%s像素, %sx%s毫米',
-                                     width_px, height_px, width_mm_actual, height_mm_actual)
-
-                        # 保存圖片信息
                         image_info = {
                             'width_px': width_px,
                             'height_px': height_px,
@@ -449,44 +495,153 @@ class UploadController(http.Controller):
                             'height_mm': height_mm_actual,
                             'filename_size': {
                                 'width_mm': width_mm,
-                                'height_mm': height_mm
-                            }
+                                'height_mm': height_mm,
+                            },
                         }
 
-                        # 檢查尺寸
                         is_valid, reason = check_dimensions(
                             width_mm_actual, height_mm_actual, width_mm, height_mm)
                         if not is_valid:
-                            if reason == "smaller":
+                            if reason == 'smaller':
                                 errors.append(
-                                    f'檔案實際尺寸({round(width_mm_actual)}x{round(height_mm_actual)}mm)小於要求尺寸({round(width_mm)}x{round(height_mm)}mm)')
+                                    '檔案實際尺寸(%sx%smm)小於要求尺寸(%sx%smm)' % (
+                                        round(width_mm_actual),
+                                        round(height_mm_actual),
+                                        round(width_mm),
+                                        round(height_mm),
+                                    ))
                             else:
                                 errors.append(
-                                    f'檔案實際尺寸({round(width_mm_actual)}x{round(height_mm_actual)}mm)超過要求尺寸({round(width_mm)}x{round(height_mm)}mm)5mm以上')
-                except Exception as e:
-                    _logger.error('檔案尺寸檢查錯誤: %s', str(e), exc_info=True)
-                    errors.append(f'檔案尺寸檢查錯誤: {str(e)}')
+                                    '檔案實際尺寸(%sx%smm)超過要求尺寸(%sx%smm)5mm以上' % (
+                                        round(width_mm_actual),
+                                        round(height_mm_actual),
+                                        round(width_mm),
+                                        round(height_mm),
+                                    ))
+                    else:
+                        errors.append('無法從SVG文件中讀取尺寸信息')
+                else:
+                    _logger.info('處理普通圖片檔案')
+                    img = Image.open(file_stream)
+                    width_px, height_px = img.size
+                    width_mm_actual = width_px * 25.4 / 72
+                    height_mm_actual = height_px * 25.4 / 72
 
-            # 統一返回結果：如果有錯誤，返回所有錯誤；否則返回成功（成功時保持與舊版一致的扁平結構，供前端 response.image_info.width_mm 使用）
-            if errors:
-                return {
-                    'success': False,
-                    'error': '\n'.join(errors),
-                    'errors': errors,  # 同時返回錯誤列表，方便前端處理
-                    'image_info': image_info if image_info else None
-                }
-            else:
-                # 成功時返回扁平結構，與改版前一致，避免前端讀取 width_mm 等時為 undefined
-                return dict({'success': True}, **(image_info if image_info else {}))
+                    _logger.info(
+                        '圖片檔案實際尺寸: %sx%s像素, %sx%s毫米',
+                        width_px, height_px, width_mm_actual, height_mm_actual,
+                    )
 
-        except Exception as e:
-            _logger.error('檔案檢查錯誤: %s', str(e), exc_info=True)
-            errors.append(f'檔案檢查錯誤: {str(e)}')
+                    image_info = {
+                        'width_px': width_px,
+                        'height_px': height_px,
+                        'width_mm': width_mm_actual,
+                        'height_mm': height_mm_actual,
+                        'filename_size': {
+                            'width_mm': width_mm,
+                            'height_mm': height_mm,
+                        },
+                    }
+
+                    is_valid, reason = check_dimensions(
+                        width_mm_actual, height_mm_actual, width_mm, height_mm)
+                    if not is_valid:
+                        if reason == 'smaller':
+                            errors.append(
+                                '檔案實際尺寸(%sx%smm)小於要求尺寸(%sx%smm)' % (
+                                    round(width_mm_actual),
+                                    round(height_mm_actual),
+                                    round(width_mm),
+                                    round(height_mm),
+                                ))
+                        else:
+                            errors.append(
+                                '檔案實際尺寸(%sx%smm)超過要求尺寸(%sx%smm)5mm以上' % (
+                                    round(width_mm_actual),
+                                    round(height_mm_actual),
+                                    round(width_mm),
+                                    round(height_mm),
+                                ))
+            except Exception as e:
+                _logger.error('檔案尺寸檢查錯誤: %s', str(e), exc_info=True)
+                errors.append('檔案尺寸檢查錯誤: %s' % str(e))
+
+        if errors:
             return {
                 'success': False,
                 'error': '\n'.join(errors),
                 'errors': errors,
-                'image_info': image_info if image_info else None
+                'image_info': image_info if image_info else None,
+            }
+
+        return {
+            'success': True,
+            'errors': [],
+            'image_info': image_info,
+        }
+
+    def check_multi_artboard_ai(self, file_content, file_extension):
+        """Multi-artboard simplified check: multi-page gate, then legacy outline only."""
+        multi_result = self.check_is_multi_artboard_ai(file_content, file_extension)
+        image_info = dict(multi_result.get('image_info') or {})
+        if not multi_result.get('success'):
+            return {
+                'success': False,
+                'error': multi_result.get('error'),
+                'errors': multi_result.get('errors', []),
+                'image_info': image_info,
+            }
+
+        outline_result = self.check_ai_outline_legacy(file_content, file_extension)
+        if not outline_result.get('success'):
+            return {
+                'success': False,
+                'error': outline_result.get('error', '檢測到文字未轉外框！'),
+                'errors': outline_result.get('errors', []),
+                'image_info': image_info,
+            }
+
+        return dict({'success': True}, **image_info)
+
+    def check_image(self, file_content, file_extension, filename, expected_width=None, expected_height=None):
+        errors = []
+        image_info = {}
+
+        try:
+            outline_result = self.check_ai_outline_legacy(file_content, file_extension)
+            if not outline_result.get('success'):
+                errors.extend(outline_result.get('errors', []))
+
+            size_result = self.check_image_size(
+                file_content,
+                file_extension,
+                filename,
+                expected_width=expected_width,
+                expected_height=expected_height,
+            )
+            if size_result.get('image_info'):
+                image_info = size_result['image_info']
+            if not size_result.get('success'):
+                errors.extend(size_result.get('errors', []))
+
+            if errors:
+                return {
+                    'success': False,
+                    'error': '\n'.join(errors),
+                    'errors': errors,
+                    'image_info': image_info if image_info else None,
+                }
+
+            return dict({'success': True}, **(image_info if image_info else {}))
+
+        except Exception as e:
+            _logger.error('檔案檢查錯誤: %s', str(e), exc_info=True)
+            errors.append('檔案檢查錯誤: %s' % str(e))
+            return {
+                'success': False,
+                'error': '\n'.join(errors),
+                'errors': errors,
+                'image_info': image_info if image_info else None,
             }
 
     """ @http.route('/dtsc/upload_file_chunk', type='http', auth='user', methods=['POST'], csrf=False)
@@ -752,6 +907,14 @@ class UploadController(http.Controller):
             'project_product_name': project_product_name,
             'image_url': final_filename,
         })
+        self._notify_customer_upload_success(
+            customer_name=order.partner_id.display_name or order.partner_id.name,
+            partner_id=order.partner_id.id,
+            order_name=order.name,
+            checkout_id=False,
+            filename=final_filename,
+            upload_source='shop_payment',
+        )
         return self._json_response({
             'success': True,
             'message': 'File uploaded successfully',
@@ -875,13 +1038,18 @@ class UploadController(http.Controller):
         _, file_extension = os.path.splitext(upload_file.filename or '')
         file_content = upload_file.read()
         check_filename = upload_filename
-        check_result = self.check_image(
-            file_content,
-            file_extension,
-            check_filename,
-            expected_width=width,
-            expected_height=height,
-        )
+        check_mode = (request.params.get('check_mode') or '').strip()
+
+        if check_mode == 'multi_artboard':
+            check_result = self.check_multi_artboard_ai(file_content, file_extension)
+        else:
+            check_result = self.check_image(
+                file_content,
+                file_extension,
+                check_filename,
+                expected_width=width,
+                expected_height=height,
+            )
 
         if not check_result.get('success'):
             self._create_ai_check_log(
@@ -901,6 +1069,48 @@ class UploadController(http.Controller):
                 'checked_filename': check_filename,
                 'upload_filename': upload_filename,
             }, status=200)
+
+        confirm_blur_upload = self._is_truthy_param('confirm_blur_upload')
+        if check_mode == 'multi_artboard':
+            extra_check_result = {'success': True}
+        elif confirm_blur_upload:
+            extra_check_result = {
+                'success': False,
+                'message': '客戶確認上傳',
+                'blur_check': {'skipped': True, 'reason': 'customer_confirmed_upload'},
+            }
+        else:
+            extra_check_result = self._my_ai_check_extra_validation(
+                file_content=file_content,
+                file_extension=file_extension,
+                line=line,
+                order=order,
+                upload_filename=upload_filename,
+            )
+        if not extra_check_result.get('success'):
+            blur_image_info = dict(check_result.get('image_info') or {})
+            if extra_check_result.get('image_info'):
+                blur_image_info.update(extra_check_result.get('image_info'))
+            if not confirm_blur_upload:
+                self._create_ai_check_log(
+                    status='failed',
+                    message=extra_check_result.get('message', '檔案未通過 /my/ai-check 額外檢測'),
+                    upload_file=upload_file,
+                    check_filename=check_filename,
+                    image_info=blur_image_info,
+                    input_width=width,
+                    input_height=height,
+                )
+                return self._json_response({
+                    'success': False,
+                    'can_confirm_upload': True,
+                    'message': extra_check_result.get('message', '檔案未通過 /my/ai-check 額外檢測'),
+                    'errors': extra_check_result.get('errors', []),
+                    'image_info': blur_image_info,
+                    'blur_check': extra_check_result.get('blur_check'),
+                    'checked_filename': check_filename,
+                    'upload_filename': upload_filename,
+                }, status=200)
 
         image_info = {k: v for k, v in check_result.items() if k != 'success'}
         uploader = request.env['upload.model']
@@ -926,22 +1136,38 @@ class UploadController(http.Controller):
         line.sudo().write({
             'image_url': upload_filename,
         })
+        if confirm_blur_upload and not extra_check_result.get('success'):
+            success_message = '檔案檢測通過並已上傳'
+            log_message = '客戶確認後上傳（模糊檢測未通過）'
+        else:
+            success_message = '檔案檢測通過並已上傳'
+            log_message = success_message
         self._create_ai_check_log(
             status='success',
-            message='檔案檢測通過並已上傳',
+            message=log_message,
             upload_file=upload_file,
             check_filename=check_filename,
             image_info=image_info,
             input_width=width,
             input_height=height,
         )
+        self._notify_customer_upload_success(
+            customer_name=request.params.get('customer_name', '').strip() or partner.display_name or partner.name,
+            partner_id=partner.id,
+            order_name=order.name,
+            checkout_id=order.id,
+            filename=upload_filename,
+            upload_source='ai_check',
+        )
         return self._json_response({
             'success': True,
-            'message': '檔案檢測通過並已上傳',
+            'message': success_message,
             'checked_filename': check_filename,
             'upload_filename': upload_filename,
             'upload_folder': upload_folder,
             'image_info': image_info,
+            'blur_check': extra_check_result.get('blur_check'),
+            'confirmed_despite_blur': bool(confirm_blur_upload and not extra_check_result.get('success')),
         }, status=200)
 
     @http.route('/dtsc/payment_upload_file', type='http', auth='user', methods=['POST'], csrf=False)

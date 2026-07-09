@@ -125,35 +125,36 @@
 			<form>
 				<sheet class="w3000">
 					<group>
+						<field name="non_rsgl_readonly" invisible="1"/>
 						<field name="name"  />
 						<field name="work_id"  />
-						<field name="is_zg" />
-						<field name="is_qh" />
-						<field name="is_zhuguan_crm_sign" />
-						<field name="is_manager_crm_sign" />
-						<field name="is_daka_qh" />
+						<field name="is_zg" attrs="{'readonly': [('non_rsgl_readonly', '=', True)]}"/>
+						<field name="is_qh" attrs="{'readonly': [('non_rsgl_readonly', '=', True)]}"/>
+						<field name="is_zhuguan_crm_sign" attrs="{'readonly': [('non_rsgl_readonly', '=', True)]}"/>
+						<field name="is_manager_crm_sign" attrs="{'readonly': [('non_rsgl_readonly', '=', True)]}"/>
+						<field name="is_daka_qh" attrs="{'readonly': [('non_rsgl_readonly', '=', True)]}"/>
 						<field name="in_company_date" />
 						<field name="out_company_date" />
 						<field name="out_worker" />
 						<field name="in_time" />
 						<field name="out_time" />
 						<field name="department" options="{'no_create': True, 'no_create_edit': True}"/>
-						<field name="tx_locked" />
-						<field name="tx_days" />
-						<field name="bj_locked" />
-						<field name="bj_days" />
-						<field name="sj_locked" />
-						<field name="sj_days" />
-						<field name="slj_locked" />
-						<field name="slj_days" />
-						<field name="jtzgj_locked" />
-						<field name="jtzgj_days" />
-						<field name="line_user_id" />
+						<field name="tx_locked" attrs="{'readonly': [('non_rsgl_readonly', '=', True)]}"/>
+						<field name="tx_days" attrs="{'readonly': [('non_rsgl_readonly', '=', True)]}"/>
+						<field name="bj_locked" attrs="{'readonly': [('non_rsgl_readonly', '=', True)]}"/>
+						<field name="bj_days" attrs="{'readonly': [('non_rsgl_readonly', '=', True)]}"/>
+						<field name="sj_locked" attrs="{'readonly': [('non_rsgl_readonly', '=', True)]}"/>
+						<field name="sj_days" attrs="{'readonly': [('non_rsgl_readonly', '=', True)]}"/>
+						<field name="slj_locked" attrs="{'readonly': [('non_rsgl_readonly', '=', True)]}"/>
+						<field name="slj_days" attrs="{'readonly': [('non_rsgl_readonly', '=', True)]}"/>
+						<field name="jtzgj_locked" attrs="{'readonly': [('non_rsgl_readonly', '=', True)]}"/>
+						<field name="jtzgj_days" attrs="{'readonly': [('non_rsgl_readonly', '=', True)]}"/>
+						<field name="line_user_id" attrs="{'readonly': [('non_rsgl_readonly', '=', True)]}"/>
 						<field name="userlistbefore_id" />
 						<field name="userlist_id" />
 						<field name="reworklist_id" />
-						<field name="user_id" />
-						<field name="sys_password" password="True" />
+						<field name="user_id" attrs="{'readonly': [('non_rsgl_readonly', '=', True)]}"/>
+						<field name="sys_password" password="True" attrs="{'readonly': [('non_rsgl_readonly', '=', True)]}"/>
 						<field name="lbztj_num"/>
 						<field name="healthinsurancewithfamily_ids" string="健保攜眷">
 								<tree editable="bottom" limit="100"  >
@@ -164,10 +165,10 @@
 								</tree>
 						</field>
 						<field name="is_show_signature" invisible="1"/>
-						<field name="signature" widget="signature" readonly="context.get('readonly', False)"
+						<field name="signature" widget="signature"
 							   attrs="{
 								   'invisible': [('is_show_signature','=', False)],
-								   'readonly': [('is_show_signature','=', False)]
+								   'readonly': ['|', ('is_show_signature','=', False), ('non_rsgl_readonly', '=', True)]
 							   }"/>
 					</group>
 				</sheet>

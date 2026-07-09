@@ -20,7 +20,7 @@
     'version': '0.1',
 
     # any module necessary for this one to work correctly
-    'depends': ['base','base_import', 'product','mrp','web','sale','stock','website_sale','account','purchase','delivery','crm','note','hr_expense','hr_holidays','hr_attendance'],  # Add 'product' here
+    'depends': ['base','base_import', 'product','mrp','web','mail','sale','stock','website_sale','account','purchase','delivery','crm','note','hr_expense','hr_holidays','hr_attendance'],  # Add 'product' here
 	'qweb': [ 
         'static/src/xml/res_partner.xml',
         'static/src/xml/chattemplate.xml',
@@ -33,6 +33,9 @@
         'views/stock_lot.xml',
         'security/res_group.xml',
         'security/ir.model.access.csv',
+        'data/ai_blur_check_config.xml',
+        'data/customer_upload_notice_config.xml',
+        'data/customer_upload_notice_channel.xml',
 		'views/product_attribute_value_views.xml',        
         'views/test.xml',
         'views/unit_conversion.xml',
@@ -44,6 +47,7 @@
         'views/ai_file_check.xml',
         'views/ai_member_check.xml',
         'views/ai_check_log_views.xml',
+        'views/customer_upload_notice_views.xml',
         'views/customclass.xml',
         'views/statement.xml',
         'views/res_partner_templates.xml',
@@ -125,6 +129,9 @@
             'dtsc/static/src/js/user_menu_documentation_patch.js',
             'dtsc/static/src/js/product_template_form_confirm.js',
             'dtsc/static/src/js/overview_dashboard.js',
+            'dtsc/static/src/js/customer_upload_notice_systray.js',
+            'dtsc/static/src/xml/customer_upload_notice_systray.xml',
+            'dtsc/static/src/css/customer_upload_notice_systray.css',
             'dtsc/static/src/css/overview_dashboard.css',
             'dtsc/static/src/css/overview_dashboard_native.css',
             # 'dtsc/static/src/xml/hide_dev_tools.xml',  # ← 加这行            

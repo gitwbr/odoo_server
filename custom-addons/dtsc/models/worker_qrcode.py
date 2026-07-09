@@ -6,7 +6,8 @@ import json
 import hashlib
 import time
 import json
-from odoo.exceptions import UserError
+from odoo.exceptions import UserError, AccessError
+from odoo.tools.translate import _
 from odoo.tools import config
 from datetime import datetime, timedelta, date
 import datetime
@@ -87,6 +88,16 @@ class WorkTime(models.Model):
     
 class WorkerQRcode(models.Model):
     _name = "dtsc.workqrcode"
+
+    # 非人事管理僅可改以下欄位；人事管理可改全部
+    NON_RSGL_EDITABLE_FIELDS = frozenset({
+        'name', 'work_id', 'in_company_date', 'out_company_date',
+        'out_worker', 'in_time', 'out_time', 'department',
+        'userlistbefore_id', 'userlist_id', 'reworklist_id',
+        'lbztj_num', 'healthinsurancewithfamily_ids',
+        # 基礎薪資設定表（管理部可維護）
+        'jcxz', 'qqjj', 'zgjj', 'hsjt', 'qtjt', 'jxjj', 'ywjxdbx', 'work_type',
+    })
     
     name=fields.Char("員工姓名",required=True)
     work_id = fields.Char("員工編號")
@@ -131,6 +142,16 @@ class WorkerQRcode(models.Model):
     
     signature = fields.Binary(string='簽名')
     is_show_signature = fields.Boolean(compute="_compute_is_show_signature")
+    non_rsgl_readonly = fields.Boolean(
+        string="非人事管理只讀",
+        compute="_compute_non_rsgl_readonly",
+    )
+
+    @api.depends_context('uid')
+    def _compute_non_rsgl_readonly(self):
+        readonly = not self.env.user.has_group('dtsc.group_dtsc_rsgl')
+        for record in self:
+            record.non_rsgl_readonly = readonly
     
     @api.depends("user_id")
     def _compute_is_show_signature(self):
@@ -142,12 +163,19 @@ class WorkerQRcode(models.Model):
             )
 
     def write(self, vals):
+        user = self.env.user
         if 'signature' in vals:
-            user = self.env.user
             is_gly = user.has_group('dtsc.group_dtsc_gly')
             for rec in self:
                 if not is_gly and rec.user_id and rec.user_id.id != user.id:
                     raise AccessError(_("你不能修改其他人的簽名。"))
+        if not self.env.su and not user.has_group('dtsc.group_dtsc_rsgl'):
+            illegal = set(vals) - self.NON_RSGL_EDITABLE_FIELDS
+            if illegal:
+                raise UserError(
+                    _('您沒有權限修改以下欄位：%s')
+                    % ', '.join(sorted(illegal))
+                )
         return super().write(vals)
             
             

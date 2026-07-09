@@ -78,7 +78,7 @@ access_dtsc_order_preview,dtsc.order_preview,model_dtsc_order_preview,base.group
 
 access_dtsc_worktime,dtsc.worktime,model_dtsc_worktime,dtsc.group_dtsc_bs,1,1,1,1
 access_dtsc_linebot,dtsc.linebot,model_dtsc_linebot,dtsc.group_dtsc_bs,1,1,1,1
-access_dtsc_attendance,dtsc.attendance,model_dtsc_attendance,dtsc.group_dtsc_bs,1,1,1,1
+access_dtsc_attendance,dtsc.attendance,model_dtsc_attendance,dtsc.group_dtsc_bs,1,0,0,0
 access_dtsc_crmcomment,dtsc.crmcomment,model_dtsc_crmcomment,dtsc.group_dtsc_bs,1,1,1,1
 access_dtsc_reportmounthinstall,dtsc.reportmounthinstall,model_dtsc_reportmounthinstall,dtsc.group_dtsc_bs,1,1,1,1
 access_dtsc_crmusercomment,dtsc.crmusercomment,model_dtsc_crmusercomment,dtsc.group_dtsc_bs,1,1,1,1
@@ -111,6 +111,9 @@ access_dtsc_healthinsurancewithfamily,dtsc.healthinsurancewithfamily,model_dtsc_
 access_dtsc_line_reply_pending,dtsc.line_reply_pending,model_dtsc_line_reply_pending,dtsc.group_dtsc_bs,1,1,1,1
 access_dtsc_normalsettings,dtsc.normalsettings,model_dtsc_normalsettings,dtsc.group_dtsc_bs,1,1,1,1
 access_dtsc_ai_check_log,dtsc.ai.check.log,model_dtsc_ai_check_log,base.group_user,1,0,0,0
+access_dtsc_customer_upload_notice,dtsc.customer.upload.notice,model_dtsc_customer_upload_notice,dtsc.group_dtsc_bs,1,1,1,0
+access_dtsc_customer_upload_notice_settings,dtsc.customer.upload.notice.settings,model_dtsc_customer_upload_notice_settings,dtsc.group_dtsc_gly,1,1,1,1
+access_dtsc_customer_upload_notice_settings_mg,dtsc.customer.upload.notice.settings,model_dtsc_customer_upload_notice_settings,dtsc.group_dtsc_mg,1,1,1,1
 access_dtsc_overview_dashboard_yw,dtsc.overview.dashboard,model_dtsc_overview_dashboard,dtsc.group_dtsc_yw,1,0,0,0
 access_dtsc_overview_dashboard_sc,dtsc.overview.dashboard,model_dtsc_overview_dashboard,dtsc.group_dtsc_sc,1,0,0,0
 access_dtsc_overview_dashboard_kj,dtsc.overview.dashboard,model_dtsc_overview_dashboard,dtsc.group_dtsc_kj,1,0,0,0
