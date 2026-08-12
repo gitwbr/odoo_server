@@ -102,6 +102,7 @@
         'views/report_performance.xml',
         'views/factory.xml',
         'views/normalsettings.xml',
+        'views/workordercostsettings.xml',
         'views/overview_dashboard.xml',
         'views/views.xml',
     ],

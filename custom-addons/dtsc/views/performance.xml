@@ -151,6 +151,9 @@
 									<field name="lbfztj"  decoration-danger="1"/>
 									<field name="jbfzf"  decoration-danger="1"/>
 									<field name="sfje"/>
+									<field name="line_send_state" decoration-success="line_send_state == 'sent'" decoration-danger="line_send_state == 'failed'"/>
+									<field name="line_sent_at"/>
+									<button name="action_send_line_salary_pdf" type="object" string="發送LINE" icon="fa-paper-plane" attrs="{'invisible': [('name', '=', False)]}"/>
  
 									
 								</tree>

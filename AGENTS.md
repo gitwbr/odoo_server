@@ -16,6 +16,8 @@ Use `@/openspec/AGENTS.md` to learn:
 Keep this managed block so 'openspec update' can refresh the instructions.
 
 <!-- OPENSPEC:END -->
+# 重要遵循规则
+ 所有改动没经过允许不能直接改数据库资料，首先以及纯代码改动，不行再找ui设置方案，还是没办法再讨论是否直接改数据库。
 
 # 大图订单-单号类型
 
@@ -36,3 +38,11 @@ B/C/G/T 是从大图订单的产品行生成出来的生产/施工单，核心�
 make_om 产品行会同时进入 B 内部工单需求和 G 代工单需求；统计 B/G 需求时允许重叠，统计母单数量时需要按 checkout_id 去重。
 S 是出货单，核心关联是 dtsc.deliveryorder.checkout_ids，同时大图订单上也会写 delivery_order = Sxxxxx。
 出货单不是大图订单状态，它是独立单据；所以“大图订单逾期”和“出货单逾期”不能直接用同一个数字对比。
+
+# 环境说明
+ 1：这里存放的是企业版（测试环境）以及 saas社区版
+ 2：企业版（正式环境） 没有docker，不在当前服务器，启动方式是
+    source odoo16/bin/activate
+    nohup python3 ./odooE/odoo-bin -w odoo -r odoo -c /home/bryant/odooE/config/odoo.conf > odoo.log 2>&1 &
+
+ 

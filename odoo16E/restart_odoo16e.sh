@@ -37,6 +37,9 @@ EOF
 }
 
 ensure_db_and_image() {
+  local runner_definition_hash
+  local image_definition_hash
+
   mkdir -p "$BASE_DIR/postgresql" "$BASE_DIR/data" "$BASE_DIR/logs" "$BASE_DIR/run"
 
   if ! docker ps -a --format '{{.Names}}' | grep -qx "$DB_CONTAINER"; then
@@ -55,8 +58,20 @@ ensure_db_and_image() {
     docker start "$DB_CONTAINER"
   fi
 
-  if ! docker image inspect "$IMAGE_NAME" >/dev/null 2>&1; then
-    docker build -t "$IMAGE_NAME" -f "$BASE_DIR/Dockerfile.runner" "$BASE_DIR"
+  runner_definition_hash="$(sha256sum "$BASE_DIR/Dockerfile.runner" | awk '{print $1}')"
+  image_definition_hash="$(
+    docker image inspect \
+      --format '{{index .Config.Labels "com.coinimaging.runner-definition-sha256"}}' \
+      "$IMAGE_NAME" 2>/dev/null || true
+  )"
+
+  if [[ "$image_definition_hash" != "$runner_definition_hash" ]]; then
+    echo "Rebuilding stale Odoo 16E runner image..."
+    docker build \
+      --label "com.coinimaging.runner-definition-sha256=$runner_definition_hash" \
+      -t "$IMAGE_NAME" \
+      -f "$BASE_DIR/Dockerfile.runner" \
+      "$BASE_DIR"
   fi
 }
 

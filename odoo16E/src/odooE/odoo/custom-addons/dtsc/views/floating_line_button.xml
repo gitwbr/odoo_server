@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="floating_line_button" inherit_id="website.layout" name="Floating LINE customer service button">
+        <xpath expr="//div[@id='wrapwrap']" position="inside">
+            <a class="dtsc-floating-line"
+               href="https://lin.ee/NMlZtQJ"
+               target="_blank"
+               rel="noopener noreferrer"
+               aria-label="加入 LINE 好友，免費檔案檢測，專人報價">
+                <span class="dtsc-floating-line__icon">
+                    <img src="/dtsc/static/src/img/line_logo.svg" alt="LINE"/>
+                </span>
+                <span class="dtsc-floating-line__text">加入好友，免費檔案檢測，專人報價</span>
+            </a>
+        </xpath>
+    </template>
+</odoo>

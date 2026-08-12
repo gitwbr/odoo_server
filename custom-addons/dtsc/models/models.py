@@ -33,7 +33,25 @@ class NormalSettings(models.Model):
     
     key = fields.Char(string = "名稱") 
     value = fields.Char(string = "值") 
-     
+
+
+class WorkOrderCostSettings(models.Model):
+    _name = "dtsc.workordercostsettings"
+    _description = "工單成本核算設定"
+
+    key = fields.Char(string="名稱", required=True, readonly=True)
+    value = fields.Float(string="值", digits=(16, 4))
+
+    _sql_constraints = [
+        ('key_uniq', 'unique(key)', '設定名稱必須唯一！'),
+    ]
+
+    @api.model
+    def get_cost_value(self, key, default=0.0):
+        rec = self.search([('key', '=', key)], limit=1)
+        return rec.value if rec else default
+
+
 class UoMCategory(models.Model):
     _inherit = "uom.category"
     
@@ -705,6 +723,98 @@ class PurchaseOrderLine(models.Model):
                 record.taxes_id = [(6, 0, [tax.id])]
             else:
                 record.taxes_id = []    
+
+    def unlink(self):
+        # 刪除前先處理已完成的庫存移動：未退回的自動建立退回單沖銷庫存，避免取消 done 移動報錯
+        self._auto_return_done_moves()
+        # 已完成移動不能取消，先解除與訂單行的關聯，避免 super().unlink() 中 _action_cancel 報錯
+        done_moves = self.move_ids.filtered(lambda m: m.state == 'done' and not m.scrapped)
+        if done_moves:
+            done_moves.write({'purchase_line_id': False})
+        # 標準 Odoo 不允許刪除 purchase/done 狀態訂單的行，此處透過 context 放行
+        self = self.with_context(bypass_pol_delete_check=True)
+        return super(PurchaseOrderLine, self).unlink()
+
+    @api.ondelete(at_uninstall=False)
+    def _unlink_except_purchase_or_done(self):
+        # 覆蓋標準檢查：在自動退貨刪除流程中放行，其餘情況維持原限制
+        if self._context.get('bypass_pol_delete_check'):
+            return
+        for line in self:
+            if line.order_id.state in ['purchase', 'done']:
+                state_description = {state_desc[0]: state_desc[1] for state_desc in self._fields['state']._description_selection(self.env)}
+                raise UserError(_('Cannot delete a purchase order line which is in state \'%s\'.') % (state_description.get(line.state),))
+    
+    def _auto_return_done_moves(self):
+        """為每行尚未沖銷的已完成入庫移動自動建立退貨單"""
+        for line in self:
+            for move in line.move_ids.filtered(lambda m: m.state == 'done' and not m.scrapped):
+                if move._is_purchase_return():
+                    continue  # 本身已是退貨移動，不再反向退回
+                already_returned = sum(
+                    move.returned_move_ids.filtered(lambda r: r.state == 'done').mapped('quantity_done'))
+                qty_to_return = move.quantity_done - already_returned
+                if float_compare(qty_to_return, 0, precision_rounding=move.product_uom.rounding) <= 0:
+                    continue  # 已全額退回
+                if move.move_line_ids.filtered(lambda ml: ml.lot_id or ml.package_id) and already_returned > 0:
+                    continue  # 序號/批號產品部分退回後無法準確判斷剩餘明細，不自動處理
+                self._create_return_picking(line, move, qty_to_return)
+
+    def _create_return_picking(self, line, move, qty_to_return):
+        """建立退貨單與反向移動並直接完成退貨"""
+        lines_with_lot = move.move_line_ids.filtered(lambda ml: ml.lot_id or ml.package_id)
+        if lines_with_lot:
+            # 整量退回（序號/批號明細逐行反向）
+            qty = move.quantity_done
+        else:
+            # 檢查原入庫倉位剩餘庫存，避免退成負庫存
+            quant = self.env['stock.quant'].search([
+                ('product_id', '=', move.product_id.id),
+                ('location_id', '=', move.location_dest_id.id),
+            ], limit=1)
+            qty = min(qty_to_return, quant.quantity if quant else 0.0)
+            if float_compare(qty, 0, precision_rounding=move.product_uom.rounding) <= 0:
+                return
+        reverse_picking_vals = {
+            'picking_type_id': move.picking_id.picking_type_id.return_picking_type_id.id or move.picking_id.picking_type_id.id,
+            'origin': '退回 ' + (move.picking_id.origin or line.order_id.name or ''),
+        }
+        reverse_picking = self.env['stock.picking'].create(reverse_picking_vals)
+        reverse_move_vals = {
+            'name': move.name,
+            'reference': '退回',
+            'origin': line.order_id.name,
+            'product_id': move.product_id.id,
+            'product_uom_qty': qty,
+            'product_uom': move.product_uom.id,
+            'picking_id': reverse_picking.id,
+            'location_id': move.location_dest_id.id,
+            'location_dest_id': move.location_id.id,
+            'purchase_line_id': move.purchase_line_id.id,
+            'to_refund': True,
+            'origin_returned_move_id': move.id,
+        }
+        reverse_move = self.env['stock.move'].create(reverse_move_vals)
+        reverse_picking.action_confirm()
+        if lines_with_lot:
+            for ml in lines_with_lot:
+                self.env['stock.move.line'].create({
+                    'move_id': reverse_move.id,
+                    'product_id': ml.product_id.id,
+                    'product_uom_id': ml.product_uom_id.id,
+                    'picking_id': reverse_picking.id,
+                    'qty_done': ml.qty_done,
+                    'lot_id': ml.lot_id.id or False,
+                    'package_id': ml.package_id.id or False,
+                    'result_package_id': ml.result_package_id.id or False,
+                    'location_id': ml.location_dest_id.id,
+                    'location_dest_id': ml.location_id.id,
+                })
+        else:
+            # 寫入 quantity_done 會自動建立對應的庫存移動行
+            reverse_move.write({'quantity_done': qty})
+        reverse_picking.action_assign()
+        reverse_picking.button_validate()
     
 class PurchaseOrder(models.Model):
     _inherit = 'purchase.order'

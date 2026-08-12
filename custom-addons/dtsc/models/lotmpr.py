@@ -492,7 +492,7 @@ class LotMpr(models.Model):
 class LotMprLine(models.Model):
     _name = "dtsc.lotmprline"    
     lotmpr_id = fields.Many2one("dtsc.lotmpr")
-    name = fields.Char("工單項次")
+    name = fields.Char("工單項次", index=True)
     outman = fields.Many2one('dtsc.userlist',string="輸出", compute="_compute_sccz")
     sccz = fields.Char("輸出材質", compute="_compute_sccz")
     make_ori_product_id = fields.Many2one("product.template",string="基礎扣料物")

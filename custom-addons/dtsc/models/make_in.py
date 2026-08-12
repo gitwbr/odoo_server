@@ -16,6 +16,7 @@ from pytz import timezone
 from lxml import etree
 from datetime import datetime, timedelta, date
 from odoo.tools import config
+from collections import defaultdict
 
 class ScanMode(models.Model):
     _name = 'dtsc.scanmode'
@@ -60,6 +61,14 @@ class MakeIn(models.Model):
     recheck_groups = fields.Many2many(related="checkout_id.recheck_groups",string="重製相關部門") 
     
     customer_name = fields.Char(string='客戶名稱',compute="_compute_customer_name")
+    # 供搜尋「按客戶名稱分組」使用（存庫）；畫面上的客戶名稱仍用 customer_name 即時計算
+    customer_partner_id = fields.Many2one(
+        'res.partner',
+        string='客戶',
+        related='checkout_id.customer_id',
+        store=True,
+        index=True,
+    )
     contact_person = fields.Char(string='聯絡人')
     delivery_method = fields.Char(string='交貨方式')
     phone = fields.Char(string='電話')
@@ -80,6 +89,43 @@ class MakeIn(models.Model):
     factory_comment = fields.Text(string='廠區備註') 
     total_quantity = fields.Integer(string='本單總數量', compute='_compute_totals')
     total_size = fields.Integer(string='本單總才數', compute='_compute_totals')
+    material_cost = fields.Float(
+        string='物料成本',
+        compute='_compute_material_cost',
+        store=True,
+        digits=(16, 2),
+        help='各項次物料成本加總（廠內扣料＋捲料扣料 × 採購產品成本）',
+    )
+    ink_cost = fields.Float(
+        string='墨水成本',
+        compute='_compute_ink_cost',
+        store=True,
+        digits=(16, 2),
+        help='各項次墨水成本加總（總才數 × 每才墨水成本）',
+    )
+    labor_cost = fields.Float(
+        string='人力成本',
+        compute='_compute_labor_cost',
+        store=True,
+        digits=(16, 2),
+        help='各項次人力成本加總（各工序工時分鐘合計 × 單位人工）',
+    )
+    total_cost = fields.Float(
+        string='整單總成本',
+        compute='_compute_total_cost',
+        store=True,
+        digits=(16, 2),
+        help='物料成本 + 墨水成本 + 人力成本',
+    )
+    # 成本單價快照：首次鎖定後不隨設定頁改價而變動，避免歷史單被新單價帶動
+    ink_unit_price_snapshot = fields.Float(
+        string='墨水單價快照', digits=(16, 4), copy=False,
+        help='鎖定時的「每才墨水成本」，之後改設定不影響本單',
+    )
+    labor_unit_price_snapshot = fields.Float(
+        string='人工單價快照', digits=(16, 4), copy=False,
+        help='鎖定時的「單位人工」，之後改設定不影響本單',
+    )
     create_id = fields.Many2one('res.users',string="")
     kaidan = fields.Many2one('dtsc.userlistbefore',string="開單人員",domain=[("is_disabled","=",False)]) 
     no_mprlist = fields.Boolean(default=False)
@@ -219,10 +265,12 @@ class MakeIn(models.Model):
     
     
     
-    @api.depends("checkout_id")
+    @api.depends("checkout_id", "checkout_id.customer_id", "checkout_id.customer_id.name", "checkout_id.customer_bianhao")
     def _compute_customer_name(self):
         for record in self:
-            if record.checkout_id.customer_bianhao:
+            if not record.checkout_id or not record.checkout_id.customer_id:
+                record.customer_name = False
+            elif record.checkout_id.customer_bianhao:
                 record.customer_name = record.checkout_id.customer_id.name + "("+record.checkout_id.customer_bianhao+")"
             else:
                 record.customer_name = record.checkout_id.customer_id.name
@@ -434,18 +482,111 @@ class MakeIn(models.Model):
             
             record.total_quantity = total_quantity
             record.total_size = total_size 
-    
+
+    @api.model
+    def _calc_material_line_cost(self, product, qty, uom=False, qty_in_cai=False):
+        """依產品成本(standard_price)與消耗量計算金額。
+
+        廠內扣料：單位為「卷」時，實際消耗量以「才」記帳（與 confirm_btn 一致）。
+        捲料扣料：sjkl / yujixiaohao 一律為才數。
+        """
+        if not product or not qty:
+            return 0.0
+        product_uom = product.uom_id
+        if not product_uom:
+            return qty * (product.standard_price or 0.0)
+
+        qty_uom = uom
+        if qty_in_cai or (uom and uom.name and '卷' in uom.name):
+            cai_uom = self.env['uom.uom'].search([
+                ('category_id', '=', product_uom.category_id.id),
+                ('name', '=', '才'),
+            ], limit=1)
+            if cai_uom:
+                qty_uom = cai_uom
+
+        if qty_uom and qty_uom != product_uom:
+            try:
+                qty_std = qty_uom._compute_quantity(qty, product_uom, round=False)
+            except Exception:
+                qty_std = qty
+        else:
+            qty_std = qty
+        return qty_std * (product.standard_price or 0.0)
+
+    def _skip_cost_calc(self):
+        """作廢單（狀態 cancel 或單號 -D）不計成本。"""
+        self.ensure_one()
+        return (
+            self.install_state == 'cancel'
+            or bool(self.name and str(self.name).endswith('-D'))
+        )
+
+    def _ensure_cost_unit_snapshots(self):
+        """鎖定本單墨水/人工單價；已有快照則不覆蓋，避免改設定牽動歷史單。"""
+        Settings = self.env['dtsc.workordercostsettings']
+        for order in self:
+            if order._skip_cost_calc():
+                continue
+            vals = {}
+            if not order.ink_unit_price_snapshot:
+                vals['ink_unit_price_snapshot'] = Settings.get_cost_value('每才墨水成本')
+            if not order.labor_unit_price_snapshot:
+                vals['labor_unit_price_snapshot'] = Settings.get_cost_value('單位人工')
+            if vals:
+                order.write(vals)
+
+    @api.depends('order_ids.material_cost', 'install_state', 'name')
+    def _compute_material_cost(self):
+        for record in self:
+            if record._skip_cost_calc():
+                record.material_cost = 0.0
+            else:
+                record.material_cost = round(sum(record.order_ids.mapped('material_cost')), 2)
+
+    @api.depends('order_ids.ink_cost', 'install_state', 'name')
+    def _compute_ink_cost(self):
+        for record in self:
+            if record._skip_cost_calc():
+                record.ink_cost = 0.0
+            else:
+                record.ink_cost = round(sum(record.order_ids.mapped('ink_cost')), 2)
+
+    @api.depends('order_ids.labor_cost', 'install_state', 'name')
+    def _compute_labor_cost(self):
+        for record in self:
+            if record._skip_cost_calc():
+                record.labor_cost = 0.0
+            else:
+                record.labor_cost = round(sum(record.order_ids.mapped('labor_cost')), 2)
+
+    @api.depends('material_cost', 'ink_cost', 'labor_cost', 'install_state', 'name')
+    def _compute_total_cost(self):
+        for record in self:
+            if record._skip_cost_calc():
+                record.total_cost = 0.0
+            else:
+                record.total_cost = round(
+                    (record.material_cost or 0.0)
+                    + (record.ink_cost or 0.0)
+                    + (record.labor_cost or 0.0),
+                    2,
+                )
+
     def imageing_btn(self):
+       self._ensure_cost_unit_snapshots()
        self.write({"install_state":"imaged"})  
        
     # def imaged_btn(self):
        # self.write({"install_state":"imaged"}) 
        
     def making_btn(self): #开始制作生成口料单
+       self._ensure_cost_unit_snapshots()
        self.kld_btn()
        self.write({"install_state":"making"}) 
     
     def stock_in(self):
+        self._ensure_cost_unit_snapshots()
         install_name = self.name.replace("B","W")
         is_pro = config.get('is_pro')
         
@@ -709,6 +850,14 @@ class MakeLine(models.Model):
     sequence = fields.Char(string='項')
     make_order_id = fields.Many2one("dtsc.makein",ondelete='cascade')
     checkout_line_id = fields.Many2one("dtsc.checkoutline",ondelete='cascade')
+    sale_price = fields.Float(
+        string='銷售價',
+        related='checkout_line_id.price',
+        readonly=True,
+        store=True,
+        digits=(16, 2),
+        help='對應大圖訂單項次的最終價錢',
+    )
     file_name = fields.Char(string='檔名')    
     quantity = fields.Integer(string='數量')
     product_width = fields.Char(string='寬') 
@@ -730,9 +879,324 @@ class MakeLine(models.Model):
     outman = fields.Many2one('dtsc.userlist',string="輸出" , domain=[('worktype_ids.name', '=', '輸出'),("is_disabled","=",False)])
     is_modified = fields.Boolean(string="is modified",default = False)
     is_stock_off = fields.Boolean(default = False,compute="_compute_is_stock_off") 
+    material_cost = fields.Float(
+        string='物料成本',
+        compute='_compute_material_cost',
+        store=True,
+        digits=(16, 2),
+        help='本項次對應扣料單用料 × 採購產品成本',
+    )
+    ink_cost = fields.Float(
+        string='墨水成本',
+        compute='_compute_ink_cost',
+        store=True,
+        digits=(16, 2),
+        help='本項次總才數 × 設定「每才墨水成本」',
+    )
+    labor_cost = fields.Float(
+        string='人力成本',
+        compute='_compute_labor_cost',
+        store=True,
+        digits=(16, 2),
+        help='本項次各工序工時分鐘合計 × 設定「單位人工」',
+    )
+    sc_work_minutes = fields.Float(
+        string='工時', digits=(16, 1),
+        compute='_compute_process_work_minutes', inverse='_inverse_sc_work_minutes',
+        store=True,
+        help='輸出工時（分鐘）')
+    lb_work_minutes = fields.Float(
+        string='工時', digits=(16, 1),
+        compute='_compute_process_work_minutes', inverse='_inverse_lb_work_minutes',
+        store=True,
+        help='冷裱工時（分鐘）')
+    gb_work_minutes = fields.Float(
+        string='工時', digits=(16, 1),
+        compute='_compute_process_work_minutes', inverse='_inverse_gb_work_minutes',
+        store=True,
+        help='過板工時（分鐘）')
+    cq_work_minutes = fields.Float(
+        string='工時', digits=(16, 1),
+        compute='_compute_process_work_minutes', inverse='_inverse_cq_work_minutes',
+        store=True,
+        help='裁切工時（分鐘）')
+    hz_work_minutes = fields.Float(
+        string='工時', digits=(16, 1),
+        compute='_compute_process_work_minutes', inverse='_inverse_hz_work_minutes',
+        store=True,
+        help='後製工時（分鐘）')
+    pg_work_minutes = fields.Float(
+        string='工時', digits=(16, 1),
+        compute='_compute_process_work_minutes', inverse='_inverse_pg_work_minutes',
+        store=True,
+        help='品管工時（分鐘）')
+    dch_work_minutes = fields.Float(
+        string='工時', digits=(16, 1),
+        compute='_compute_process_work_minutes', inverse='_inverse_dch_work_minutes',
+        store=True,
+        help='完成包裝工時（分鐘）')
+
+    _PROCESS_WORK_MINUTE_FIELDS = {
+        'sc': 'sc_work_minutes',
+        'lb': 'lb_work_minutes',
+        'gb': 'gb_work_minutes',
+        'cq': 'cq_work_minutes',
+        'hz': 'hz_work_minutes',
+        'pg': 'pg_work_minutes',
+        'dch': 'dch_work_minutes',
+    }
 
     is_select = fields.Boolean("簽名")
-    
+
+    @api.depends(
+        'checkout_line_id', 'outman',
+        'lengbiao_sign_time', 'guoban_sign_time', 'caiqie_sign_time',
+        'houzhi_sign_time', 'pinguan_sign_time', 'daichuhuo_sign_time',
+        'yichuhuo_sign_time',
+    )
+    def _compute_process_work_minutes(self):
+        """批量查 worktime，避免 N+1 全表掃描拖死正式庫。"""
+        for line in self:
+            for fname in self._PROCESS_WORK_MINUTE_FIELDS.values():
+                line[fname] = 0.0
+
+        lines = self.filtered('checkout_line_id')
+        checkout_line_ids = list(set(lines.mapped('checkout_line_id').ids))
+        if not checkout_line_ids:
+            return
+
+        Worktime = self.env['dtsc.worktime'].sudo()
+        minutes_map = defaultdict(lambda: defaultdict(float))
+        chunk_size = 500
+        for i in range(0, len(checkout_line_ids), chunk_size):
+            chunk_ids = checkout_line_ids[i:i + chunk_size]
+            wts = Worktime.search([
+                ('checkoutline_id', 'in', chunk_ids),
+                ('start_time', '!=', False),
+                ('end_time', '!=', False),
+                ('work_type', '!=', 'ych'),
+            ])
+            for wt in wts:
+                fname = self._PROCESS_WORK_MINUTE_FIELDS.get(wt.work_type)
+                if not fname or not wt.checkoutline_id:
+                    continue
+                minutes_map[wt.checkoutline_id.id][fname] += (
+                    (wt.end_time - wt.start_time).total_seconds() / 60.0
+                )
+
+        for line in lines:
+            vals = minutes_map.get(line.checkout_line_id.id) or {}
+            for fname in self._PROCESS_WORK_MINUTE_FIELDS.values():
+                line[fname] = round(vals.get(fname, 0.0), 1)
+
+    def _inverse_sc_work_minutes(self):
+        self._inverse_process_work_minutes('sc', 'sc_work_minutes')
+
+    def _inverse_lb_work_minutes(self):
+        self._inverse_process_work_minutes('lb', 'lb_work_minutes')
+
+    def _inverse_gb_work_minutes(self):
+        self._inverse_process_work_minutes('gb', 'gb_work_minutes')
+
+    def _inverse_cq_work_minutes(self):
+        self._inverse_process_work_minutes('cq', 'cq_work_minutes')
+
+    def _inverse_hz_work_minutes(self):
+        self._inverse_process_work_minutes('hz', 'hz_work_minutes')
+
+    def _inverse_pg_work_minutes(self):
+        self._inverse_process_work_minutes('pg', 'pg_work_minutes')
+
+    def _inverse_dch_work_minutes(self):
+        self._inverse_process_work_minutes('dch', 'dch_work_minutes')
+
+    def _inverse_process_work_minutes(self, work_type, field_name):
+        """手動改分鐘數時，回寫到 worktime 的 end_time。"""
+        Worktime = self.env['dtsc.worktime'].sudo()
+        for line in self:
+            if not line.checkout_line_id:
+                continue
+            target_minutes = line[field_name] or 0.0
+            wts = Worktime.search([
+                ('checkoutline_id', '=', line.checkout_line_id.id),
+                ('work_type', '=', work_type),
+                ('start_time', '!=', False),
+            ], order='id asc')
+            completed = wts.filtered(lambda w: w.end_time)
+            if completed:
+                for wt in completed[:-1]:
+                    wt.end_time = wt.start_time
+                last = completed[-1]
+                last.end_time = last.start_time + timedelta(minutes=target_minutes)
+            elif wts:
+                # 有開始尚未結束：直接補上結束時間
+                last = wts[-1]
+                last.end_time = last.start_time + timedelta(minutes=target_minutes)
+            elif target_minutes:
+                # 無掃碼記錄時允許手動建一筆工時
+                end_time = fields.Datetime.now()
+                start_time = end_time - timedelta(minutes=target_minutes)
+                Worktime.create({
+                    'checkoutline_id': line.checkout_line_id.id,
+                    'checkout_id': line.checkout_line_id.checkout_product_id.id,
+                    'work_type': work_type,
+                    'in_out_type': 'wn',
+                    'start_time': start_time,
+                    'end_time': end_time,
+                    'name': line.outman.name if work_type == 'sc' and line.outman else False,
+                })
+
+    @api.depends(
+        'total_size', 'make_order_id.install_state', 'make_order_id.name',
+        'make_order_id.ink_unit_price_snapshot',
+    )
+    def _compute_ink_cost(self):
+        Settings = self.env['dtsc.workordercostsettings']
+        for line in self:
+            if line.make_order_id and line.make_order_id._skip_cost_calc():
+                line.ink_cost = 0.0
+                continue
+            # 優先用本單鎖定單價；尚無快照時才取當前設定（並存庫，之後改設定不會重算）
+            unit = (
+                line.make_order_id.ink_unit_price_snapshot
+                if line.make_order_id else 0.0
+            ) or Settings.get_cost_value('每才墨水成本')
+            line.ink_cost = round((line.total_size or 0.0) * unit, 2)
+
+    @api.depends(
+        'sc_work_minutes', 'lb_work_minutes', 'gb_work_minutes',
+        'cq_work_minutes', 'hz_work_minutes', 'pg_work_minutes', 'dch_work_minutes',
+        'make_order_id.install_state', 'make_order_id.name',
+        'make_order_id.labor_unit_price_snapshot',
+    )
+    def _compute_labor_cost(self):
+        Settings = self.env['dtsc.workordercostsettings']
+        for line in self:
+            if line.make_order_id and line.make_order_id._skip_cost_calc():
+                line.labor_cost = 0.0
+                continue
+            unit = (
+                line.make_order_id.labor_unit_price_snapshot
+                if line.make_order_id else 0.0
+            ) or Settings.get_cost_value('單位人工')
+            total_minutes = (
+                (line.sc_work_minutes or 0.0)
+                + (line.lb_work_minutes or 0.0)
+                + (line.gb_work_minutes or 0.0)
+                + (line.cq_work_minutes or 0.0)
+                + (line.hz_work_minutes or 0.0)
+                + (line.pg_work_minutes or 0.0)
+                + (line.dch_work_minutes or 0.0)
+            )
+            line.labor_cost = round(total_minutes * unit, 2)
+
+    @api.depends(
+        'barcode', 'total_size', 'product_id', 'product_atts',
+        'make_order_id.install_state', 'make_order_id.name',
+        'is_stock_off',
+    )
+    def _compute_material_cost(self):
+        """依項次對應的捲料/廠內扣料計算每行物料成本。
+
+        含主料、加工方式中的配件/膜/冷裱等：只要扣料單上有該生產資料且已扣料完成即計入。
+        """
+        MakeIn = self.env['dtsc.makein']
+        LotMprLine = self.env['dtsc.lotmprline']
+        Mpr = self.env['dtsc.mpr']
+
+        for line in self:
+            line.material_cost = 0.0
+
+        for order in self.mapped('make_order_id'):
+            if not order or not order.name or order._skip_cost_calc():
+                continue
+            order_lines = self.filtered(lambda l: l.make_order_id == order)
+            costs = {l.id: 0.0 for l in order_lines}
+
+            # 1) 捲料扣料：項次條碼 = 工單號-序號，一對一（主料）
+            barcode_map = {l.barcode: l for l in order_lines if l.barcode}
+            if barcode_map:
+                lot_lines = LotMprLine.search([
+                    ('name', 'in', list(barcode_map.keys())),
+                    ('state', '=', 'succ'),
+                ])
+                for lot_line in lot_lines:
+                    ml = barcode_map.get(lot_line.name)
+                    if not ml:
+                        continue
+                    product = lot_line.lotmpr_id.product_id
+                    if not product:
+                        continue
+                    qty = lot_line.sjkl if lot_line.sjkl else lot_line.yujixiaohao
+                    costs[ml.id] += MakeIn._calc_material_line_cost(
+                        product, qty, qty_in_cai=True
+                    )
+
+            # 2) 廠內扣料：基礎原料 + 加工屬性（配件/膜/冷裱等）
+            mpr = Mpr.search([('name', '=', order.name.replace('B', 'W'))], limit=1)
+            if mpr and mpr.state == 'succ':
+                for mprline in mpr.mprline_ids:
+                    if not mprline.product_product_id:
+                        continue
+                    siblings = order_lines._lines_using_mpr_material(mprline)
+                    if not siblings:
+                        continue
+                    qty = mprline.final_use if mprline.final_use else mprline.now_use
+                    line_cost_total = MakeIn._calc_material_line_cost(
+                        mprline.product_product_id, qty, mprline.uom_id
+                    )
+                    weights = {
+                        s.id: s._mpr_cost_weight(mprline.uom_id) for s in siblings
+                    }
+                    weight_sum = sum(weights.values())
+                    if weight_sum > 0:
+                        for s in siblings:
+                            costs[s.id] += line_cost_total * (weights[s.id] / weight_sum)
+                    else:
+                        share = line_cost_total / float(len(siblings))
+                        for s in siblings:
+                            costs[s.id] += share
+
+            for ml in order_lines:
+                ml.material_cost = round(costs[ml.id], 2)
+
+    def _mpr_cost_weight(self, uom):
+        """分攤權重：件/個/支用配件數，其餘用總才數。"""
+        self.ensure_one()
+        if uom and uom.name in ('件', '個', '支'):
+            return self.quantity_peijian or 0.0
+        return self.total_size or 0.0
+
+    def _lines_using_mpr_material(self, mprline):
+        """找出實際用到該扣料物料的產品行（含配件/膜等屬性料）。"""
+        purchase_tmpl = mprline.product_product_id.product_tmpl_id
+        attr_name = mprline.attr_name or ''
+        result = self.env['dtsc.makeinline']
+
+        if attr_name == '基础原料':
+            for ml in self:
+                if mprline.product_id and ml.product_id != mprline.product_id:
+                    continue
+                ori = ml.product_id.make_ori_product_id if ml.product_id else False
+                if ori and ori.tracking != 'serial' and ori == purchase_tmpl:
+                    result |= ml
+                elif mprline.product_id and ml.product_id == mprline.product_id:
+                    result |= ml
+            return result
+
+        # 加工方式屬性料：配件、膜、冷裱等（product_atts.生產資料）
+        for ml in self:
+            for att in ml.product_atts:
+                if att.make_ori_product_id and att.make_ori_product_id == purchase_tmpl:
+                    result |= ml
+                    break
+        if result:
+            return result
+
+        # 後備：舊資料若對不上屬性，仍按製作物分攤，避免成本漏計
+        if mprline.product_id:
+            return self.filtered(lambda l: l.product_id == mprline.product_id)
+        return result
     
     
     
@@ -803,12 +1267,16 @@ class MakeLine(models.Model):
     recheck_id_name = fields.Char("原工單")
     @api.depends("barcode")
     def _compute_is_stock_off(self):
+        barcodes = [b for b in self.mapped('barcode') if b]
+        found = set()
+        if barcodes:
+            LotMprLine = self.env['dtsc.lotmprline'].sudo()
+            chunk_size = 500
+            for i in range(0, len(barcodes), chunk_size):
+                chunk = barcodes[i:i + chunk_size]
+                found.update(LotMprLine.search([('name', 'in', chunk)]).mapped('name'))
         for record in self:
-            obj = self.env["dtsc.lotmprline"].search([('name', '=',record.barcode)],limit = 1)
-            if obj:
-                record.is_stock_off = True
-            else:
-                record.is_stock_off = False
+            record.is_stock_off = bool(record.barcode and record.barcode in found)
             
         
         

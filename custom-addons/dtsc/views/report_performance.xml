@@ -180,4 +180,89 @@
     <field name="binding_model_id" ref="model_dtsc_performance"/>
     <field name="binding_type">report</field>
   </record>
+
+  <template id="report_performance_line_template">
+    <t t-call="web.html_container">
+      <head>
+        <meta charset="utf-8"/>
+      </head>
+      <t t-set="company" t-value="env.company"/>
+      <style>
+        @page { size: A4 portrait; margin: 10mm; }
+        body, table { font-size: 11px; line-height: 1.35; }
+        .card {
+          box-sizing: border-box;
+          width: 100%;
+          max-width: 180mm;
+          margin: 0 auto;
+          padding: 5mm;
+          outline: 1px solid #222;
+          border-radius: 2mm;
+          page-break-inside: avoid;
+          background: #fff;
+        }
+        .title { text-align: center; font-weight: 700; margin: 0 0 4mm 0; font-size: 13px; }
+        .mini-grid { width: 100%; border-collapse: collapse; margin-bottom: 2mm; }
+        .mini-grid td { border: 1px solid #222; padding: 1.5mm 2mm; }
+        .mini-grid .left  { width: 12mm; text-align:center; }
+        .mini-grid .label { width: 18mm; background:#f7f7f7; }
+        .sum { font-weight: 700; background: #fff1f1; }
+      </style>
+      <t t-foreach="docs" t-as="l">
+        <t t-set="doc" t-value="l.performance_id"/>
+        <div class="card">
+          <div class="title">
+            <t t-esc="company.name or ''"/>　
+            <t t-esc="(doc.report_year and doc.report_year.name or '') + '年' + (doc.report_month and doc.report_month.name or '') + '月 薪資單'"/>
+          </div>
+          <table class="mini-grid">
+            <tr>
+              <td class="left" rowspan="3">員<br/>工</td>
+              <td class="label">部門</td>
+              <td><t t-esc="(l.department and l.department.name) or ''"/></td>
+            </tr>
+            <tr>
+              <td class="label">員工編號</td>
+              <td><t t-esc="l.work_id or ''"/></td>
+            </tr>
+            <tr>
+              <td class="label">姓名</td>
+              <td><t t-esc="(l.name and l.name.name) or ''"/></td>
+            </tr>
+          </table>
+          <table class="mini-grid">
+            <tr><td class="left" rowspan="9">應<br/>領<br/>薪<br/>資<br/>金<br/>額</td><td class="label">基本薪資</td><td class="val" align="right"><t t-esc="'{:,.0f}'.format(l.jcxz or 0.0)"/></td></tr>
+            <tr><td class="label">主管加給</td><td class="val" align="right"><t t-esc="'{:,.0f}'.format(l.zgjj or 0.0)"/></td></tr>
+            <tr><td class="label">績效獎金</td><td class="val" align="right"><t t-esc="'{:,.0f}'.format(l.jxjj or 0.0)"/></td></tr>
+            <tr><td class="label">全勤獎金</td><td class="val" align="right"><t t-esc="'{:,.0f}'.format(l.qqjj or 0.0)"/></td></tr>
+            <tr><td class="label">加班費</td><td class="val" align="right"><t t-esc="'{:,.0f}'.format(l.jbf or 0.0)"/></td></tr>
+            <tr><td class="label">其他津貼</td><td class="val" align="right"><t t-esc="'{:,.0f}'.format(l.qtjt or 0.0)"/></td></tr>
+            <tr><td class="label">業務津貼</td><td class="val" align="right"><t t-esc="'{:,.0f}'.format(l.ywjt or 0.0)"/></td></tr>
+            <tr><td class="label">其他加項</td><td class="val" align="right"><t t-esc="'{:,.0f}'.format(l.qijx or 0.0)"/></td></tr>
+            <tr><td class="label">伙食津貼</td><td class="val" align="right"><t t-esc="'{:,.0f}'.format(l.hsjt or 0.0)"/></td></tr>
+            <tr><td class="left" rowspan="6">應<br/>扣<br/>薪<br/>資<br/>金<br/>額</td><td class="label">應扣薪資</td><td class="val" align="right"><t t-esc="'{:,.0f}'.format(l.ykxz or 0.0)"/></td></tr>
+            <tr><td class="label">勞保費自付</td><td class="val" align="right"><t t-esc="'{:,.0f}'.format(l.lbfzf or 0.0)"/></td></tr>
+            <tr><td class="label">健保費自付</td><td class="val" align="right"><t t-esc="'{:,.0f}'.format(l.jbfzf or 0.0)"/></td></tr>
+            <tr><td class="label">重置單減項</td><td class="val" align="right"><t t-esc="'{:,.0f}'.format(l.czjx or 0.0)"/></td></tr>
+            <tr><td class="label"></td><td class="val" align="right"></td></tr>
+            <tr><td class="label"></td><td class="val" align="right"></td></tr>
+            <tr class="sum"><td colspan="2" class="label">總計實發金額</td>
+              <td class="val" align="right"><t t-esc="'{:,.0f}'.format(l.sfje or 0.0)"/></td>
+            </tr>
+          </table>
+          <div style="margin-top:6mm;border-top:1px solid #222;padding-top:4mm;">
+            核準／簽名：
+          </div>
+        </div>
+      </t>
+    </t>
+  </template>
+
+  <record id="action_report_performance_line" model="ir.actions.report">
+    <field name="name">個人薪資單</field>
+    <field name="model">dtsc.performanceline</field>
+    <field name="report_type">qweb-pdf</field>
+    <field name="report_name">dtsc.report_performance_line_template</field>
+    <field name="report_file">dtsc.report_performance_line_template</field>
+  </record>
 </odoo>

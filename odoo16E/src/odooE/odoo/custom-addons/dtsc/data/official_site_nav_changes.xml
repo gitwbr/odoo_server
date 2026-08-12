@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <function model="dtsc.website.nav.patch" name="apply_official_site_nav_changes"/>
+</odoo>

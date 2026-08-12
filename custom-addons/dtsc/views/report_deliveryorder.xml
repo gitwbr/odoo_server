@@ -20,39 +20,18 @@
 						 t-att-style="('height: 940px;' if current_page_lines &lt;= lines_per_page_1 and copy == 1 else
 									  ('height: 890px;' if current_page_lines &lt;= lines_per_page_1 and copy == 2 else None))">
                             <!-- 调用头部模板 -->
-							<div style="display: flex; justify-content: space-between; align-items: center;">
-							   <div>
-								   <h3><span t-field="doc.company_id" style="font-size: 26px;margin-right: 20px;"/>出貨單</h3> <!-- 增加右边距 -->
-							   </div>
-							   <div style="font-size: 24px;">
+							<div style="width:1280px;margin:0;border:0;border-bottom:2px solid #333;font-size:0;line-height:32px;">
+							   <div style="display:inline-block;width:896px;padding:0;vertical-align:middle;white-space:nowrap;border:0;font-size:19px;">
+								   <h3 style="margin:0;"><span t-field="doc.company_id" style="font-size: 26px;margin-right: 20px;"/>出貨單</h3> <!-- 增加右边距 -->
+							   </div><div style="display:inline-block;width:384px;padding:0;text-align:right;vertical-align:middle;font-size:24px;white-space:nowrap;border:0;">
 								   <strong>單號:</strong> <span t-field="doc.name"/>
 							   </div>
 						   </div>
-						   <hr style="border-top: 2px solid #333; opacity: 1;margin:0px"/>
 						   <!-- Main Information -->
-						   <table class="table table-condensed" style="font-size:19px;padding: 0px;margin:0px ;border-style: hidden;">
-							   <tbody>
-								   <tr style="border-style: hidden;">
-									   <td style="width: 10%;"><strong>客戶名稱:</strong></td>
-									   <td style="width: 25%;"><span t-field="doc.customer_name"/></td>     
-									   <td style="width: 10%;"><strong>Tel/Fax:</strong></td>
-									   <td style="width: 25%;"><span t-field="doc.customer.phone"/>/<span t-field="doc.customer.custom_fax" /></td>   
-									   <td style="width: 10%;"><strong>出貨日期:</strong></td>
-									   <td style="width: 25%;"><span t-field="doc.delivery_date" t-options='{"format": "yyyy-MM-dd HH"}'/></td>     
-								   </tr>
-								   <tr style="border-style: hidden;">
-									   <!-- <td style="width: 10%;">聯絡人:</td> -->
-									   <!-- <td style="width: 25%;"><span t-field="doc.customer.custom_contact_person"/></td> -->
-										<!-- <td style="width: 10%;"></td> -->
-										<!-- <td style="width: 25%;"></td> -->
-									   <td style="width: 10%;"><strong>交貨地址:</strong></td>
-									   <td colspan="3" style="width: 25%;"><span t-field="doc.customer.street"/></td> 
-									   <td style="width: 10%;"><strong>交貨方式:</strong></td>
-									   <td style="width: 25%;"><span t-field="doc.delivery_method"/></td>
-									   
-								   </tr>
-							   </tbody>
-						   </table>
+						   <div style="width:1280px;margin:0;border:0;font-size:0;line-height:32px;">
+							   <div style="display:inline-block;width:100px;border:0;font-size:19px;"><strong>客戶名稱:</strong></div><div style="display:inline-block;width:320px;border:0;font-size:19px;"><span t-field="doc.customer_name"/></div><div style="display:inline-block;width:90px;border:0;font-size:19px;"><strong>Tel/Fax:</strong></div><div style="display:inline-block;width:310px;border:0;font-size:19px;"><span t-field="doc.customer.phone"/>/<span t-field="doc.customer.custom_fax" /></div><div style="display:inline-block;width:100px;border:0;font-size:19px;"><strong>出貨日期:</strong></div><div style="display:inline-block;width:360px;border:0;font-size:19px;"><span t-field="doc.delivery_date" t-options='{"format": "yyyy-MM-dd HH"}'/></div>
+							   <div style="display:inline-block;width:100px;border:0;font-size:19px;"><strong>交貨地址:</strong></div><div style="display:inline-block;width:730px;border:0;font-size:19px;"><span t-field="doc.customer.street"/></div><div style="display:inline-block;width:100px;border:0;font-size:19px;"><strong>交貨方式:</strong></div><div style="display:inline-block;width:350px;border:0;font-size:19px;"><span t-field="doc.delivery_method"/></div>
+						   </div>
 
                             <!-- 订单详情表格 -->
                             <table class="table table-condensed" style="font-size:19px;width:1280px;table-layout: fixed;">
@@ -114,24 +93,20 @@
                                 </tbody>
                             </table>
                             <!-- 页面底部信息和分页控制 -->
-                            <div style="display: flex; justify-content: space-between;font-size:19px;">
+                            <div style="width:1280px;margin:0;border:0;font-size:0;line-height:22px;">
                                 <!-- 页面信息展示 -->
-                                <div style="flex: 1;">
+                                <div style="display:inline-block;width:410px;padding:0;vertical-align:top;text-align:left;border:0;font-size:19px;">
                                     <div>案名: <span t-field="doc.project_name"/></div>
                                     <div>備註: <span t-field="doc.comment"/></div>
-                                </div>
-                                <div style="flex: 1; text-align: center;">
+                                </div><div style="display:inline-block;width:205px;padding:0;vertical-align:top;text-align:center;border:0;font-size:19px;">
                                     <span>P：<t t-esc="page_num"/> / <t t-esc="total_pages"/></span>
-                                </div>
-                                <div style="flex: 1; text-align: right;">
+                                </div><div style="display:inline-block;width:282px;padding:0;vertical-align:top;text-align:right;border:0;font-size:19px;">
                                     <div>本單總數量: <span t-field="doc.total_quantity"/></div>
                                     <div>本單總才數: <span t-field="doc.total_size"/></div>
-                                </div>
-                                
-                                <div style="flex: 1; text-align: right; margin-right:10% ">
-                                    <div>客戶簽章: 			<!-- <div style="display: inline-block;"> -->
+                                </div><div style="display:inline-block;width:383px;padding:0 100px 0 0;vertical-align:top;text-align:right;border:0;font-size:19px;box-sizing:border-box;">
+                                    <div>客戶簽章:
 									<img t-if="doc.signature" t-att-src="'data:image/png;base64,' + doc.signature.decode('utf-8')" t-att-alt="'Signature'" style="width: 150px; height: auto"/>
-								<!-- </div> --></div>
+									</div>
 									<div>
 										<strong><span t-if="copy == 1">存根聯</span></strong>
 										<strong><span t-if="copy == 2">客戶收執聯</span></strong>
@@ -171,39 +146,18 @@
 						
                         <div class="page">
                             <!-- 调用头部模板 -->
-							<div style="display: flex; justify-content: space-between; align-items: center;">
-							   <div>
-								   <h3><span t-field="doc.company_id" style="font-size: 26px;margin-right: 20px;"/>出貨單</h3> <!-- 增加右边距 -->
+								<div style="width:1280px;margin:0;border:0;border-bottom:2px solid #333;font-size:0;line-height:32px;">
+								   <div style="display:inline-block;width:896px;padding:0;vertical-align:middle;white-space:nowrap;border:0;font-size:19px;">
+									   <h3 style="margin:0;"><span t-field="doc.company_id" style="font-size: 26px;margin-right: 20px;"/>出貨單</h3> <!-- 增加右边距 -->
+								   </div><div style="display:inline-block;width:384px;padding:0;text-align:right;vertical-align:middle;font-size:24px;white-space:nowrap;border:0;">
+									   <strong>單號:</strong> <span t-field="doc.name"/>
+								   </div>
 							   </div>
-							   <div style="font-size: 24px;">
-								   <strong>單號:</strong> <span t-field="doc.name"/>
-							   </div>
-						   </div>
-						   <hr style="border-top: 2px solid #333; opacity: 1;margin:0px"/>
 						   <!-- Main Information -->
-						   <table class="table table-condensed" style="font-size:19px;padding: 0px;margin:0px ;border-style: hidden;">
-							   <tbody>
-								   <tr style="border-style: hidden;">
-									   <td style="width: 10%;"><strong>客戶名稱:</strong></td>
-									   <td style="width: 25%;"><span t-field="doc.customer_name"/></td>     
-									   <td style="width: 10%;"><strong>Tel/Fax:</strong></td>
-									   <td style="width: 25%;"><span t-field="doc.customer.phone"/>/<span t-field="doc.customer.custom_fax" /></td>   
-									   <td style="width: 10%;"><strong>出貨日期:</strong></td>
-									   <td style="width: 25%;"><span t-field="doc.delivery_date" t-options='{"format": "yyyy-MM-dd HH"}'/></td>     
-								   </tr>
-								   <tr style="border-style: hidden;">
-									   <!-- <td style="width: 10%;">聯絡人:</td> -->
-									   <!-- <td style="width: 25%;"><span t-field="doc.customer.custom_contact_person"/></td> -->
-										<!-- <td style="width: 10%;"></td> -->
-										<!-- <td style="width: 25%;"></td> -->
-									   <td style="width: 10%;"><strong>交貨地址:</strong></td>
-									   <td colspan="3" style="width: 25%;"><span t-field="doc.customer.street"/></td> 
-									   <td style="width: 10%;"><strong>交貨方式:</strong></td>
-									   <td style="width: 25%;"><span t-field="doc.delivery_method"/></td>
-									   
-								   </tr>
-							   </tbody>
-						   </table>
+						   <div style="width:1280px;margin:0;border:0;font-size:0;line-height:32px;">
+							   <div style="display:inline-block;width:100px;border:0;font-size:19px;"><strong>客戶名稱:</strong></div><div style="display:inline-block;width:320px;border:0;font-size:19px;"><span t-field="doc.customer_name"/></div><div style="display:inline-block;width:90px;border:0;font-size:19px;"><strong>Tel/Fax:</strong></div><div style="display:inline-block;width:310px;border:0;font-size:19px;"><span t-field="doc.customer.phone"/>/<span t-field="doc.customer.custom_fax" /></div><div style="display:inline-block;width:100px;border:0;font-size:19px;"><strong>出貨日期:</strong></div><div style="display:inline-block;width:360px;border:0;font-size:19px;"><span t-field="doc.delivery_date" t-options='{"format": "yyyy-MM-dd HH"}'/></div>
+							   <div style="display:inline-block;width:100px;border:0;font-size:19px;"><strong>交貨地址:</strong></div><div style="display:inline-block;width:730px;border:0;font-size:19px;"><span t-field="doc.customer.street"/></div><div style="display:inline-block;width:100px;border:0;font-size:19px;"><strong>交貨方式:</strong></div><div style="display:inline-block;width:350px;border:0;font-size:19px;"><span t-field="doc.delivery_method"/></div>
+						   </div>
 
                             <!-- 订单详情表格 -->
                             <table class="table table-condensed" style="font-size:19px;width:1280px;table-layout: fixed;">
@@ -251,27 +205,22 @@
                                 </tbody>
                             </table>
                             <!-- 页面底部信息和分页控制 -->
-                            <div style="display: flex; justify-content: space-between;font-size:19px">
+                            <div style="width:1280px;margin:0;border:0;font-size:0;line-height:22px;">
                                 <!-- 页面信息展示 -->
-                                <div style="flex: 1;">
+                                <div style="display:inline-block;width:410px;padding:0;vertical-align:top;text-align:left;border:0;font-size:19px;">
                                     <div>案名: <span t-field="doc.project_name"/></div>
                                     <div>備註: <span t-field="doc.comment"/></div>
-                                </div>
-                                <div style="flex: 1; text-align: center;">
+                                </div><div style="display:inline-block;width:205px;padding:0;vertical-align:top;text-align:center;border:0;font-size:19px;">
                                     <span>P：<t t-esc="page_num"/> / <t t-esc="total_pages"/></span>
-                                </div>
-                                <div style="flex: 1; text-align: right;">
+                                </div><div style="display:inline-block;width:282px;padding:0;vertical-align:top;text-align:right;border:0;font-size:19px;">
                                     <div>本單總數量: <span t-field="doc.total_quantity"/></div>
                                     <div>本單總才數: <span t-field="doc.total_size"/></div>
-                                </div>
-                                
-                                <div style="flex: 1; text-align: right; margin-right:10% ">
-                                    <div>客戶簽章: 			<!-- <div style="display: inline-block;"> -->
+                                </div><div style="display:inline-block;width:383px;padding:0 100px 0 0;vertical-align:top;text-align:right;border:0;font-size:19px;box-sizing:border-box;">
+                                    <div>客戶簽章:
 									<img t-if="doc.signature" t-att-src="'data:image/png;base64,' + doc.signature.decode('utf-8')" t-att-alt="'Signature'" style="width: 150px; height: auto"/>
-								<!-- </div> --></div>
-									
+									</div>
                                 </div>
-                            </div>								
+                            </div>
                         </div>
                         <!-- 分页 -->
                         <t t-if="page_num &lt; total_pages">
@@ -386,7 +335,7 @@
                         </table>
 
                         <!-- 简单页码 -->
-                        <div style="display:flex;justify-content:center;font-size:19px;">
+                        <div style="text-align:center;font-size:19px;">
                             <span>P：<t t-esc="page_num"/> / <t t-esc="total_pages"/></span>
                         </div>
                     </div>
@@ -420,73 +369,20 @@
 
                         <div class="page">
                             <!-- Header -->
-                            <div style="display: flex; justify-content: space-between; align-items: center;">
-                                <div>
-                                    <h3><span t-field="company.name" style="font-size: 26px;margin-right: 20px;"/>出貨單</h3>
-                                </div>
-                                <div style="font-size: 24px;">
+                            <div style="width:1280px;margin:0;border:0;border-bottom:2px solid #333;font-size:0;line-height:32px;">
+                                <div style="display:inline-block;width:896px;padding:0;vertical-align:middle;white-space:nowrap;border:0;font-size:19px;">
+                                    <h3 style="margin:0;"><span t-field="company.name" style="font-size: 26px;margin-right: 20px;"/>出貨單</h3>
+                                </div><div style="display:inline-block;width:384px;padding:0;text-align:right;vertical-align:middle;font-size:24px;white-space:nowrap;border:0;">
                                     <strong>單號:</strong> <span t-field="doc.name"/>
                                 </div>
                             </div>
-                            <hr style="border-top: 2px solid #333; opacity: 1;margin:0px"/>
 
                             <!-- Main Information -->
-                            <table class="table table-condensed" style="font-size:19px;padding: 0px;margin:0px ;border-style: hidden;">
-                                <tbody>
-                                    <tr style="border-style: hidden;">
-                                        <td style="width: 10%;"><strong>客戶名稱:</strong></td>
-                                        <td style="width: 25%;">
-                                            <span t-field="doc.customer_id.name"/>
-                                        </td>
-                                        <td style="width: 10%;"><strong>Tel/Fax:</strong></td>
-                                        <td style="width: 25%;">
-                                            <span t-field="doc.customer_id.phone"/>/<span t-field="doc.customer_id.custom_fax"/>
-                                        </td>
-                                        <td style="width: 10%;"><strong>出貨日期:</strong></td>
-                                        <td style="width: 25%;">
-                                            <t t-esc="''"/>
-                                        </td>
-                                    </tr>
-                                    <tr style="border-style: hidden;">
-                                        <td style="width: 10%;"><strong>交貨地址:</strong></td>
-                                        <td colspan="3" style="width: 25%;"><span t-field="doc.customer_id.street"/></td>
-                                        <td style="width: 10%;"><strong>交貨方式:</strong></td>
-                                        <td style="width: 25%;"><span t-field="doc.delivery_carrier"/></td>
-                                    </tr>
-                                    <tr style="border-style: hidden;">
-                                        <td style="width: 10%;">
-											<t t-if="doc.delivery_address">
-											<strong>送貨地址:</strong>
-											</t>
-										</td>
-                                        <td style="width: 25%;">
-											<t t-if="doc.delivery_address">
-                                            <span t-field="doc.delivery_address"/>
-											</t>
-                                        </td>
-                                        <td style="width: 10%;">
-											<t t-if="doc.contact_person">
-											<strong>聯絡人:</strong>
-											</t>
-										</td>
-                                        <td style="width: 25%;">
-											<t t-if="doc.contact_person">
-                                            <span t-field="doc.contact_person"/>
-											</t>
-                                        </td>
-                                        <td style="width: 10%;">
-											<t t-if="doc.contact_phone">
-											<strong>電話:</strong>
-											</t>
-										</td>
-                                        <td style="width: 25%;">
-											<t t-if="doc.contact_phone">
-                                            <span t-field="doc.contact_phone"/>
-											</t>
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
+                            <div style="width:1280px;margin:0;border:0;font-size:0;line-height:32px;">
+                                <div style="display:inline-block;width:100px;border:0;font-size:19px;"><strong>客戶名稱:</strong></div><div style="display:inline-block;width:320px;border:0;font-size:19px;"><span t-field="doc.customer_id.name"/></div><div style="display:inline-block;width:90px;border:0;font-size:19px;"><strong>Tel/Fax:</strong></div><div style="display:inline-block;width:310px;border:0;font-size:19px;"><span t-field="doc.customer_id.phone"/>/<span t-field="doc.customer_id.custom_fax"/></div><div style="display:inline-block;width:100px;border:0;font-size:19px;"><strong>出貨日期:</strong></div><div style="display:inline-block;width:360px;border:0;font-size:19px;"><t t-esc="''"/></div>
+                                <div style="display:inline-block;width:100px;border:0;font-size:19px;"><strong>交貨地址:</strong></div><div style="display:inline-block;width:730px;border:0;font-size:19px;"><span t-field="doc.customer_id.street"/></div><div style="display:inline-block;width:100px;border:0;font-size:19px;"><strong>交貨方式:</strong></div><div style="display:inline-block;width:350px;border:0;font-size:19px;"><span t-field="doc.delivery_carrier"/></div>
+                                <div style="display:inline-block;width:100px;border:0;font-size:19px;"><t t-if="doc.delivery_address"><strong>送貨地址:</strong></t></div><div style="display:inline-block;width:320px;border:0;font-size:19px;"><t t-if="doc.delivery_address"><span t-field="doc.delivery_address"/></t></div><div style="display:inline-block;width:90px;border:0;font-size:19px;"><t t-if="doc.contact_person"><strong>聯絡人:</strong></t></div><div style="display:inline-block;width:310px;border:0;font-size:19px;"><t t-if="doc.contact_person"><span t-field="doc.contact_person"/></t></div><div style="display:inline-block;width:100px;border:0;font-size:19px;"><t t-if="doc.contact_phone"><strong>電話:</strong></t></div><div style="display:inline-block;width:360px;border:0;font-size:19px;"><t t-if="doc.contact_phone"><span t-field="doc.contact_phone"/></t></div>
+                            </div>
 
                             <!-- Details -->
                             <table class="table table-condensed" style="font-size:19px;width:1280px;table-layout: fixed;">
@@ -558,19 +454,16 @@
                             <!-- Footer -->
                             <t t-set="total_quantity" t-value="sum([l.quantity for l in doc.product_ids])"/>
                             <t t-set="total_size" t-value="sum([l.total_units for l in doc.product_ids])"/>
-                            <div style="display: flex; justify-content: space-between;font-size:19px">
-                                <div style="flex: 1;">
+                            <div style="width:1280px;margin:0;border:0;font-size:0;line-height:22px;">
+                                <div style="display:inline-block;width:410px;padding:0;vertical-align:top;text-align:left;border:0;font-size:19px;">
                                     <div>案名: <span t-field="doc.project_name"/></div>
                                     <div>備註: <span t-field="doc.comment"/></div>
-                                </div>
-                                <div style="flex: 1; text-align: center;">
+                                </div><div style="display:inline-block;width:205px;padding:0;vertical-align:top;text-align:center;border:0;font-size:19px;">
                                     <span>P：<t t-esc="page_num"/> / <t t-esc="total_pages"/></span>
-                                </div>
-                                <div style="flex: 1; text-align: right;">
+                                </div><div style="display:inline-block;width:282px;padding:0;vertical-align:top;text-align:right;border:0;font-size:19px;">
                                     <div>本單總數量: <t t-esc="'{:,.0f}'.format((total_quantity or 0))"/></div>
                                     <div>本單總才數: <t t-esc="'{:,.0f}'.format((total_size or 0))"/></div>
-                                </div>
-                                <div style="flex: 1; text-align: right; margin-right:10% ">
+                                </div><div style="display:inline-block;width:383px;padding:0 100px 0 0;vertical-align:top;text-align:right;border:0;font-size:19px;box-sizing:border-box;">
                                     <div>
                                         <!-- 聯絡人/電話: -->
                                     </div>

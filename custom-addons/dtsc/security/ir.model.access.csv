@@ -110,6 +110,7 @@ access_dtsc_interoperate,dtsc.interoperate,model_dtsc_interoperate,dtsc.group_dt
 access_dtsc_healthinsurancewithfamily,dtsc.healthinsurancewithfamily,model_dtsc_healthinsurancewithfamily,dtsc.group_dtsc_bs,1,1,1,1
 access_dtsc_line_reply_pending,dtsc.line_reply_pending,model_dtsc_line_reply_pending,dtsc.group_dtsc_bs,1,1,1,1
 access_dtsc_normalsettings,dtsc.normalsettings,model_dtsc_normalsettings,dtsc.group_dtsc_bs,1,1,1,1
+access_dtsc_workordercostsettings,dtsc.workordercostsettings,model_dtsc_workordercostsettings,dtsc.group_dtsc_bs,1,1,1,1
 access_dtsc_ai_check_log,dtsc.ai.check.log,model_dtsc_ai_check_log,base.group_user,1,0,0,0
 access_dtsc_customer_upload_notice,dtsc.customer.upload.notice,model_dtsc_customer_upload_notice,dtsc.group_dtsc_bs,1,1,1,0
 access_dtsc_customer_upload_notice_settings,dtsc.customer.upload.notice.settings,model_dtsc_customer_upload_notice_settings,dtsc.group_dtsc_gly,1,1,1,1

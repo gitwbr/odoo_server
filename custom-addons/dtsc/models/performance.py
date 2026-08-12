@@ -4,7 +4,9 @@ import base64
 import requests
 import json
 import hashlib
-import time
+import hmac
+import secrets
+import time as time_lib
 import json
 from odoo.exceptions import UserError
 from odoo.tools import config
@@ -707,8 +709,138 @@ class PerformanceLine(models.Model):
     lbfztj = fields.Float(string="勞保費自提繳", compute="_compute_lbfzf", store=True)
     jbfzf = fields.Float(string="健保費自付", compute="_compute_lbfzf", store=True)
     sfje = fields.Float(string = "實發金額",compute="_compute_sfje")
-    
-    
+
+    line_send_state = fields.Selection([
+        ('none', '未發送'),
+        ('sent', '已發送'),
+        ('failed', '發送失敗'),
+    ], string='LINE發送狀態', default='none', readonly=True, copy=False)
+    line_sent_at = fields.Datetime(string='LINE發送時間', readonly=True, copy=False)
+    line_send_error = fields.Char(string='LINE發送錯誤', readonly=True, copy=False)
+
+    def _get_or_create_line_pdf_secret(self):
+        ICP = self.env['ir.config_parameter'].sudo()
+        secret = ICP.get_param('dtsc.line_pdf_secret')
+        if not secret:
+            secret = secrets.token_hex(32)
+            ICP.set_param('dtsc.line_pdf_secret', secret)
+        return secret
+
+    def _build_salary_pdf_url(self, *, external=False, dl=False):
+        self.ensure_one()
+        if not self.name:
+            raise UserError('薪資明細缺少員工資料。')
+        ICP = self.env['ir.config_parameter'].sudo()
+        base = (ICP.get_param('web.base.url') or '').rstrip('/')
+        secret = self._get_or_create_line_pdf_secret()
+        exp = int(time_lib.time()) + 7 * 24 * 3600
+        raw = f"{self.id}.{self.name.id}.{exp}"
+        sig = hmac.new(secret.encode(), raw.encode(), hashlib.sha256).hexdigest()
+        url = (
+            f"{base}/dtsc/performance/pdf"
+            f"?lid={self.id}&wid={self.name.id}&exp={exp}&sig={sig}"
+        )
+        if external:
+            url += "&openExternalBrowser=1"
+        if dl:
+            url += "&dl=1"
+        return url
+
+    def action_send_line_salary_pdf(self):
+        lineObj = self.env['dtsc.linebot'].sudo().search([('linebot_type', '=', 'for_worker')], limit=1)
+        if not lineObj or not lineObj.line_access_token:
+            raise UserError('員工 LINE Bot 未配置或缺少 access token。')
+
+        headers = {
+            'Content-Type': 'application/json',
+            'Authorization': f'Bearer {lineObj.line_access_token}',
+        }
+        for rec in self:
+            employee = rec.name
+            if not employee or not employee.line_user_id:
+                raise UserError(f'員工 {employee.name if employee else ""} 未綁定 LINE，無法發送。')
+
+            perf = rec.performance_id
+            period = perf.name or '薪資單'
+            download_url = rec._build_salary_pdf_url(external=True, dl=True)
+            flex_message = {
+                'to': employee.line_user_id,
+                'messages': [{
+                    'type': 'flex',
+                    'altText': f'{period} 薪資單',
+                    'contents': {
+                        'type': 'bubble',
+                        'body': {
+                            'type': 'box',
+                            'layout': 'vertical',
+                            'contents': [
+                                {
+                                    'type': 'text',
+                                    'text': f'{period} 薪資單',
+                                    'weight': 'bold',
+                                    'size': 'xl',
+                                    'align': 'center',
+                                },
+                                {
+                                    'type': 'box',
+                                    'layout': 'vertical',
+                                    'margin': 'lg',
+                                    'spacing': 'sm',
+                                    'contents': [
+                                        {'type': 'text', 'text': f'員工：{employee.name or ""}'},
+                                        {'type': 'text', 'text': f'工號：{employee.work_id or ""}'},
+                                        {'type': 'text', 'text': f'實發金額：{rec.sfje:,.2f}'},
+                                        {'type': 'text', 'text': '請點擊下方按鈕下載薪資單 PDF', 'size': 'sm', 'color': '#666666'},
+                                    ],
+                                },
+                            ],
+                        },
+                        'footer': {
+                            'type': 'box',
+                            'layout': 'vertical',
+                            'spacing': 'sm',
+                            'contents': [{
+                                'type': 'button',
+                                'style': 'primary',
+                                'color': '#00B900',
+                                'action': {
+                                    'type': 'uri',
+                                    'label': '下載薪資單 PDF',
+                                    'uri': download_url,
+                                },
+                            }],
+                        },
+                    },
+                }],
+            }
+            try:
+                response = requests.post(
+                    'https://api.line.me/v2/bot/message/push',
+                    headers=headers,
+                    data=json.dumps(flex_message, ensure_ascii=False).encode('utf-8'),
+                    timeout=30,
+                )
+                if response.status_code == 200:
+                    rec.write({
+                        'line_send_state': 'sent',
+                        'line_sent_at': fields.Datetime.now(),
+                        'line_send_error': False,
+                    })
+                else:
+                    err = response.text[:500]
+                    rec.write({
+                        'line_send_state': 'failed',
+                        'line_send_error': err,
+                    })
+                    _logger.error('LINE 薪資單發送失敗: %s', err)
+            except Exception as e:
+                rec.write({
+                    'line_send_state': 'failed',
+                    'line_send_error': str(e)[:500],
+                })
+                _logger.exception('LINE 薪資單發送異常')
+        return True
+
     # @api.depends("name","total_score")
     # def _compute_jxjj(self):
         # for record in self:
@@ -872,5 +1004,20 @@ class PerformanceReport(models.AbstractModel):
             'docs': docs,
             'data': data or {},
             # 可選：若你想在模板用 company 變數，而不是 o.env.company
+            'company': self.env.company,
+        }
+
+
+class PerformanceLineReport(models.AbstractModel):
+    _name = 'report.dtsc.report_performance_line_template'
+
+    @api.model
+    def _get_report_values(self, docids, data=None):
+        docs = self.env['dtsc.performanceline'].browse(docids)
+        return {
+            'doc_ids': docs.ids,
+            'doc_model': 'dtsc.performanceline',
+            'docs': docs,
+            'data': data or {},
             'company': self.env.company,
         }

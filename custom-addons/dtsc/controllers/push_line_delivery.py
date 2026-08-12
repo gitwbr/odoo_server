@@ -113,3 +113,47 @@ class DeliveryPdfController(http.Controller):
             ("Content-Disposition", f"attachment; filename*=UTF-8''{quote(filename)}"),
         ]
         return request.make_response(pdf_bytes, headers=headers)
+
+    @http.route('/dtsc/performance/pdf', type='http', auth='public', methods=['GET'], csrf=False)
+    def performance_pdf(self, lid=None, wid=None, exp=None, sig=None, **kw):
+        """薪資明細 PDF 下載（LINE 推送用，帶簽名驗證）"""
+        if not (lid and wid and exp and sig):
+            return request.not_found()
+
+        ICP = request.env['ir.config_parameter'].sudo()
+        secret = ICP.get_param('dtsc.line_pdf_secret') or ''
+        raw = f"{lid}.{wid}.{exp}"
+        good = hmac.new(secret.encode(), raw.encode(), hashlib.sha256).hexdigest()
+        if sig != good or int(exp) < int(time.time()):
+            return request.not_found()
+
+        line = request.env['dtsc.performanceline'].sudo().browse(int(lid))
+        if not line.exists() or not line.name or int(wid) != line.name.id:
+            return request.not_found()
+
+        try:
+            report = request.env.ref('dtsc.action_report_performance_line').sudo()
+        except Exception:
+            report = request.env['ir.actions.report'].sudo().search([
+                ('report_name', '=', 'dtsc.report_performance_line_template')
+            ], limit=1)
+
+        if not report:
+            return request.not_found()
+
+        try:
+            pdf_bytes, _ = report._render_qweb_pdf(report.report_name, [line.id])
+        except TypeError:
+            pdf_bytes = report._render_qweb_pdf([line.id])[0]
+
+        perf = line.performance_id
+        period = perf.name or '薪資單'
+        emp_name = line.name.name or '員工'
+        filename = f"{period}-{emp_name}-薪資單.pdf"
+
+        headers = [
+            ('Content-Type', 'application/pdf'),
+            ('Content-Length', str(len(pdf_bytes))),
+            ("Content-Disposition", f"attachment; filename*=UTF-8''{quote(filename)}"),
+        ]
+        return request.make_response(pdf_bytes, headers=headers)

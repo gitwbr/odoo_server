@@ -83,17 +83,7 @@ def backup_instance_databases():
                         # 确保备份目录存在
                         Path(backup_dir).mkdir(parents=True, exist_ok=True)
                         
-                        # 获取现有备份文件
-                        existing_backups = []
-                        if os.path.exists(backup_dir):
-                            existing_backups = sorted([f for f in os.listdir(backup_dir) if f.endswith('.dump.gz')])
-                        
-                        # 如果超过3个备份，删除最旧的
-                        while len(existing_backups) >= 3:
-                            oldest_backup = os.path.join(backup_dir, existing_backups.pop(0))
-                            os.remove(oldest_backup)
-                        
-                        # 使用 backup_database 函数执行备份
+                        # 备份函数会在完整备份组成功后执行成对保留策略。
                         success = backup_database(
                             instance_id=instance_id,
                             db_name='default',
@@ -101,9 +91,9 @@ def backup_instance_databases():
                         )
                         
                         if success:
-                            logger.info(f'实例 {instance_id} 数据库备份成功')
+                            logger.info(f'实例 {instance_id} 数据库及 filestore 备份成功')
                         else:
-                            logger.error(f'实例 {instance_id} 数据库备份失败')
+                            logger.error(f'实例 {instance_id} 完整备份失败')
                             
                     except Exception as e:
                         logger.error(f'备份实例 {instance_id} 时出错: {str(e)}')
@@ -220,4 +210,4 @@ class TaskScheduler:
 # 创建全局调度器实例并添加任务
 scheduler = TaskScheduler()
 # scheduler.add_task('check_expired', check_expired_instances, 3600)  # 每小时检查一次过期实例
-# scheduler.add_task('backup_databases', backup_instance_databases, 86400)  # 每24小时备份一次数据库 
+# scheduler.add_task('backup_databases', backup_instance_databases, 86400)  # 每24小时备份一次数据库

@@ -119,12 +119,15 @@ class yingShouDate(models.TransientModel):
                 )
             )
 
-        for customer_id, records in customer_groups.items():
-            self.env['dtsc.checkout']._create_invoice_for_customer(records,self.selected_date)
-        
-        for record in records:
-            sale_order = self.env["sale.order"].browse(record.sale_order_id.id)
-            sale_order.write({"invoice_status":"invoiced"}) 
+        all_converted = self.env['dtsc.checkout']
+        for customer_id, cust_records in customer_groups.items():
+            converted = self.env['dtsc.checkout']._create_invoice_for_customer(cust_records, self.selected_date)
+            all_converted |= converted
+
+        # 所有已轉應收的訂單都要回寫 sale.order（原先誤用最後一個客戶分組的 records）
+        sale_orders = all_converted.mapped('sale_order_id').filtered(lambda so: so)
+        if sale_orders:
+            sale_orders.write({"invoice_status": "invoiced"})
 
     
 class YourWizard(models.TransientModel):
@@ -1146,7 +1149,12 @@ class Checkout(models.Model):
       
     def _create_invoice_for_customer(self, records,selected_date):
         # 在这里实现为特定客户创建应收账单的逻辑
-        customer_id = records[0].customer_id.id
+        # records 可能是 list[singleton]，統一成 recordset 方便 prefetch / 批量 write
+        checkout_rs = self.browse([r.id for r in records])
+        if not checkout_rs:
+            return checkout_rs
+
+        customer_id = checkout_rs[0].customer_id.id        
         Invoice = self.env['account.move']
         InvoiceLine = self.env['account.move.line']
         Bill_invoice = self.env['dtsc.billinvoice']
@@ -1155,10 +1163,10 @@ class Checkout(models.Model):
         
         pay_mode = None
         pay_type = None
-        if records[0].customer_id.custom_pay_mode:
-            pay_mode = records[0].customer_id.custom_pay_mode
-        if records[0].customer_id.property_payment_term_id:
-            pay_type = records[0].customer_id.property_payment_term_id.id
+        if checkout_rs[0].customer_id.custom_pay_mode:
+            pay_mode = checkout_rs[0].customer_id.custom_pay_mode
+        if checkout_rs[0].customer_id.property_payment_term_id:
+            pay_type = checkout_rs[0].customer_id.property_payment_term_id.id
 
         invoice = Invoice.create({
             'partner_id': customer_id,
@@ -1166,10 +1174,11 @@ class Checkout(models.Model):
             'pay_type':pay_type,
             'move_type': 'out_invoice',
             'invoice_date': selected_date,
-            'is_online': records[0].is_online,
+            'is_online': checkout_rs[0].is_online,
         })
 
-        vat_mode = records[0].customer_id.custom_invoice_form
+        vat_mode = checkout_rs[0].customer_id.custom_invoice_form
+        bill_invoice = False
         if vat_mode in [ "21" , "22"] or self.is_online == True:
             bill_invoice = Bill_invoice.create({
                 'partner_id' : customer_id,
@@ -1181,9 +1190,24 @@ class Checkout(models.Model):
         
         
         
-        # taxprice = 0 
-        # totalprice = 0           
-        for record in records:
+        # taxprice = 0         
+        # totalprice = 0
+        # prefetch 關聯，減少循環內 ORM 查詢
+        checkout_rs.mapped('product_ids.product_atts')
+        checkout_rs.mapped('installproduct_ids')
+
+        # 預先查好 product.template -> product.product，避免每行 search
+        tmpl_ids = checkout_rs.mapped('product_ids.product_id').ids
+        product_by_tmpl = {}
+        if tmpl_ids:
+            for pp in self.env['product.product'].search([('product_tmpl_id', 'in', tmpl_ids)]):
+                # 與原先 limit=1 行為一致：同一模板取第一筆
+                product_by_tmpl.setdefault(pp.product_tmpl_id.id, pp)
+
+        line_vals_list = []
+        install_to_invoice = self.env['dtsc.installproduct']
+
+        for record in checkout_rs:
             
             
             
@@ -1202,7 +1226,7 @@ class Checkout(models.Model):
                     continue
                 if not install_product_product_obj:
                     raise UserError('您還未創建‘施工費’產品。請先去產品中創建！')
-                invoice_line = InvoiceLine.create({
+                line_vals_list.append({
                     'account_id':1,
                     'move_id' : invoice.id,
                     'checkoutline_id' : False,
@@ -1224,13 +1248,16 @@ class Checkout(models.Model):
                     "currency_id": 135,        #台幣
                     "tax_ids" : tax_ids,
                     })
-                install_line.is_invoice = True
-                install_line.invoice_id = invoice.id
+                install_to_invoice |= install_line
             
             
             
             for line in record.product_ids:  
-                product_product_id = self.env['product.product'].search([('product_tmpl_id',"=",line.product_id.id)],limit=1)
+                product_product = product_by_tmpl.get(line.product_id.id)
+                if not product_product:
+                    # 與原 search(..., limit=1) 一致；找不到時保持原行為（.id 會報錯）
+                    product_product = self.env['product.product'].search([('product_tmpl_id',"=",line.product_id.id)],limit=1)
+                    product_by_tmpl[line.product_id.id] = product_product
                 
                 attributes = []        
                 if line.machine_id:
@@ -1269,7 +1296,7 @@ class Checkout(models.Model):
                 if line.product_width and line.product_height and line.total_units:
                     size_value = line.product_width +"X" +line.product_height + "("+ str(line.total_units) +")"
                 
-                invoice_line = InvoiceLine.create({
+                line_vals_list.append({
                     'account_id':1,
                     'move_id' : invoice.id,
                     'checkoutline_id' : line.id,
@@ -1290,7 +1317,7 @@ class Checkout(models.Model):
                     'product_width' : line.product_width,                  #寬
                     'product_height' : line.product_height,                #高
                     # 'machine_id' : record.machine_id.id,                     #生產機臺
-                    'product_id' : product_product_id.id,                      #產品在PRODUCT.PRODUCT中的id
+                    'product_id' : product_product.id,                       #產品在PRODUCT.PRODUCT中的id
                     # 'multi_chose_ids' : record.multi_chose_ids,              #後加工名稱
                     # 'comment' : record.comment,                              #訂單備注
                     # 'sequence' : str(sequence_number),                       #訂單順序
@@ -1303,6 +1330,15 @@ class Checkout(models.Model):
             
             # record.checkout_order_state = "receivable_assigned"
             # record.invoice_origin = invoice.id
+        # 一次批量建立明細：會計同步/平衡檢查只跑一遍（核心性能優化）
+        if line_vals_list:
+            InvoiceLine.create(line_vals_list)
+
+        if install_to_invoice:
+            install_to_invoice.write({
+                'is_invoice': True,
+                'invoice_id': invoice.id,
+            })
         
         if vat_mode in [ "21" , "22"] or self.is_online == True:
             Bill_invoice_line.create({
@@ -1313,10 +1349,16 @@ class Checkout(models.Model):
                 "saleprice" : saleprice,    
             })   
             
-        for record in records:
-            print(record.name)
-            record.checkout_order_state = "receivable_assigned"
-            record.invoice_origin = invoice.id
+        # for record in records:
+            # print(record.name)
+            # record.checkout_order_state = "receivable_assigned"
+            # record.invoice_origin = invoice.id
+        # 批量回寫狀態（仍會逐單寫 history，但遠輕於會計行重算）
+        checkout_rs.write({
+            'checkout_order_state': 'receivable_assigned',
+            'invoice_origin': invoice.id,
+        })
+        return checkout_rs
     
     #轉應收選時間
     @api.model

@@ -25,11 +25,12 @@ odoo.define('dtsc.my_checkout_entry_button', function (require) {
             $('a').each(function () {
                 var $lineButton = $(this);
                 var text = ($lineButton.text() || '').trim();
-                if (text !== '+LINE 專人諮詢' || $lineButton.siblings('.o_my_checkout_entry_btn').length) {
+                if (text !== '+LINE 專人諮詢') {
                     return;
                 }
 
                 var $container = $lineButton.parent();
+                var $checkoutButton = $container.children('a[href="/my/checkout-entry"]').first();
                 if (!$container.hasClass('o_my_checkout_entry_group')) {
                     $container.addClass('o_my_checkout_entry_group').css({
                         display: 'flex',
@@ -37,6 +38,13 @@ odoo.define('dtsc.my_checkout_entry_button', function (require) {
                         'flex-wrap': 'nowrap',
                         'align-items': 'center'
                     });
+                }
+
+                if ($checkoutButton.length) {
+                    $checkoutButton
+                        .addClass('o_my_checkout_entry_btn')
+                        .css({'white-space': 'nowrap'});
+                    return;
                 }
 
                 $('<a>', {
