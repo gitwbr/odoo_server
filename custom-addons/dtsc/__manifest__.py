@@ -56,6 +56,7 @@
         'views/product_price_table.xml', 
         'views/product_price_calculator.xml', 
         'views/product_templates.xml',         
+        'views/cut_svg.xml',
         'views/checkout_back.xml',
         'views/make_in.xml',
         'views/make_out.xml',
@@ -104,6 +105,7 @@
         'views/normalsettings.xml',
         'views/workordercostsettings.xml',
         'views/overview_dashboard.xml',
+        'views/asset.xml',
         'views/views.xml',
     ],
 	'assets': {
@@ -130,11 +132,13 @@
             'dtsc/static/src/js/user_menu_documentation_patch.js',
             'dtsc/static/src/js/product_template_form_confirm.js',
             'dtsc/static/src/js/overview_dashboard.js',
+            'dtsc/static/src/js/asset_usage_dashboard.js',
             'dtsc/static/src/js/customer_upload_notice_systray.js',
             'dtsc/static/src/xml/customer_upload_notice_systray.xml',
             'dtsc/static/src/css/customer_upload_notice_systray.css',
             'dtsc/static/src/css/overview_dashboard.css',
             'dtsc/static/src/css/overview_dashboard_native.css',
+            'dtsc/static/src/css/asset_usage_dashboard.css',
             # 'dtsc/static/src/xml/hide_dev_tools.xml',  # ← 加这行            
         ],
         'web.assets_frontend': [

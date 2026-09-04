@@ -1292,7 +1292,7 @@ class PurchaseOrder(models.Model):
         # self.write_check(vals)
         return res
         
-    @api.depends("order_line.name","order_line.product_id","name","partner_id")
+    @api.depends("order_line.name","order_line.product_id","order_line.product_id.name","name","partner_id","partner_id.name")
     def _compute_search_line_project_product_name(self):
         for record in self:
             names = [line.name for line in record.order_line if line.name]
@@ -1509,7 +1509,7 @@ class AccountMove(models.Model):
         return name + (f" ({shorten(self.ref, width=50)})" if show_ref and self.ref else '')
         
         
-    @api.depends('invoice_line_ids.product_id','invoice_line_ids.product_id','partner_id','supp_invoice_form','vat_num','comment_infu','pay_mode','custom_invoice_form','name')
+    @api.depends('invoice_line_ids.product_id','invoice_line_ids.product_id.name','partner_id','partner_id.name','supp_invoice_form','vat_num','comment_infu','pay_mode','custom_invoice_form','name')
     def _compute_search_line_name(self):
         for record in self:
             product_id_names = [line.product_id.name for line in record.invoice_line_ids if line.product_id.name]

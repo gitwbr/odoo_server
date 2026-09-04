@@ -822,7 +822,7 @@ class Checkout(models.Model):
                 record.is_current_user = (record.user_id.id == self.env.uid)
     
     
-    @api.depends("comment","comment_factory","customer_id","product_ids.project_product_name","project_name","product_ids.product_id","product_ids.product_atts","product_ids.multi_chose_ids","product_ids.comment","product_ids.product_width","product_ids.product_height","product_ids.machine_id")
+    @api.depends("comment","comment_factory","customer_id","customer_id.name","product_ids.project_product_name","project_name","product_ids.product_id","product_ids.product_id.name","product_ids.product_atts","product_ids.multi_chose_ids","product_ids.comment","product_ids.product_width","product_ids.product_height","product_ids.machine_id","product_ids.machine_id.name")
     def _compute_search_line_project_product_name(self):
         for record in self:
             names = [line.project_product_name for line in record.product_ids if line.project_product_name]
@@ -1025,7 +1025,7 @@ class Checkout(models.Model):
             line_copy_vals['checkout_product_id'] = new_record.id  # 设置新的父记录ID
             line_copy_vals['make_orderid'] = ""      
             if self.hebing_type == "1":
-                line_copy_vals['recheck_id_name'] = str(self.origin_checkout_name) + "-" + str(line.sequence)   
+                line_copy_vals['recheck_id_name'] = str(line.origin_checkout_name or self.name) + "-" + str(line.sequence) 
             else:
                 line_copy_vals['recheck_id_name'] = str(self.name) + "-" + str(line.sequence)   
             line_copy_vals.pop('flag', None)
@@ -1456,6 +1456,9 @@ class Checkout(models.Model):
         
         target_record = min(records, key=lambda r: r.id)
         other_records = records - target_record
+        # 合併前先鎖定主單價格，避免明細掛入主單時觸發價格重算
+        if not target_record.lock_price:
+            target_record.lock_price = True
         target_record.hebing_type = "1"
         name_list = []
         for record in other_records:
@@ -3215,16 +3218,21 @@ class CheckOutLine(models.Model):
         if locked_price_fields.intersection(vals) and any(line.checkout_product_id.lock_price for line in self):
             raise UserError("此訂單已鎖定價格，無法修改價格相關欄位。")
 
+        cut_svg_fields = {
+            'cut_source_image', 'cut_svg_file', 'cut_svg_filename', 'cut_svg_preview_html',
+            'cut_svg_json', 'cut_svg_gpt_raw', 'cut_svg_debug', 'cut_svg_state', 'cut_svg_error',
+            'cut_svg_generated_at', 'cut_svg_mode', 'cut_svg_model',
+        }
         if self.checkout_product_id.checkout_order_state in ["receivable_assigned"]:
-            allowed_fields = {'small_image_new','small_image',"is_selected"}
-            disallowed = set(vals.keys()) - allowed_fields
+            allowed_fields = {'small_image_new','small_image',"is_selected"} | cut_svg_fields
+            disallowed = set(vals.keys()) - allowed_fields - {'__last_update'}
             if disallowed:
                 raise UserError("此訂單已轉應收，無法修改任何内容。")
             
         if user not in group_dtsc_gly.users and user in group_dtsc_mg.users:
             if self.checkout_product_id.is_delivery:
-                allowed_fields = {'small_image_new','small_image','checkout_product_id','origin_checkout_id','delivery_order','price', 'is_install','product_total_price', 'units_price', 'total_make_price', 'peijian_price',"is_selected","sale_order_line_id","project_product_name","same_material","jijiamoshi"}
-                disallowed = set(vals.keys()) - allowed_fields
+                allowed_fields = {'small_image_new','small_image','checkout_product_id','origin_checkout_id','delivery_order','price', 'is_install','product_total_price', 'units_price', 'total_make_price', 'peijian_price',"is_selected","sale_order_line_id","project_product_name","same_material","jijiamoshi"} | cut_svg_fields
+                disallowed = set(vals.keys()) - allowed_fields - {'__last_update'}
                 if disallowed:
                     raise UserError("此訂單已出貨，僅允許修改價格相關欄位。")
         return super().write(vals)

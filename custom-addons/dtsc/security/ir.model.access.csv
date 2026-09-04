@@ -120,3 +120,10 @@ access_dtsc_overview_dashboard_sc,dtsc.overview.dashboard,model_dtsc_overview_da
 access_dtsc_overview_dashboard_kj,dtsc.overview.dashboard,model_dtsc_overview_dashboard,dtsc.group_dtsc_kj,1,0,0,0
 access_dtsc_overview_dashboard_cg,dtsc.overview.dashboard,model_dtsc_overview_dashboard,dtsc.group_dtsc_cg,1,0,0,0
 access_dtsc_overview_dashboard_gly,dtsc.overview.dashboard,model_dtsc_overview_dashboard,dtsc.group_dtsc_gly,1,0,0,0
+access_dtsc_asset_category_gly,dtsc.asset.category,model_dtsc_asset_category,dtsc.group_dtsc_gly,1,1,1,1
+access_dtsc_asset_gly,dtsc.asset,model_dtsc_asset,dtsc.group_dtsc_gly,1,1,1,1
+access_dtsc_asset_usage_gly,dtsc.asset.usage,model_dtsc_asset_usage,dtsc.group_dtsc_gly,1,1,1,1
+access_dtsc_asset_usage_dashboard_gly,dtsc.asset.usage.dashboard,model_dtsc_asset_usage_dashboard,dtsc.group_dtsc_gly,1,0,0,0
+access_dtsc_asset_category_bs,dtsc.asset.category,model_dtsc_asset_category,dtsc.group_dtsc_bs,1,0,0,0
+access_dtsc_asset_bs,dtsc.asset,model_dtsc_asset,dtsc.group_dtsc_bs,1,0,0,0
+access_dtsc_asset_usage_bs,dtsc.asset.usage,model_dtsc_asset_usage,dtsc.group_dtsc_bs,1,0,0,0

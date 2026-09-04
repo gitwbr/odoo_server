@@ -334,8 +334,8 @@ services:
       - /home/odoo/odoo16/custom-addons:/mnt/custom-addons
       - {instance_dir}/custom-addons-client:/mnt/custom-addons-client
     ports:
-      - "{web_port}:8069"
-      - "{longpolling_port}:8072"
+      - "127.0.0.1:{web_port}:8069"
+      - "127.0.0.1:{longpolling_port}:8072"
     environment:
       - LANG=zh_TW.UTF-8
       - TZ=Asia/Taipei
@@ -356,7 +356,7 @@ services:
     volumes:
       - {instance_dir}/postgresql:/var/lib/postgresql/data
     ports:
-      - "{db_port}:5432"
+      - "127.0.0.1:{db_port}:5432"
     networks:
       - odoo_net
     restart: unless-stopped

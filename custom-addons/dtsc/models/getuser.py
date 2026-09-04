@@ -2,23 +2,44 @@ from odoo import http
 from odoo.http import request
 
 class UserInfoController(http.Controller):
+    def _partner_contact_address_complete(self, partner):
+        """兼容社区版：web_map 提供的 contact_address_complete 在社区版不存在。"""
+        if 'contact_address_complete' in partner._fields:
+            return partner.contact_address_complete or ''
+        parts = []
+        if partner.street:
+            parts.append(partner.street)
+        if partner.street2:
+            parts.append(partner.street2)
+        city_line = ' '.join(p for p in [partner.zip or '', partner.city or ''] if p).strip()
+        if city_line:
+            parts.append(city_line)
+        if partner.state_id:
+            parts.append(partner.state_id.name)
+        if partner.country_id:
+            parts.append(partner.country_id.name)
+        if parts:
+            return ', '.join(parts)
+        return (partner.contact_address or '').strip()
+
     @http.route('/my/user_info', type='json', auth="user")
     def user_info(self):
         user = request.env.user
+        partner = user.partner_id
         user_info = {
-            'id': user.partner_id.id,
+            'id': partner.id,
             'name': user.name,
             'mobile': user.mobile,
             'phone': user.phone,
             'email': user.email,
-            'custom_init_name': user.custom_init_name,
-            'contact_address_complete': user.contact_address_complete,
-            'customclass_id': user.customclass_id.id if user.customclass_id else False,
+            'custom_init_name': partner.custom_init_name,
+            'contact_address_complete': self._partner_contact_address_complete(partner),
+            'customclass_id': partner.customclass_id.id if partner.customclass_id else False,
         }
 
         return user_info
 
-    @http.route('/my/user_info_client', type='json', auth="public")
+    @http.route('/my/user_info_client', type='json', auth="public", website=True)
     def user_info_client(self):
         partner = request.env['res.partner']
         is_internal_user = False
@@ -40,7 +61,7 @@ class UserInfoController(http.Controller):
             'phone': partner.phone,
             'email': partner.email,
             'custom_init_name': partner.custom_init_name,
-            'contact_address_complete': partner.contact_address_complete,
+            'contact_address_complete': self._partner_contact_address_complete(partner),
             'customclass_id': partner.customclass_id.id if partner.customclass_id else False,
             'nop': partner.nop,
             'is_internal_user': is_internal_user,

@@ -499,6 +499,75 @@
 									</tree>									 
 								</field>
 							</page>
+
+							<page string="刀模生成">
+								<p class="text-muted">
+									針對各項次上傳參考圖後點「生成」。任務在後端執行，不阻塞當前頁面；生成中請稍後重新整理查看結果。
+								</p>
+								<field name="cut_svg_line_ids" mode="tree,form">
+									<tree create="false" delete="false" editable="bottom" default_order="sequence"
+										  decoration-info="cut_svg_state == 'pending'"
+										  decoration-success="cut_svg_state == 'done'"
+										  decoration-danger="cut_svg_state == 'error'">
+										<field name="sequence" readonly="1" string="項次"/>
+										<field name="project_product_name" readonly="1" string="檔名"/>
+										<field name="product_width" readonly="1" string="寬"/>
+										<field name="product_height" readonly="1" string="高"/>
+										<field name="multi_chose_ids" readonly="1" string="後加工"/>
+										<field name="cut_source_image" widget="image" options="{'size': [64, 64]}" string="參考圖"/>
+										<field name="cut_svg_state" readonly="1" string="狀態"/>
+										<field name="cut_svg_mode" readonly="1" string="模式"/>
+										<field name="cut_svg_model" readonly="1" string="模型"/>
+										<field name="cut_svg_generated_at" readonly="1" optional="hide"/>
+										<button name="action_generate_cut_svg" type="object" string="生成" class="btn-primary"
+												attrs="{'invisible': [('cut_svg_state', '=', 'pending')]}"/>
+										<field name="cut_svg_file" filename="cut_svg_filename" string="下載SVG"/>
+										<field name="cut_svg_filename" invisible="1"/>
+										<field name="cut_svg_error" readonly="1" string="錯誤/備註"/>
+									</tree>
+									<form string="刀模項次">
+										<sheet>
+											<group>
+												<group string="項次資訊">
+													<field name="sequence" readonly="1"/>
+													<field name="project_product_name" readonly="1"/>
+													<field name="product_width" readonly="1"/>
+													<field name="product_height" readonly="1"/>
+													<field name="multi_chose_ids" readonly="1"/>
+												</group>
+												<group string="生成狀態">
+													<field name="cut_svg_state" readonly="1"/>
+													<field name="cut_svg_mode" readonly="1"/>
+													<field name="cut_svg_model" readonly="1"/>
+													<field name="cut_svg_generated_at" readonly="1"/>
+													<field name="cut_svg_error" readonly="1"/>
+												</group>
+											</group>
+											<group string="參考圖">
+												<field name="cut_source_image" widget="image" nolabel="1" colspan="2"/>
+											</group>
+											<group>
+												<button name="action_generate_cut_svg" type="object" string="生成刀模 SVG" class="btn-primary"
+														attrs="{'invisible': [('cut_svg_state', '=', 'pending')]}"/>
+												<field name="cut_svg_file" filename="cut_svg_filename"/>
+												<field name="cut_svg_filename" invisible="1"/>
+											</group>
+											<group string="生成結果預覽" col="1">
+												<field name="cut_svg_preview_html" nolabel="1" colspan="2"/>
+											</group>
+											<group string="最終 JSON（進 Geometry）" col="1">
+												<field name="cut_svg_json" nolabel="1" widget="text" readonly="1"/>
+											</group>
+											<group string="GPT 原始回覆" col="1">
+												<field name="cut_svg_gpt_raw" nolabel="1" widget="text" readonly="1"/>
+											</group>
+											<group string="完整調試資訊" col="1">
+												<field name="cut_svg_debug" nolabel="1" widget="text" readonly="1"/>
+											</group>
+										</sheet>
+									</form>
+								</field>
+							</page>
 							
 							<page string="CRM成本" attrs="{'invisible': [('checkout_order_state', 'not in', ['waiting_confirmation'])]}">
 								<field name="product_ids_crm_chengben">

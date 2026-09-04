@@ -1,0 +1,362 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- 資產類別 -->
+    <record id="view_dtsc_asset_category_tree" model="ir.ui.view">
+        <field name="name">dtsc.asset.category.tree</field>
+        <field name="model">dtsc.asset.category</field>
+        <field name="arch" type="xml">
+            <tree editable="bottom">
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="asset_count"/>
+                <field name="active"/>
+                <field name="note" optional="hide"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_dtsc_asset_category_form" model="ir.ui.view">
+        <field name="name">dtsc.asset.category.form</field>
+        <field name="model">dtsc.asset.category</field>
+        <field name="arch" type="xml">
+            <form string="資產類別">
+                <sheet>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="name" placeholder="類別名稱"/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="sequence"/>
+                            <field name="active"/>
+                        </group>
+                        <group>
+                            <field name="asset_count"/>
+                        </group>
+                    </group>
+                    <group>
+                        <field name="note"/>
+                    </group>
+                    <notebook>
+                        <page string="資產">
+                            <field name="asset_ids">
+                                <tree editable="bottom">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="name"/>
+                                    <field name="code"/>
+                                    <field name="usage_state"/>
+                                    <field name="current_user_name"/>
+                                    <field name="active"/>
+                                </tree>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_dtsc_asset_category" model="ir.actions.act_window">
+        <field name="name">資產類別</field>
+        <field name="res_model">dtsc.asset.category</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+
+    <!-- 資產 -->
+    <record id="view_dtsc_asset_tree" model="ir.ui.view">
+        <field name="name">dtsc.asset.tree</field>
+        <field name="model">dtsc.asset</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="code"/>
+                <field name="category_id"/>
+                <field name="usage_state"/>
+                <field name="current_user_name"/>
+                <field name="active"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_dtsc_asset_form" model="ir.ui.view">
+        <field name="name">dtsc.asset.form</field>
+        <field name="model">dtsc.asset</field>
+        <field name="arch" type="xml">
+            <form string="資產">
+                <sheet>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="name" placeholder="資產名稱"/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="code"/>
+                            <field name="category_id"/>
+                            <field name="sequence"/>
+                            <field name="active"/>
+                        </group>
+                        <group>
+                            <field name="usage_state"/>
+                            <field name="current_user_name"/>
+                        </group>
+                    </group>
+                    <group>
+                        <field name="note"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_dtsc_asset_search" model="ir.ui.view">
+        <field name="name">dtsc.asset.search</field>
+        <field name="model">dtsc.asset</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="code"/>
+                <field name="category_id"/>
+                <filter string="啟用" name="active" domain="[('active','=',True)]"/>
+                <filter string="停用" name="inactive" domain="[('active','=',False)]"/>
+                <group expand="0" string="分組">
+                    <filter string="類別" name="group_category" context="{'group_by': 'category_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_dtsc_asset" model="ir.actions.act_window">
+        <field name="name">資產</field>
+        <field name="res_model">dtsc.asset</field>
+        <field name="view_mode">tree,form</field>
+        <field name="context">{'search_default_active': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                建立第一筆資產
+            </p>
+            <p>先建立資產類別，再在此錄入具體資產（資源）。</p>
+        </field>
+    </record>
+
+    <!-- 使用記錄 -->
+    <record id="seq_dtsc_asset_usage" model="ir.sequence">
+        <field name="name">資產使用記錄</field>
+        <field name="code">dtsc.asset.usage</field>
+        <field name="prefix">AU</field>
+        <field name="padding">5</field>
+        <field name="company_id" eval="False"/>
+    </record>
+
+    <record id="view_dtsc_asset_usage_tree" model="ir.ui.view">
+        <field name="name">dtsc.asset.usage.tree</field>
+        <field name="model">dtsc.asset.usage</field>
+        <field name="arch" type="xml">
+            <tree create="1" edit="0" decoration-warning="state == 'using'">
+                <field name="name"/>
+                <field name="category_id"/>
+                <field name="asset_id"/>
+                <field name="employee_id"/>
+                <field name="start_time"/>
+                <field name="end_time"/>
+                <field name="duration_display"/>
+                <field name="state"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_dtsc_asset_usage_form" model="ir.ui.view">
+        <field name="name">dtsc.asset.usage.form</field>
+        <field name="model">dtsc.asset.usage</field>
+        <field name="arch" type="xml">
+            <form string="資產使用記錄">
+                <header>
+                    <button name="action_end" type="object" string="結束使用"
+                            class="btn-primary"
+                            attrs="{'invisible': [('state', '!=', 'using')]}"/>
+                    <field name="state" widget="statusbar" statusbar_visible="using,done"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="name" readonly="1"/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="asset_id"/>
+                            <field name="category_id"/>
+                            <field name="employee_id"/>
+                            <field name="line_user_id"/>
+                        </group>
+                        <group>
+                            <field name="start_time"/>
+                            <field name="end_time"/>
+                            <field name="duration_hours"/>
+                            <field name="duration_display"/>
+                        </group>
+                    </group>
+                    <group>
+                        <field name="note"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_dtsc_asset_usage_search" model="ir.ui.view">
+        <field name="name">dtsc.asset.usage.search</field>
+        <field name="model">dtsc.asset.usage</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="asset_id"/>
+                <field name="category_id"/>
+                <field name="employee_id"/>
+                <filter string="使用中" name="using" domain="[('state','=','using')]"/>
+                <filter string="已結束" name="done" domain="[('state','=','done')]"/>
+                <group expand="0" string="分組">
+                    <filter string="類別" name="group_category" context="{'group_by': 'category_id'}"/>
+                    <filter string="資產" name="group_asset" context="{'group_by': 'asset_id'}"/>
+                    <filter string="使用人" name="group_employee" context="{'group_by': 'employee_id'}"/>
+                    <filter string="開始日" name="group_start" context="{'group_by': 'start_time:day'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_dtsc_asset_usage" model="ir.actions.act_window">
+        <field name="name">使用記錄</field>
+        <field name="res_model">dtsc.asset.usage</field>
+        <field name="view_mode">tree,form</field>
+        <field name="context">{'search_default_using': 1}</field>
+    </record>
+
+    <!-- 統計頁 -->
+    <record id="asset_usage_dashboard_singleton" model="dtsc.asset.usage.dashboard">
+        <field name="name">資產使用統計</field>
+    </record>
+
+    <record id="view_dtsc_asset_usage_dashboard_form" model="ir.ui.view">
+        <field name="name">dtsc.asset.usage.dashboard.form</field>
+        <field name="model">dtsc.asset.usage.dashboard</field>
+        <field name="arch" type="xml">
+            <form string="資產使用統計" create="0" edit="0" delete="0">
+                <sheet>
+                    <field name="name" invisible="1"/>
+                    <div class="o_dtsc_asset_usage_dashboard">
+                        <div class="o_dtsc_asset_usage_header">
+                            <div>
+                                <h1>資產使用統計</h1>
+                                <p>左側選擇類別或資源，右側查看開始/結束時間與合計時長。</p>
+                            </div>
+                            <div>
+                                目前篩選：<strong data-role="filter_title">全部資產</strong>
+                            </div>
+                        </div>
+                        <div class="o_dtsc_asset_usage_body">
+                            <aside class="o_dtsc_asset_usage_aside">
+                                <div class="o_dtsc_asset_usage_aside_title">類別 / 資源</div>
+                                <div class="o_dtsc_asset_usage_tree" data-role="tree">
+                                    <div class="o_dtsc_asset_usage_empty">載入中...</div>
+                                </div>
+                            </aside>
+                            <main class="o_dtsc_asset_usage_main">
+                                <div class="o_dtsc_asset_usage_toolbar">
+                                    <div class="o_dtsc_asset_usage_dates">
+                                        <span>開始日區間</span>
+                                        <input type="date" data-filter="date_from"/>
+                                        <span>至</span>
+                                        <input type="date" data-filter="date_to"/>
+                                        <a href="#" class="primary" data-action="apply_dates">套用</a>
+                                        <a href="#" data-action="reset_dates">本月</a>
+                                    </div>
+                                </div>
+                                <div class="o_dtsc_asset_usage_cards">
+                                    <div class="o_dtsc_asset_usage_card">
+                                        <small>記錄數</small>
+                                        <strong data-metric="count">0</strong>
+                                    </div>
+                                    <div class="o_dtsc_asset_usage_card">
+                                        <small>使用中</small>
+                                        <strong data-metric="using_count">0</strong>
+                                    </div>
+                                    <div class="o_dtsc_asset_usage_card">
+                                        <small>合計時長</small>
+                                        <strong data-metric="total_display">0分</strong>
+                                    </div>
+                                </div>
+                                <div class="o_dtsc_asset_usage_table_wrap">
+                                    <table class="o_dtsc_asset_usage_table">
+                                        <thead>
+                                            <tr>
+                                                <th>類別</th>
+                                                <th>資產</th>
+                                                <th>使用人</th>
+                                                <th>開始時間</th>
+                                                <th>結束時間</th>
+                                                <th>時長</th>
+                                                <th>狀態</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody data-role="rows">
+                                            <tr>
+                                                <td colspan="7" class="o_dtsc_asset_usage_empty">載入中...</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </main>
+                        </div>
+                    </div>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_dtsc_asset_usage_dashboard" model="ir.actions.act_window">
+        <field name="name">資產使用統計</field>
+        <field name="res_model">dtsc.asset.usage.dashboard</field>
+        <field name="view_mode">form</field>
+        <field name="view_id" ref="view_dtsc_asset_usage_dashboard_form"/>
+        <field name="res_id" ref="asset_usage_dashboard_singleton"/>
+        <field name="target">current</field>
+    </record>
+
+    <!-- 菜單：設置 → 資產管理 -->
+    <menuitem id="menu_dtsc_asset_root"
+              name="資產管理"
+              parent="dtsc.menu_setting"
+              sequence="19"
+              groups="dtsc.group_dtsc_gly"/>
+    <menuitem id="menu_dtsc_asset_category"
+              name="資產類別"
+              parent="menu_dtsc_asset_root"
+              action="action_dtsc_asset_category"
+              sequence="1"
+              groups="dtsc.group_dtsc_gly"/>
+    <menuitem id="menu_dtsc_asset"
+              name="資產"
+              parent="menu_dtsc_asset_root"
+              action="action_dtsc_asset"
+              sequence="2"
+              groups="dtsc.group_dtsc_gly"/>
+    <menuitem id="menu_dtsc_asset_usage"
+              name="使用記錄"
+              parent="menu_dtsc_asset_root"
+              action="action_dtsc_asset_usage"
+              sequence="3"
+              groups="dtsc.group_dtsc_gly"/>
+
+    <!-- 菜單：報表 → 資產使用統計（僅管理員） -->
+    <menuitem id="menu_dtsc_asset_usage_dashboard"
+              name="資產使用統計"
+              parent="dtsc.menu_chart_dashboard_root"
+              action="action_dtsc_asset_usage_dashboard"
+              sequence="95"
+              groups="dtsc.group_dtsc_gly"/>
+
+</odoo>

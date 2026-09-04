@@ -275,7 +275,7 @@ class MakeIn(models.Model):
             else:
                 record.customer_name = record.checkout_id.customer_id.name
     
-    @api.depends("order_ids.file_name","order_ids.output_material","order_ids.production_size","order_ids.processing_method","order_ids.processing_method_after","order_ids.lengbiao","order_ids.barcode","project_name","factory_comment","factory","install_state","name","user_id","source_name","customer_name","contact_person","delivery_method","phone","fax")
+    @api.depends("order_ids.file_name","order_ids.output_material","order_ids.production_size","order_ids.processing_method","order_ids.processing_method_after","order_ids.lengbiao","order_ids.barcode","project_name","factory_comment","factory","install_state","name","user_id","user_id.name","source_name","checkout_id.customer_id.name","checkout_id.customer_bianhao","contact_person","delivery_method","phone","fax")
     def _compute_search_line_name(self):
         for record in self:
             file_name = [line.file_name for line in record.order_ids if line.file_name]

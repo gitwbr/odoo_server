@@ -38,7 +38,7 @@ services:
       - POSTGRES_DB=odoo_manager
       - PGDATA=/var/lib/postgresql/data/pgdata
     ports:
-      - "5400:5432"
+      - "127.0.0.1:5400:5432"
     volumes:
       - ./postgresql_manager:/var/lib/postgresql/data
     networks:
@@ -49,8 +49,8 @@ services:
   # Client1 服務
   web1:
     image: custom-odoo-web_default:latest
-    depends_on:
-      - db1
+    # depends_on:
+    #   - db1
     volumes:
       - ./client1/config:/etc/odoo
       - ./client1/data:/var/lib/odoo/client1
@@ -58,8 +58,8 @@ services:
       - ./addons:/mnt/addons
       - ./custom-addons:/mnt/custom-addons
     ports:
-      - "8001:8069"
-      - "9001:8072"
+      - "127.0.0.1:8001:8069"
+      - "127.0.0.1:9001:8072"
     environment:
       - LANG=zh_TW.UTF-8
       - TZ=Asia/Taipei
@@ -72,6 +72,8 @@ services:
 
   db1:
     image: postgres:15
+    profiles:
+      - disabled
     environment:
       - POSTGRES_DB=postgres
       - POSTGRES_PASSWORD=odoo1
@@ -80,17 +82,17 @@ services:
     volumes:
       - ./client1/postgresql:/var/lib/postgresql/data
     ports:
-      - "5401:5432"
+      - "127.0.0.1:5401:5432"
     networks:
       - odoo_net
-    restart: unless-stopped
+    restart: "no"
     command: postgres -c 'max_connections=100'
 
   # Client2 服務
   web2:
     image: custom-odoo:16.0.1
-    depends_on:
-      - db2
+    # depends_on:
+    #   - db2
     volumes:
       - ./client2/config:/etc/odoo
       - ./client2/data:/var/lib/odoo/client2
@@ -99,8 +101,8 @@ services:
       - ./custom-addons:/mnt/custom-addons
       - ./client2/custom-addons-client:/mnt/custom-addons-client
     ports:
-      - "8002:8069"
-      - "9002:8072"
+      - "127.0.0.1:8002:8069"
+      - "127.0.0.1:9002:8072"
     environment:
       - LANG=zh_TW.UTF-8
       - TZ=Asia/Taipei
@@ -116,6 +118,8 @@ services:
 
   db2:
     image: postgres:15
+    profiles:
+      - disabled
     environment:
       - POSTGRES_DB=postgres
       - POSTGRES_PASSWORD=odoo2
@@ -124,24 +128,24 @@ services:
     volumes:
       - ./client2/postgresql:/var/lib/postgresql/data
     ports:
-      - "5402:5432"
+      - "127.0.0.1:5402:5432"
     networks:
       - odoo_net
-    restart: unless-stopped
+    restart: "no"
     command: postgres -c 'max_connections=100'
 
   # Client3 服務
   web3:
     image: odoo:19
-    depends_on:
-      - db3
+    # depends_on:
+    #   - db3
     volumes:
       - ./client3/config:/etc/odoo
       - ./client3/data:/var/lib/odoo/client3
       - ./client3/logs:/var/log/odoo
     ports:
-      - "8003:8069"
-      - "9003:8072"
+      - "127.0.0.1:8003:8069"
+      - "127.0.0.1:9003:8072"
     environment:
       - LANG=zh_TW.UTF-8
       - TZ=Asia/Taipei
@@ -154,6 +158,8 @@ services:
 
   db3:
     image: postgres:15
+    profiles:
+      - disabled
     environment:
       - POSTGRES_DB=postgres
       - POSTGRES_PASSWORD=odoo3
@@ -162,10 +168,10 @@ services:
     volumes:
       - ./client3/postgresql:/var/lib/postgresql/data
     ports:
-      - "5403:5432"
+      - "127.0.0.1:5403:5432"
     networks:
       - odoo_net
-    restart: unless-stopped
+    restart: "no"
     command: postgres -c 'max_connections=100'
 
 networks:

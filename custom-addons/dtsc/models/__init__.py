@@ -44,4 +44,6 @@ from . import interoperate
 from . import ai_check_log
 from . import customer_upload_notice
 from . import overview_dashboard
+from . import cut_svg
+from . import asset
 #from . import purchase_order

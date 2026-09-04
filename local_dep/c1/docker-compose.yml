@@ -24,7 +24,7 @@ services:
     volumes:
       - ./client1/postgresql:/var/lib/postgresql/data
     ports:
-      - "5401:5432"
+      - "127.0.0.1:5401:5432"
     networks:
       - odoo_net
     restart: unless-stopped

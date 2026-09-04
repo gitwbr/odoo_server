@@ -1,7 +1,7 @@
 [options]
 addons_path = /mnt/addons,/mnt/custom-addons,/mnt/custom-addons-client
 data_dir = /var/lib/odoo/client{CLIENT}
-admin_passwd = admin_123
+admin_passwd = fEcFAUzkG13FYJhBPHWE
 
 # HTTP
 http_port = 8069
@@ -20,7 +20,7 @@ db_password = {DB_PASSWORD}
 # db_name = odoo{CLIENT}
 db_name = default
 db_sslmode = disable
-list_db = True
+list_db = False
 db_maxconn = 64
 db_template = template1
 dbfilter = ^(?:.*)$

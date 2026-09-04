@@ -238,7 +238,7 @@ class Installproduct(models.Model):
 
         # return super(Installproduct, self).write(vals)
             
-    @api.depends("install_product_ids.name","install_product_ids.size","install_product_ids.caizhi","install_product_ids.install_note","install_product_ids.gongdan","name","custom_init_name","project_name")
+    @api.depends("install_product_ids.name","install_product_ids.name.name","install_product_ids.size","install_product_ids.caizhi","install_product_ids.install_note","install_product_ids.gongdan","name","custom_init_name","checkout_id.customer_id.name","checkout_id.customer_id.custom_init_name","project_name")
     def _compute_search_line_name(self):
         for record in self:
             name = [line.name.name for line in record.install_product_ids if line.name.name]

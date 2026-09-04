@@ -20,7 +20,7 @@ if ! docker ps -a --format '{{.Names}}' | grep -qx "$DB_NAME"; then
     -e POSTGRES_PASSWORD=odoo \
     -e PGDATA=/var/lib/postgresql/data/pgdata \
     -v "$BASE_DIR/postgresql:/var/lib/postgresql/data" \
-    -p 5433:5432 \
+    -p 127.0.0.1:5433:5432 \
     postgres:15
 fi
 
