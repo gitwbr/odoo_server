@@ -650,8 +650,11 @@ class CheckoutInherit(models.Model):
         current_date = datetime.now()
         for record in self:
             # record.action_copy_checkout()
+            # 價格鎖定時無法寫入明細價格欄位，先記住原狀態，複製完明細後再還原
+            original_lock_price = record.lock_price
             new_checkout = record.with_context(from_crm=True).copy(default={})
-
+            
+            new_checkout.write({"lock_price": False})  # 複製明細期間暫時關閉，避免價格欄位 write 被擋
             # 2. 逐筆複製 checkoutline
             for line in record.product_ids:
                 line_data = line.copy_data()[0]
@@ -784,7 +787,11 @@ class CheckoutInherit(models.Model):
                         'checkout_id': new_checkout.id,
                         'name': a.name,
                         'sequence': a.sequence,
-                    })   
+                    })
+
+            # 明細與價格都寫完後，還原 CRM 上的價格鎖定狀態
+            if original_lock_price:
+                new_checkout.write({"lock_price": True})
 
             
             return {

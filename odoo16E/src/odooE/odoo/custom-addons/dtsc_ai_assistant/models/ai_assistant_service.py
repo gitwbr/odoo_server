@@ -4,7 +4,7 @@ import json
 import logging
 import re
 
-from odoo import models
+from odoo import fields, models
 from odoo.osv import expression
 
 
@@ -36,11 +36,14 @@ class AiAssistantService(models.AbstractModel):
             actor.get('partner_id') or '',
             (question or '')[:160],
         )
-        if actor['actor_type'] == 'anonymous':
-            _logger.info("AI assistant query blocked: anonymous user")
+        if actor['actor_type'] not in ('admin', 'internal'):
+            _logger.info(
+                "AI assistant query blocked: non-internal actor_type=%s",
+                actor.get('actor_type'),
+            )
             return {
                 'mode': 'blocked',
-                'answer': '請先登入後再查詢大圖訂單。',
+                'answer': 'AI 助手僅限公司內部人員使用。',
                 'actor': self._serialize_actor(actor),
                 'records': [],
             }
@@ -77,10 +80,13 @@ class AiAssistantService(models.AbstractModel):
                 messages=gateway_messages,
                 thread_id=thread.id,
             )
-            local_result = (
-                gateway_result.get('local_result')
-                or tool_capture.get('local_result')
-                or self._empty_result()
+            local_result = self._collect_gateway_results(
+                gateway_result.get('tool_results') or [],
+                fallback=(
+                    gateway_result.get('local_result')
+                    or tool_capture.get('local_result')
+                    or self._empty_result()
+                ),
             )
             if gateway_result.get('status') == 'success':
                 answer = gateway_result.get('answer') or self._format_local_answer(
@@ -92,7 +98,7 @@ class AiAssistantService(models.AbstractModel):
                 mode = gateway_result.get('status') or 'local'
 
         status = self._session_status(mode, local_result)
-        result_json = json.dumps(local_result, ensure_ascii=False)[:10000]
+        result_json = self._session_result_json(local_result)
         session = self.env['dtsc.ai.assistant.session'].sudo().create({
             'name': question[:120],
             'user_id': self.env.user.id,
@@ -122,7 +128,9 @@ class AiAssistantService(models.AbstractModel):
             local_result.get('query_type'),
             len(local_result.get('records') or []),
         )
-        show_results = local_result.get('query_type') in ('list', 'detail')
+        show_results = local_result.get('query_type') in (
+            'list', 'detail', 'universal_search', 'universal_multi',
+        ) and bool(local_result.get('records'))
         return {
             'mode': mode,
             'answer': answer,
@@ -131,6 +139,7 @@ class AiAssistantService(models.AbstractModel):
             'show_debug': bool(show_debug),
             'tools': self._tool_names_for_result(local_result),
             'records': local_result.get('records', []),
+            'groups': local_result.get('groups', []),
             'detail': local_result.get('detail') or {},
             'show_results': show_results,
             'configuration_required': mode == 'configuration_missing',
@@ -142,7 +151,7 @@ class AiAssistantService(models.AbstractModel):
         actor = self.env['dtsc.ai.assistant.scope'].resolve_actor(
             custom_partner_id=custom_partner_id
         )
-        if actor['actor_type'] == 'anonymous':
+        if actor['actor_type'] not in ('admin', 'internal'):
             return {
                 'actor': self._serialize_actor(actor),
                 'context_label': self._context_label(actor),
@@ -247,6 +256,46 @@ class AiAssistantService(models.AbstractModel):
     def _build_tool_specs(self, actor, capture=None):
         capture = capture if capture is not None else {}
 
+        if actor.get('actor_type') in ('admin', 'internal'):
+            def universal_odoo_query(
+                operation,
+                keyword=None,
+                model=None,
+                fields=None,
+                filters=None,
+                order=None,
+                group_by=None,
+                measures=None,
+                distinct_field=None,
+                limit=None,
+                include_empty=False,
+            ):
+                """Execute a read-only universal Odoo query."""
+                arguments = {
+                    'operation': operation,
+                    'keyword': keyword,
+                    'model': model,
+                    'fields': fields,
+                    'filters': filters,
+                    'order': order,
+                    'group_by': group_by,
+                    'measures': measures,
+                    'distinct_field': distinct_field,
+                    'limit': limit,
+                    'include_empty': include_empty,
+                }
+                result = self.env['dtsc.ai.universal.query'].execute(arguments, actor=actor)
+                capture['local_result'] = result
+                return json.dumps(result, ensure_ascii=False)
+
+            query_service = self.env['dtsc.ai.universal.query']
+            return [{
+                'name': 'universal_odoo_query',
+                'description': query_service.tool_description(),
+                'parameters': query_service.tool_schema(),
+                'func': universal_odoo_query,
+            }]
+
         def search_checkout_orders(keyword='', personal=False):
             """Search DTS-C checkout orders by keyword."""
             records = self._search_orders(keyword or '', actor, limit=10, personal=personal)
@@ -267,7 +316,9 @@ class AiAssistantService(models.AbstractModel):
             }
             return json.dumps(detail, ensure_ascii=False)
 
-        return [
+        # Legacy fixed checkout tools are intentionally retained for rollback,
+        # but no longer registered. The AI assistant is internal-only.
+        legacy_tool_specs = [
             {
                 'name': 'search_checkout_orders',
                 'description': (
@@ -313,6 +364,7 @@ class AiAssistantService(models.AbstractModel):
                 'func': get_checkout_order_detail,
             },
         ]
+        return []
 
     def execute_gateway_tool(self, tool_name, arguments, context):
         user_id = int((context or {}).get('user_id') or self.env.uid)
@@ -321,16 +373,42 @@ class AiAssistantService(models.AbstractModel):
         actor = service.env['dtsc.ai.assistant.scope'].resolve_actor(
             custom_partner_id=custom_partner_id
         )
-        arguments = arguments or {}
-        _logger.info(
-            "AI assistant gateway tool callback: tool=%s user_id=%s actor_type=%s "
-            "partner_id=%s arguments=%s",
-            tool_name,
-            user_id,
-            actor.get('actor_type'),
-            actor.get('partner_id') or '',
-            json.dumps(arguments, ensure_ascii=False)[:500],
-        )
+        raw_arguments = arguments
+        arguments = arguments if isinstance(arguments, dict) else {}
+        allowed_tool_names = self._tool_names_for_actor(actor)
+        if tool_name == 'universal_odoo_query':
+            _logger.info(
+                "AI assistant gateway tool callback: tool=%s user_id=%s actor_type=%s "
+                "operation=%s model=%s",
+                tool_name,
+                user_id,
+                actor.get('actor_type'),
+                self._safe_log_label(arguments.get('operation'), 40),
+                self._safe_log_label(arguments.get('model'), 128),
+            )
+        else:
+            _logger.info(
+                "AI assistant gateway tool callback: tool=%s user_id=%s actor_type=%s "
+                "partner_id=%s arguments=%s",
+                tool_name,
+                user_id,
+                actor.get('actor_type'),
+                actor.get('partner_id') or '',
+                json.dumps(arguments, ensure_ascii=False)[:500],
+            )
+        if tool_name not in allowed_tool_names:
+            return {
+                'records': [],
+                'detail': {},
+                'query_type': 'universal_error' if tool_name == 'universal_odoo_query' else 'none',
+                'ok': False,
+                'error': {
+                    'code': 'tool_not_allowed',
+                    'message': '目前身份不能使用此工具。',
+                },
+            }
+        if tool_name == 'universal_odoo_query':
+            return service.env['dtsc.ai.universal.query'].execute(raw_arguments, actor=actor)
         if tool_name == 'search_checkout_orders':
             raw_keyword = arguments.get('keyword') or ''
             original_message = (context or {}).get('message') or ''
@@ -402,6 +480,41 @@ class AiAssistantService(models.AbstractModel):
             'query_type': query_type,
         }
 
+    def _collect_gateway_results(self, tool_results, fallback=None):
+        results = []
+        for item in tool_results or []:
+            result = item.get('result') if isinstance(item, dict) else None
+            if isinstance(result, dict) and result.get('query_type'):
+                results.append(result)
+        if not results:
+            return fallback or self._empty_result()
+        universal_results = [
+            result for result in results
+            if (result.get('query_type') or '').startswith('universal_')
+        ]
+        if len(universal_results) <= 1:
+            return results[-1]
+        selected = universal_results[-8:]
+        last = selected[-1]
+        return {
+            # The Agent may correct an invalid discover/describe/query call in
+            # the same turn.  Session status follows the final usable result,
+            # while retaining whether an earlier attempt failed for debugging.
+            'ok': last.get('ok', True),
+            'had_intermediate_errors': any(
+                result.get('ok') is False for result in selected[:-1]
+            ),
+            'query_type': 'universal_multi',
+            'operation': last.get('operation') or '',
+            'model': last.get('model') or '',
+            'records': last.get('records') or [],
+            'groups': last.get('groups') or [],
+            'detail': last.get('detail') or {},
+            'results': selected,
+            'result_count': len(selected),
+            'results_truncated': len(universal_results) > len(selected),
+        }
+
     @staticmethod
     def _configuration_missing_answer():
         return (
@@ -426,7 +539,11 @@ class AiAssistantService(models.AbstractModel):
             return 'missing_dependency'
         if mode not in ('ai', 'local'):
             return 'error'
+        if local_result.get('ok') is False or local_result.get('query_type') == 'universal_error':
+            return 'error'
         if local_result.get('query_type') in ('list', 'detail') and not local_result.get('records'):
+            return 'no_data'
+        if local_result.get('query_type') == 'universal_search' and not local_result.get('records'):
             return 'no_data'
         return 'success'
 
@@ -473,6 +590,30 @@ class AiAssistantService(models.AbstractModel):
 
     def _format_local_answer(self, question, result, actor):
         scope_text = self._answer_scope_text(actor)
+        query_type = result.get('query_type') or ''
+        if query_type.startswith('universal_'):
+            if result.get('ok') is False:
+                return '%s查詢未執行：%s' % (
+                    scope_text,
+                    (result.get('error') or {}).get('message') or '查詢參數不正確。',
+                )
+            if result.get('groups'):
+                return '%s已完成聚合查詢，返回 %s 組結果。' % (
+                    scope_text, len(result['groups'])
+                )
+            if result.get('records'):
+                return '%s已完成明細查詢，返回 %s 筆結果。' % (
+                    scope_text, len(result['records'])
+                )
+            if result.get('models'):
+                return '%s找到 %s 個相關資料模型。' % (
+                    scope_text, len(result['models'])
+                )
+            if result.get('fields'):
+                return '%s已取得 %s 個可查詢欄位說明。' % (
+                    scope_text, len(result['fields'])
+                )
+            return '%s查詢完成，但沒有符合條件的資料。' % scope_text
         records = result.get('records') or []
         if not records:
             return '%s沒有找到符合條件的大圖訂單。' % scope_text
@@ -559,14 +700,38 @@ class AiAssistantService(models.AbstractModel):
         if actor_type == 'portal_partner':
             return '查詢範圍：商城會員「%s」可查看的大圖訂單。' % display_name
         if actor_type == 'admin':
-            return '查詢範圍：系統管理員「%s」權限可查看的大圖訂單。' % display_name
+            return '查詢範圍：系統管理員「%s」權限可查看的印刷訂單系統資料。' % display_name
         if actor_type == 'internal':
-            return '查詢範圍：內部使用者「%s」權限可查看的大圖訂單。' % display_name
+            return '查詢範圍：內部使用者「%s」權限可查看的印刷訂單系統資料。' % display_name
         return '目前尚未登入。'
 
     def _system_prompt(self, actor=None):
         actor = actor or {}
         identity_text = self._context_label(actor) if actor else ''
+        if actor.get('actor_type') in ('admin', 'internal'):
+            today = fields.Date.context_today(self)
+            return (
+                '你是 Odoo 16 印刷訂單系統唯讀查詢助手。回答使用繁體中文，簡短清楚。'
+                '%s目前使用者當地日期是 %s；「今年、本月、上半年、最近幾個月」等相對日期都必須以此日期換算成明確邊界。'
+                '所有業務資料只能透過 universal_odoo_query 查詢，不可編造模型、欄位或結果。'
+                '不知道資料來源時先用 discover，接著用 describe 確認欄位，再使用 search、aggregate '
+                '或 count_distinct；同一輪可以多次呼叫工具比較時段或模型。filters 是隱式 AND。'
+                '統計大圖訂單的進單數量或月份時，未另行指定口徑就使用 dtsc.checkout.create_date；'
+                'estimated_date 是目前排定或選擇的發貨時間：未生成 S 時用於大圖訂單超期未出貨判斷，'
+                '生成 S 時會同步成 dtsc.deliveryorder.delivery_date；它本身不代表已完成出貨。'
+                'A/F/E/M/D 都是 dtsc.checkout 的大圖訂單類型；M 是被合併的非目標 A 單，產品行會移入目標單，'
+                '並由行上的 origin_checkout_id 保留原母單。B/C/G/T 分別是 dtsc.makein、'
+                'dtsc.makeout、dtsc.makeom、dtsc.installproduct，透過 checkout_id 關聯母單。'
+                '產品行製作方式 make_in 或 make_om 會進 B，make_out 會進 C，make_om 也會進 G，is_install=true 會進 T；'
+                'B/C/G 生產需求會跳過 can_be_expensed=true 的產品行。make_om 因此同時形成 B 與 G 需求；需求統計允許重疊。'
+                '單一工單模型的母單數可用 checkout_id 做 count_distinct；跨 B/G 等多模型的母單聯集不可把各模型的 distinct '
+                '結果相加，工具無法取得完整聯集時必須明說不能精確計算。B/C/G/T 的有效單據統計預設排除 install_state=cancel。'
+                'S 是 dtsc.deliveryorder，透過 checkout_ids 關聯一張或多張母單，不是大圖訂單狀態；有效 S 統計預設排除 '
+                'install_state=cancel，因為作廢 S 仍可能保留 checkout_ids 歷史關係，目前有效單號可再核對 checkout.delivery_order。'
+                '大圖訂單逾期與出貨單逾期必須分別按各自單據口徑。'
+                '不可自行猜測未定義的毛利、成本、完成或逾期口徑。只允許查詢，不允許修改、刪除、付款、'
+                '上傳、建立資料、執行 Server Action、Python 或 SQL。'
+            ) % (identity_text or '', fields.Date.to_string(today))
         return (
             '你是 Odoo 16 大圖訂單查詢助手。'
             '只能使用提供的工具查詢訂單資料，不能編造資料。'
@@ -582,6 +747,8 @@ class AiAssistantService(models.AbstractModel):
 
     @staticmethod
     def _tool_names_for_result(result):
+        if (result.get('query_type') or '').startswith('universal_'):
+            return ['scope_resolver', 'universal_odoo_query']
         if result.get('query_type') == 'detail':
             return ['scope_resolver', 'get_checkout_order_detail']
         if result.get('query_type') == 'list':
@@ -589,3 +756,45 @@ class AiAssistantService(models.AbstractModel):
         if result.get('query_type') == 'none':
             return []
         return ['scope_resolver', 'search_checkout_orders']
+
+    @staticmethod
+    def _session_result_json(result, max_chars=10000):
+        """Keep persisted debug data valid JSON while applying a hard size cap."""
+        payload = json.loads(json.dumps(result or {}, ensure_ascii=False, default=str))
+
+        def find_lists(value, found):
+            if isinstance(value, list):
+                if value:
+                    found.append(value)
+                for item in value:
+                    find_lists(item, found)
+            elif isinstance(value, dict):
+                for item in value.values():
+                    find_lists(item, found)
+
+        encoded = json.dumps(payload, ensure_ascii=False)
+        while len(encoded) > max_chars:
+            candidates = []
+            find_lists(payload, candidates)
+            if not candidates:
+                payload = {
+                    'query_type': payload.get('query_type') or 'none',
+                    'response_truncated': True,
+                }
+                break
+            max(candidates, key=len).pop()
+            payload['response_truncated'] = True
+            encoded = json.dumps(payload, ensure_ascii=False)
+        return json.dumps(payload, ensure_ascii=False)
+
+    @staticmethod
+    def _safe_log_label(value, limit):
+        return re.sub(r'[\r\n\t]+', ' ', str(value or ''))[:limit]
+
+    @staticmethod
+    def _tool_names_for_actor(actor):
+        if actor.get('actor_type') in ('admin', 'internal'):
+            return {'universal_odoo_query'}
+        # Legacy external callback allowlist is disabled; fixed-tool code is retained.
+        # return {'search_checkout_orders', 'get_checkout_order_detail'}
+        return set()

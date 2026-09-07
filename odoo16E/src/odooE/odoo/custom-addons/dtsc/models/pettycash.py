@@ -101,6 +101,7 @@ class PettyCash(models.Model):
         
 class PettyManager(models.Model):
     _name = 'dtsc.pettymanager'
+    _order = "create_date desc"
     
     name = fields.Char("名字",store=True,compute="_compute_name")
     report_year = fields.Many2one("dtsc.year",string="年份",store=True)

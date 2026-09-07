@@ -6,7 +6,7 @@
     'author': '大圖輸出',
     'website': 'https://www.dtsc.com',
     'category': 'Productivity',
-    'version': '16.0.1.0.0',
+    'version': '16.0.1.0.1',
     'depends': ['base', 'web', 'website', 'dtsc', 'dtsc_ai_gateway'],
     'data': [
         'security/ir.model.access.csv',

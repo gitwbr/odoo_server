@@ -14,6 +14,7 @@ access_dtsc_makeom,dtsc.makeom,model_dtsc_makeom,dtsc.group_dtsc_bs,1,1,0,0
 access_dtsc_makeomline,dtsc.makeomline,model_dtsc_makeomline,dtsc.group_dtsc_bs,1,1,0,0
 access_dtsc_installproduct,dtsc.installproduct,model_dtsc_installproduct,dtsc.group_dtsc_bs,1,0,0,0
 access_dtsc_installproductline,dtsc.installproductline,model_dtsc_installproductline,dtsc.group_dtsc_bs,1,0,0,0
+access_dtsc_warninglogs,dtsc.warninglogs,model_dtsc_warninglogs,dtsc.group_dtsc_bs,1,1,1,1
 access_dtsc_imagelist,dtsc.imagelist,model_dtsc_imagelist,dtsc.group_dtsc_bs,1,1,1,1
 access_dtsc_mpr,dtsc.mpr,model_dtsc_mpr,dtsc.group_dtsc_bs,1,1,0,0
 access_dtsc_mprline,dtsc.mprline,model_dtsc_mprline,dtsc.group_dtsc_bs,1,1,0,0
@@ -109,6 +110,7 @@ access_dtsc_interoperate,dtsc.interoperate,model_dtsc_interoperate,dtsc.group_dt
 access_dtsc_healthinsurancewithfamily,dtsc.healthinsurancewithfamily,model_dtsc_healthinsurancewithfamily,dtsc.group_dtsc_bs,1,1,1,1
 access_dtsc_line_reply_pending,dtsc.line_reply_pending,model_dtsc_line_reply_pending,dtsc.group_dtsc_bs,1,1,1,1
 access_dtsc_normalsettings,dtsc.normalsettings,model_dtsc_normalsettings,dtsc.group_dtsc_bs,1,1,1,1
+access_dtsc_workordercostsettings,dtsc.workordercostsettings,model_dtsc_workordercostsettings,dtsc.group_dtsc_bs,1,1,1,1
 access_dtsc_ai_check_log,dtsc.ai.check.log,model_dtsc_ai_check_log,base.group_user,1,0,0,0
 access_dtsc_customer_upload_notice,dtsc.customer.upload.notice,model_dtsc_customer_upload_notice,dtsc.group_dtsc_bs,1,1,1,0
 access_dtsc_customer_upload_notice_settings,dtsc.customer.upload.notice.settings,model_dtsc_customer_upload_notice_settings,dtsc.group_dtsc_gly,1,1,1,1
@@ -118,3 +120,10 @@ access_dtsc_overview_dashboard_sc,dtsc.overview.dashboard,model_dtsc_overview_da
 access_dtsc_overview_dashboard_kj,dtsc.overview.dashboard,model_dtsc_overview_dashboard,dtsc.group_dtsc_kj,1,0,0,0
 access_dtsc_overview_dashboard_cg,dtsc.overview.dashboard,model_dtsc_overview_dashboard,dtsc.group_dtsc_cg,1,0,0,0
 access_dtsc_overview_dashboard_gly,dtsc.overview.dashboard,model_dtsc_overview_dashboard,dtsc.group_dtsc_gly,1,0,0,0
+access_dtsc_asset_category_gly,dtsc.asset.category,model_dtsc_asset_category,dtsc.group_dtsc_gly,1,1,1,1
+access_dtsc_asset_gly,dtsc.asset,model_dtsc_asset,dtsc.group_dtsc_gly,1,1,1,1
+access_dtsc_asset_usage_gly,dtsc.asset.usage,model_dtsc_asset_usage,dtsc.group_dtsc_gly,1,1,1,1
+access_dtsc_asset_usage_dashboard_gly,dtsc.asset.usage.dashboard,model_dtsc_asset_usage_dashboard,dtsc.group_dtsc_gly,1,0,0,0
+access_dtsc_asset_category_bs,dtsc.asset.category,model_dtsc_asset_category,dtsc.group_dtsc_bs,1,0,0,0
+access_dtsc_asset_bs,dtsc.asset,model_dtsc_asset,dtsc.group_dtsc_bs,1,0,0,0
+access_dtsc_asset_usage_bs,dtsc.asset.usage,model_dtsc_asset_usage,dtsc.group_dtsc_bs,1,0,0,0

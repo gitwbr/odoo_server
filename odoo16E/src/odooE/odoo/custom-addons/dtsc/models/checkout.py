@@ -121,12 +121,15 @@ class yingShouDate(models.TransientModel):
                 )
             )
         
-        for customer_id, records in customer_groups.items():
-            self.env['dtsc.checkout']._create_invoice_for_customer(records,self.selected_date)
-        
-        for record in records:
-            sale_order = self.env["sale.order"].browse(record.sale_order_id.id)
-            sale_order.write({"invoice_status":"invoiced"}) 
+        all_converted = self.env['dtsc.checkout']
+        for customer_id, cust_records in customer_groups.items():
+            converted = self.env['dtsc.checkout']._create_invoice_for_customer(cust_records, self.selected_date)
+            all_converted |= converted
+
+        # 所有已轉應收的訂單都要回寫 sale.order（原先誤用最後一個客戶分組的 records）
+        sale_orders = all_converted.mapped('sale_order_id').filtered(lambda so: so)
+        if sale_orders:
+            sale_orders.write({"invoice_status": "invoiced"})
 
     
 class YourWizard(models.TransientModel):
@@ -807,7 +810,7 @@ class Checkout(models.Model):
                 record.is_current_user = (record.user_id.id == self.env.uid)
     
     
-    @api.depends("comment","comment_factory","customer_id","product_ids.project_product_name","project_name","product_ids.product_id","product_ids.product_atts","product_ids.multi_chose_ids","product_ids.comment","product_ids.product_width","product_ids.product_height","product_ids.machine_id")
+    @api.depends("comment","comment_factory","customer_id","customer_id.name","product_ids.project_product_name","project_name","product_ids.product_id","product_ids.product_id.name","product_ids.product_atts","product_ids.multi_chose_ids","product_ids.comment","product_ids.product_width","product_ids.product_height","product_ids.machine_id","product_ids.machine_id.name")
     def _compute_search_line_project_product_name(self):
         for record in self:
             names = [line.project_product_name for line in record.product_ids if line.project_product_name]
@@ -1010,7 +1013,7 @@ class Checkout(models.Model):
             line_copy_vals['checkout_product_id'] = new_record.id  # 设置新的父记录ID
             line_copy_vals['make_orderid'] = "" 
             if self.hebing_type == "1":
-                line_copy_vals['recheck_id_name'] = str(self.origin_checkout_name) + "-" + str(line.sequence)   
+                line_copy_vals['recheck_id_name'] = str(line.origin_checkout_name or self.name) + "-" + str(line.sequence)
             else:
                 line_copy_vals['recheck_id_name'] = str(self.name) + "-" + str(line.sequence)   
             line_copy_vals.pop('flag', None)
@@ -1133,7 +1136,12 @@ class Checkout(models.Model):
       
     def _create_invoice_for_customer(self, records,selected_date):
         # 在这里实现为特定客户创建应收账单的逻辑
-        customer_id = records[0].customer_id.id
+        # records 可能是 list[singleton]，統一成 recordset 方便 prefetch / 批量 write
+        checkout_rs = self.browse([r.id for r in records])
+        if not checkout_rs:
+            return checkout_rs
+
+        customer_id = checkout_rs[0].customer_id.id
         Invoice = self.env['account.move']
         InvoiceLine = self.env['account.move.line']
         Bill_invoice = self.env['dtsc.billinvoice']
@@ -1142,10 +1150,10 @@ class Checkout(models.Model):
         
         pay_mode = None
         pay_type = None
-        if records[0].customer_id.custom_pay_mode:
-            pay_mode = records[0].customer_id.custom_pay_mode
-        if records[0].customer_id.property_payment_term_id:
-            pay_type = records[0].customer_id.property_payment_term_id.id
+        if checkout_rs[0].customer_id.custom_pay_mode:
+            pay_mode = checkout_rs[0].customer_id.custom_pay_mode
+        if checkout_rs[0].customer_id.property_payment_term_id:
+            pay_type = checkout_rs[0].customer_id.property_payment_term_id.id
 
         invoice = Invoice.create({
             'partner_id': customer_id,
@@ -1153,10 +1161,11 @@ class Checkout(models.Model):
             'pay_type':pay_type,
             'move_type': 'out_invoice',
             'invoice_date': selected_date,
-            'is_online': records[0].is_online,
+            'is_online': checkout_rs[0].is_online,
         })
 
-        vat_mode = records[0].customer_id.custom_invoice_form
+        vat_mode = checkout_rs[0].customer_id.custom_invoice_form
+        bill_invoice = False
         if vat_mode in [ "21" , "22"] or self.is_online == True:
             bill_invoice = Bill_invoice.create({
                 'partner_id' : customer_id,
@@ -1169,8 +1178,23 @@ class Checkout(models.Model):
         
         
         # taxprice = 0 
-        # totalprice = 0           
-        for record in records:
+        # totalprice = 0
+        # prefetch 關聯，減少循環內 ORM 查詢
+        checkout_rs.mapped('product_ids.product_atts')
+        checkout_rs.mapped('installproduct_ids')
+
+        # 預先查好 product.template -> product.product，避免每行 search
+        tmpl_ids = checkout_rs.mapped('product_ids.product_id').ids
+        product_by_tmpl = {}
+        if tmpl_ids:
+            for pp in self.env['product.product'].search([('product_tmpl_id', 'in', tmpl_ids)]):
+                # 與原先 limit=1 行為一致：同一模板取第一筆
+                product_by_tmpl.setdefault(pp.product_tmpl_id.id, pp)
+
+        line_vals_list = []
+        install_to_invoice = self.env['dtsc.installproduct']
+
+        for record in checkout_rs:
             
             
             
@@ -1185,7 +1209,7 @@ class Checkout(models.Model):
             for install_line in record.installproduct_ids:
                 if install_line.install_state == "cancel":
                     continue
-                invoice_line = InvoiceLine.create({
+                line_vals_list.append({
                     'move_id' : invoice.id,
                     'checkoutline_id' : False,
                     'checkout_id' : record.id,
@@ -1206,13 +1230,16 @@ class Checkout(models.Model):
                     "currency_id": 135,        #台幣
                     "tax_ids" : tax_ids,
                     })
-                install_line.is_invoice = True
-                install_line.invoice_id = invoice.id
+                install_to_invoice |= install_line
             
             
             
             for line in record.product_ids:  
-                product_product_id = self.env['product.product'].search([('product_tmpl_id',"=",line.product_id.id)],limit=1)
+                product_product = product_by_tmpl.get(line.product_id.id)
+                if not product_product:
+                    # 與原 search(..., limit=1) 一致；找不到時保持原行為（.id 會報錯）
+                    product_product = self.env['product.product'].search([('product_tmpl_id',"=",line.product_id.id)],limit=1)
+                    product_by_tmpl[line.product_id.id] = product_product
                 
                 attributes = []        
                 if line.machine_id:
@@ -1252,7 +1279,7 @@ class Checkout(models.Model):
                     size_value = line.product_width +"X" +line.product_height + "("+ str(line.total_units) +")"
                 
 
-                invoice_line = InvoiceLine.create({
+                line_vals_list.append({
                     'move_id' : invoice.id,
                     'checkoutline_id' : line.id,
                     'checkout_id' : record.id,
@@ -1272,7 +1299,7 @@ class Checkout(models.Model):
                     'product_width' : line.product_width,                  #寬
                     'product_height' : line.product_height,                #高
                     # 'machine_id' : record.machine_id.id,                     #生產機臺
-                    'product_id' : product_product_id.id,                      #產品在PRODUCT.PRODUCT中的id
+                    'product_id' : product_product.id,                      #產品在PRODUCT.PRODUCT中的id
                     # 'multi_chose_ids' : record.multi_chose_ids,              #後加工名稱
                     # 'comment' : record.comment,                              #訂單備注
                     # 'sequence' : str(sequence_number),                       #訂單順序
@@ -1286,6 +1313,16 @@ class Checkout(models.Model):
             # record.checkout_order_state = "receivable_assigned"
             # record.invoice_origin = invoice.id
         
+        # 一次批量建立明細：會計同步/平衡檢查只跑一遍（核心性能優化）
+        if line_vals_list:
+            InvoiceLine.create(line_vals_list)
+
+        if install_to_invoice:
+            install_to_invoice.write({
+                'is_invoice': True,
+                'invoice_id': invoice.id,
+            })
+
         if vat_mode in [ "21" , "22"] or self.is_online == True:
             Bill_invoice_line.create({
                 "billinvoice_id" : bill_invoice.id,
@@ -1295,10 +1332,16 @@ class Checkout(models.Model):
                 "saleprice" : saleprice,    
             })   
             
-        for record in records:
-            print(record.name)
-            record.checkout_order_state = "receivable_assigned"
-            record.invoice_origin = invoice.id
+        # for record in records:
+            # print(record.name)
+            # record.checkout_order_state = "receivable_assigned"
+            # record.invoice_origin = invoice.id
+        # 批量回寫狀態（仍會逐單寫 history，但遠輕於會計行重算）
+        checkout_rs.write({
+            'checkout_order_state': 'receivable_assigned',
+            'invoice_origin': invoice.id,
+        })
+        return checkout_rs
     
     #轉應收選時間
     @api.model
@@ -1396,6 +1439,9 @@ class Checkout(models.Model):
         
         target_record = min(records, key=lambda r: r.id)
         other_records = records - target_record
+        # 合併前先鎖定主單價格，避免明細掛入主單時觸發價格重算
+        if not target_record.lock_price:
+            target_record.lock_price = True
         target_record.hebing_type = "1"
         name_list = []
         for record in other_records:
@@ -1438,39 +1484,42 @@ class Checkout(models.Model):
             raise UserError('只有當所有勾選的內容的狀態為“完成”時才能執行此操作。')
         
         for record in records:
-            make_in_flag = 0
-            make_out_flag = 0
-            only_expensed = True #仅仅只有委内服物
-            for line in record.product_ids:
-                if line.is_purchse == "make_in":
-                    if line.product_id.can_be_expensed != True:
-                        only_expensed = False  
-                    make_in_flag = 1
-                elif line.is_purchse == "make_out":
-                    make_out_flag = 1
-            
-            if make_in_flag == 1:
-                if only_expensed == False:#含有非服务项次才会检查工单
+            # 合併主單：合併時已要求各原單 finished + 已發貨，工單已在原單階段檢查過，
+            # 合併後明細來自多張原單，不應再按主單號查 B/C 工單
+            if record.hebing_type != '1':
+                make_in_flag = 0
+                make_out_flag = 0
+                only_expensed = True #仅仅只有委内服物
+                for line in record.product_ids:
+                    if line.is_purchse == "make_in":
+                        if line.product_id.can_be_expensed != True:
+                            only_expensed = False  
+                        make_in_flag = 1
+                    elif line.is_purchse == "make_out":
+                        make_out_flag = 1
+                
+                if make_in_flag == 1:
+                    if only_expensed == False:#含有非服务项次才会检查工单
+                        if record.name.startswith('E') or record.name.startswith('F'):
+                            obj = self.env["dtsc.makein"].search([('name' , "=" ,record.name)],limit=1)
+                        else:
+                            obj = self.env["dtsc.makein"].search([('name' , "=" ,record.name.replace("A","B"))],limit=1)
+                        if obj:
+                            if obj.install_state != "stock_in":
+                                raise UserError('内部工單還未完成！')
+                        else:
+                            raise UserError('内部工單還未生成！')
+                
+                if make_out_flag == 1:
                     if record.name.startswith('E') or record.name.startswith('F'):
-                        obj = self.env["dtsc.makein"].search([('name' , "=" ,record.name)],limit=1)
+                        obj = self.env["dtsc.makeout"].search([('name' , "=" ,record.name)],limit=1)
                     else:
-                        obj = self.env["dtsc.makein"].search([('name' , "=" ,record.name.replace("A","B"))],limit=1)
+                        obj = self.env["dtsc.makeout"].search([('name' , "=" ,record.name.replace("A","C"))],limit=1)
                     if obj:
-                        if obj.install_state != "stock_in":
-                            raise UserError('内部工單還未完成！')
+                        if obj.install_state != "succ":
+                            raise UserError('委外工單還未完成！')
                     else:
-                        raise UserError('内部工單還未生成！')
-            
-            if make_out_flag == 1:
-                if record.name.startswith('E') or record.name.startswith('F'):
-                    obj = self.env["dtsc.makeout"].search([('name' , "=" ,record.name)],limit=1)
-                else:
-                    obj = self.env["dtsc.makeout"].search([('name' , "=" ,record.name.replace("A","C"))],limit=1)
-                if obj:
-                    if obj.install_state != "succ":
-                        raise UserError('委外工單還未完成！')
-                else:
-                    raise UserError('委外工單還未生成！')
+                        raise UserError('委外工單還未生成！')
         
         
             if record.is_delivery == True:
@@ -2242,40 +2291,43 @@ class Checkout(models.Model):
     #出貨單
     def deliveryorder(self):
         install_name = self.name.replace("A","S").replace("E","S").replace("F","S")
-        make_in_flag = 0
-        make_out_flag = 0
-        only_expensed = True #仅仅只有委内服物
-        for record in self.product_ids:
-            if record.is_purchse == "make_in":
-                if record.product_id.can_be_expensed != True:
-                    only_expensed = False 
-                make_in_flag = 1
-            elif record.is_purchse == "make_out":
-                make_out_flag = 1
-        
-        if make_in_flag == 1:
-            if only_expensed == False:#含有非服务项次才会检查工单
+        # 合併主單：合併時已要求各原單 finished + 已發貨，工單已在原單階段檢查過，
+        # 合併後明細來自多張原單，不應再按主單號查 B/C 工單
+        if self.hebing_type != '1':
+            make_in_flag = 0
+            make_out_flag = 0
+            only_expensed = True #仅仅只有委内服物
+            for record in self.product_ids:
+                if record.is_purchse == "make_in":
+                    if record.product_id.can_be_expensed != True:
+                        only_expensed = False 
+                    make_in_flag = 1
+                elif record.is_purchse == "make_out":
+                    make_out_flag = 1
+            
+            if make_in_flag == 1:
+                if only_expensed == False:#含有非服务项次才会检查工单
+                    if self.name.startswith('E') or self.name.startswith('F'):
+                        obj = self.env["dtsc.makein"].search([('name' , "=" ,self.name)],limit=1)
+                    else:
+                        obj = self.env["dtsc.makein"].search([('name' , "=" ,self.name.replace("A","B"))],limit=1)
+                        
+                    if obj:
+                        if obj.install_state != "stock_in":
+                            raise UserError('内部工單還未完成！')
+                    else:
+                        raise UserError('内部工單還未生成！')
+            
+            if make_out_flag == 1:
                 if self.name.startswith('E') or self.name.startswith('F'):
-                    obj = self.env["dtsc.makein"].search([('name' , "=" ,self.name)],limit=1)
+                    obj = self.env["dtsc.makeout"].search([('name' , "=" ,self.name)],limit=1)
                 else:
-                    obj = self.env["dtsc.makein"].search([('name' , "=" ,self.name.replace("A","B"))],limit=1)
-                    
+                    obj = self.env["dtsc.makeout"].search([('name' , "=" ,self.name.replace("A","C"))],limit=1)
                 if obj:
-                    if obj.install_state != "stock_in":
-                        raise UserError('内部工單還未完成！')
+                    if obj.install_state != "succ":
+                        raise UserError('委外工單還未完成！')
                 else:
-                    raise UserError('内部工單還未生成！')
-        
-        if make_out_flag == 1:
-            if self.name.startswith('E') or self.name.startswith('F'):
-                obj = self.env["dtsc.makeout"].search([('name' , "=" ,self.name)],limit=1)
-            else:
-                obj = self.env["dtsc.makeout"].search([('name' , "=" ,self.name.replace("A","C"))],limit=1)
-            if obj:
-                if obj.install_state != "succ":
-                    raise UserError('委外工單還未完成！')
-            else:
-                raise UserError('委外工單還未生成！')
+                    raise UserError('委外工單還未生成！')
         
         if not self.estimated_date:
             raise UserError('請先選擇預計發貨日期！')
@@ -3146,18 +3198,28 @@ class CheckOutLine(models.Model):
         if locked_price_fields.intersection(vals) and any(line.checkout_product_id.lock_price for line in self):
             raise UserError("此訂單已鎖定價格，無法修改價格相關欄位。")
 
+        cut_svg_fields = {
+            'cut_source_image', 'cut_svg_file', 'cut_svg_filename', 'cut_svg_preview_html',
+            'cut_svg_json', 'cut_svg_gpt_raw', 'cut_svg_debug', 'cut_svg_state', 'cut_svg_error',
+            'cut_svg_generated_at', 'cut_svg_mode', 'cut_svg_model',
+        }
+
         if self.checkout_product_id.checkout_order_state in ["receivable_assigned"]:
-            allowed_fields = {'small_image_new','small_image',"is_selected"}
-            disallowed = set(vals.keys()) - allowed_fields
+            allowed_fields = {'small_image_new','small_image',"is_selected"} | cut_svg_fields
+            disallowed = set(vals.keys()) - allowed_fields - {'__last_update'}
             if disallowed:
                 raise UserError("此訂單已轉應收，無法修改任何内容。")
             
         if user not in group_dtsc_gly.users and user in group_dtsc_mg.users:
             if self.checkout_product_id.is_delivery:
-                allowed_fields = {'small_image_new','small_image','checkout_product_id','origin_checkout_id','delivery_order','price', 'is_install','product_total_price', 'units_price', 'total_make_price', 'peijian_price',"is_selected","sale_order_line_id","project_product_name","same_material","jijiamoshi"}
-                disallowed = set(vals.keys()) - allowed_fields
+                allowed_fields = {'small_image_new','small_image','checkout_product_id','origin_checkout_id','delivery_order','price', 'is_install','product_total_price', 'units_price', 'total_make_price', 'peijian_price',"is_selected","sale_order_line_id","project_product_name","same_material","jijiamoshi"} | cut_svg_fields
+                # __last_update 為前端並發檢查欄位，不算業務修改
+                disallowed = set(vals.keys()) - allowed_fields - {'__last_update'}
                 if disallowed:
-                    raise UserError("此訂單已出貨，僅允許修改價格相關欄位。")
+                    raise UserError(
+                        "此訂單已出貨，僅允許修改價格相關欄位。不允許修改：%s"
+                        % ', '.join(sorted(disallowed))
+                    )
         return super().write(vals)
         
     ####权限

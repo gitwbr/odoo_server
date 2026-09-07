@@ -115,9 +115,8 @@
                                     <td>Tel：<span t-field="company.phone" /> Fax：<span t-field="company.fax" /></td>
                                 </tr>
                                 <tr>
-									<t t-if="doc.is_new_partner"><td>客戶名稱： <span t-field="doc.new_partner" /></td></t>
-									<t t-else="1"><td>客戶名稱： <span t-field="doc.customer_id.name" /></td></t>
-									<!-- <td>客戶名稱:<span t-field="doc.customer_id.name" /></td> -->
+									<t t-if="doc.is_new_partner"><td style="width:380px;">客戶名稱： <span t-field="doc.new_partner" /></td></t>
+									<t t-else="1"><td style="width:380px;">客戶名稱： <span t-field="doc.customer_id.name" /></td></t>
 									
 									<t t-if="doc.is_new_partner"><td>統一編號： <span t-field="doc.new_vat" /></td></t>
 									<t t-else="1"><td>統一編號： <span t-field="doc.customer_id.vat" /></td></t>
@@ -178,13 +177,21 @@
 
 								<div class="col text-center" style="flex: 1;">小計</div>
 							</div>	
-							<t t-set="row_count" t-value="0"/>
+							<t t-set="page_used" t-value="0"/>
+							<t t-set="page_cap" t-value="10"/>
 							<t t-foreach="doc.product_ids" t-as="order">
 								<!-- 本條是否有成本行（算入行數） -->
 								<t t-set="has_chengben" t-value="doc.checkout_order_type == 'd' and not doc.is_sign and doc.checkout_order_state == 'waiting_confirmation' and (order.crm_chengben_comment or (order.crm_chengben or 0) != 0)"/>
-								<t t-set="row_count_after" t-value="row_count + 1 + (1 if has_chengben else 0)"/>
-								<!-- 换页后（累计13、29、45…行之后）先输出表头 -->
-								<t t-if="row_count == 11 or ((row_count - 11) % 14 == 0 and row_count &gt; 11)">
+								<t t-set="rows_needed" t-value="1 + (1 if has_chengben else 0)"/>
+								<!-- 按本頁已用行數判斷：首頁最多10，之後每頁14；提前換頁也不會讓下頁多塞行 -->
+								<t t-set="do_break" t-value="page_used &gt; 0 and (page_used + rows_needed) &gt; page_cap"/>
+								<t t-if="do_break">
+									<div style="page-break-before:always;"></div>
+									<t t-set="page_used" t-value="0"/>
+									<t t-set="page_cap" t-value="14"/>
+								</t>
+								<!-- 換頁後先輸出表頭（首頁表頭已在迴圈外） -->
+								<t t-if="do_break">
 									<div class="row" style="border-bottom: 2px solid black; margin-bottom:10px;">
 										<div class="col text-center" style="flex: 1;">項</div>
 										<div class="col text-center" style="flex: 4;">製作内容</div>
@@ -309,11 +316,7 @@
 										</t>
 									</t>
 								</t>
-								<!-- 第一页 13 行后换页，之后每 16 行换页（行数含成本行） -->
-								<t t-if="row_count_after == 11 or ((row_count_after - 11) % 14 == 0 and row_count_after &gt; 11)">
-									<div style="page-break-after:always;"></div>
-								</t>
-								<t t-set="row_count" t-value="row_count_after"/>
+								<t t-set="page_used" t-value="page_used + rows_needed"/>
 							</t>
 							<t t-if="doc.checkout_order_type == 'a'">
 								<div class="row" style="border-bottom: 1px solid lightgray; margin-bottom: 10px;">
@@ -546,21 +549,59 @@
 							</div>
 							</div>
 						</t>
-						<!-- 附件：按項次列印圖片（緊接正文下方，寫滿才換頁；模板內直接判斷有圖與否，不依賴 doc_has_product_images 避免生產環境未傳入報錯） -->
+						<!-- 附件：沿用明細 page_used/page_cap，估算末頁剩餘空間；滿則換頁後每頁固定 6 張 -->
 						<t t-set="show_attachment_images" t-value="any(p.small_image_new for p in doc.product_ids)"/>
 						<t t-if="show_attachment_images">
+							<!-- 末頁已被合計/備註/簽章佔用的「細節列單位」估算（與明細 92px 列同尺度） -->
+							<t t-set="footer_cost" t-value="3"/>
+							<t t-if="doc.checkout_order_type == 'a'">
+								<t t-if="doc.construction_charge_price &gt; 0">
+									<t t-set="footer_cost" t-value="footer_cost + 1"/>
+								</t>
+							</t>
+							<t t-else="">
+								<t t-if="doc.construction_charge_price_crm &gt; 0">
+									<t t-set="footer_cost" t-value="footer_cost + 1"/>
+								</t>
+							</t>
+							<t t-set="footer_cost" t-value="footer_cost + 1"/>
+							<t t-set="comment_count" t-value="len(data['comments']) if data and data.get('comments') else 0"/>
+							<t t-set="footer_cost" t-value="footer_cost + ((comment_count + 1) // 2)"/>
+							<t t-if="doc.is_sign">
+								<t t-set="footer_cost" t-value="footer_cost + 3"/>
+							</t>
+							<t t-set="footer_cost" t-value="footer_cost + 1"/>
+							<!-- 1 張圖約佔 2 個細節列單位；整頁最多 6 張 -->
+							<t t-set="img_per_page" t-value="6"/>
+							<t t-set="slots_left" t-value="page_cap - page_used - footer_cost"/>
+							<t t-set="img_cap" t-value="slots_left // 2 if slots_left &gt; 0 else 0"/>
+							<t t-if="img_cap &gt; img_per_page">
+								<t t-set="img_cap" t-value="img_per_page"/>
+							</t>
+							<t t-set="img_used" t-value="0"/>
+							<!-- 末頁連一張都放不下：整塊附件另起一頁 -->
+							<t t-if="img_cap &lt;= 0">
+								<div style="page-break-before:always;"></div>
+								<t t-set="img_cap" t-value="img_per_page"/>
+							</t>
 							<div style="margin-top: 15px;">
 								<div class="row" style="border-bottom: 2px solid black; margin-bottom: 10px;">
 									<div class="col-12" style="font-weight: bold;">附件：項次對應圖片</div>
 								</div>
 								<t t-foreach="doc.product_ids" t-as="order">
 									<t t-if="order.small_image_new">
-										<div class="row" style="border-bottom: 1px solid lightgray; margin-bottom: 10px; min-height: 130px; padding-bottom: 8px; display: flex; align-items: flex-start;">
+										<t t-if="img_used &gt;= img_cap">
+											<div style="page-break-before:always;"></div>
+											<t t-set="img_used" t-value="0"/>
+											<t t-set="img_cap" t-value="img_per_page"/>
+										</t>
+										<div class="row" style="border-bottom: 1px solid lightgray; margin-bottom: 10px; height: 130px; min-height: 130px; max-height: 130px; padding-bottom: 8px; overflow: hidden; display: flex; align-items: flex-start;">
 											<div class="col text-center" style="flex: 0 0 80px; padding-top: 8px;"><span t-field="order.sequence"/></div>
 											<div class="col text-center" style="flex: 1; max-height: 120px; overflow: hidden;">
 												<img t-att-src="image_data_uri(order.small_image_new)" style="max-width: 120px; max-height: 120px; width: auto; height: auto; object-fit: contain; display: block; margin: 0 auto;"/>
 											</div>
 										</div>
+										<t t-set="img_used" t-value="img_used + 1"/>
 									</t>
 								</t>
 							</div>
@@ -730,9 +771,8 @@
                                     <td>Tel：<span t-field="company.phone" /> Fax：<span t-field="company.fax" /></td>
                                 </tr>
                                 <tr>
-									<t t-if="doc.is_new_partner"><td>客戶名稱： <span t-field="doc.new_partner" /></td></t>
-									<t t-else="1"><td>客戶名稱： <span t-field="doc.customer_id.name" /></td></t>
-									<!-- <td>客戶名稱:<span t-field="doc.customer_id.name" /></td> -->
+									<t t-if="doc.is_new_partner"><td style="width:380px;">客戶名稱： <span t-field="doc.new_partner" /></td></t>
+									<t t-else="1"><td style="width:380px;">客戶名稱： <span t-field="doc.customer_id.name" /></td></t>
 									
 									<t t-if="doc.is_new_partner"><td>統一編號： <span t-field="doc.new_vat" /></td></t>
 									<t t-else="1"><td>統一編號： <span t-field="doc.customer_id.vat" /></td></t>
@@ -793,13 +833,21 @@
 
 								<div class="col text-center" style="flex: 1;">小計</div>
 							</div>	
-							<t t-set="row_count" t-value="0"/>
+							<t t-set="page_used" t-value="0"/>
+							<t t-set="page_cap" t-value="10"/>
 							<t t-foreach="doc.product_ids" t-as="order">
 								<!-- 本條是否有成本行（算入行數） -->
 								<t t-set="has_chengben" t-value="doc.checkout_order_type == 'd' and not doc.is_sign and doc.checkout_order_state == 'waiting_confirmation' and (order.crm_chengben_comment or (order.crm_chengben or 0) != 0)"/>
-								<t t-set="row_count_after" t-value="row_count + 1 + (1 if has_chengben else 0)"/>
-								<!-- 换页后（累计13、29、45…行之后）先输出表头 -->
-								<t t-if="row_count == 11 or ((row_count - 11) % 14 == 0 and row_count &gt; 11)">
+								<t t-set="rows_needed" t-value="1 + (1 if has_chengben else 0)"/>
+								<!-- 按本頁已用行數判斷：首頁最多10，之後每頁14；提前換頁也不會讓下頁多塞行 -->
+								<t t-set="do_break" t-value="page_used &gt; 0 and (page_used + rows_needed) &gt; page_cap"/>
+								<t t-if="do_break">
+									<div style="page-break-before:always;"></div>
+									<t t-set="page_used" t-value="0"/>
+									<t t-set="page_cap" t-value="14"/>
+								</t>
+								<!-- 換頁後先輸出表頭（首頁表頭已在迴圈外） -->
+								<t t-if="do_break">
 									<div class="row" style="border-bottom: 2px solid black; margin-bottom:10px;">
 										<div class="col text-center" style="flex: 1;">項</div>
 										<div class="col text-center" style="flex: 4;">製作内容</div>
@@ -924,11 +972,7 @@
 										</t>
 									</t>
 								</t>
-								<!-- 第一页 13 行后换页，之后每 16 行换页（行数含成本行） -->
-								<t t-if="row_count_after == 11 or ((row_count_after - 11) % 14 == 0 and row_count_after &gt; 11)">
-									<div style="page-break-after:always;"></div>
-								</t>
-								<t t-set="row_count" t-value="row_count_after"/>
+								<t t-set="page_used" t-value="page_used + rows_needed"/>
 							</t>
 							<t t-if="doc.checkout_order_type == 'a'">
 								<div class="row" style="border-bottom: 1px solid lightgray; margin-bottom: 10px;">
@@ -1094,21 +1138,53 @@
 						</div>
 
 
-						<!-- 附件：按項次列印圖片（緊接正文下方，寫滿才換頁；模板內直接判斷有圖與否，不依賴 doc_has_product_images 避免生產環境未傳入報錯） -->
+						<!-- 附件：沿用明細 page_used/page_cap，估算末頁剩餘空間；滿則換頁後每頁固定 6 張（此模板無簽章區塊） -->
 						<t t-set="show_attachment_images" t-value="any(p.small_image_new for p in doc.product_ids)"/>
 						<t t-if="show_attachment_images">
+							<t t-set="footer_cost" t-value="3"/>
+							<t t-if="doc.checkout_order_type == 'a'">
+								<t t-if="doc.construction_charge_price &gt; 0">
+									<t t-set="footer_cost" t-value="footer_cost + 1"/>
+								</t>
+							</t>
+							<t t-else="">
+								<t t-if="doc.construction_charge_price_crm &gt; 0">
+									<t t-set="footer_cost" t-value="footer_cost + 1"/>
+								</t>
+							</t>
+							<t t-set="footer_cost" t-value="footer_cost + 1"/>
+							<t t-set="comment_count" t-value="len(data['comments']) if data and data.get('comments') else 0"/>
+							<t t-set="footer_cost" t-value="footer_cost + ((comment_count + 1) // 2)"/>
+							<t t-set="footer_cost" t-value="footer_cost + 1"/>
+							<t t-set="img_per_page" t-value="6"/>
+							<t t-set="slots_left" t-value="page_cap - page_used - footer_cost"/>
+							<t t-set="img_cap" t-value="slots_left // 2 if slots_left &gt; 0 else 0"/>
+							<t t-if="img_cap &gt; img_per_page">
+								<t t-set="img_cap" t-value="img_per_page"/>
+							</t>
+							<t t-set="img_used" t-value="0"/>
+							<t t-if="img_cap &lt;= 0">
+								<div style="page-break-before:always;"></div>
+								<t t-set="img_cap" t-value="img_per_page"/>
+							</t>
 							<div style="margin-top: 15px;">
 								<div class="row" style="border-bottom: 2px solid black; margin-bottom: 10px;">
 									<div class="col-12" style="font-weight: bold;">附件：項次對應圖片</div>
 								</div>
 								<t t-foreach="doc.product_ids" t-as="order">
 									<t t-if="order.small_image_new">
-										<div class="row" style="border-bottom: 1px solid lightgray; margin-bottom: 10px; min-height: 130px; padding-bottom: 8px; display: flex; align-items: flex-start;">
+										<t t-if="img_used &gt;= img_cap">
+											<div style="page-break-before:always;"></div>
+											<t t-set="img_used" t-value="0"/>
+											<t t-set="img_cap" t-value="img_per_page"/>
+										</t>
+										<div class="row" style="border-bottom: 1px solid lightgray; margin-bottom: 10px; height: 130px; min-height: 130px; max-height: 130px; padding-bottom: 8px; overflow: hidden; display: flex; align-items: flex-start;">
 											<div class="col text-center" style="flex: 0 0 80px; padding-top: 8px;"><span t-field="order.sequence"/></div>
 											<div class="col text-center" style="flex: 1; max-height: 120px; overflow: hidden;">
 												<img t-att-src="image_data_uri(order.small_image_new)" style="max-width: 120px; max-height: 120px; width: auto; height: auto; object-fit: contain; display: block; margin: 0 auto;"/>
 											</div>
 										</div>
+										<t t-set="img_used" t-value="img_used + 1"/>
 									</t>
 								</t>
 							</div>

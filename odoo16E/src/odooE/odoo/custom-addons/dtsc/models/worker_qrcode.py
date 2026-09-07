@@ -27,7 +27,7 @@ class WorkTime(models.Model):
     name = fields.Char("員工姓名")
     workqrcode_id = fields.Many2one('dtsc.workqrcode',string="員工姓名")
     checkout_id = fields.Many2one("dtsc.checkout",string="大圖訂單")
-    checkoutline_id = fields.Many2one("dtsc.checkoutline",string="大圖訂單項次")
+    checkoutline_id = fields.Many2one("dtsc.checkoutline",string="大圖訂單項次", index=True)
     machine_id = fields.Many2one("dtsc.machineprice", string="機台", related="checkoutline_id.machine_id", store=True, readonly=True)
     partner_id = fields.Many2one("res.partner" , string="客戶" , related="checkout_id.customer_id", store=True) 
     sell_user = fields.Many2one("res.users" , string="銷售" , related="checkout_id.user_id", store=True) 

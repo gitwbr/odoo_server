@@ -47,3 +47,5 @@ from . import ai_check_log
 from . import customer_upload_notice
 from . import overview_dashboard
 from . import website_nav_patch
+from . import cut_svg
+from . import asset

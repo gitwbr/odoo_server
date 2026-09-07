@@ -1,0 +1,222 @@
+.o_dtsc_asset_usage_dashboard {
+  --asset-usage-border: #d9e2ec;
+  --asset-usage-bg: #f7fafc;
+  --asset-usage-accent: #178994;
+  --asset-usage-text: #243b53;
+  color: var(--asset-usage-text);
+  font-size: 14px;
+}
+
+.o_dtsc_asset_usage_header {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-end;
+  margin-bottom: 16px;
+}
+
+.o_dtsc_asset_usage_header h1 {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.o_dtsc_asset_usage_header p {
+  margin: 4px 0 0;
+  color: #627d98;
+}
+
+.o_dtsc_asset_usage_body {
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  gap: 16px;
+  min-height: 560px;
+}
+
+.o_dtsc_asset_usage_aside {
+  background: #fff;
+  border: 1px solid var(--asset-usage-border);
+  border-radius: 10px;
+  padding: 12px;
+  overflow: auto;
+}
+
+.o_dtsc_asset_usage_aside_title {
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  color: #829ab1;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+}
+
+.o_dtsc_asset_usage_tree {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.o_dtsc_asset_usage_tree_item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  padding: 8px 10px;
+  border-radius: 8px;
+  color: inherit;
+  cursor: pointer;
+}
+
+.o_dtsc_asset_usage_tree_item:hover {
+  background: var(--asset-usage-bg);
+}
+
+.o_dtsc_asset_usage_tree_item.is-active {
+  background: rgba(23, 137, 148, 0.12);
+  color: var(--asset-usage-accent);
+  font-weight: 600;
+}
+
+.o_dtsc_asset_usage_tree_cat {
+  font-weight: 600;
+}
+
+.o_dtsc_asset_usage_tree_asset {
+  padding-left: 22px;
+  font-size: 13px;
+}
+
+.o_dtsc_asset_usage_main {
+  background: #fff;
+  border: 1px solid var(--asset-usage-border);
+  border-radius: 10px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.o_dtsc_asset_usage_toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.o_dtsc_asset_usage_dates {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.o_dtsc_asset_usage_dates input[type="date"] {
+  border: 1px solid var(--asset-usage-border);
+  border-radius: 6px;
+  padding: 4px 8px;
+}
+
+.o_dtsc_asset_usage_dates a {
+  border: 1px solid var(--asset-usage-border);
+  background: #fff;
+  border-radius: 6px;
+  padding: 4px 10px;
+  cursor: pointer;
+  text-decoration: none;
+  color: inherit;
+}
+
+.o_dtsc_asset_usage_dates a.primary {
+  background: var(--asset-usage-accent);
+  border-color: var(--asset-usage-accent);
+  color: #fff;
+}
+
+.o_dtsc_asset_usage_cards {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.o_dtsc_asset_usage_card {
+  background: var(--asset-usage-bg);
+  border-radius: 10px;
+  padding: 12px 14px;
+}
+
+.o_dtsc_asset_usage_card small {
+  color: #829ab1;
+}
+
+.o_dtsc_asset_usage_card strong {
+  display: block;
+  margin-top: 4px;
+  font-size: 20px;
+}
+
+.o_dtsc_asset_usage_table_wrap {
+  overflow: auto;
+  border: 1px solid var(--asset-usage-border);
+  border-radius: 8px;
+}
+
+.o_dtsc_asset_usage_table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 760px;
+}
+
+.o_dtsc_asset_usage_table th,
+.o_dtsc_asset_usage_table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--asset-usage-border);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.o_dtsc_asset_usage_table th {
+  background: var(--asset-usage-bg);
+  font-weight: 600;
+  font-size: 12px;
+  color: #627d98;
+}
+
+.o_dtsc_asset_usage_empty {
+  text-align: center !important;
+  color: #829ab1;
+  padding: 28px 12px !important;
+}
+
+.o_dtsc_asset_usage_badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.o_dtsc_asset_usage_badge.is-using {
+  background: #ffe8cc;
+  color: #b44d12;
+}
+
+.o_dtsc_asset_usage_badge.is-idle,
+.o_dtsc_asset_usage_badge.is-done {
+  background: #e3f8f0;
+  color: #0c6b58;
+}
+
+@media (max-width: 960px) {
+  .o_dtsc_asset_usage_body {
+    grid-template-columns: 1fr;
+  }
+
+  .o_dtsc_asset_usage_cards {
+    grid-template-columns: 1fr;
+  }
+}

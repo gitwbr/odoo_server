@@ -150,7 +150,17 @@ class Imagelist(models.Model):
             'type': 'ir.actions.client',
             'tag': 'reload',  # 刷新当前视图
         }
-
+        
+class WarningLogs(models.Model):
+    _name = 'dtsc.warninglogs'
+    
+    install_id = fields.Many2one("dtsc.installproduct")
+    
+    warning_name = fields.Char("問題描述")
+    warning_company = fields.Char("責任單位")
+    warning_money = fields.Integer("損失金額")
+    warning_logs = fields.Text("改善措施")
+    
 class Installproduct(models.Model):
     _name = 'dtsc.installproduct'
     _order = "create_date desc"
@@ -214,6 +224,9 @@ class Installproduct(models.Model):
     invoice_id = fields.Many2one("account.move")
     is_invoice = fields.Boolean(default=False)
     search_line_name = fields.Char(compute="_compute_search_line_name", store=True)
+    install_date = fields.Datetime(string='施工日期')
+    install_worker = fields.Char(string='施工人員')
+    warning_logs_ids = fields.One2many('dtsc.warninglogs', 'install_id', string='異常記錄') 
     
     
     # def write(self, vals):
@@ -225,7 +238,7 @@ class Installproduct(models.Model):
 
         # return super(Installproduct, self).write(vals)
             
-    @api.depends("install_product_ids.name","install_product_ids.size","install_product_ids.caizhi","install_product_ids.install_note","install_product_ids.gongdan","name","custom_init_name","project_name")
+    @api.depends("install_product_ids.name","install_product_ids.name.name","install_product_ids.size","install_product_ids.caizhi","install_product_ids.install_note","install_product_ids.gongdan","name","checkout_id.customer_id.custom_init_name","checkout_id.project_name")
     def _compute_search_line_name(self):
         for record in self:
             name = [line.name.name for line in record.install_product_ids if line.name.name]

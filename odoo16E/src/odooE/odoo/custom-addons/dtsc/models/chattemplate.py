@@ -320,6 +320,7 @@ class CheckOutLine(models.Model):
 class DtscYear(models.Model):
     _name = 'dtsc.year'
     _description = 'Year'
+    _order = 'name desc'
 
     name = fields.Char(string="Year")
 

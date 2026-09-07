@@ -738,6 +738,8 @@ class LineBotController(http.Controller):
                         self.send_leave_flex(user_id, leave_key)
                     else:
                         self.reply_to_line(user_id, "❌ 找不到你的綁定資料，請先綁定。")
+                elif text.strip() in ("資產使用", "资产使用"):
+                    self.handle_asset_usage_entry(user_id)
                 elif text.startswith("綁定"):
                     print("in bangding")
                     employee_raw = text.split("綁定")[1].strip()
@@ -1294,6 +1296,16 @@ class LineBotController(http.Controller):
                     
                     else:
                         self.reply_to_line(user_id, "無效的補卡，請重試。")
+                elif params.get("action") == "asset_cat" and params.get("id"):
+                    self.send_asset_list_flex(user_id, int(params["id"]))
+                elif params.get("action") == "asset_pick" and params.get("id"):
+                    self.send_asset_action_flex(user_id, int(params["id"]))
+                elif params.get("action") == "asset_start" and params.get("id"):
+                    self.handle_asset_start(user_id, int(params["id"]))
+                elif params.get("action") == "asset_end" and params.get("id"):
+                    self.handle_asset_end(user_id, int(params["id"]))
+                elif params.get("action") == "asset_back_cats":
+                    self.send_asset_category_flex(user_id)
 
         return json.dumps({"status": "ok"})
 
@@ -1372,7 +1384,364 @@ class LineBotController(http.Controller):
             "messages": [{"type": "text", "text": message}]
         }
         requests.post("https://api.line.me/v2/bot/message/push", headers=headers, json=data)
-        
+    
+
+
+
+    def _get_bound_employee(self, user_id):
+        return request.env["dtsc.workqrcode"].sudo().search([("line_user_id", "=", user_id)], limit=1)
+
+    def _push_line_messages(self, user_id, messages):
+        lineObj = request.env["dtsc.linebot"].sudo().search([("linebot_type", "=", "for_worker")], limit=1)
+        if not lineObj or not lineObj.line_access_token:
+            return False
+        headers = {
+            "Authorization": f"Bearer {lineObj.line_access_token}",
+            "Content-Type": "application/json",
+        }
+        requests.post(
+            "https://api.line.me/v2/bot/message/push",
+            headers=headers,
+            json={"to": user_id, "messages": messages},
+        )
+        return True
+
+    def handle_asset_usage_entry(self, user_id):
+        employee = self._get_bound_employee(user_id)
+        if not employee:
+            self.reply_to_line(user_id, "❌ 找不到你的綁定資料，請先輸入「綁定+員工姓名」。")
+            return
+        self.send_asset_category_flex(user_id)
+
+    def send_asset_category_flex(self, user_id):
+        categories = request.env["dtsc.asset.category"].sudo().search([
+            ("active", "=", True),
+        ], order="sequence, id")
+        if not categories:
+            self.reply_to_line(user_id, "目前沒有可用的資產類別，請先在後台建立。")
+            return
+
+        bubbles = []
+        chunk = []
+        for cat in categories:
+            chunk.append(cat)
+            if len(chunk) >= 8:
+                bubbles.append(self._build_asset_category_bubble(chunk))
+                chunk = []
+        if chunk:
+            bubbles.append(self._build_asset_category_bubble(chunk))
+
+        contents = bubbles[0] if len(bubbles) == 1 else {"type": "carousel", "contents": bubbles[:10]}
+        self._push_line_messages(user_id, [{
+            "type": "flex",
+            "altText": "請選擇資產類別",
+            "contents": contents,
+        }])
+
+    def _build_asset_category_bubble(self, categories):
+        buttons = []
+        for cat in categories:
+            buttons.append({
+                "type": "button",
+                "style": "primary",
+                "height": "sm",
+                "margin": "md",
+                "action": {
+                    "type": "postback",
+                    "label": (cat.name or "未命名")[:20],
+                    "data": f"action=asset_cat&id={cat.id}",
+                    "displayText": f"選擇類別：{cat.name}",
+                },
+            })
+        return {
+            "type": "bubble",
+            "body": {
+                "type": "box",
+                "layout": "vertical",
+                "contents": [
+                    {
+                        "type": "text",
+                        "text": "選擇資產類別",
+                        "weight": "bold",
+                        "size": "lg",
+                        "align": "center",
+                    },
+                    {
+                        "type": "text",
+                        "text": "請選擇要使用的類別",
+                        "size": "sm",
+                        "color": "#888888",
+                        "align": "center",
+                        "margin": "md",
+                    },
+                ] + buttons,
+            },
+        }
+
+    def send_asset_list_flex(self, user_id, category_id):
+        employee = self._get_bound_employee(user_id)
+        if not employee:
+            self.reply_to_line(user_id, "❌ 找不到你的綁定資料，請先綁定。")
+            return
+
+        category = request.env["dtsc.asset.category"].sudo().browse(category_id)
+        if not category.exists() or not category.active:
+            self.reply_to_line(user_id, "找不到此類別，或類別已停用。")
+            return
+
+        assets = request.env["dtsc.asset"].sudo().search([
+            ("category_id", "=", category.id),
+            ("active", "=", True),
+        ], order="sequence, id")
+        if not assets:
+            self.reply_to_line(user_id, f"類別「{category.name}」下目前沒有可用資產。")
+            return
+
+        bubbles = []
+        chunk = []
+        for asset in assets:
+            chunk.append(asset)
+            if len(chunk) >= 6:
+                bubbles.append(self._build_asset_list_bubble(category, chunk))
+                chunk = []
+        if chunk:
+            bubbles.append(self._build_asset_list_bubble(category, chunk))
+
+        contents = bubbles[0] if len(bubbles) == 1 else {"type": "carousel", "contents": bubbles[:10]}
+        self._push_line_messages(user_id, [{
+            "type": "flex",
+            "altText": f"請選擇資產（{category.name}）",
+            "contents": contents,
+        }])
+
+    def _build_asset_list_bubble(self, category, assets):
+        rows = [{
+            "type": "text",
+            "text": f"類別：{category.name}",
+            "weight": "bold",
+            "size": "lg",
+            "align": "center",
+        }, {
+            "type": "text",
+            "text": "請選擇資產（含目前狀態）",
+            "size": "sm",
+            "color": "#888888",
+            "align": "center",
+            "margin": "md",
+        }]
+        for asset in assets:
+            if asset.usage_state == "using":
+                status_text = f"使用中 · {asset.current_user_name or '他人'}"
+                status_color = "#B44D12"
+            else:
+                status_text = "空閑中"
+                status_color = "#0C6B58"
+            rows.extend([
+                {
+                    "type": "text",
+                    "text": asset.name or "未命名資產",
+                    "weight": "bold",
+                    "size": "md",
+                    "margin": "lg",
+                },
+                {
+                    "type": "text",
+                    "text": status_text,
+                    "size": "sm",
+                    "color": status_color,
+                    "margin": "xs",
+                },
+                {
+                    "type": "button",
+                    "style": "secondary",
+                    "height": "sm",
+                    "margin": "sm",
+                    "action": {
+                        "type": "postback",
+                        "label": "選擇此資產",
+                        "data": f"action=asset_pick&id={asset.id}",
+                        "displayText": f"選擇資產：{asset.name}",
+                    },
+                },
+            ])
+        rows.append({
+            "type": "button",
+            "style": "link",
+            "height": "sm",
+            "margin": "lg",
+            "action": {
+                "type": "postback",
+                "label": "返回類別",
+                "data": "action=asset_back_cats",
+                "displayText": "返回類別",
+            },
+        })
+        return {
+            "type": "bubble",
+            "body": {
+                "type": "box",
+                "layout": "vertical",
+                "contents": rows,
+            },
+        }
+
+    def send_asset_action_flex(self, user_id, asset_id):
+        employee = self._get_bound_employee(user_id)
+        if not employee:
+            self.reply_to_line(user_id, "❌ 找不到你的綁定資料，請先綁定。")
+            return
+
+        asset = request.env["dtsc.asset"].sudo().browse(asset_id)
+        if not asset.exists() or not asset.active:
+            self.reply_to_line(user_id, "找不到此資產，或資產已停用。")
+            return
+
+        if asset.usage_state == "using":
+            status_text = f"使用中 · {asset.current_user_name or '他人'}"
+            status_color = "#B44D12"
+        else:
+            status_text = "空閑中"
+            status_color = "#0C6B58"
+
+        my_using = request.env["dtsc.asset.usage"].sudo().search([
+            ("asset_id", "=", asset.id),
+            ("employee_id", "=", employee.id),
+            ("state", "=", "using"),
+        ], limit=1)
+
+        buttons = []
+        if asset.usage_state != "using":
+            buttons.append({
+                "type": "button",
+                "style": "primary",
+                "height": "sm",
+                "action": {
+                    "type": "postback",
+                    "label": "開始使用",
+                    "data": f"action=asset_start&id={asset.id}",
+                    "displayText": f"開始使用：{asset.name}",
+                },
+            })
+        if my_using:
+            buttons.append({
+                "type": "button",
+                "style": "primary",
+                "color": "#B44D12",
+                "height": "sm",
+                "margin": "md",
+                "action": {
+                    "type": "postback",
+                    "label": "結束使用",
+                    "data": f"action=asset_end&id={asset.id}",
+                    "displayText": f"結束使用：{asset.name}",
+                },
+            })
+        if not buttons:
+            buttons.append({
+                "type": "text",
+                "text": "此資產目前被他人使用中，暫不可操作。",
+                "size": "sm",
+                "color": "#888888",
+                "wrap": True,
+                "margin": "md",
+            })
+
+        buttons.append({
+            "type": "button",
+            "style": "link",
+            "height": "sm",
+            "margin": "lg",
+            "action": {
+                "type": "postback",
+                "label": "返回此類別資產",
+                "data": f"action=asset_cat&id={asset.category_id.id}",
+                "displayText": "返回資產列表",
+            },
+        })
+
+        flex_message = {
+            "type": "flex",
+            "altText": f"資產操作：{asset.name}",
+            "contents": {
+                "type": "bubble",
+                "body": {
+                    "type": "box",
+                    "layout": "vertical",
+                    "contents": [
+                        {
+                            "type": "text",
+                            "text": asset.name or "資產",
+                            "weight": "bold",
+                            "size": "lg",
+                            "align": "center",
+                        },
+                        {
+                            "type": "text",
+                            "text": f"類別：{asset.category_id.name or '-'}",
+                            "size": "sm",
+                            "color": "#888888",
+                            "align": "center",
+                            "margin": "md",
+                        },
+                        {
+                            "type": "text",
+                            "text": status_text,
+                            "size": "md",
+                            "color": status_color,
+                            "align": "center",
+                            "margin": "md",
+                            "weight": "bold",
+                        },
+                    ] + buttons,
+                },
+            },
+        }
+        self._push_line_messages(user_id, [flex_message])
+
+    def handle_asset_start(self, user_id, asset_id):
+        from odoo.exceptions import UserError
+        employee = self._get_bound_employee(user_id)
+        if not employee:
+            self.reply_to_line(user_id, "❌ 找不到你的綁定資料，請先綁定。")
+            return
+        try:
+            usage = request.env["dtsc.asset.usage"].sudo().start_usage(
+                asset_id, employee.id, line_user_id=user_id
+            )
+            asset_name = usage.asset_id.name or ""
+            self.reply_to_line(user_id, f"✅ 已開始使用「{asset_name}」。")
+            self.send_asset_action_flex(user_id, asset_id)
+        except UserError as exc:
+            self.reply_to_line(user_id, f"❌ {exc.args[0] if exc.args else str(exc)}")
+        except Exception:
+            _logger.exception("asset start failed")
+            self.reply_to_line(user_id, "❌ 開始使用失敗，請稍後再試。")
+
+    def handle_asset_end(self, user_id, asset_id):
+        from odoo.exceptions import UserError
+        employee = self._get_bound_employee(user_id)
+        if not employee:
+            self.reply_to_line(user_id, "❌ 找不到你的綁定資料，請先綁定。")
+            return
+        try:
+            usage = request.env["dtsc.asset.usage"].sudo().end_usage(asset_id, employee.id)
+            asset_name = usage.asset_id.name or ""
+            duration = usage.duration_display or "0分"
+            self.reply_to_line(
+                user_id,
+                f"✅ 已結束使用「{asset_name}」。\n本次時長：{duration}",
+            )
+            self.send_asset_action_flex(user_id, asset_id)
+        except UserError as exc:
+            self.reply_to_line(user_id, f"❌ {exc.args[0] if exc.args else str(exc)}")
+        except Exception:
+            _logger.exception("asset end failed")
+            self.reply_to_line(user_id, "❌ 結束使用失敗，請稍後再試。")
+
+
+
+
+    
     def create_or_get_temp_leave_record(self, user_id):
         """ 根據user_id，10分鐘內重複請假共用同一個草稿，否則新建 """
         employee = request.env["dtsc.workqrcode"].sudo().search([('line_user_id', '=', user_id)], limit=1)

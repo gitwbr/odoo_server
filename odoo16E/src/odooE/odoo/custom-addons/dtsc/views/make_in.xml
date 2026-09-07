@@ -17,6 +17,10 @@
                 <field name="delivery_method" readonly="1"/>
                 <field name="total_size" string="總才數" readonly="1"/>
 				
+                <field name="material_cost" string="物料成本" readonly="1" sum="合計" groups="dtsc.group_dtsc_gly"/>
+                <field name="ink_cost" string="墨水成本" readonly="1" sum="合計" groups="dtsc.group_dtsc_gly"/>
+                <field name="labor_cost" string="人力成本" readonly="1" sum="合計" groups="dtsc.group_dtsc_gly"/>
+                <field name="total_cost" string="整單總成本" readonly="1" sum="合計" groups="dtsc.group_dtsc_gly"/>
                 <field name="install_state" readonly="1"/>
             </tree>
         </field>
@@ -132,6 +136,10 @@
 									<field name="lengbiao" readonly="1"/>
 									<field name="quantity" readonly="1"/>
 									<field name="total_size" readonly="1"/>
+									<field name="sale_price" readonly="1" sum="合計" groups="dtsc.group_dtsc_gly"/>
+									<field name="material_cost" readonly="1" sum="合計" groups="dtsc.group_dtsc_gly"/>
+									<field name="ink_cost" readonly="1" sum="合計" groups="dtsc.group_dtsc_gly"/>
+									<field name="labor_cost" readonly="1" sum="合計" groups="dtsc.group_dtsc_gly"/>
 									<field name="outman" options="{'no_create': True, 'no_create_edit': True}" attrs="{'column_invisible': [('parent.is_open_makein_qrcode', '=', True)],'readonly': [('parent.is_in_by_sc', '=', False)]}" />
                                     <field name="barcode"  />
                                     <field name="recheck_id_name" attrs="{'column_invisible': [('parent.is_recheck', '!=', True)]}" />
@@ -146,27 +154,33 @@
 									<field name="production_size" readonly="1"/>									
 									<!-- <field name="meigong" options="{'no_create': True, 'no_create_edit': True}" attrs="{'readonly': [('parent.is_in_by_sc', '=', False)]}" /> -->
 									<field name="outman" options="{'no_create': True, 'no_create_edit': True}" attrs="{'readonly': [('parent.is_in_by_sc', '=', False)]}" />
-									
+									<field name="sc_work_minutes" string="工時" attrs="{'readonly': ['&amp;', ('parent.is_in_by_sc', '=', False), ('parent.is_in_by_gly', '=', False)]}"/>
 									<field name="lengbiao_sign" attrs="{'readonly': [('parent.is_in_by_gly', '=', False)]}" />
+									<field name="lb_work_minutes" string="工時" attrs="{'readonly': ['&amp;', ('parent.is_in_by_sc', '=', False), ('parent.is_in_by_gly', '=', False)]}"/>
 									<button name="clean_lengbiao" string="刪冷裱" confirm="確定要清空此項内容嗎？" type="object" class="btn-primary" groups="dtsc.group_dtsc_gly" /> 						
 									
 									<field name="guoban_sign" attrs="{'readonly': [('parent.is_in_by_gly', '=', False)]}" />
+									<field name="gb_work_minutes" string="工時" attrs="{'readonly': ['&amp;', ('parent.is_in_by_sc', '=', False), ('parent.is_in_by_gly', '=', False)]}"/>
 									<button name="clean_guoban" string="刪過板" confirm="確定要清空此項内容嗎？" type="object" class="btn-primary" groups="dtsc.group_dtsc_gly" /> 						
 									
 									<field name="caiqie_sign" attrs="{'readonly': [('parent.is_in_by_gly', '=', False)]}" />
+									<field name="cq_work_minutes" string="工時" attrs="{'readonly': ['&amp;', ('parent.is_in_by_sc', '=', False), ('parent.is_in_by_gly', '=', False)]}"/>
 									<button name="clean_caiqie" string="刪裁切" confirm="確定要清空此項内容嗎？" type="object" class="btn-primary" groups="dtsc.group_dtsc_gly" /> 						
 									
 									<field name="houzhi_sign" attrs="{'readonly': [('parent.is_in_by_gly', '=', False)]}" />
+									<field name="hz_work_minutes" string="工時" attrs="{'readonly': ['&amp;', ('parent.is_in_by_sc', '=', False), ('parent.is_in_by_gly', '=', False)]}"/>
 									<button name="clean_houzhi" string="刪後製" confirm="確定要清空此項内容嗎？" type="object" class="btn-primary" groups="dtsc.group_dtsc_gly" /> 						
 									
 									<field name="pinguan_sign" attrs="{'readonly': [('parent.is_in_by_gly', '=', False)]}" />
+									<field name="pg_work_minutes" string="工時" attrs="{'readonly': ['&amp;', ('parent.is_in_by_sc', '=', False), ('parent.is_in_by_gly', '=', False)]}"/>
 									<button name="clean_pinguan" string="刪品管" confirm="確定要清空此項内容嗎？" type="object" class="btn-primary" groups="dtsc.group_dtsc_gly" /> 						
 									
 									<field name="daichuhuo_sign" attrs="{'readonly': [('parent.is_in_by_gly', '=', False)]}" />
+									<field name="dch_work_minutes" string="工時" attrs="{'readonly': ['&amp;', ('parent.is_in_by_sc', '=', False), ('parent.is_in_by_gly', '=', False)]}"/>
 									<button name="clean_daichuhuo" string="刪完成包裝" confirm="確定要清空此項内容嗎？" type="object" class="btn-primary" groups="dtsc.group_dtsc_gly" /> 						
 									
 									<field name="yichuhuo_sign"  attrs="{'readonly': [('parent.is_in_by_gly', '=', False)]}"/>
-									<button name="clean_yichuhuo" string="刪已出貨" confirm="確定要清空此項内容嗎？" type="object" class="btn-primary" groups="dtsc.group_dtsc_gly" /> 						
+									<button name="clean_yichuhuo" string="刪已出貨" confirm="確定要清空此項内容嗎？" type="object" class="btn-primary" groups="dtsc.group_dtsc_gly" /> 	
 									<!-- <field name="is_disable" /> -->
 
 								</tree>
@@ -190,6 +204,10 @@
 								<group colspan="3">
 									<field name="total_quantity" readonly="1"/>
 									<field name="total_size" readonly="1"/>
+									<field name="material_cost" readonly="1" groups="dtsc.group_dtsc_gly"/>
+									<field name="ink_cost" readonly="1" groups="dtsc.group_dtsc_gly"/>
+									<field name="labor_cost" readonly="1" groups="dtsc.group_dtsc_gly"/>
+									<field name="total_cost" readonly="1" groups="dtsc.group_dtsc_gly"/>
 								</group>
 							</group>
 							
@@ -253,6 +271,9 @@
                 <filter name="出貨日-本月" string="出貨日-本月" domain="[('date_labels.name', '=', '出貨日-本月')]"/>
                 <filter name="出貨日-前月" string="出貨日-前月" domain="[('date_labels.name', '=', '出貨日-前月')]"/>
                 <!-- <filter name="出貨日-其他" string="出貨日-其他" domain="[('date_labels.name', '=', '出貨日-其他')]"/> -->
+
+				<separator/>
+				<filter string="客戶名稱" name="group_by_customer_name" context="{'group_by': 'customer_partner_id'}"/>
                        
 			</search>
 		</field>		

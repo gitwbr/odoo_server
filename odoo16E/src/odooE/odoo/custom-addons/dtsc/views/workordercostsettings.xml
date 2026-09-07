@@ -1,0 +1,23 @@
+<odoo>
+    <record id="view_workordercostsettings_tree" model="ir.ui.view">
+        <field name="name">dtsc.workordercostsettings.tree</field>
+        <field name="model">dtsc.workordercostsettings</field>
+        <field name="arch" type="xml">
+            <tree create="false" delete="false" editable="bottom">
+                <field name="key" string="名稱"/>
+                <field name="value" string="值"/>
+            </tree>
+        </field>
+    </record>
+
+    <data noupdate="1">
+        <record id="workorder_cost_unit_labor" model="dtsc.workordercostsettings">
+            <field name="key">單位人工</field>
+            <field name="value">0.1</field>
+        </record>
+        <record id="workorder_cost_ink_per_cai" model="dtsc.workordercostsettings">
+            <field name="key">每才墨水成本</field>
+            <field name="value">0.1</field>
+        </record>
+    </data>
+</odoo>

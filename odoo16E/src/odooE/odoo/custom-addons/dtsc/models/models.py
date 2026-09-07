@@ -33,6 +33,24 @@ class NormalSettings(models.Model):
     
     key = fields.Char(string = "名稱") 
     value = fields.Char(string = "值") 
+
+class WorkOrderCostSettings(models.Model):
+    _name = "dtsc.workordercostsettings"
+    _description = "工單成本核算設定"
+
+    key = fields.Char(string="名稱", required=True, readonly=True)
+    value = fields.Float(string="值", digits=(16, 4))
+
+    _sql_constraints = [
+        ('key_uniq', 'unique(key)', '設定名稱必須唯一！'),
+    ]
+
+    @api.model
+    def get_cost_value(self, key, default=0.0):
+        rec = self.search([('key', '=', key)], limit=1)
+        return rec.value if rec else default
+
+
     
 class UoMCategory(models.Model):
     _inherit = "uom.category"
@@ -137,7 +155,38 @@ class Billdate(models.TransientModel):
     _description = '帳單日期'
 
     selected_date = fields.Date(string='帳單日期')
-    
+    partner_id = fields.Many2one('res.partner', string='供應商', readonly=True)
+    supp_bank_id = fields.Many2one(
+        'res.partner.bank',
+        string='銀行賬戶',
+        domain="[('partner_id', '=', partner_id)]",
+    )
+
+    @api.model
+    def default_get(self, fields_list):
+        res = super().default_get(fields_list)
+        active_ids = self._context.get('active_ids') or []
+        if not active_ids:
+            return res
+        orders = self.env['purchase.order'].browse(active_ids)
+        partner = orders[0].partner_id
+        res['partner_id'] = partner.id
+        if partner.bank_ids:
+            res['supp_bank_id'] = partner.bank_ids[0].id
+        return res
+
+    def _prepare_supp_bank_vals(self, partner):
+        """根據所選銀行賬戶生成應付單冗余字段。"""
+        self.ensure_one()
+        if not self.supp_bank_id:
+            return False, False
+        if self.supp_bank_id.partner_id.commercial_partner_id != partner.commercial_partner_id:
+            raise UserError('所選銀行賬戶不屬於當前供應商，請重新選擇。')
+        bank = self.supp_bank_id
+        parts = [p for p in (bank.acc_number, bank.bank_id.name if bank.bank_id else False) if p]
+        supp_bank_text = ' - '.join(parts) if parts else False
+        return bank.id, supp_bank_text
+        
     def action_confirm(self):
         active_ids = self._context.get('active_ids')
         records = self.env["purchase.order"].browse(active_ids)
@@ -175,9 +224,7 @@ class Billdate(models.TransientModel):
             # 如果超過5號，則設置為下個月5號
             pay_date_due = (target_date + relativedelta(months=1)).replace(day=5)
 
-        supp_bank_id = False
-        if partner_id.bank_ids:
-            supp_bank_id = partner_id.bank_ids[0].id
+        supp_bank_id, supp_bank_text = self._prepare_supp_bank_vals(partner_id)
         
         combined_invoice_vals = {
             'invoice_line_ids': [],
@@ -192,6 +239,7 @@ class Billdate(models.TransientModel):
             'payment_reference': '',
             'move_type': 'in_invoice',
             'supp_bank_id': supp_bank_id,
+            'supp_bank_text': supp_bank_text,
             'invoice_date': self.selected_date,
             'ref': '',
         }
@@ -478,6 +526,98 @@ class PurchaseOrderLine(models.Model):
                 record.taxes_id = [(6, 0, [3])] 
             else:
                 record.taxes_id = []    
+
+    def unlink(self):
+        # 刪除前先處理已完成的庫存移動：未退回的自動建立退回單沖銷庫存，避免取消 done 移動報錯
+        self._auto_return_done_moves()
+        # 已完成移動不能取消，先解除與訂單行的關聯，避免 super().unlink() 中 _action_cancel 報錯
+        done_moves = self.move_ids.filtered(lambda m: m.state == 'done' and not m.scrapped)
+        if done_moves:
+            done_moves.write({'purchase_line_id': False})
+        # 標準 Odoo 不允許刪除 purchase/done 狀態訂單的行，此處透過 context 放行
+        self = self.with_context(bypass_pol_delete_check=True)
+        return super(PurchaseOrderLine, self).unlink()
+
+    @api.ondelete(at_uninstall=False)
+    def _unlink_except_purchase_or_done(self):
+        # 覆蓋標準檢查：在自動退貨刪除流程中放行，其餘情況維持原限制
+        if self._context.get('bypass_pol_delete_check'):
+            return
+        for line in self:
+            if line.order_id.state in ['purchase', 'done']:
+                state_description = {state_desc[0]: state_desc[1] for state_desc in self._fields['state']._description_selection(self.env)}
+                raise UserError(_('Cannot delete a purchase order line which is in state \'%s\'.') % (state_description.get(line.state),))
+    
+    def _auto_return_done_moves(self):
+        """為每行尚未沖銷的已完成入庫移動自動建立退貨單"""
+        for line in self:
+            for move in line.move_ids.filtered(lambda m: m.state == 'done' and not m.scrapped):
+                if move._is_purchase_return():
+                    continue  # 本身已是退貨移動，不再反向退回
+                already_returned = sum(
+                    move.returned_move_ids.filtered(lambda r: r.state == 'done').mapped('quantity_done'))
+                qty_to_return = move.quantity_done - already_returned
+                if float_compare(qty_to_return, 0, precision_rounding=move.product_uom.rounding) <= 0:
+                    continue  # 已全額退回
+                if move.move_line_ids.filtered(lambda ml: ml.lot_id or ml.package_id) and already_returned > 0:
+                    continue  # 序號/批號產品部分退回後無法準確判斷剩餘明細，不自動處理
+                self._create_return_picking(line, move, qty_to_return)
+
+    def _create_return_picking(self, line, move, qty_to_return):
+        """建立退貨單與反向移動並直接完成退貨"""
+        lines_with_lot = move.move_line_ids.filtered(lambda ml: ml.lot_id or ml.package_id)
+        if lines_with_lot:
+            # 整量退回（序號/批號明細逐行反向）
+            qty = move.quantity_done
+        else:
+            # 檢查原入庫倉位剩餘庫存，避免退成負庫存
+            quant = self.env['stock.quant'].search([
+                ('product_id', '=', move.product_id.id),
+                ('location_id', '=', move.location_dest_id.id),
+            ], limit=1)
+            qty = min(qty_to_return, quant.quantity if quant else 0.0)
+            if float_compare(qty, 0, precision_rounding=move.product_uom.rounding) <= 0:
+                return
+        reverse_picking_vals = {
+            'picking_type_id': move.picking_id.picking_type_id.return_picking_type_id.id or move.picking_id.picking_type_id.id,
+            'origin': '退回 ' + (move.picking_id.origin or line.order_id.name or ''),
+        }
+        reverse_picking = self.env['stock.picking'].create(reverse_picking_vals)
+        reverse_move_vals = {
+            'name': move.name,
+            'reference': '退回',
+            'origin': line.order_id.name,
+            'product_id': move.product_id.id,
+            'product_uom_qty': qty,
+            'product_uom': move.product_uom.id,
+            'picking_id': reverse_picking.id,
+            'location_id': move.location_dest_id.id,
+            'location_dest_id': move.location_id.id,
+            'purchase_line_id': move.purchase_line_id.id,
+            'to_refund': True,
+            'origin_returned_move_id': move.id,
+        }
+        reverse_move = self.env['stock.move'].create(reverse_move_vals)
+        reverse_picking.action_confirm()
+        if lines_with_lot:
+            for ml in lines_with_lot:
+                self.env['stock.move.line'].create({
+                    'move_id': reverse_move.id,
+                    'product_id': ml.product_id.id,
+                    'product_uom_id': ml.product_uom_id.id,
+                    'picking_id': reverse_picking.id,
+                    'qty_done': ml.qty_done,
+                    'lot_id': ml.lot_id.id or False,
+                    'package_id': ml.package_id.id or False,
+                    'result_package_id': ml.result_package_id.id or False,
+                    'location_id': ml.location_dest_id.id,
+                    'location_dest_id': ml.location_id.id,
+                })
+        else:
+            # 寫入 quantity_done 會自動建立對應的庫存移動行
+            reverse_move.write({'quantity_done': qty})
+        reverse_picking.action_assign()
+        reverse_picking.button_validate()
     
 class PurchaseOrder(models.Model):
     _inherit = 'purchase.order'
@@ -1173,7 +1313,7 @@ class AccountMove(models.Model):
         return name + (f" ({shorten(self.ref, width=50)})" if show_ref and self.ref else '')
         
         
-    @api.depends('invoice_line_ids.product_id','invoice_line_ids.product_id','partner_id','supp_invoice_form','vat_num','comment_infu','pay_mode','custom_invoice_form','name')
+    @api.depends('invoice_line_ids.product_id','invoice_line_ids.product_id.name','partner_id','partner_id.name','supp_invoice_form','vat_num','comment_infu','pay_mode','custom_invoice_form','name')
     def _compute_search_line_name(self):
         for record in self:
             product_id_names = [line.product_id.name for line in record.invoice_line_ids if line.product_id.name]

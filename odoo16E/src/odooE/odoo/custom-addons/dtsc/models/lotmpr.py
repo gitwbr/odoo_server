@@ -190,24 +190,29 @@ class LotMpr(models.Model):
                 #同一卷料不会出现在不同仓库 所以遍历所有实体仓库
                 location_ids = self.env["stock.location"].search([('usage' , "=" , "internal")])
                 found_quant = False
-                for location_id in location_ids:
-                    quant = self.env["stock.quant"].search([('product_id' , "=" , record.product_id.id),("lot_id" ,"=" , record.product_lot.id),("location_id" ,"=" ,location_id.id)],limit=1) #這裡出現的負數我用company_id隱藏，未來要修正
-                
-                    if quant:
-                        uom_record = uom_obj.browse(record.product_lot.product_uom_id.id)
-                        now_category_id = uom_record.category_id.id
-                        other_uom = uom_obj.search([( 'category_id' , "=" , now_category_id ) , ("id","!=",uom_record.id)],limit=1)
-                        if other_uom.name == "才":
-                            # record.lot_stock_num = str(round(quant.quantity,1)) + "(" + str(round(quant.quantity * other_uom.factor,1)) +" 才)"
-                            record.lot_stock_num = str(round(quant.quantity,3)) #+ "(" + str(self.floor_to_one_decimal_place(quant.quantity * other_uom.factor)) +" 才)"
-                            record.total_size = 1 * other_uom.factor
-                        else:
-                            record.lot_stock_num = quant.quantity
-                            record.total_size = quant.quantity
-                        
-                        record.stock_location_id = location_id.id
-                        found_quant = True  # 标记为找到库存
-                        break  # 找到库存后退出循环
+                for prefer_positive in (True, False):
+                    for location_id in location_ids:
+                        quant = self.env["stock.quant"].search([('product_id' , "=" , record.product_id.id),("lot_id" ,"=" , record.product_lot.id),("location_id" ,"=" ,location_id.id)],limit=1) #這裡出現的負數我用company_id隱藏，未來要修正
+                    
+                        if quant and prefer_positive and quant.quantity <= 0:
+                            continue
+                        if quant:
+                            uom_record = uom_obj.browse(record.product_lot.product_uom_id.id)
+                            now_category_id = uom_record.category_id.id
+                            other_uom = uom_obj.search([( 'category_id' , "=" , now_category_id ) , ("id","!=",uom_record.id)],limit=1)
+                            if other_uom.name == "才":
+                                # record.lot_stock_num = str(round(quant.quantity,1)) + "(" + str(round(quant.quantity * other_uom.factor,1)) +" 才)"
+                                record.lot_stock_num = str(round(quant.quantity,3)) #+ "(" + str(self.floor_to_one_decimal_place(quant.quantity * other_uom.factor)) +" 才)"
+                                record.total_size = 1 * other_uom.factor
+                            else:
+                                record.lot_stock_num = quant.quantity
+                                record.total_size = quant.quantity
+                            
+                            record.stock_location_id = location_id.id
+                            found_quant = True  # 标记为找到库存
+                            break  # 找到库存后退出循环
+                    if found_quant:
+                        break
                 if not found_quant:
                     record.lot_stock_num = "無"
                     record.total_size = 0
@@ -493,7 +498,7 @@ class LotMpr(models.Model):
 class LotMprLine(models.Model):
     _name = "dtsc.lotmprline"    
     lotmpr_id = fields.Many2one("dtsc.lotmpr")
-    name = fields.Char("工單項次")
+    name = fields.Char("工單項次", index=True)
     outman = fields.Many2one('dtsc.userlist',string="輸出", compute="_compute_sccz")
     sccz = fields.Char("輸出材質", compute="_compute_sccz")
     make_ori_product_id = fields.Many2one("product.template",string="基礎扣料物")

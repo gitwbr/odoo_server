@@ -7,7 +7,7 @@
                      data-query-url="/dtsc/ai_assistant/query"
                      data-history-url="/dtsc/ai_assistant/history">
                     <input type="checkbox" id="o_dtsc_ai_float_toggle" class="o_dtsc_ai_toggle"/>
-                    <label for="o_dtsc_ai_float_toggle" class="o_dtsc_ai_float_button" role="button" tabindex="0" aria-label="AI 助手">
+                    <label for="o_dtsc_ai_float_toggle" class="o_dtsc_ai_float_button" role="button" tabindex="0" aria-label="AI 助手，可拖曳移動" title="拖曳可移動位置，點擊開啟助手">
                         <span>AI</span>
                         <strong>助手</strong>
                     </label>
@@ -15,7 +15,7 @@
                         <div class="o_dtsc_ai_resize_handle" title="拖曳調整大小"></div>
                         <header>
                             <div>
-                                <strong>AI 大圖訂單助手</strong>
+                                <strong>AI 印刷訂單助手</strong>
                             </div>
                             <label for="o_dtsc_ai_float_toggle" class="o_dtsc_ai_close" role="button" tabindex="0" aria-label="關閉">×</label>
                         </header>
@@ -23,10 +23,10 @@
                             <div class="o_dtsc_ai_thread" aria-live="polite"></div>
                             <div class="o_dtsc_ai_prompt_helper">
                                 <span>可直接問</span>
-                                <span class="o_dtsc_ai_prompt_chip">我的訂單</span>
-                                <span class="o_dtsc_ai_prompt_chip">我的 D 單</span>
-                                <span class="o_dtsc_ai_prompt_chip">生產中</span>
-                                <span class="o_dtsc_ai_prompt_chip">訂單明細</span>
+                                <span class="o_dtsc_ai_prompt_chip">今天有多少張大圖訂單？</span>
+                                <span class="o_dtsc_ai_prompt_chip">本月訂單最多的前 10 名客戶</span>
+                                <span class="o_dtsc_ai_prompt_chip">近 6 個月大圖訂單數量趨勢</span>
+                                <span class="o_dtsc_ai_prompt_chip">目前有多少張未出貨的大圖訂單？</span>
                             </div>
                             <div class="o_dtsc_ai_input_row">
                                 <input class="o_dtsc_ai_question"
@@ -39,12 +39,8 @@
                             <h2>可用工具</h2>
                             <div class="o_dtsc_ai_tool_grid">
                                 <div class="o_dtsc_ai_tool_card">
-                                    <strong>search_checkout_orders</strong>
-                                    <span>搜尋大圖訂單</span>
-                                </div>
-                                <div class="o_dtsc_ai_tool_card">
-                                    <strong>get_checkout_order_detail</strong>
-                                    <span>查訂單明細</span>
+                                    <strong>universal_odoo_query</strong>
+                                    <span>查詢與分析印刷訂單系統資料</span>
                                 </div>
                                 <div class="o_dtsc_ai_tool_card">
                                     <strong>scope_resolver</strong>
@@ -75,17 +71,17 @@
                                     <span>｜</span>
                                     <span t-esc="actor.get('display_name')"/>
                                 </div>
-                                <h1>AI 大圖訂單助手</h1>
-                                <p>第一版先做只讀查詢：輸入大圖訂單號、客戶、案名或檔名，系統會依你的登入身份限制查詢範圍。</p>
+                                <h1>AI 印刷訂單助手</h1>
+                                <p>可查詢大圖訂單、客戶、工單、出貨、採購、庫存及帳單等資料；實際結果依目前登入使用者的 Odoo 權限決定。</p>
 
                                 <div class="o_dtsc_ai_form" role="search">
                                     <div class="o_dtsc_ai_thread" aria-live="polite"></div>
                                     <div class="o_dtsc_ai_prompt_helper">
                                         <span>可直接問</span>
-                                        <span class="o_dtsc_ai_prompt_chip">我的訂單</span>
-                                        <span class="o_dtsc_ai_prompt_chip">我的 D 單</span>
-                                        <span class="o_dtsc_ai_prompt_chip">生產中</span>
-                                        <span class="o_dtsc_ai_prompt_chip">訂單明細</span>
+                                        <span class="o_dtsc_ai_prompt_chip">今天有多少張大圖訂單？</span>
+                                        <span class="o_dtsc_ai_prompt_chip">本月訂單最多的前 10 名客戶</span>
+                                        <span class="o_dtsc_ai_prompt_chip">近 6 個月大圖訂單數量趨勢</span>
+                                        <span class="o_dtsc_ai_prompt_chip">目前有多少張未出貨的大圖訂單？</span>
                                     </div>
                                     <div class="o_dtsc_ai_input_row">
                                         <input class="o_dtsc_ai_question"
@@ -99,16 +95,12 @@
                                     <h2>目前可用工具</h2>
                                     <div class="o_dtsc_ai_tool_grid">
                                         <div class="o_dtsc_ai_tool_card">
-                                            <strong>search_checkout_orders</strong>
-                                            <span>依客戶、案名、檔名、狀態搜尋大圖訂單。</span>
-                                        </div>
-                                        <div class="o_dtsc_ai_tool_card">
-                                            <strong>get_checkout_order_detail</strong>
-                                            <span>依訂單號查詢大圖訂單與產品明細。</span>
+                                            <strong>universal_odoo_query</strong>
+                                            <span>依目前使用者權限查詢與分析印刷訂單系統資料。</span>
                                         </div>
                                         <div class="o_dtsc_ai_tool_card">
                                             <strong>scope_resolver</strong>
-                                            <span>依登入身份限制查詢範圍，避免跨客戶查資料。</span>
+                                            <span>依登入使用者的菜單、ACL、欄位群組與記錄規則限制查詢範圍。</span>
                                         </div>
                                     </div>
                                 </div>
