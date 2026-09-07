@@ -5,12 +5,14 @@ from odoo.exceptions import UserError
 # _logger = logging.getLogger(__name__)
 class DeliveryOrder(models.Model):
     _name = 'dtsc.deliveryorder'
+    _description = '出貨單（S 單）'
     _order = 'name desc'
     install_state = fields.Selection([
         ("draft","草稿"),
         ("installing","已發送"),
         ("cancel","作廢"),    
-    ],default='draft' ,string="狀態")
+    ], default='draft', string='出貨單狀態',
+        help='S 出貨單本身的流程狀態，不是大圖訂單狀態；有效單據統計應排除作廢。')
     name = fields.Char(string='單號')
     company_id = fields.Many2one('res.company', string='公司', default=lambda self: self.env.company)
     customer = fields.Many2one('res.partner',string='客戶名稱',readonly=True)
@@ -19,7 +21,14 @@ class DeliveryOrder(models.Model):
     delivery_method = fields.Char(string='交貨方式')
     phone = fields.Char(related="customer.phone",string='電話')
     fax = fields.Char(related="customer.custom_fax",string='傳真')
-    checkout_ids = fields.Many2many("dtsc.checkout")
+    checkout_ids = fields.Many2many(
+        'dtsc.checkout',
+        string='大圖訂單母單',
+        help=(
+            '一張 S 出貨單可關聯一張或多張大圖訂單；作廢時此歷史關係可能仍保留，'
+            '有效關聯應排除 install_state=cancel，並可核對大圖訂單 delivery_order。'
+        ),
+    )
     factory = fields.Char(string='工廠')
     order_date = fields.Date(string='進單時間') 
     delivery_date = fields.Datetime(string='交貨時間')

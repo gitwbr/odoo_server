@@ -14,13 +14,14 @@ from odoo.http import request
 from datetime import datetime, timedelta
 class MakeOut(models.Model):
     _name = 'dtsc.makeout'
+    _description = '委外生產工單（C 單）'
     _order = "checkout_order_date desc"
     install_state = fields.Selection([
         ("draft","草稿"),
         ("installing","製作中"),
         ("succ","完成"),
         ("cancel","作廢"),    
-    ],default='draft' ,string="狀態")
+    ], default='draft', string='工單狀態', help='C 工單流程狀態；有效單據統計應排除作廢。')
     name = fields.Char(string='單號')
     company_id = fields.Many2one('res.company', string='公司', default=lambda self: self.env.company)
     # custom_init_name = fields.Char("為外商")
@@ -32,7 +33,11 @@ class MakeOut(models.Model):
     fax = fields.Char(string='傳真')
     factory = fields.Char(string='工廠')
     order_date = fields.Date(string='進單時間') 
-    checkout_id = fields.Many2one('dtsc.checkout')
+    checkout_id = fields.Many2one(
+        'dtsc.checkout',
+        string='大圖訂單母單',
+        help='此 C 委外工單所屬的大圖訂單；統計母單數量時應依此欄位去重。',
+    )
     user_id = fields.Many2one("res.users", string="業務" , related="checkout_id.user_id")
     is_recheck = fields.Boolean(related="checkout_id.is_recheck",string="是否是重置單")
     source_name = fields.Char(related="checkout_id.source_name",string="來源賬單")

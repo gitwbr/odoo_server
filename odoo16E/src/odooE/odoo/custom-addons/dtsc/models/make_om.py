@@ -20,16 +20,24 @@ from odoo.tools import config
 
 class MakeOm(models.Model):
     _name = 'dtsc.makeom'
+    _description = '代工工單（G 單）'
     _order = "checkout_order_date desc"
     install_state = fields.Selection([
         ("draft","草稿"),
         ("installing","製作中"),
         ("succ","完成"),
         ("cancel","作廢"),     
-    ],default='draft' ,string="狀態")
+    ], default='draft', string='工單狀態', help='G 工單流程狀態；有效單據統計應排除作廢。')
     name = fields.Char(string='單號')
     company_id = fields.Many2one('res.company', string='公司', default=lambda self: self.env.company)
-    checkout_id = fields.Many2one('dtsc.checkout')
+    checkout_id = fields.Many2one(
+        'dtsc.checkout',
+        string='大圖訂單母單',
+        help=(
+            '此 G 代工單所屬的大圖訂單；make_om 需求也會進入 B 單需求，'
+            '統計需求可重疊；單獨統計 G 母單時依此欄位去重，跨 B/G 母單不可把兩邊去重數相加。'
+        ),
+    )
     report_year = fields.Many2one("dtsc.year",string="年",related="checkout_id.report_year",store=True)
     report_month = fields.Many2one("dtsc.month",string="月",related="checkout_id.report_month",store=True)  
     user_id = fields.Many2one("res.users", string="業務" , related="checkout_id.user_id")

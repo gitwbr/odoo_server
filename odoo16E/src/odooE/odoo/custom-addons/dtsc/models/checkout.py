@@ -433,7 +433,15 @@ class Checkout(models.Model):
     delivery_carrier = fields.Char(string='交貨方式')
     # estimated_date = fields.Datetime(string='發貨日期' , compute='_compute_estimated_date' ,store=True)
     succ_date = fields.Date(string='完成日期',store=True)
-    estimated_date = fields.Datetime(string='發貨日期' , default=lambda self: self._default_estimated_date() ,store=True)
+    estimated_date = fields.Datetime(
+        string='預計發貨時間',
+        default=lambda self: self._default_estimated_date(),
+        store=True,
+        help=(
+            '大圖訂單目前排定或選擇的發貨時間；未生成 S 單時用於超期未出貨判斷，'
+            '生成 S 單時會同步為 dtsc.deliveryorder.delivery_date，但不代表已完成出貨。'
+        ),
+    )
     estimated_date_str = fields.Char(string='發貨日期', compute='_compute_estimated_date_str',store=True)
     estimated_date_only = fields.Date(string='發貨日期', compute='_compute_estimated_date_only', store=True)
     checkout_order_type = fields.Selection([
@@ -443,7 +451,11 @@ class Checkout(models.Model):
         ("m","M"),    
         ("e","E"),      
         ("o","其它"),      
-    ],default='a' , compute='_compute_checkout_order_type',string="類別", store=True)
+    ], default='a', compute='_compute_checkout_order_type', string='大圖訂單類別', store=True,
+        help=(
+            'A 普通、F 打樣、D CRM/報價、E 重製、M 被合併單標記；皆屬 dtsc.checkout。'
+            'M 是被合併的非目標 A 單，不是合併目標單。'
+        ))
     checkout_order_state = fields.Selection([
         ("draft","草稿"), 
         ("quoting","做檔中"),
@@ -499,8 +511,16 @@ class Checkout(models.Model):
     total_price_added_tax = fields.Integer(string="稅後總價" , compute="_compute_total_price_added_tax" ,store=True)
     total_price_added_tax_crm = fields.Integer(string="稅後總價" , compute="_compute_total_price_added_tax_crm" ,store=True) 
     
-    is_delivery = fields.Boolean(string="是否已生成出貨單" , default=False ) 
-    delivery_order = fields.Char(string="出貨單號" , default=False ) 
+    is_delivery = fields.Boolean(
+        string='是否已生成出貨單',
+        default=False,
+        help='表示大圖訂單已建立獨立的 S 出貨單，不是訂單狀態。',
+    )
+    delivery_order = fields.Char(
+        string='出貨單號',
+        default=False,
+        help='對應的獨立 S 出貨單號；正式關聯由 dtsc.deliveryorder.checkout_ids 表示。',
+    )
     is_overdue_not_delivered = fields.Boolean(string="是否超期未出貨", compute="_compute_is_overdue_not_delivered", store=False) 
     del_reason = fields.Char(string="作廢原因") 
     
@@ -508,7 +528,10 @@ class Checkout(models.Model):
     
     is_recheck = fields.Boolean(string="是否是重製單")
     is_copy = fields.Boolean(string="是否是追加單")
-    source_name = fields.Char(string="來源賬單")
+    source_name = fields.Char(
+        string='來源大圖訂單號',
+        help='複製或重製單所保留的來源大圖訂單號；E 重製單會寫入原訂單單號。',
+    )
     recheck_user = fields.Many2many('dtsc.reworklist',string="重製相關人員",domain=[("is_disabled","=",False)])
     recheck_groups = fields.Many2many('dtsc.department',string="重製相關部門") 
     recheck_comment = fields.Char(string="重製備註說明") 
@@ -2935,7 +2958,11 @@ class CheckOutLine(models.Model):
     outside_comment = fields.Text(string="站外訂單備註")
     checkout_product_id = fields.Many2one("dtsc.checkout",ondelete='cascade')
     lock_price = fields.Boolean(related="checkout_product_id.lock_price", string="價格鎖定")
-    origin_checkout_id = fields.Many2one('dtsc.checkout', string="原始訂單")
+    origin_checkout_id = fields.Many2one(
+        'dtsc.checkout',
+        string='合併前原始母單',
+        help='合併時記錄此產品行原本所屬的大圖訂單，供取消合併時移回；這是產品行欄位。',
+    )
     origin_checkout_name = fields.Char(related='origin_checkout_id.name', string="原始訂單",store=True)
     # checkout_product_wizard_id = fields.Many2one("dtsc.copycheckoutrecord",ondelete='cascade')
     # is_purchse = fields.Char(string='委外')
@@ -3981,5 +4008,4 @@ class AccountMoveLine(models.Model):
                 line.price_total = int(subtotal * 1.05 + 0.5)                #稅後 四舍五入
                 # int(total_price * 0.05 + 0.5) #四舍五入
             else:
-                line.price_total = line.price_subtotal = subtotal 
-    
+                line.price_total = line.price_subtotal = subtotal

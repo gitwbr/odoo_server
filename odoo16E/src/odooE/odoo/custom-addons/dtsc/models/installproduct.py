@@ -150,7 +150,7 @@ class Imagelist(models.Model):
             'type': 'ir.actions.client',
             'tag': 'reload',  # 刷新当前视图
         }
-        
+
 class WarningLogs(models.Model):
     _name = 'dtsc.warninglogs'
     
@@ -163,6 +163,7 @@ class WarningLogs(models.Model):
     
 class Installproduct(models.Model):
     _name = 'dtsc.installproduct'
+    _description = '施工工單（T 單）'
     _order = "create_date desc"
     name = fields.Char(string='單號')
     install_state = fields.Selection([
@@ -170,14 +171,18 @@ class Installproduct(models.Model):
         ("installing","施工中"),
         ("succ","完成"),
         ("cancel","作廢"),    
-    ],default='draft' ,string="狀態")
+    ], default='draft', string='工單狀態', help='T 工單流程狀態；有效單據統計應排除作廢。')
     company_id = fields.Many2one('res.company', string='公司', default=lambda self: self.env.company)
     xcllr = fields.Char("現場聯絡人") 
     xcllr_phone = fields.Char("聯絡人電話")
     
     cbsllr = fields.Char("承包商聯絡人")
     cbsllr_phone = fields.Char("承包商電話")
-    checkout_id = fields.Many2one('dtsc.checkout')
+    checkout_id = fields.Many2one(
+        'dtsc.checkout',
+        string='大圖訂單母單',
+        help='此 T 施工工單所屬的大圖訂單；統計母單數量時應依此欄位去重。',
+    )
     partner_id = fields.Many2one(related="checkout_id.customer_id",string="客戶") 
     custom_init_name = fields.Char(related="checkout_id.customer_id.custom_init_name",string="客戶") 
     project_name = fields.Char(related="checkout_id.project_name",string="案件摘要") 
