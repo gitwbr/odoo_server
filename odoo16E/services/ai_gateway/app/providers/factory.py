@@ -15,4 +15,3 @@ def create_chat_model(config):
     if config.base_url:
         kwargs["base_url"] = config.base_url
     return ChatOpenAI(**kwargs)
-

@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="dtsc.CustomerUploadNoticeSystray" owl="1">
+        <t t-if="state.visible">
+        <Dropdown class="'o_dtsc_upload_notice_systray'" menuClass="'o_dtsc_upload_notice_menu_dropdown'" togglerClass="'o-no-caret o-dropdown--narrow'">
+            <t t-set-slot="toggler">
+                <i class="fa fa-lg fa-bell-o" role="img" aria-label="客戶上傳通知"/>
+                <span t-if="state.count > 0"
+                      class="badge"
+                      t-esc="state.count"/>
+            </t>
+            <div class="o_dtsc_upload_notice_menu">
+                <div class="dropdown-header fw-bold">
+                    客戶上傳通知
+                </div>
+                <t t-if="!state.items.length">
+                    <div class="dropdown-item-text text-muted px-3 py-2">
+                        暫無待確認的上傳
+                    </div>
+                </t>
+                <t t-foreach="state.items" t-as="item" t-key="item.notice_id">
+                    <div class="o_dtsc_upload_notice_item dropdown-item-text px-3 py-2 border-bottom">
+                        <div class="fw-bold text-truncate" t-esc="item.customer_name"/>
+                        <div class="small text-muted text-truncate" t-esc="item.message"/>
+                        <div class="small text-muted" t-if="item.create_date" t-esc="item.create_date"/>
+                        <button type="button"
+                                class="btn btn-sm btn-primary mt-2"
+                                t-on-click="(ev) => this.onConfirm(item.notice_id, ev)">
+                            確認收到
+                        </button>
+                    </div>
+                </t>
+                <a href="#"
+                   class="dropdown-item text-center py-2"
+                   t-on-click.prevent="onOpenHistory">
+                    查看全部記錄
+                </a>
+            </div>
+        </Dropdown>
+        </t>
+    </t>
+
+</templates>

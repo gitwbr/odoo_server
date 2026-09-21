@@ -267,16 +267,17 @@ class UniversalOdooQueryTestCase(TransactionCase):
         self.assertTrue(combined['had_intermediate_errors'])
         self.assertEqual(service._session_status('ai', combined), 'success')
 
-    def test_internal_prompt_contains_current_date_and_default_order_date(self):
+    def test_internal_prompt_uses_metadata_and_explicit_business_scope(self):
         service = self.env['dtsc.ai.assistant.service']
         prompt = service._system_prompt(self.actor)
 
         self.assertIn(fields.Date.to_string(fields.Date.context_today(service)), prompt)
-        self.assertIn('dtsc.checkout.create_date', prompt)
-        self.assertIn('跨 B/G', prompt)
-        self.assertIn('install_state=cancel', prompt)
-        self.assertIn('origin_checkout_id', prompt)
-        self.assertIn('不代表已完成出貨', prompt)
+        self.assertIn('discover', prompt)
+        self.assertIn('describe', prompt)
+        self.assertNotIn('dtsc.checkout.create_date', prompt)
+        self.assertNotIn('install_state=cancel', prompt)
+        self.assertIn('母单数必须去重', prompt)
+
 
     def test_session_result_truncation_keeps_valid_json(self):
         service = self.env['dtsc.ai.assistant.service']

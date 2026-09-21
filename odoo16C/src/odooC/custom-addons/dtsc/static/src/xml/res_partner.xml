@@ -1,0 +1,11 @@
+<?xml version=1.0 encoding="UTF-8"?>
+<odoo>
+	<template id="assets_backend" name="res_partner assets" inherit_id="web.assets_backend">
+		<xpath expr="." position="inside">
+			<script type="text/javascript" src="/dtsc/static/src/js/res_partner.js"></script>
+			<script type="text/javascript" src="/dtsc/static/src/js/jquery.min.js"></script>
+			<script type="text/javascript" src="/dtsc/static/src/js/jquery-qrcode-0.18.0.min.js"></script>
+			<script type="text/javascript" src="/dtsc/static/src/js/JsBarcode.all.min.js"></script>
+		</xpath>
+	</template>
+</odoo>

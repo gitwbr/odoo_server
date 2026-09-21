@@ -1,0 +1,316 @@
+{
+  "checkout_count": {
+    "model": "dtsc.checkout",
+    "label": "有效大圖訂單進單數",
+    "aliases": ["large format order", "large format printing order"],
+    "date_field": "create_date",
+    "filters": [
+      {
+        "field": "checkout_order_state",
+        "operator": "ne",
+        "value": "cancel"
+      }
+    ],
+    "basis": "按建立時間計 A/F/E/M/D 母單記錄；排除作廢，M 保留，非產品行數。"
+  },
+  "checkout_unshipped": {
+    "model": "dtsc.checkout",
+    "label": "大圖訂單尚未出貨數",
+    "date_field": "create_date",
+    "filters": [
+      {"field": "is_delivery", "operator": "eq", "value": false},
+      {"field": "checkout_order_state", "operator": "not_in", "value": ["cancel", "closed"]}
+    ],
+    "basis": "尚未出貨且未作廢/結案，不限是否逾期。今天預計出貨須另外篩選 estimated_date 的今天起訖，不可使用逾期條件。"
+  },
+  "checkout_overdue": {
+    "model": "dtsc.checkout",
+    "label": "大圖訂單逾期未出貨（預計發貨時間早於現在）",
+    "date_field": "create_date",
+    "filters": [
+      {
+        "field": "is_delivery",
+        "operator": "eq",
+        "value": false
+      },
+      {
+        "field": "checkout_order_state",
+        "operator": "not_in",
+        "value": [
+          "cancel",
+          "closed"
+        ]
+      }
+    ],
+    "due_field": "estimated_date",
+    "basis": "沿用概覽 _get_delivery_risk_items：未出貨且未作廢/結案，預計發貨時間早於查詢時刻。期間按母單建立日期。"
+  },
+  "b_open": {
+    "model": "dtsc.makein",
+    "label": "B 內部工單未完成數",
+    "aliases": ["internal work order", "internal production order"],
+    "date_field": "create_date",
+    "filters": [
+      {
+        "field": "install_state",
+        "operator": "not_in",
+        "value": [
+          "stock_in",
+          "cancel"
+        ]
+      }
+    ],
+    "basis": "沿用概覽工單完成狀態；按工單建立日期計目前未完成的單據數，不是母單去重或歷史時點存量。"
+  },
+  "b_completion_rate": {
+    "model": "dtsc.makein",
+    "label": "B 內部工單單據完成比例",
+    "date_field": "create_date",
+    "filters": [
+      {
+        "field": "install_state",
+        "operator": "ne",
+        "value": "cancel"
+      }
+    ],
+    "numerator_filters": [
+      {
+        "field": "install_state",
+        "operator": "in",
+        "value": [
+          "stock_in"
+        ]
+      }
+    ],
+    "basis": "分子為目前完成工單數，分母為期間建立且未作廢工單數；不是產品行完成率、需求轉單率或母單完成率。"
+  },
+  "c_open": {
+    "model": "dtsc.makeout",
+    "label": "C 委外工單未完成數",
+    "aliases": ["outsourced work order", "outsourced production order"],
+    "date_field": "create_date",
+    "filters": [
+      {
+        "field": "install_state",
+        "operator": "not_in",
+        "value": [
+          "succ",
+          "cancel"
+        ]
+      }
+    ],
+    "basis": "沿用概覽工單完成狀態；按工單建立日期計目前未完成的單據數，不是母單去重或歷史時點存量。"
+  },
+  "c_completion_rate": {
+    "model": "dtsc.makeout",
+    "label": "C 委外工單單據完成比例",
+    "date_field": "create_date",
+    "filters": [
+      {
+        "field": "install_state",
+        "operator": "ne",
+        "value": "cancel"
+      }
+    ],
+    "numerator_filters": [
+      {
+        "field": "install_state",
+        "operator": "in",
+        "value": [
+          "succ"
+        ]
+      }
+    ],
+    "basis": "分子為目前完成工單數，分母為期間建立且未作廢工單數；不是產品行完成率、需求轉單率或母單完成率。"
+  },
+  "g_open": {
+    "model": "dtsc.makeom",
+    "label": "G 代工單未完成數",
+    "aliases": ["contract manufacturing order", "contract work order"],
+    "date_field": "create_date",
+    "filters": [
+      {
+        "field": "install_state",
+        "operator": "not_in",
+        "value": [
+          "succ",
+          "cancel"
+        ]
+      }
+    ],
+    "basis": "沿用概覽工單完成狀態；按工單建立日期計目前未完成的單據數，不是母單去重或歷史時點存量。"
+  },
+  "g_completion_rate": {
+    "model": "dtsc.makeom",
+    "label": "G 代工單單據完成比例",
+    "date_field": "create_date",
+    "filters": [
+      {
+        "field": "install_state",
+        "operator": "ne",
+        "value": "cancel"
+      }
+    ],
+    "numerator_filters": [
+      {
+        "field": "install_state",
+        "operator": "in",
+        "value": [
+          "succ"
+        ]
+      }
+    ],
+    "basis": "分子為目前完成工單數，分母為期間建立且未作廢工單數；不是產品行完成率、需求轉單率或母單完成率。"
+  },
+  "t_open": {
+    "model": "dtsc.installproduct",
+    "label": "T 施工單未完成數",
+    "date_field": "create_date",
+    "filters": [
+      {
+        "field": "install_state",
+        "operator": "not_in",
+        "value": [
+          "succ",
+          "cancel"
+        ]
+      }
+    ],
+    "basis": "沿用概覽工單完成狀態；按工單建立日期計目前未完成的單據數，不是母單去重或歷史時點存量。"
+  },
+  "t_completion_rate": {
+    "model": "dtsc.installproduct",
+    "label": "T 施工單單據完成比例",
+    "date_field": "create_date",
+    "filters": [
+      {
+        "field": "install_state",
+        "operator": "ne",
+        "value": "cancel"
+      }
+    ],
+    "numerator_filters": [
+      {
+        "field": "install_state",
+        "operator": "in",
+        "value": [
+          "succ"
+        ]
+      }
+    ],
+    "basis": "分子為目前完成工單數，分母為期間建立且未作廢工單數；不是產品行完成率、需求轉單率或母單完成率。"
+  },
+  "rework_share": {
+    "model": "dtsc.checkout",
+    "label": "E重製單占有效進單比例",
+    "date_field": "create_date",
+    "filters": [
+      {
+        "field": "checkout_order_state",
+        "operator": "ne",
+        "value": "cancel"
+      }
+    ],
+    "numerator_filters": [
+      {
+        "field": "checkout_order_type",
+        "operator": "eq",
+        "value": "e"
+      }
+    ],
+    "basis": "分子為E單筆數，分母為所有未作廢A/F/E/M/D進單筆數，包含M；不代表原始訂單被重製的機率。"
+  },
+  "purchase_confirmed": {
+    "model": "purchase.order",
+    "label": "已確認採購單數",
+    "date_field": "date_order",
+    "filters": [
+      {"field": "my_state", "operator": "in", "value": ["2", "3", "4"]},
+      {"field": "state", "operator": "ne", "value": "cancel"}
+    ],
+    "basis": "依 DTSC 採購流程計待收貨、未轉應付、已轉應付單據；排除詢價單與作廢。期間按訂單日期，不是建立日期。"
+  },
+  "purchase_pending_receipt": {
+    "model": "purchase.order",
+    "label": "待收貨採購單數",
+    "date_field": "date_order",
+    "filters": [
+      {"field": "my_state", "operator": "eq", "value": "2"},
+      {"field": "state", "operator": "ne", "value": "cancel"}
+    ],
+    "basis": "沿用概覽待收貨採購口徑：DTSC 自訂狀態為待收貨。標準收貨進度 receipt_status 是另一欄位，不能代替此狀態。"
+  },
+  "receivable_open": {
+    "model": "account.move",
+    "label": "未結清客戶發票數",
+    "date_field": "invoice_date",
+    "filters": [
+      {
+        "field": "move_type",
+        "operator": "eq",
+        "value": "out_invoice"
+      },
+      {
+        "field": "state",
+        "operator": "eq",
+        "value": "posted"
+      },
+      {
+        "field": "amount_residual",
+        "operator": "gt",
+        "value": 0
+      }
+    ],
+    "basis": "按發票日期計已過帳且剩餘應付/應收金額大於0的原始帳單筆數，不是金額、帳齡或現金流。"
+  },
+  "payable_open": {
+    "model": "account.move",
+    "label": "未結清供應商帳單數",
+    "date_field": "invoice_date",
+    "filters": [
+      {
+        "field": "move_type",
+        "operator": "eq",
+        "value": "in_invoice"
+      },
+      {
+        "field": "state",
+        "operator": "eq",
+        "value": "posted"
+      },
+      {
+        "field": "amount_residual",
+        "operator": "gt",
+        "value": 0
+      }
+    ],
+    "basis": "按發票日期計已過帳且剩餘應付/應收金額大於0的原始帳單筆數，不是金額、帳齡或現金流。"
+  },
+  "s_pending": {
+    "model": "dtsc.deliveryorder",
+    "label": "S 出貨單草稿數",
+    "date_field": "create_date",
+    "filters": [
+      {
+        "field": "install_state",
+        "operator": "eq",
+        "value": "draft"
+      }
+    ],
+    "basis": "S 狀態為草稿；已發送不等於物流已簽收。按 S 建立日期。"
+  },
+  "s_overdue": {
+    "model": "dtsc.deliveryorder",
+    "label": "S 出貨單草稿且交貨時間已過",
+    "date_field": "create_date",
+    "filters": [
+      {
+        "field": "install_state",
+        "operator": "eq",
+        "value": "draft"
+      }
+    ],
+    "basis": "明確操作口徑：草稿 S 的交貨時間早於查詢時刻；非大圖订单逾期，也不代表物流逾期。",
+    "due_field": "delivery_date"
+  }
+}

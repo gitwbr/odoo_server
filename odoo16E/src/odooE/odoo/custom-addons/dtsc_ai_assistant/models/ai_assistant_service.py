@@ -1,12 +1,16 @@
 # -*- coding: utf-8 -*-
 
+import datetime
 import json
+import time
 import logging
+from pathlib import Path
 import re
 
 from odoo import fields, models
-from odoo.osv import expression
 
+
+_HISTORY_POLICY = json.loads((Path(__file__).resolve().parents[1] / 'policy/query_policy.json').read_text())['history']
 
 _logger = logging.getLogger(__name__)
 
@@ -15,20 +19,12 @@ class AiAssistantService(models.AbstractModel):
     _name = 'dtsc.ai.assistant.service'
     _description = 'DTS-C AI Assistant Business Service'
 
-    _STATE_LABELS = {
-        'draft': '草稿 / 做檔中',
-        'quoting': '做檔中',
-        'producing': '生產中',
-        'finished': '完成',
-        'price_review_done': '價格已審',
-        'receivable_assigned': '已轉應收',
-        'closed': '結案',
-        'cancel': '作廢',
-    }
-
-    def answer_question(self, question, custom_partner_id=None, show_debug=False):
+    def answer_question(self, question, custom_partner_id=None, show_debug=False, cursor=None, query_request=None,
+                        expected_thread_id=None):
         scope_service = self.env['dtsc.ai.assistant.scope']
-        actor = scope_service.resolve_actor(custom_partner_id=custom_partner_id)
+        scope_service._check_assistant_access()
+        # Public RPC entry points must derive identity from the authenticated user.
+        actor = scope_service._resolve_actor()
         _logger.info(
             "AI assistant query received: user_id=%s actor_type=%s partner_id=%s question=%s",
             self.env.uid,
@@ -48,17 +44,43 @@ class AiAssistantService(models.AbstractModel):
                 'records': [],
             }
 
+        thread = self.env['dtsc.ai.assistant.thread'].sudo()._get_or_create_for_actor(
+            actor, expected_thread_id=expected_thread_id,
+        )
+        if not thread:
+            return {
+                'mode': 'conversation_changed',
+                'conversation_changed': True,
+                'message': '對話已更新，請在目前對話重新輸入問題。',
+            }
         gateway = self.env['dtsc.ai.gateway.runner']
         gateway_config = self.env['dtsc.ai.gateway.config']
         local_result = self._empty_result()
         configured = gateway_config.is_configured()
         _logger.info("AI assistant gateway configured=%s", configured)
-        thread = self.env['dtsc.ai.assistant.thread'].sudo().get_or_create_for_actor(actor)
-        thread.append_message('user', question)
-        gateway_messages = thread.to_gateway_messages(limit=12)
+        thread._append_message('user', question)
+        # Resolve conflicts with a concurrent reset before calling the model.
+        # Odoo retries serialization failures using a fresh transaction.
+        thread.flush_recordset(['last_message_date'])
+        gateway_messages = thread._to_gateway_messages(limit=_HISTORY_POLICY['context_messages'])
 
-        if not configured:
-            gateway_result = gateway.run(
+        if cursor or query_request:
+            local_started = time.time()
+            local_result = self.env['dtsc.ai.universal.query'].execute(
+                query_request if query_request else ({'operation': 'search', 'cursor': cursor} if cursor else {'operation': 'capabilities'}), actor=actor,
+            )
+            mode = 'local'
+            answer = self._format_local_answer(question, local_result, actor)
+            gateway_result = gateway._finish(
+                local_started, status='error' if local_result.get('ok') is False else 'local_only',
+                message=question, response=answer,
+                config={}, tool_names='universal_odoo_query', partner=actor.get('partner'),
+                tool_results=[{'tool': 'universal_odoo_query',
+                               'arguments': query_request or ({'operation': 'search', 'cursor': cursor} if cursor else {'operation': 'capabilities'}),
+                               'result': local_result}],
+            )
+        elif not configured:
+            gateway_result = gateway._run(
                 question,
                 tool_specs=self._build_tool_specs(actor),
                 system_prompt=self._system_prompt(actor),
@@ -71,7 +93,7 @@ class AiAssistantService(models.AbstractModel):
             mode = 'configuration_missing'
         else:
             tool_capture = {}
-            gateway_result = gateway.run(
+            gateway_result = gateway._run(
                 question,
                 tool_specs=self._build_tool_specs(actor, capture=tool_capture),
                 system_prompt=self._system_prompt(actor),
@@ -81,12 +103,8 @@ class AiAssistantService(models.AbstractModel):
                 thread_id=thread.id,
             )
             local_result = self._collect_gateway_results(
-                gateway_result.get('tool_results') or [],
-                fallback=(
-                    gateway_result.get('local_result')
-                    or tool_capture.get('local_result')
-                    or self._empty_result()
-                ),
+                gateway_result.get('display_tool_results') or [],
+                fallback=self._empty_result(),
             )
             if gateway_result.get('status') == 'success':
                 answer = gateway_result.get('answer') or self._format_local_answer(
@@ -111,7 +129,7 @@ class AiAssistantService(models.AbstractModel):
             'thread_id': thread.id,
             'gateway_log_id': gateway_result.get('log_id') if gateway_result else False,
         })
-        thread.append_message(
+        thread._append_message(
             'assistant',
             answer,
             result=result_json,
@@ -142,15 +160,17 @@ class AiAssistantService(models.AbstractModel):
             'groups': local_result.get('groups', []),
             'detail': local_result.get('detail') or {},
             'show_results': show_results,
+            'query_result': local_result,
             'configuration_required': mode == 'configuration_missing',
             'thread_id': thread.id,
+            'storage_scope': self.env.cr.dbname,
             'gateway': gateway_result if show_debug else {},
         }
 
     def load_history(self, custom_partner_id=None, limit=30):
-        actor = self.env['dtsc.ai.assistant.scope'].resolve_actor(
-            custom_partner_id=custom_partner_id
-        )
+        scope_service = self.env['dtsc.ai.assistant.scope']
+        scope_service._check_assistant_access()
+        actor = scope_service._resolve_actor()
         if actor['actor_type'] not in ('admin', 'internal'):
             return {
                 'actor': self._serialize_actor(actor),
@@ -158,102 +178,40 @@ class AiAssistantService(models.AbstractModel):
                 'thread_id': False,
                 'messages': [],
             }
-        history = self.env['dtsc.ai.assistant.thread'].sudo().load_recent_for_actor(
+        history = self.env['dtsc.ai.assistant.thread'].sudo()._load_recent_for_actor(
             actor,
             limit=limit,
         )
+        if not history.get('thread_id'):
+            # Establish the conversation before the first query. Otherwise a
+            # reset cannot archive an in-flight query's uncommitted new thread.
+            thread = self.env['dtsc.ai.assistant.thread'].sudo()._get_or_create_for_actor(actor)
+            history = {'thread_id': thread.id, 'messages': thread._serialize_messages(limit=limit)}
         return {
             'actor': self._serialize_actor(actor),
             'context_label': self._context_label(actor),
+            'storage_scope': self.env.cr.dbname,
             **history,
         }
 
-    def _local_query(self, question, actor):
-        order_number = self._extract_order_number(question)
-        if order_number:
-            detail = self._get_order_detail(order_number, actor)
-            return {
-                'records': [detail] if detail else [],
-                'detail': detail or {},
-                'query_type': 'detail',
-            }
-        records = self._search_orders(question, actor, limit=10)
+    def reset_conversation(self):
+        scope_service = self.env['dtsc.ai.assistant.scope']
+        scope_service._check_assistant_access()
+        actor = scope_service._resolve_actor()
+        thread = self.env['dtsc.ai.assistant.thread'].sudo()._reset_for_actor(actor)
         return {
-            'records': records,
-            'detail': {},
-            'query_type': 'list',
+            'actor': self._serialize_actor(actor),
+            'context_label': self._context_label(actor),
+            'storage_scope': self.env.cr.dbname,
+            'thread_id': thread.id,
+            'messages': [],
         }
 
-    def _search_orders(self, keyword, actor, limit=10, personal=False):
-        scope_service = self.env['dtsc.ai.assistant.scope']
-        Checkout = scope_service.get_checkout_model(actor)
-        raw_keyword = keyword or ''
-        personal = bool(personal) or self._is_personal_query(raw_keyword)
-        domain = scope_service.base_checkout_domain(actor)
-        if personal:
-            domain = expression.AND([domain, self._personal_customer_domain(actor)])
-        state_domain = self._state_domain_from_text(keyword)
-        if state_domain:
-            domain = expression.AND([domain, state_domain])
-        order_type_domain = self._order_type_domain_from_text(keyword)
-        if order_type_domain:
-            domain = expression.AND([domain, order_type_domain])
 
-        keyword = self._extract_keyword(keyword)
-        original_keyword = keyword
-        if keyword:
-            search_domain = [
-                '|', '|', '|',
-                ('name', 'ilike', keyword),
-                ('project_name', 'ilike', keyword),
-                ('customer_id.name', 'ilike', keyword),
-                ('product_ids.project_product_name', 'ilike', keyword),
-            ]
-            domain = expression.AND([domain, search_domain])
 
-        orders = Checkout.search(domain, order='create_date desc, id desc', limit=limit)
-        _logger.info(
-            "AI assistant search tool executed: actor_type=%s partner_id=%s keyword=%s "
-            "personal=%s order_type=%s limit=%s result_count=%s",
-            actor.get('actor_type'),
-            actor.get('partner_id') or '',
-            original_keyword,
-            personal,
-            order_type_domain[0][2] if order_type_domain else '',
-            limit,
-            len(orders),
-        )
-        return [self._serialize_order(order, include_lines=False) for order in orders]
-
-    def _get_order_detail(self, order_number, actor, personal=False):
-        scope_service = self.env['dtsc.ai.assistant.scope']
-        Checkout = scope_service.get_checkout_model(actor)
-        domain = scope_service.base_checkout_domain(actor)
-        if personal:
-            domain = expression.AND([domain, self._personal_customer_domain(actor)])
-        domain = expression.AND([domain, [('name', '=', order_number)]])
-        order = Checkout.search(domain, limit=1)
-        if not order:
-            _logger.info(
-                "AI assistant detail tool executed: actor_type=%s partner_id=%s order=%s "
-                "personal=%s found=0",
-                actor.get('actor_type'),
-                actor.get('partner_id') or '',
-                order_number,
-                personal,
-            )
-            return {}
-        _logger.info(
-            "AI assistant detail tool executed: actor_type=%s partner_id=%s order=%s "
-            "personal=%s found=1",
-            actor.get('actor_type'),
-            actor.get('partner_id') or '',
-            order_number,
-            personal,
-        )
-        return self._serialize_order(order, include_lines=True)
 
     def _build_tool_specs(self, actor, capture=None):
+        self.env['dtsc.ai.assistant.scope']._check_assistant_access()
         capture = capture if capture is not None else {}
 
         if actor.get('actor_type') in ('admin', 'internal'):
@@ -269,6 +227,7 @@ class AiAssistantService(models.AbstractModel):
                 distinct_field=None,
                 limit=None,
                 include_empty=False,
+                **extended_arguments,
             ):
                 """Execute a read-only universal Odoo query."""
                 arguments = {
@@ -283,6 +242,7 @@ class AiAssistantService(models.AbstractModel):
                     'distinct_field': distinct_field,
                     'limit': limit,
                     'include_empty': include_empty,
+                    **extended_arguments,
                 }
                 result = self.env['dtsc.ai.universal.query'].execute(arguments, actor=actor)
                 capture['local_result'] = result
@@ -296,81 +256,26 @@ class AiAssistantService(models.AbstractModel):
                 'func': universal_odoo_query,
             }]
 
-        def search_checkout_orders(keyword='', personal=False):
-            """Search DTS-C checkout orders by keyword."""
-            records = self._search_orders(keyword or '', actor, limit=10, personal=personal)
-            capture['local_result'] = {
-                'records': records,
-                'detail': {},
-                'query_type': 'list',
-            }
-            return json.dumps(records, ensure_ascii=False)
-
-        def get_checkout_order_detail(order_number, personal=False):
-            """Get DTS-C checkout order detail by order number like A260400250."""
-            detail = self._get_order_detail(order_number or '', actor, personal=personal)
-            capture['local_result'] = {
-                'records': [detail] if detail else [],
-                'detail': detail or {},
-                'query_type': 'detail',
-            }
-            return json.dumps(detail, ensure_ascii=False)
-
-        # Legacy fixed checkout tools are intentionally retained for rollback,
-        # but no longer registered. The AI assistant is internal-only.
-        legacy_tool_specs = [
-            {
-                'name': 'search_checkout_orders',
-                'description': (
-                    '搜尋大圖訂單列表，可依訂單號、客戶、案名、檔名查詢。'
-                    '可依 A/D/E/F/M 單等訂單類別過濾。'
-                    '當使用者要求查詢我的訂單、自己的訂單、最近訂單、訂單列表或沒有提供關鍵字時，'
-                    '也要呼叫此工具。若使用者說我的、自己、本人，personal 必須為 true，'
-                    '系統會依目前登入身份的 customer_id 歸屬過濾。'
-                ),
-                'parameters': {
-                    'type': 'object',
-                    'properties': {
-                        'keyword': {
-                            'type': 'string',
-                            'description': '訂單號、客戶、案名、檔名或狀態關鍵字。',
-                        },
-                        'personal': {
-                            'type': 'boolean',
-                            'description': '使用者查詢我的/自己/本人的訂單時設為 true。',
-                        },
-                    },
-                    'required': [],
-                },
-                'func': search_checkout_orders,
-            },
-            {
-                'name': 'get_checkout_order_detail',
-                'description': '依大圖訂單號查詢訂單與產品明細。',
-                'parameters': {
-                    'type': 'object',
-                    'properties': {
-                        'order_number': {
-                            'type': 'string',
-                            'description': '大圖訂單號，例如 A260400250。',
-                        },
-                        'personal': {
-                            'type': 'boolean',
-                            'description': '使用者查詢我的/自己/本人的指定訂單時設為 true。',
-                        },
-                    },
-                    'required': ['order_number'],
-                },
-                'func': get_checkout_order_detail,
-            },
-        ]
         return []
 
-    def execute_gateway_tool(self, tool_name, arguments, context):
+    def _execute_gateway_tool(self, tool_name, arguments, context):
         user_id = int((context or {}).get('user_id') or self.env.uid)
         custom_partner_id = (context or {}).get('custom_partner_id') or False
         service = self.with_user(user_id)
-        actor = service.env['dtsc.ai.assistant.scope'].resolve_actor(
+        scope_service = service.env['dtsc.ai.assistant.scope']
+        if not scope_service._is_assistant_allowed():
+            return service.env['dtsc.ai.universal.query']._error_result(
+                '', '', 'assistant_access_denied', scope_service._ASSISTANT_ACCESS_MESSAGE,
+            )
+        # The HTTP callback starts with the public request's language. with_user
+        # changes permissions but keeps that context, so restore the actor's
+        # locale before reading translated labels, selections or display names.
+        service = service.with_context(
+            lang=service.env.user.lang or 'zh_TW',
+            tz=service.env.user.tz or 'UTC',
+        )
+        scope_service = service.env['dtsc.ai.assistant.scope']
+        actor = scope_service._resolve_actor(
             custom_partner_id=custom_partner_id
         )
         raw_arguments = arguments
@@ -409,44 +314,7 @@ class AiAssistantService(models.AbstractModel):
             }
         if tool_name == 'universal_odoo_query':
             return service.env['dtsc.ai.universal.query'].execute(raw_arguments, actor=actor)
-        if tool_name == 'search_checkout_orders':
-            raw_keyword = arguments.get('keyword') or ''
-            original_message = (context or {}).get('message') or ''
-            personal = (
-                bool(arguments.get('personal'))
-                or service._is_personal_query(raw_keyword)
-                or service._is_personal_query(original_message)
-            )
-            records = service._search_orders(
-                raw_keyword,
-                actor,
-                limit=10,
-                personal=personal,
-            )
-            return {
-                'records': records,
-                'detail': {},
-                'query_type': 'list',
-            }
-        if tool_name == 'get_checkout_order_detail':
-            original_message = (context or {}).get('message') or ''
-            personal = bool(arguments.get('personal')) or service._is_personal_query(original_message)
-            detail = service._get_order_detail(
-                arguments.get('order_number') or '',
-                actor,
-                personal=personal,
-            )
-            return {
-                'records': [detail] if detail else [],
-                'detail': detail or {},
-                'query_type': 'detail',
-            }
-        return {
-            'records': [],
-            'detail': {},
-            'query_type': 'none',
-            'error': 'Unknown tool: %s' % (tool_name or ''),
-        }
+        return {'ok': False, 'query_type': 'universal_error', 'error': {'code': 'tool_not_allowed'}}
 
     def _gateway_actor_context(self, actor):
         return {
@@ -456,21 +324,7 @@ class AiAssistantService(models.AbstractModel):
             'custom_partner_id': actor.get('partner_id') if actor.get('actor_type') == 'custom_partner' else False,
         }
 
-    @staticmethod
-    def _is_personal_query(text):
-        text = text or ''
-        return any(term in text for term in ['我的', '自己', '本人', 'my ', 'My ', 'MY '])
 
-    @staticmethod
-    def _personal_customer_domain(actor):
-        partner = actor.get('partner')
-        if not partner:
-            return [('id', '=', 0)]
-        partner_ids = [partner.id]
-        commercial_partner = partner.commercial_partner_id
-        if commercial_partner and commercial_partner.id not in partner_ids:
-            partner_ids.append(commercial_partner.id)
-        return [('customer_id', 'in', partner_ids)]
 
     @staticmethod
     def _empty_result(query_type='none'):
@@ -494,7 +348,7 @@ class AiAssistantService(models.AbstractModel):
         ]
         if len(universal_results) <= 1:
             return results[-1]
-        selected = universal_results[-8:]
+        selected = universal_results[-_HISTORY_POLICY['max_result_sections']:]
         last = selected[-1]
         return {
             # The Agent may correct an invalid discover/describe/query call in
@@ -524,12 +378,51 @@ class AiAssistantService(models.AbstractModel):
 
     @staticmethod
     def _gateway_error_answer(gateway_result):
+        gateway_result = gateway_result or {}
         status = (gateway_result or {}).get('status') or 'error'
         if status == 'missing_dependency':
             return 'Odoo 環境尚未安裝 LangChain 相關套件，AI 助手暫時不能執行。'
         if status == 'configuration_missing':
             return AiAssistantService._configuration_missing_answer()
-        return 'AI 助手執行失敗，請查看 AI Gateway 日誌。'
+        failure = gateway_result.get('error_message')
+        if failure == 'agent_timeout':
+            return '這次查詢超過等待時間，尚未完成統計。請稍後重試或縮小日期範圍；不能將這次結果當作沒有資料。'
+        events = gateway_result.get('audit_events') or []
+        if any(event.get('exception_type') == 'APITimeoutError' for event in events):
+            return '模型服務回應逾時，這次查詢未完成。請稍後重試；這不代表沒有資料或你的資料權限不足。'
+        if failure == 'incomplete_query_evidence':
+            return '這次只取得部分資料，尚未完成符合條件的完整彙總，因此不能提供完整總額。請重新查詢總額；這不是沒有資料，也不能據此判定你缺少權限。'
+        # Only explain a verified, still-unresolved tool error. Never echo raw
+        # provider/ORM exceptions, guess required groups, or reveal hidden rows.
+        for call in reversed(gateway_result.get('tool_results') or []):
+            result = call.get('result') or {}
+            if result.get('ok') is True and result.get('query_type') in (
+                    'universal_search', 'universal_aggregate', 'universal_count_distinct', 'universal_analysis'):
+                break
+            error = result.get('error') or {}
+            code = error.get('code')
+            if not code:
+                continue
+            if code == 'assistant_access_denied':
+                return 'AI 助手目前僅開放給「大圖 → 管理部」群組，你的帳號目前沒有使用權限。請聯絡管理員確認。'
+            if code == 'access_denied':
+                scope = error.get('access_scope')
+                target = error.get('target') or '這類資料'
+                if scope == 'configuration':
+                    return '助手讀取查詢入口設定時被拒絕，尚未查到業務資料。請管理員檢查助手設定；目前不能判定你缺少業務資料權限。'
+                if scope == 'model':
+                    return '你的帳號沒有「%s」的讀取權限，這次無法查詢。請管理員檢查該類資料的讀取權限；助手不會代用管理員身份查詢。' % target
+                if scope == 'field':
+                    return '你可以存取部分資料，但這次需要的「%s」欄位受到權限限制，無法完成查詢。請管理員檢查相關欄位的讀取權限。' % target
+                return '這次查詢需要的資料、欄位或記錄無法以你的帳號讀取。請管理員檢查讀取權限、公司範圍及記錄規則；這不代表沒有資料。'
+            if code == 'field_policy_denied':
+                return '這次需要的欄位受資料保護規則限制，助手不能讀取。請改查可公開給助手的欄位，或請管理員確認資料政策。'
+            if code in ('model_unavailable', 'model_discovery_required'):
+                return '這次尚未找到符合問題的可用資料來源，無法完成查詢。請提供單據類型或功能名稱；目前不能確定是權限限制還是來源尚未被找到。'
+            return '助手未能正確組成這次查詢，尚未完成統計。請稍後重試；若持續發生，請管理員依提問時間查看日誌。'
+        if failure in ('duplicate_query_exhausted', 'step_budget_exhausted', 'completion_validation_exhausted'):
+            return '助手在查詢步驟或結果核對階段未能完成，這次沒有可確認的答案。請稍後重試；這不表示沒有資料。'
+        return '這次查詢因服務或執行問題未完成，目前無法確認資料結果。請稍後重試；若持續發生，請管理員依提問時間查看日誌。'
 
     @staticmethod
     def _session_status(mode, local_result):
@@ -547,56 +440,17 @@ class AiAssistantService(models.AbstractModel):
             return 'no_data'
         return 'success'
 
-    def _serialize_order(self, order, include_lines=False):
-        data = {
-            'id': order.id,
-            'name': order.name or '',
-            'customer': order.customer_id.display_name or '',
-            'project_name': order.project_name or '',
-            'state': order.checkout_order_state or '',
-            'state_label': self._STATE_LABELS.get(order.checkout_order_state, order.checkout_order_state or ''),
-            'estimated_date': str(order.estimated_date or ''),
-            'create_date': str(order.create_date or ''),
-            'line_count': len(order.product_ids),
-        }
-        if include_lines:
-            lines = order.product_ids.sorted(lambda line: (line.sequence or 0, line.id))
-            data['lines'] = [self._serialize_line(line, idx + 1) for idx, line in enumerate(lines)]
-        return data
 
-    def _serialize_line(self, line, item_no):
-        return {
-            'id': line.id,
-            'item_no': item_no,
-            'project_product_name': line.project_product_name or '',
-            'product': line.product_id.display_name or '',
-            'width': line.product_width or '',
-            'height': line.product_height or '',
-            'machine': line.machine_id.display_name or '',
-            'product_atts': self._display_join(line.product_atts),
-            'multi_chose': self._display_join(line.multi_chose_ids),
-            'quantity': line.quantity,
-            'quantity_peijian': line.quantity_peijian,
-            'single_units': line.single_units,
-            'total_units': line.total_units,
-            'product_details': line.product_details or '',
-            'image_url': line.image_url or '',
-            'comment': line.comment or '',
-        }
 
-    @staticmethod
-    def _display_join(records):
-        return '、'.join(records.mapped('display_name')) if records else ''
 
     def _format_local_answer(self, question, result, actor):
         scope_text = self._answer_scope_text(actor)
         query_type = result.get('query_type') or ''
         if query_type.startswith('universal_'):
+            if result.get('metrics'):
+                return '%s目前有 %s 項可用指標，口徑和版本列在下方。' % (scope_text, len(result['metrics']))
             if result.get('ok') is False:
-                return '%s查詢未執行：%s' % (
-                    scope_text,
-                    (result.get('error') or {}).get('message') or '查詢參數不正確。',
-                )
+                return self._gateway_error_answer({'status': 'error', 'tool_results': [{'result': result}]})
             if result.get('groups'):
                 return '%s已完成聚合查詢，返回 %s 組結果。' % (
                     scope_text, len(result['groups'])
@@ -613,7 +467,7 @@ class AiAssistantService(models.AbstractModel):
                 return '%s已取得 %s 個可查詢欄位說明。' % (
                     scope_text, len(result['fields'])
                 )
-            return '%s查詢完成，但沒有符合條件的資料。' % scope_text
+            return '在你目前可讀的資料範圍內，沒有符合這次條件的資料；這不代表全公司沒有相關資料。'
         records = result.get('records') or []
         if not records:
             return '%s沒有找到符合條件的大圖訂單。' % scope_text
@@ -643,43 +497,9 @@ class AiAssistantService(models.AbstractModel):
             return '已依照內部使用者「%s」權限查詢，' % display_name
         return '已依照目前登入身份查詢，'
 
-    @staticmethod
-    def _extract_order_number(text):
-        match = re.search(r'\b[A-Z]\d{8,}\b', text or '', re.IGNORECASE)
-        return match.group(0).upper() if match else ''
 
-    @staticmethod
-    def _extract_keyword(text):
-        keyword = (text or '').strip()
-        for term in [
-            '查詢', '查询', '查看', '幫我', '帮我', '請問', '请问',
-            '最近', '大圖', '大图', 'A單', 'A单', '訂單', '订单',
-            'D單', 'D单', 'E單', 'E单', 'F單', 'F单', 'M單', 'M单',
-            '生產中', '生产中', '做檔中', '做档中', '完成', '已完成',
-            '有哪些', '列表', '明細', '明细', '我的', '自己', '本人',
-        ]:
-            keyword = keyword.replace(term, ' ')
-        keyword = re.sub(r'\s+', ' ', keyword).strip()
-        return keyword if len(keyword) >= 2 else ''
 
-    @staticmethod
-    def _state_domain_from_text(text):
-        text = text or ''
-        if '生產' in text or '生产' in text:
-            return [('checkout_order_state', '=', 'producing')]
-        if '做檔' in text or '做档' in text or '草稿' in text:
-            return [('checkout_order_state', 'in', ['draft', 'quoting'])]
-        if '完成' in text or '已審' in text or '已审' in text or '應收' in text or '应收' in text:
-            return [('checkout_order_state', 'in', ['finished', 'price_review_done', 'receivable_assigned'])]
-        return []
 
-    @staticmethod
-    def _order_type_domain_from_text(text):
-        text = (text or '').upper()
-        for order_type in ['A', 'D', 'E', 'F', 'M']:
-            if re.search(r'(^|[^A-Z0-9])%s\s*(單|单|ORDER)?([^A-Z0-9]|$)' % order_type, text):
-                return [('checkout_order_type', '=', order_type.lower())]
-        return []
 
     @staticmethod
     def _serialize_actor(actor):
@@ -705,45 +525,30 @@ class AiAssistantService(models.AbstractModel):
             return '查詢範圍：內部使用者「%s」權限可查看的印刷訂單系統資料。' % display_name
         return '目前尚未登入。'
 
+    @staticmethod
+    def _relative_date_context(today):
+        month_start = today.replace(day=1)
+        previous_end = month_start - datetime.timedelta(days=1)
+        previous_start = previous_end.replace(day=1)
+        previous_same_day = previous_end.replace(day=min(today.day, previous_end.day))
+        return '\n'.join((
+            '目前使用者當地日期：%s' % today,
+            '相對日期參考（起訖日均包含；只決定日期，不改變業務篩選）：',
+            '本月截至今天：%s 至 %s。' % (month_start, today),
+            '上月截至今天／從上月到今天：%s 至 %s。' % (previous_start, today),
+            '上月截至同日／上月同期：%s 至 %s。' % (previous_start, previous_same_day),
+            '上月整月：%s 至 %s。' % (previous_start, previous_end),
+        ))
+
     def _system_prompt(self, actor=None):
-        actor = actor or {}
-        identity_text = self._context_label(actor) if actor else ''
-        if actor.get('actor_type') in ('admin', 'internal'):
-            today = fields.Date.context_today(self)
-            return (
-                '你是 Odoo 16 印刷訂單系統唯讀查詢助手。回答使用繁體中文，簡短清楚。'
-                '%s目前使用者當地日期是 %s；「今年、本月、上半年、最近幾個月」等相對日期都必須以此日期換算成明確邊界。'
-                '所有業務資料只能透過 universal_odoo_query 查詢，不可編造模型、欄位或結果。'
-                '不知道資料來源時先用 discover，接著用 describe 確認欄位，再使用 search、aggregate '
-                '或 count_distinct；同一輪可以多次呼叫工具比較時段或模型。filters 是隱式 AND。'
-                '統計大圖訂單的進單數量或月份時，未另行指定口徑就使用 dtsc.checkout.create_date；'
-                'estimated_date 是目前排定或選擇的發貨時間：未生成 S 時用於大圖訂單超期未出貨判斷，'
-                '生成 S 時會同步成 dtsc.deliveryorder.delivery_date；它本身不代表已完成出貨。'
-                'A/F/E/M/D 都是 dtsc.checkout 的大圖訂單類型；M 是被合併的非目標 A 單，產品行會移入目標單，'
-                '並由行上的 origin_checkout_id 保留原母單。B/C/G/T 分別是 dtsc.makein、'
-                'dtsc.makeout、dtsc.makeom、dtsc.installproduct，透過 checkout_id 關聯母單。'
-                '產品行製作方式 make_in 或 make_om 會進 B，make_out 會進 C，make_om 也會進 G，is_install=true 會進 T；'
-                'B/C/G 生產需求會跳過 can_be_expensed=true 的產品行。make_om 因此同時形成 B 與 G 需求；需求統計允許重疊。'
-                '單一工單模型的母單數可用 checkout_id 做 count_distinct；跨 B/G 等多模型的母單聯集不可把各模型的 distinct '
-                '結果相加，工具無法取得完整聯集時必須明說不能精確計算。B/C/G/T 的有效單據統計預設排除 install_state=cancel。'
-                'S 是 dtsc.deliveryorder，透過 checkout_ids 關聯一張或多張母單，不是大圖訂單狀態；有效 S 統計預設排除 '
-                'install_state=cancel，因為作廢 S 仍可能保留 checkout_ids 歷史關係，目前有效單號可再核對 checkout.delivery_order。'
-                '大圖訂單逾期與出貨單逾期必須分別按各自單據口徑。'
-                '不可自行猜測未定義的毛利、成本、完成或逾期口徑。只允許查詢，不允許修改、刪除、付款、'
-                '上傳、建立資料、執行 Server Action、Python 或 SQL。'
-            ) % (identity_text or '', fields.Date.to_string(today))
-        return (
-            '你是 Odoo 16 大圖訂單查詢助手。'
-            '只能使用提供的工具查詢訂單資料，不能編造資料。'
-            '回答使用繁體中文，簡短清楚。'
-            '%s'
-            '如果使用者詢問自己是誰、目前身份或查詢範圍，請直接依目前身份回答，不要呼叫工具。'
-            '如果使用者說「查詢我的訂單」、「我的訂單」、「自己的訂單」、「最近訂單」、「訂單列表」、'
-            '「查看訂單」或類似意思，這是明確查詢意圖，必須呼叫 search_checkout_orders。'
-            '其中「我的、自己、本人」代表 personal=true，必須依 customer_id 是目前登入身份來過濾。'
-            '如果使用者只是打招呼或沒有明確查詢意圖，不要呼叫工具，請提示可輸入訂單號、客戶、案名或檔名查詢。'
-            '第一版只支援查詢，不允許修改、刪除、付款、上傳或建立訂單。'
-        ) % (identity_text or '')
+        policy_dir = Path(__file__).resolve().parents[1] / 'policy'
+        return '\n'.join((
+            (policy_dir / 'assistant_instructions.txt').read_text(),
+            self._context_label(actor or {}),
+            self._relative_date_context(fields.Date.context_today(self)),
+            '目前使用者當地時間：%s' % fields.Datetime.context_timestamp(self, fields.Datetime.now()).isoformat(),
+            (policy_dir / 'business_context.md').read_text(),
+        ))
 
     @staticmethod
     def _tool_names_for_result(result):
@@ -758,7 +563,7 @@ class AiAssistantService(models.AbstractModel):
         return ['scope_resolver', 'search_checkout_orders']
 
     @staticmethod
-    def _session_result_json(result, max_chars=10000):
+    def _session_result_json(result, max_chars=_HISTORY_POLICY['result_chars']):
         """Keep persisted debug data valid JSON while applying a hard size cap."""
         payload = json.loads(json.dumps(result or {}, ensure_ascii=False, default=str))
 
@@ -796,5 +601,4 @@ class AiAssistantService(models.AbstractModel):
         if actor.get('actor_type') in ('admin', 'internal'):
             return {'universal_odoo_query'}
         # Legacy external callback allowlist is disabled; fixed-tool code is retained.
-        # return {'search_checkout_orders', 'get_checkout_order_detail'}
         return set()

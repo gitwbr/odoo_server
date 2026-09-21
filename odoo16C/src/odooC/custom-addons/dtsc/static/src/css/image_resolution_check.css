@@ -1,0 +1,238 @@
+.o_dtsc_resolution_check {
+    color: #2f3338;
+    background: #fff;
+}
+
+.o_dtsc_resolution_check .container {
+    max-width: 1280px;
+}
+
+.o_resolution_article_header {
+    padding: 56px 0 28px;
+}
+
+.o_resolution_article_header h1 {
+    margin: 0;
+    color: #565a62;
+    font-size: 58px;
+    font-weight: 800;
+    line-height: 1.15;
+    border-bottom: 1px solid #777;
+    padding-bottom: 18px;
+}
+
+.o_resolution_meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 24px;
+    color: #777;
+    font-size: 22px;
+    font-weight: 700;
+    margin-top: 20px;
+}
+
+.o_resolution_tool_section {
+    padding: 28px 0 72px;
+}
+
+.o_resolution_tool {
+    max-width: 1060px;
+    margin: 0 auto;
+}
+
+.o_resolution_tool h2 {
+    margin: 0 0 28px;
+    color: #2f3338;
+    font-size: 34px;
+    font-weight: 800;
+}
+
+.o_resolution_drop_zone {
+    width: 100%;
+    min-height: 200px;
+    padding: 54px 20px;
+    text-align: center;
+    border: 2px dashed #2f75d6;
+    border-radius: 8px;
+    background-color: #f8fbff;
+    color: #2f75d6;
+    cursor: pointer;
+    transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+    position: relative;
+    margin-bottom: 18px;
+}
+
+.o_resolution_drop_zone.dragover {
+    background-color: #e8f0fe;
+    border-color: #0d47a1;
+    transform: scale(1.01);
+}
+
+.o_resolution_drop_zone p {
+    margin: 0;
+    font-size: 26px;
+    font-weight: 800;
+}
+
+.o_resolution_drop_zone span {
+    display: block;
+    margin-top: 24px;
+    color: #666;
+    font-size: 20px;
+    font-weight: 700;
+}
+
+.o_resolution_file_input {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    cursor: pointer;
+}
+
+.o_resolution_loading {
+    display: none;
+    text-align: center;
+    color: #2f75d6;
+    font-weight: 700;
+    margin: 14px 0;
+}
+
+.o_resolution_info_box {
+    display: none;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px 42px;
+    background: #e8f0fe;
+    border: 1px solid #d1e3ff;
+    border-radius: 6px;
+    padding: 22px;
+    margin-top: 18px;
+}
+
+.o_resolution_info_box p {
+    margin: 0;
+    color: #333;
+    font-size: 15px;
+}
+
+.o_resolution_info_box strong {
+    color: #2f75d6;
+    margin-right: 8px;
+}
+
+.o_resolution_controls {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 28px;
+    margin-top: 34px;
+}
+
+.o_resolution_control {
+    display: flex;
+    flex-direction: column;
+}
+
+.o_resolution_control label {
+    color: #555;
+    font-size: 20px;
+    font-weight: 800;
+    margin-bottom: 12px;
+}
+
+.o_resolution_control input {
+    width: 100%;
+    min-height: 58px;
+    border: 1px solid #c8c8c8;
+    border-radius: 5px;
+    padding: 12px 18px;
+    font-size: 20px;
+}
+
+.o_resolution_control input[readonly] {
+    background-color: #eee;
+    color: #777;
+    cursor: not-allowed;
+}
+
+.o_resolution_warning {
+    display: none;
+    color: #c5281c;
+    font-weight: 800;
+    background: #fce8e6;
+    border: 1px solid #f4c7c3;
+    padding: 18px;
+    border-radius: 6px;
+    margin-top: 28px;
+    text-align: center;
+}
+
+.o_resolution_preview_title {
+    margin-top: 56px !important;
+    border-top: 1px solid #eee;
+    padding-top: 38px;
+}
+
+.o_resolution_preview_container {
+    width: 100%;
+    height: 550px;
+    overflow: auto;
+    border: 2px dashed #ccc;
+    background: #fdfdfd;
+    margin-top: 22px;
+    border-radius: 6px;
+    position: relative;
+    cursor: grab;
+    user-select: none;
+}
+
+.o_resolution_preview_container.active {
+    cursor: grabbing;
+}
+
+.o_resolution_image_preview {
+    max-width: none;
+    max-height: none;
+    display: block;
+    image-rendering: -moz-crisp-edges;
+    image-rendering: -webkit-crisp-edges;
+    image-rendering: pixelated;
+    pointer-events: none;
+}
+
+@media (max-width: 767px) {
+    .o_resolution_article_header {
+        padding-top: 32px;
+    }
+
+    .o_resolution_article_header h1 {
+        font-size: 36px;
+    }
+
+    .o_resolution_meta {
+        gap: 10px;
+        font-size: 16px;
+    }
+
+    .o_resolution_tool h2 {
+        font-size: 26px;
+    }
+
+    .o_resolution_drop_zone {
+        min-height: 160px;
+        padding: 38px 18px;
+    }
+
+    .o_resolution_drop_zone p {
+        font-size: 22px;
+    }
+
+    .o_resolution_info_box,
+    .o_resolution_controls {
+        grid-template-columns: 1fr;
+    }
+
+    .o_resolution_preview_container {
+        height: 420px;
+    }
+}

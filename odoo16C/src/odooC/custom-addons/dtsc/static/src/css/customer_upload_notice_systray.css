@@ -1,0 +1,25 @@
+/* 与顶栏 Discuss / 活动角标一致（navbar.scss 对 button 内 badge 不生效，故在此复刻） */
+.o_dtsc_upload_notice_systray > .dropdown-toggle .badge {
+    margin-right: -0.5em;
+    border: 0;
+    height: 16px;
+    padding: 2px 4px;
+    background-color: var(--o-navbar-badge-bg, #28a745);
+    font-size: 11px;
+    color: var(--o-navbar-badge-color, inherit);
+    text-shadow: var(--o-navbar-badge-text-shadow, 1px 1px 0 rgba(0, 0, 0, 0.3));
+    transform: translate(-10%, -30%);
+    border-radius: 0;
+    line-height: normal;
+}
+
+.o_dtsc_upload_notice_menu_dropdown {
+    min-width: 320px;
+    max-width: 420px;
+    max-height: 70vh;
+    overflow-y: auto;
+}
+
+.o_dtsc_upload_notice_item:last-of-type {
+    border-bottom: none !important;
+}

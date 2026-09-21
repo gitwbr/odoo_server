@@ -112,7 +112,7 @@
                                                     accept=".ai,.pdf,.svg,.jpg,.jpeg,.png,.tif,.tiff,.ps"
                                                     required="required"
                                                 />
-                                                <label class="custom-file-label" for="ai_check_file">限制500M，超過請聯繫管理員<br/></label>
+                                                <label class="custom-file-label" for="ai_check_file">限制1G，超過請聯繫管理員<br/></label>
 
                                             </div>
                                         </td>

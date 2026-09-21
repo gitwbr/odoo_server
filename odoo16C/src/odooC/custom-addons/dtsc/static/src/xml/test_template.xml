@@ -1,0 +1,11 @@
+<odoo>
+	<t t-name="TestPageTemplate">
+		<div>
+			<select id="unit-selection">
+			</select>
+			<input type="number" id="param1" class="param-input" placeholder="参数1">
+			<input type="number" id="param2" class="param-input" placeholder="参数2">
+			<p>结果：<span id="result"></span></p>
+		</div>
+	</t>
+</odoo>

@@ -1003,7 +1003,7 @@ if (mismatchMessages.length > 0) {
           $('<div>').addClass('custom-file mb-3').css('margin-left', '0').append(
             $('<input>').attr({ type: 'file', id: 'custom_file', name: 'custom_file', class: 'custom-file-input' }),
             $('<label>').addClass('custom-file-label').attr('for', 'custom_file')
-              .html('限制500M，超過請聯繫管理員<br>'),
+              .html('限制1G，超過請聯繫管理員<br>'),
             $('<br>'),
             $('<label>').css({ 'font-size': '12px', 'color': '#888' }).html('自動匹配的文件名格式:檔案名稱-材質-屬性1-屬性2...屬性n-寬x高【可帶單位cm|mm】x數量 EX:檔案1-PVC-全透PVC-亮膜-彩白-110x110x1.ai'),
             $('<div>').addClass('invalid-feedback').text('請選擇需要上傳的檔案'),
@@ -1837,8 +1837,8 @@ if (mismatchMessages.length > 0) {
     $(document).on('change', '.custom-file-input', function () {
       if (!this.files || !this.files[0]) return;
       var fileSize = this.files[0].size / 1024 / 1024; // 转换为MB
-      if (fileSize > 500) {
-        alert('文件超過500M限制，請選擇其它文件或者聯繫管理員上傳。');
+      if (fileSize > 1024) {
+        alert('文件超過1G限制，請選擇其它文件或者聯繫管理員上傳。');
         this.value = ''; // 重置文件输入
       } else {
         // ...

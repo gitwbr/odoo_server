@@ -1,11 +1,12 @@
 # -*- coding: utf-8 -*-
 
+import asyncio
 import json
 import sys
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
-from unittest.mock import patch
+from unittest.mock import AsyncMock, Mock, patch
 
 from pydantic import ValidationError
 
@@ -17,6 +18,54 @@ from app.tools.callback import _build_args_schema, build_callback_tool
 
 
 class CallbackSchemaTestCase(unittest.TestCase):
+    def test_schema_constraints_survive_gateway_conversion_and_validate(self):
+        definition = SimpleNamespace(name='constrained', parameters={
+            'type': 'object', 'properties': {
+                'measures': {'type': 'array', 'minItems': 1, 'maxItems': 2, 'items': {
+                    'type': 'object', 'properties': {
+                        'alias': {'type': 'string', 'pattern': '^[A-Za-z_][A-Za-z0-9_]*$',
+                                  'description': 'Internal identifier; omit to use the field name.'},
+                    }, 'additionalProperties': False}},
+                'limit': {'type': 'integer', 'minimum': 1, 'maximum': 100},
+                'keyword': {'type': 'string', 'minLength': 1, 'maxLength': 10},
+                'names': {'type': 'array', 'items': {'type': 'string', 'pattern': '^[a-z]+$'}},
+            }, 'required': ['measures']})
+        schema = _build_args_schema(definition)
+        for alias in ('total_amount', None):
+            self.assertEqual(schema.model_validate({'measures': [{'alias': alias}]}).measures[0].alias, alias)
+        schema.model_validate({'measures': [{}]})
+        for request in (
+            {'measures': [{'alias': '應收總額'}]},
+            {'measures': [{'alias': 'sum(amount)'}]},
+            {'measures': []}, {'measures': [{}, {}, {}]},
+            {'measures': [{}], 'limit': 101},
+            {'measures': [{}], 'keyword': 'longer than ten'},
+            {'measures': [{}], 'names': ['INVALID']},
+        ):
+            with self.subTest(request=request), self.assertRaises(ValidationError):
+                schema.model_validate(request)
+        generated = schema.model_json_schema()
+        item = generated['$defs']['ConstrainedArgsMeasuresItem']
+        self.assertEqual(item['properties']['alias']['anyOf'][0]['pattern'], '^[A-Za-z_][A-Za-z0-9_]*$')
+        self.assertIn('omit', item['properties']['alias']['description'])
+        self.assertEqual(generated['properties']['limit']['anyOf'][0]['maximum'], 100)
+
+    def test_optional_null_and_required_filter_value_preserved(self):
+        definition = SimpleNamespace(name='generic', parameters={
+            'type': 'object', 'properties': {
+                'operation': {'type': 'string'},
+                'limit': {'type': 'integer'},
+                'value': {},
+            }, 'required': ['operation', 'value']})
+        schema = _build_args_schema(definition)
+        result = schema.model_validate({'operation': 'search', 'limit': None, 'value': None})
+        self.assertEqual(result.model_dump(exclude_unset=True),
+                         {'operation': 'search', 'limit': None, 'value': None})
+        with self.assertRaises(ValidationError):
+            schema.model_validate({'operation': None, 'value': None})
+        with self.assertRaises(ValidationError):
+            schema.model_validate({'operation': 'search', 'limit': 'bad', 'value': None})
+
     def _tool_definition(self):
         return SimpleNamespace(
             name="universal_odoo_query",
@@ -114,6 +163,10 @@ class CallbackSchemaTestCase(unittest.TestCase):
 
         self.assertEqual(validated.model_dump(exclude_unset=True), self._arguments())
         generated = args_schema.model_json_schema()
+        def non_null(node):
+            return next((item for item in node.get("anyOf", []) if item.get("type") != "null"), node)
+        for key in ("filters", "fields", "group_by", "measures", "order"):
+            generated["properties"][key] = non_null(generated["properties"][key])
         self.assertEqual(generated["properties"]["filters"]["type"], "array")
         self.assertEqual(generated["properties"]["fields"]["items"]["type"], "string")
         self.assertEqual(generated["properties"]["group_by"]["type"], "array")
@@ -124,7 +177,7 @@ class CallbackSchemaTestCase(unittest.TestCase):
         filter_item = generated["$defs"][filter_item_ref.rsplit("/", 1)[-1]]
         self.assertEqual(filter_item["type"], "object")
         self.assertEqual(filter_item["required"], ["field", "operator"])
-        date_range_ref = filter_item["properties"]["date_range"]["$ref"]
+        date_range_ref = non_null(filter_item["properties"]["date_range"])["$ref"]
         date_range = generated["$defs"][date_range_ref.rsplit("/", 1)[-1]]
         self.assertEqual(date_range["required"], ["start"])
 
@@ -199,11 +252,54 @@ class CallbackSchemaTestCase(unittest.TestCase):
 
         result = tool.invoke(self._arguments())
 
-        self.assertEqual(json.loads(result), {"count": 2})
+        self.assertEqual(json.loads(result), {"count": 2, "_evidence_id": 1})
         request_payload = post.call_args.kwargs["json"]
         self.assertEqual(request_payload["arguments"], self._arguments())
         self.assertEqual(tool_results[0]["arguments"], self._arguments())
 
+    def test_async_callback_forwards_identity_and_nested_arguments(self):
+        response = Mock()
+        response.json.return_value = {"success": True, "result": {"count": 0}}
+        client = AsyncMock()
+        client.post.return_value = response
+        manager = AsyncMock()
+        manager.__aenter__.return_value = client
+        callback = SimpleNamespace(url='https://odoo.example.test/callback', token='test',
+                                   context={'user_id': 7}, timeout=10)
+        results = []
+        tool = build_callback_tool(self._tool_definition(), callback, results)
+        with patch('app.tools.callback.httpx.AsyncClient', return_value=manager):
+            result = asyncio.run(tool.ainvoke(self._arguments()))
+        self.assertEqual(json.loads(result), {'count': 0, '_evidence_id': 1})
+        payload = client.post.call_args.kwargs['json']
+        self.assertEqual(payload['arguments'], self._arguments())
+        self.assertEqual(payload['context'], {'user_id': 7})
+        self.assertEqual(results[0]['result'], {'count': 0})
+
 
 if __name__ == "__main__":
     unittest.main()
+
+class SchemaGuardTest(unittest.TestCase):
+    def test_query_without_description_is_rejected_before_http(self):
+        from app.schemas import ToolDefinition, ToolCallback
+        definition=ToolDefinition(name='universal_odoo_query',parameters={'type':'object','properties':{
+            'operation':{'type':'string'},'model':{'type':'string'}},'required':['operation','model']})
+        callback=ToolCallback(url='https://example.test/callback',token='test')
+        calls=[]
+        tool=build_callback_tool(definition,callback,calls)
+        with patch('app.tools.callback.requests.post') as post:
+            output=json.loads(tool.invoke({'operation':'aggregate','model':'unknown.invoice'}))
+        post.assert_not_called()
+        self.assertEqual(output['error']['code'],'model_discovery_required')
+        self.assertEqual(output['_evidence_id'],1)
+        self.assertFalse(calls[0]['result']['ok'])
+
+
+    def test_discovered_model_still_requires_description_before_data(self):
+        from app.agents.query_protocol import query_prerequisite
+        discovery={'result':{'ok':True,'query_type':'universal_discover','models':[{'model':'custom.invoice'}]}}
+        request={'operation':'aggregate','model':'custom.invoice'}
+        self.assertEqual(query_prerequisite(request,[discovery])['code'],'schema_required')
+        description={'result':{'ok':True,'query_type':'universal_describe','model':'custom.invoice','fields':[]}}
+        self.assertIsNone(query_prerequisite(request,[discovery,description]))

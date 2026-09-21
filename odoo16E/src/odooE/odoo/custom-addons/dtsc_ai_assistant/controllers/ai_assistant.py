@@ -4,7 +4,9 @@ import json
 import logging
 
 from odoo import http
+from odoo.exceptions import AccessError
 from odoo.http import request
+from psycopg2 import OperationalError
 from werkzeug.urls import url_encode
 
 _logger = logging.getLogger(__name__)
@@ -12,42 +14,42 @@ _logger = logging.getLogger(__name__)
 
 class DtscAiAssistantController(http.Controller):
     def _login_url(self):
-        return '/web/login?%s' % url_encode({'redirect': '/dtsc/ai_assistant'})
+        return '/web/login?%s' % url_encode({'redirect': '/web'})
 
     def _is_allowed(self):
-        if request.session.get('partner_id'):
-            return True
-        return not request.website.is_public_user()
+        return request.env['dtsc.ai.assistant.scope']._is_assistant_allowed()
 
-    @http.route('/dtsc/ai_assistant', type='http', auth='public', website=True)
+    def _access_denied_response(self):
+        return self._json_response({
+            'success': False,
+            'error': {'code': 'assistant_access_denied'},
+            'message': request.env['dtsc.ai.assistant.scope']._ASSISTANT_ACCESS_MESSAGE,
+        }, status=403)
+
+    @http.route('/dtsc/ai_assistant/access', type='http', auth='user', methods=['GET'])
+    def ai_assistant_access(self, **kwargs):
+        response = self._json_response({'success': True, 'allowed': self._is_allowed()})
+        response.headers['Cache-Control'] = 'no-store'
+        return response
+
+    @http.route('/dtsc/ai_assistant', type='http', auth='user', website=True)
     def ai_assistant_page(self, **kwargs):
         if not self._is_allowed():
-            return request.redirect(self._login_url())
-
-        actor = request.env['dtsc.ai.assistant.scope'].resolve_actor(
-            custom_partner_id=request.session.get('partner_id')
-        )
-        return request.render('dtsc_ai_assistant.ai_assistant_page', {
-            'actor': actor,
-            'show_debug': self._show_debug(),
-        })
+            return self._access_denied_response()
+        # Legacy website page is retired; use the backend assistant instead.
+        return request.redirect('/web')
 
     @http.route(
         ['/dtsc/ai_assistant/query', '/dtsc/ai_assistant/chat'],
         type='http',
-        auth='public',
+        auth='user',
         methods=['POST'],
         csrf=False,
         website=True,
     )
     def ai_assistant_query(self, **kwargs):
         if not self._is_allowed():
-            return self._json_response({
-                'success': False,
-                'login_required': True,
-                'login_url': self._login_url(),
-                'message': '請先登入後再使用 AI 助手。',
-            })
+            return self._access_denied_response()
 
         try:
             payload = json.loads(request.httprequest.data.decode('utf-8') or '{}')
@@ -69,8 +71,11 @@ class DtscAiAssistantController(http.Controller):
             )
             result = request.env['dtsc.ai.assistant.service'].answer_question(
                 question,
-                custom_partner_id=request.session.get('partner_id'),
+                custom_partner_id=None,
                 show_debug=self._show_debug(payload),
+                cursor=payload.get('cursor'),
+                query_request=payload.get('query_request'),
+                expected_thread_id=payload.get('thread_id'),
             )
             _logger.info(
                 "AI assistant HTTP query done: mode=%s show_results=%s records=%s",
@@ -79,9 +84,20 @@ class DtscAiAssistantController(http.Controller):
                 len(result.get('records') or []),
             )
             return self._json_response({
-                'success': True,
+                'success': not result.get('conversation_changed', False),
                 **result,
             })
+        except OperationalError:
+            # Preserve Odoo's transaction retry for concurrent query/reset.
+            raise
+        except AccessError:
+            if not self._is_allowed():
+                return self._access_denied_response()
+            return self._json_response({
+                'success': False,
+                'error': {'code': 'access_denied'},
+                'message': '你的帳號可以使用助手，但這次操作所需的資料受到權限限制，請聯絡管理員確認讀取權限。',
+            }, status=403)
         except Exception as exc:  # pragma: no cover - production guardrail
             _logger.exception('AI assistant query failed')
             return self._json_response({
@@ -93,19 +109,14 @@ class DtscAiAssistantController(http.Controller):
     @http.route(
         '/dtsc/ai_assistant/history',
         type='http',
-        auth='public',
+        auth='user',
         methods=['POST'],
         csrf=False,
         website=True,
     )
     def ai_assistant_history(self, **kwargs):
         if not self._is_allowed():
-            return self._json_response({
-                'success': False,
-                'login_required': True,
-                'login_url': self._login_url(),
-                'message': '請先登入後再使用 AI 助手。',
-            })
+            return self._access_denied_response()
 
         try:
             payload = json.loads(request.httprequest.data.decode('utf-8') or '{}')
@@ -114,13 +125,25 @@ class DtscAiAssistantController(http.Controller):
         limit = int(payload.get('limit') or 30)
         limit = max(1, min(limit, 60))
         history = request.env['dtsc.ai.assistant.service'].load_history(
-            custom_partner_id=request.session.get('partner_id'),
+            custom_partner_id=None,
             limit=limit,
         )
         return self._json_response({
             'success': True,
             **history,
         })
+
+    @http.route(
+        '/dtsc/ai_assistant/reset', type='http', auth='user',
+        methods=['POST'], csrf=True,
+    )
+    def ai_assistant_reset(self, **kwargs):
+        if not self._is_allowed():
+            return self._access_denied_response()
+        result = request.env['dtsc.ai.assistant.service'].reset_conversation()
+        response = self._json_response({'success': True, **result})
+        response.headers['Cache-Control'] = 'no-store'
+        return response
 
     @http.route(
         '/dtsc/ai_assistant/gateway_tool',
@@ -151,7 +174,7 @@ class DtscAiAssistantController(http.Controller):
                 payload.get('tool_name'),
                 (payload.get('context') or {}).get('user_id'),
             )
-            result = request.env['dtsc.ai.assistant.service'].execute_gateway_tool(
+            result = request.env['dtsc.ai.assistant.service']._execute_gateway_tool(
                 payload.get('tool_name'),
                 payload.get('arguments') or {},
                 payload.get('context') or {},

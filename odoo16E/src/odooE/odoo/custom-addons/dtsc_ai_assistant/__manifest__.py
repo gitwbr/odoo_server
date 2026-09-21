@@ -6,7 +6,7 @@
     'author': '大圖輸出',
     'website': 'https://www.dtsc.com',
     'category': 'Productivity',
-    'version': '16.0.1.0.1',
+    'version': '16.0.1.0.2',
     'depends': ['base', 'web', 'website', 'dtsc', 'dtsc_ai_gateway'],
     'data': [
         'security/ir.model.access.csv',
@@ -16,10 +16,6 @@
     ],
     'assets': {
         'web.assets_backend': [
-            'dtsc_ai_assistant/static/src/js/ai_assistant.js',
-            'dtsc_ai_assistant/static/src/css/ai_assistant.css',
-        ],
-        'web.assets_frontend': [
             'dtsc_ai_assistant/static/src/js/ai_assistant.js',
             'dtsc_ai_assistant/static/src/css/ai_assistant.css',
         ],

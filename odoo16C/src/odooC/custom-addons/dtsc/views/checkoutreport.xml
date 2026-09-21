@@ -1,0 +1,46 @@
+<odoo>
+
+	<!-- <record id="sales_performance_report_tree_view" model="ir.ui.view"> -->
+		<!-- <field name="name">dtsc.checkoutreport.tree</field> -->
+		<!-- <field name="model">dtsc.checkoutreport</field> -->
+		<!-- <field name="arch" type="xml"> -->
+			<!-- <tree> -->
+				<!-- <field name="customer_id"/> -->
+				<!-- <field name="custom_num"/> -->
+				<!-- <field name="salesperson_id"/> -->
+				<!-- <field name="unit_all"/> -->
+				<!-- <field name="order_date"/> -->
+				<!-- <field name="total_price"/> -->
+			<!-- </tree> -->
+		<!-- </field> -->
+	<!-- </record> -->
+
+
+	<!-- Graph View -->
+	<record id="view_dtsc_checkoutreport_graph" model="ir.ui.view">
+		<field name="name">dtsc.checkoutreport.graph</field>
+		<field name="model">dtsc.checkoutreport</field>
+		<field name="arch" type="xml">
+			<graph string="销售业绩" type="bar">
+				<field name="total_price" type="measure"/>
+				<field name="unit_all" type="measure"/>
+				<field name="salesperson_id" type="row"/>
+				<field name="order_date" type="row" interval="month"/>
+			</graph>
+		</field>
+	</record>
+
+	<record id="view_dtsc_checkoutreport_pivot" model="ir.ui.view">
+		<field name="name">dtsc.checkoutreport.pivot</field>
+		<field name="model">dtsc.checkoutreport</field>
+		<field name="arch" type="xml">
+			<pivot string="销售业绩">
+				<field name="order_date" type="row" interval="month"/>
+				<field name="salesperson_id" type="row"/>
+				<field name="unit_all" type="measure"/>
+				<field name="total_price" type="measure"/>
+			</pivot>
+		</field>
+	</record>
+
+</odoo>

@@ -88,7 +88,9 @@ addons_backup/
 instances/
 client*/
 backup/
-docs/
+/docs/*
+!/docs/ai-assistant-query-policy.md
+!/docs/ai-assistant-incident-2026-09-15.md
 temporary/
 tmp/
 

@@ -1,0 +1,15 @@
+
+access_dtsc_checkoutreport,dtsc.checkoutreport,model_dtsc_checkoutreport,dtsc.group_dtsc_yw,1,1,1,1
+access_dtsc_installproduct,dtsc.installproduct,model_dtsc_installproduct,dtsc.group_dtsc_bs,1,0,0,0
+access_dtsc_installproductline,dtsc.installproductline,model_dtsc_installproductline,dtsc.group_dtsc_bs,1,0,0,0
+access_dtsc_imagelist,dtsc.imagelist,model_dtsc_imagelist,dtsc.group_dtsc_bs,1,0,0,0
+access_dtsc_mpr,dtsc.mpr,model_dtsc_mpr,dtsc.group_dtsc_bs,1,1,0,0
+access_dtsc_mprline,dtsc.mprline,model_dtsc_mprline,dtsc.group_dtsc_bs,1,1,0,0
+access_dtsc_deliveryorder,dtsc.deliveryorder,model_dtsc_deliveryorder,dtsc.group_dtsc_bs,1,1,0,0
+access_dtsc_deliveryorderline,dtsc.deliveryorderline,model_dtsc_deliveryorderline,dtsc.group_dtsc_bs,1,1,0,0
+access_dtsc_billinvoice,dtsc.billinvoice,model_dtsc_billinvoice,dtsc.group_dtsc_bs,1,0,0,0
+access_dtsc_billinvoiceline,dtsc.billinvoiceline,model_dtsc_billinvoiceline,dtsc.group_dtsc_bs,1,0,0,
+access_dtsc_allowances,dtsc.allowances,model_dtsc_allowances,dtsc.group_dtsc_bs,1,0,0,0
+access_dtsc_allowancesline,dtsc.allowancesline,model_dtsc_allowancesline,dtsc.group_dtsc_bs,1,0,0,
+access_dtsc_accountreportwizard,dtsc.accountreportwizard,model_dtsc_accountreportwizard,dtsc.group_dtsc_bs,1,1,1,1
+access_dtsc_setpro,dtsc.setpro,model_dtsc_setpro,dtsc.group_dtsc_bs,1,1,0,0

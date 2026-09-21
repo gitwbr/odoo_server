@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <template id="image_resolution_check_page" name="Image Resolution Check Page">
+            <t t-call="website.layout">
+                <div class="o_dtsc_resolution_check">
+                    <section class="o_resolution_article_header">
+                        <div class="container">
+                            <h1>網路圖片等比縮放與解析度檢視</h1>
+                            <!-- <div class="o_resolution_meta">
+                                <span>科影數位</span>
+                                <span>11 2月, 2026</span>
+                                <span>大圖輸出, 最新活動資訊</span>
+                            </div> -->
+                        </div>
+                    </section>
+
+                    <section class="o_resolution_tool_section">
+                        <div class="container">
+                            <div class="o_resolution_tool">
+                                <h2>圖片/PDF/TIFF 等比縮放檢視</h2>
+
+                                <div class="o_resolution_drop_zone">
+                                    <p>點擊選擇 或 將檔案拖曳至此</p>
+                                    <span>支援 JPG, PNG, PDF, TIFF</span>
+                                    <input
+                                        type="file"
+                                        class="o_resolution_file_input"
+                                        accept="image/*,.pdf,.tif,.tiff"
+                                    />
+                                </div>
+
+                                <div class="o_resolution_loading">檔案處理中，請稍候...</div>
+
+                                <div class="o_resolution_info_box">
+                                    <p><strong>原始檔案大小：</strong><span class="o_resolution_file_size">---</span></p>
+                                    <p><strong>原始解析度：</strong><span class="o_resolution_original_res">---</span></p>
+                                    <p><strong>原始尺寸 (公分)：</strong><span class="o_resolution_original_cm">---</span></p>
+                                    <p><strong>原始 DPI：</strong><span class="o_resolution_dpi">72 (預設值)</span></p>
+                                </div>
+
+                                <div class="o_resolution_controls">
+                                    <div class="o_resolution_control">
+                                        <label>2. 設定目標寬度 (cm)：</label>
+                                        <input
+                                            type="number"
+                                            class="o_resolution_target_width"
+                                            min="0"
+                                            step="0.1"
+                                            placeholder="輸入目標公分"
+                                        />
+                                    </div>
+                                    <div class="o_resolution_control">
+                                        <label>等比高度 (cm)：</label>
+                                        <input
+                                            type="number"
+                                            class="o_resolution_target_height"
+                                            readonly="readonly"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div class="o_resolution_warning">
+                                    ⚠️ 注意：目標解析度超過原始檔案，預覽將顯示放大後的模糊/馬賽克感。
+                                </div>
+
+                                <h2 class="o_resolution_preview_title">3. 預覽 (可點擊並拖曳移動檢視細節)</h2>
+                                <div class="o_resolution_preview_container">
+                                    <img class="o_resolution_image_preview" src="" alt=""/>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+            </t>
+        </template>
+    </data>
+</odoo>

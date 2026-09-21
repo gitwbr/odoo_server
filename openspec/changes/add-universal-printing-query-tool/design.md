@@ -39,6 +39,8 @@ Agent 可依次执行 discover、describe 和 query，也可在已知模型与�
 
 AI 助手限定为公司内部使用。商城会员、统编客户及未登录身份不注册任何查询工具，并在服务入口直接拦截，不进入 Gateway。若未来需要对外开放，必须另行定义各模型 actor scope。
 
+助手的 JavaScript 与样式仅加入 `web.assets_backend`。既有网站全站浮窗模板设为停用，旧网站助手路径转向 `/web`，查询与历史入口使用内部用户认证。Gateway 工具回调仍为 Token 保护的服务间入口。
+
 现有两个大图订单固定工具保留为有明确注释的 legacy 回退代码，但不再向任何 actor 注册；内部用户/管理员只使用通用工具。
 
 Alternatives considered:

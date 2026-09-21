@@ -1,0 +1,1252 @@
+<odoo>
+	<template id="make_sign_template_forgun" name="製作流程記錄表">
+		<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet"/>
+		<script src="/dtsc/static/src/js/html5-qrcode.min.js"></script>
+		<script src="/dtsc/static/src/js/work_sign.js"></script>
+		<!-- CSRF Token -->
+		<meta name="csrf-token" content="[[ csrf_token() ]]"/>
+		<div class="container" style="max-width: 800px; margin: 50px auto; border: 3px solid #007bff; border-radius: 10px; padding: 20px; background-color: #f9f9f9;">
+			<div style="display: flex; justify-content: space-between;">
+				<!-- 切换按钮 -->
+				<button id="toggle-scan-mode" style="background-color: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer;">
+					切換爲攝像頭模式
+				</button>
+			</div>
+
+			<h1 style="text-align: center; color: #007bff; font-family: Arial, sans-serif; margin-bottom: 20px;">製作流程記錄表</h1>
+			<div id="scan-name" style="text-align: center; margin-top: 50px;display: none;" >
+				-
+			</div>
+			<div style="text-align: center; margin-top: 50px;">
+				<input id="scan-yuangong-input" type="text" placeholder="掃碼輸入姓名" style="font-size: 18px; padding: 10px 20px; border-radius: 5px; border: 2px solid #007bff; width: 80%; text-align: center;"/>
+   
+			</div>
+			<div id="qr-result" style="margin-top: 20px;">
+				<!-- <h3>人員：</h3> -->
+				<p id="qr-code-info">人員：</p>
+			</div>
+			
+			<div style="display: flex; justify-content: space-between;">
+			<!-- 按钮列 -->
+				<div style="width: 30%; padding-right: 20px; text-align: left;">
+					<label><input id="lb" value="lb" type="checkbox" name="scan_mode" placeholder="冷裱" style="margin:0px 30px 15px 70px;"/>冷裱</label>
+					<label><input id="gb" value="gb" type="checkbox" name="scan_mode" placeholder="過板" style="margin:0px 30px 15px 70px;"/>過板</label>
+					<label><input id="cq" value="cq" type="checkbox" name="scan_mode" placeholder="裁切" style="margin:0px 30px 15px 70px;"/>裁切</label>
+					<label><input id="hz" value="hz" type="checkbox" name="scan_mode" placeholder="後製" style="margin:0px 30px 15px 70px;"/>後製</label>
+					<label><input id="pg" value="pg" type="checkbox" name="scan_mode" placeholder="品管" style="margin:0px 30px 15px 70px;"/>品管</label>
+					<label><input id="dc" value="dc" type="checkbox" name="scan_mode" placeholder="完成包裝" style="margin:0px 30px 15px 70px;"/>完成包裝</label>
+					<label><input id="yc" value="yc" type="checkbox" name="scan_mode" placeholder="已出貨" style="margin:0px 30px 15px 70px;"/>已出貨</label>
+					<input type="text" id="scan_input" placeholder="請掃描..." style="width: 100%; padding: 10px; border-radius: 5px; border: 2px solid #007bff; text-align: center;"/>					
+				</div>
+
+			<!-- 表格区域 -->
+				<div style="width: 65%; border-left: 2px solid #007bff; padding-left: 20px;">
+					<table style="width: 100%; border-collapse: collapse;">
+						<thead>
+							<tr>
+								<th style="border: 1px solid #007bff; padding: 8px; background-color: #f2f2f2;">步驟</th>
+								<th style="border: 1px solid #007bff; padding: 8px; background-color: #f2f2f2;">項次</th>
+								<th style="border: 1px solid #007bff; padding: 8px; background-color: #f2f2f2;">姓名</th>
+								<th style="border: 1px solid #007bff; padding: 8px; background-color: #f2f2f2;"></th>
+							</tr>
+						</thead>
+						<tbody id="table-body">
+							<!--<tr>
+								<td style="border: 1px solid #007bff; padding: 8px;">数据 1</td>
+								<td style="border: 1px solid #007bff; padding: 8px;">数据 2</td>
+								<td style="border: 1px solid #007bff; padding: 8px;">数据 3</td>
+								<td style="border: 1px solid #007bff; padding: 8px;"><button id="btn6">刪除</button></td>
+							</tr>-->
+						</tbody>
+					</table>
+				</div>
+			</div>		
+		</div>			
+		<script>
+			document.addEventListener("DOMContentLoaded", function () {
+				var inputFields = document.querySelectorAll('input[type="text"]');
+				document.getElementById("scan-yuangong-input").focus();
+				tableData = []
+				let accumulatedData = "";
+				inputFields.forEach(function(input) {
+					input.addEventListener('keydown', function(event) {
+						var inputId = event.target.id;  // 获取触发事件的输入框 ID
+						var scannedData = event.key;  // 获取按下的键值
+						// 检查如果按下的是 Enter 或换行符（newline），结束扫描
+						console.log(event.target.value)
+						if (event.code === "Enter") {
+							accumulatedData = "";
+							accumulatedData = document.getElementById(inputId).value;
+		
+							document.getElementById("scan-name").innerHTML = accumulatedData;
+							handleScannedData(inputId, accumulatedData);
+							accumulatedData = "";
+							event.target.value = ''; 
+							document.getElementById("scan-yuangong-input").value = ""
+							event.preventDefault();
+						} 
+					});
+				});
+				document.getElementById('toggle-scan-mode').addEventListener('click', function() {
+					fetch('/switch_to_sxt')
+						.then(response => response.json())
+						.then(data => {
+							if (data.success) {					
+								window.location.href = '/makesign';
+							} else {
+		
+								alert("請求失敗")
+							}
+						})
+						.catch(error => {
+							console.error('Error:', error);
+							alert("請求失敗");
+						});
+				})
+				function handleScannedData(inputId, data) {
+					if (inputId == 'scan-yuangong-input')
+					{
+						fetch('/qr_code_handler?qr_code=' + encodeURIComponent(data) + '&amp;button_type=yuangong')
+						.then(response => response.json())
+						.then(data => {
+							if (data.success) {					
+								const orderData = data.data;
+								let tmp = '';
+								tmp += `
+							<div style="display: flex; justify-content: space-between; margin-bottom: -10px;">
+								<p style="font-size: 16px; color: #333; width: 45%;">人員: <strong id="workname" style="color: #007bff;">${orderData.employeename}</strong></p>
+							</div>
+							`;
+								document.getElementById("scan-yuangong-input").value = ""
+								document.getElementById('qr-result').innerHTML = tmp;
+							} else {
+								document.getElementById("scan-yuangong-input").value = ""
+								document.getElementById('qr-code-info').innerHtml = "未找到相關數據";
+							}
+						})
+						.catch(error => {
+							console.error('Error:', error);
+							document.getElementById("scan-yuangong-input").value = ""
+							alert("請求失敗");
+						});
+					}
+					else
+					{
+						var checkedValues = [];
+						var checkedBoxes = document.querySelectorAll('input[name="scan_mode"]:checked');
+						checkedBoxes.forEach(function(box) {
+							<!-- checkedValues.push(box.value); -->
+							startQRSign(box.value,data.toUpperCase())
+						});
+						
+					}
+						
+				}
+				
+				function runtable(tableData){
+					const tableBody = document.getElementById('table-body');
+					tableBody.innerHTML = '';
+					tableData.forEach((row, index) => {
+						const tr = document.createElement('tr');
+						
+						const stepTd = document.createElement('td');
+						stepTd.style.border = '1px solid #007bff';
+						stepTd.style.padding = '8px';
+						stepTd.textContent = row.step;
+						
+						const itemTd = document.createElement('td');
+						itemTd.style.border = '1px solid #007bff';
+						itemTd.style.padding = '8px';
+						itemTd.textContent = row.index;
+						
+						const nameTd = document.createElement('td');
+						nameTd.style.border = '1px solid #007bff';
+						nameTd.style.padding = '8px';
+						nameTd.textContent = row.name;
+						
+						const actionTd = document.createElement('td');
+						actionTd.style.border = '1px solid #007bff';
+						actionTd.style.padding = '8px';
+										
+						const removeButton = document.createElement('button');
+						removeButton.textContent = '移除'; // 按鈕顯示的文本
+						removeButton.style.backgroundColor = '#f44336'; // 紅色背景
+						removeButton.style.color = 'white'; // 白色文字
+						removeButton.style.border = 'none';
+						removeButton.style.padding = '5px 10px';
+						removeButton.style.cursor = 'pointer';
+						
+						// 添加按鈕點擊事件處理
+						removeButton.addEventListener('click', () => {
+							tableBody.removeChild(tr); // 刪除該行
+							
+							tableData.splice(index, 1);
+						});
+						actionTd.appendChild(removeButton);
+						
+						tr.appendChild(stepTd);
+						tr.appendChild(itemTd);
+						tr.appendChild(nameTd);
+						tr.appendChild(actionTd);
+						
+						tableBody.appendChild(tr);
+					});
+					
+					// 添加提交按鈕
+					const submitTr = document.createElement('tr');
+					const submitTd = document.createElement('td');
+					submitTd.colSpan = 4;  // 合併所有列
+					submitTd.style.textAlign = 'center';
+
+					const submitButton = document.createElement('button');
+					submitButton.textContent = '提交';
+					submitButton.style.backgroundColor = '#007bff';  // 藍色背景
+					submitButton.style.color = 'white';
+					submitButton.style.border = 'none';
+					submitButton.style.padding = '10px 20px';
+					submitButton.style.cursor = 'pointer';
+					submitButton.style.borderRadius = '4px';
+					submitButton.style.fontSize = '16px'; // 更大的字體
+					
+					submitButton.onclick = function() {
+						submitTableData(tableData);
+					};
+					
+					submitTd.appendChild(submitButton);
+					submitTr.appendChild(submitTd);
+					tableBody.appendChild(submitTr);
+				
+				}
+				
+				function submitTableData(dataT) {
+					// 收集所有表格數據
+					const dataToSubmit = dataT.map(row => ({
+						step: row.step,
+						index: row.index,
+						name: row.name
+					}));
+					<!-- alert(JSON.stringify({ data: dataToSubmit })) -->
+					// 使用 Fetch API 發送數據到 Odoo 後端
+					fetch('/sign_update', {
+						method: 'POST',
+						headers: {
+							'Content-Type': 'application/json'
+						},
+						body: JSON.stringify({ data: dataToSubmit })
+					})
+					.then(response => response.json())
+					.then(data => {
+						if (data.success) {
+							alert('數據提交成功！');
+							tableData = []
+							tableData.length = 0;
+							<!-- alert(JSON.stringify({ tableData })) -->
+							runtable(tableData)
+							
+						} else {
+							alert('提交失敗！');
+						}
+					})
+					.catch(error => {
+						console.error('錯誤:', error);
+						alert('提交時出錯！');
+					});
+				}
+				
+				// 掃碼簽名加table
+				function startQRSign(buttonType,decodedText) {
+					if(!document.getElementById('workname') || document.getElementById('workname').textContent == "無" )
+					{
+						alert("請先掃描員工Qrcode再進行流程記錄！")
+						return
+					}
+		
+					if(validateQRCode(decodedText) == false){
+						alert("項次Qrcode不合規！")
+						return
+					}
+					
+					setp = ""
+					if (buttonType == 'lb'){
+						if (decodedText.charAt(0) === 'C' || decodedText.charAt(0) === 'c') 
+						{
+							alert("外部工單沒有冷裱流程")
+							return
+						}
+						step = '冷裱'
+					}
+					else if(buttonType == 'gb'){
+						if (decodedText.charAt(0) === 'C' || decodedText.charAt(0) === 'c') 
+						{
+							alert("外部工單沒有過板流程")
+							return
+						}
+						step = '過板'
+					}
+					else if(buttonType == 'cq'){
+						if (decodedText.charAt(0) === 'C' || decodedText.charAt(0) === 'c') 
+						{
+							alert("外部工單沒有裁切流程")
+							return
+						}
+						step = '裁切'
+					}
+					else if(buttonType == 'hz')
+						step = '後製'
+					else if(buttonType == 'pg')
+						step = '品管'
+					else if(buttonType == 'dc')
+						step = '完成包裝'
+					else if(buttonType == 'yc')
+						step = '已出貨'
+					
+					let newItem = {
+						step: step,           // 可以根据需求修改
+						index: decodedText,   // 可以根据需求修改
+						name: document.getElementById('workname').textContent
+					};
+
+					// 檢查是否已有完全相同的項目
+					const isDuplicate = tableData.some(item => 
+						item.step === newItem.step &amp;&amp; 
+						item.index === newItem.index &amp;&amp; 
+						item.name === newItem.name
+					);
+
+					if (isDuplicate) {
+						alert("此條數據已經存在，請檢查！");
+			
+					} else {
+						<!-- alert(JSON.stringify({ tableData })) -->
+						tableData.push(newItem);
+						<!-- alert(JSON.stringify({ tableData })) -->
+						runtable(tableData)	
+
+					}
+
+				
+				}
+				
+				function validateQRCode(decodedText) {
+					// 正则表达式：以 B 或 C 开头，接着是 9 位数字，后跟一个横杠，再接一个整数
+					var regex = /^[BCEbce]\d{9}-\d+$/;
+					
+					if (regex.test(decodedText)) {
+						console.log("格式正确");
+						// 如果通过验证，可以继续处理 decodedText
+						return true;
+					} else {
+						console.log("格式不正确");
+						// 如果格式不正确，返回 false 或处理错误
+						return false;
+					}
+				}
+				
+			});
+		</script>
+	</template>
+	
+	<template id="make_sign_template" name="製作流程記錄表">
+		<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet"/>
+		<script src="/dtsc/static/src/js/html5-qrcode.min.js"></script>
+		<script src="/dtsc/static/src/js/work_sign.js"></script>
+		<!-- CSRF Token -->
+		<meta name="csrf-token" content="[[ csrf_token() ]]"/>
+		<div class="container" style="max-width: 800px; margin: 50px auto; border: 3px solid #007bff; border-radius: 10px; padding: 20px; background-color: #f9f9f9;">
+			<div style="display: flex; justify-content: space-between;">
+				<!-- 切换按钮 -->
+				<button id="toggle-scan-mode" style="background-color: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer;">
+					切換爲掃碼槍模式
+				</button>
+			</div>
+			<div id="qr-modal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); display: none; justify-content: center; align-items: center; z-index: 1000;">
+
+				<div style="position: relative; width: 70%; background: white; border-radius: 8px; padding: 10px;">
+				<!-- 二维码读取器区域 -->							
+
+				<div id="qr-reader" style="width: 100%; background: white;  border-radius: 8px;">
+				
+				
+				</div>
+				<input id="close_qr_modal_btn" type="button" style="position: absolute; top: 10px; right: 10px; background: #000; color: white; border: none; padding: 5px 10px; border-radius: 5px; cursor: pointer;" value="關閉"/>
+					
+				</div>
+			</div>
+
+			<h1 style="text-align: center; color: #007bff; font-family: Arial, sans-serif; margin-bottom: 20px;">製作流程記錄表</h1>
+			
+			<div style="text-align: center; margin-top: 50px;">
+				<button id="scan_yuangong" class="btn btn-primary" style="background-color: #007bff; color: white; font-size: 18px; padding: 10px 20px; border-radius: 5px; border: none; cursor: pointer;">
+					<i class="fa fa-qrcode" style="margin-right: 8px;"></i> 請先點擊掃員工QRcode
+				</button>
+			</div>
+			<div id="qr-result" style="margin-top: 20px;">
+				<!-- <h3>掃描結果：</h3> -->
+				<p id="qr-code-info">人員：</p>
+			</div>
+			
+			<div style="display: flex; justify-content: space-between;">
+			<!-- 按钮列 -->
+				<div style="width: 30%; padding-right: 20px; text-align: left;">
+					<button id="lb" style="width: 100%; margin-bottom: 15px; padding: 10px; background-color: #007bff; color: white; border: none; border-radius: 5px;">冷裱</button>
+					<button id="gb" style="width: 100%; margin-bottom: 15px; padding: 10px; background-color: #007bff; color: white; border: none; border-radius: 5px;">過板</button>
+					<button id="cq" style="width: 100%; margin-bottom: 15px; padding: 10px; background-color: #007bff; color: white; border: none; border-radius: 5px;">裁切</button>
+					<button id="hz" style="width: 100%; margin-bottom: 15px; padding: 10px; background-color: #007bff; color: white; border: none; border-radius: 5px;">後製</button>
+					<button id="pg" style="width: 100%; margin-bottom: 15px; padding: 10px; background-color: #007bff; color: white; border: none; border-radius: 5px;">品管</button>
+					<button id="dc" style="width: 100%; margin-bottom: 15px; padding: 10px; background-color: #007bff; color: white; border: none; border-radius: 5px;">完成包裝</button>
+					<button id="yc" style="width: 100%; margin-bottom: 15px; padding: 10px; background-color: #007bff; color: white; border: none; border-radius: 5px;">已出貨</button>
+				</div>
+
+			<!-- 表格区域 -->
+				<div style="width: 65%; border-left: 2px solid #007bff; padding-left: 20px;">
+					<table style="width: 100%; border-collapse: collapse;">
+						<thead>
+							<tr>
+								<th style="border: 1px solid #007bff; padding: 8px; background-color: #f2f2f2;">步驟</th>
+								<th style="border: 1px solid #007bff; padding: 8px; background-color: #f2f2f2;">項次</th>
+								<th style="border: 1px solid #007bff; padding: 8px; background-color: #f2f2f2;">姓名</th>
+								<th style="border: 1px solid #007bff; padding: 8px; background-color: #f2f2f2;"></th>
+							</tr>
+						</thead>
+						<tbody id="table-body">
+							<!--<tr>
+								<td style="border: 1px solid #007bff; padding: 8px;">数据 1</td>
+								<td style="border: 1px solid #007bff; padding: 8px;">数据 2</td>
+								<td style="border: 1px solid #007bff; padding: 8px;">数据 3</td>
+								<td style="border: 1px solid #007bff; padding: 8px;"><button id="btn6">刪除</button></td>
+							</tr>-->
+						</tbody>
+					</table>
+				</div>
+			</div>		
+		</div>			
+		<script>
+			document.addEventListener("DOMContentLoaded", function () {
+				let html5QrCode = null; // 全局定义 QR Code 实例
+				tableData = []
+				const scan_yuangong = document.getElementById('scan_yuangong');
+				const scan_lb = document.getElementById('lb');
+				const scan_gb = document.getElementById('gb');
+				const scan_cq = document.getElementById('cq');
+				const scan_hz = document.getElementById('hz');
+				const scan_pg = document.getElementById('pg');
+				const scan_dc = document.getElementById('dc');
+				const scan_yc = document.getElementById('yc');
+				const closebutton = document.getElementById('close_qr_modal_btn');
+				
+				document.getElementById('toggle-scan-mode').addEventListener('click', function() {
+					fetch('/switch_to_smq')
+						.then(response => response.json())
+						.then(data => {
+							if (data.success) {					
+								window.location.href = '/makesign';
+							} else {
+		
+								alert("請求失敗")
+							}
+						})
+						.catch(error => {
+							console.error('Error:', error);
+							alert("請求失敗");
+						});
+				})
+				// 定义关闭扫描器函数
+				function closeQRScanner() {
+					const qrReaderElement = document.getElementById("qr-modal");
+
+					if (!qrReaderElement) {
+						console.error("找不到 ID 为 qr-modal 的元素");
+						return;
+					}
+					if (html5QrCode) {
+						html5QrCode.stop().then(() => {
+							console.log("摄像头已关闭");
+							qrReaderElement.style.display = "none"; 
+							html5QrCode = null; 
+						}).catch(err => {
+							console.error("停止扫描时出错:", err);
+						});
+					} else {
+						qrReaderElement.style.display = "none"; 
+					}
+				}
+
+				// 定义启动扫描器函数
+				function startQRScanner(buttonType) {		
+					const qrReaderElement = document.getElementById("qr-modal");
+
+					if (!qrReaderElement) {
+						console.error("找不到 ID 为 qr-modal 的元素");
+						return;
+					}
+					qrReaderElement.style.display = "flex";
+					 
+					html5QrCode = new Html5Qrcode("qr-reader");
+					
+					html5QrCode.start(							
+						{ facingMode: "environment" },
+						{
+							fps: 10,
+							qrbox: 250
+						},
+						(decodedText) => {					
+							fetch('/qr_code_handler?qr_code=' + encodeURIComponent(decodedText) + '&amp;button_type=yuangong')
+							.then(response => response.json())
+							.then(data => {
+								if (data.success) {
+							
+									const orderData = data.data;
+									let tmp = '';
+									tmp += `
+								<div style="display: flex; justify-content: space-between; margin-bottom: -10px;">
+									<p style="font-size: 16px; color: #333; width: 45%;">人員: <strong id="workname" style="color: #007bff;">${orderData.employeename}</strong></p>
+								</div>
+								`;
+									document.getElementById('qr-result').innerHTML = tmp;
+								} else {
+			
+									document.getElementById('qr-code-info').innerHtml = "未找到相關數據";
+								}
+							})
+							.catch(error => {
+								console.error('Error:', error);
+								alert("請求失敗");
+							});
+
+							html5QrCode.stop();
+							qrReaderElement.style.display = "none";
+							
+							
+							
+						},
+						(errorMessage) => {					
+							console.log("還未識別二維碼")
+						}
+					).catch(err => {
+						qrReaderElement.style.display = "none";
+						alert("未找到攝像頭設備")
+					});
+				}
+				
+				function runtable(tableData){
+					const tableBody = document.getElementById('table-body');
+					tableBody.innerHTML = '';
+					tableData.forEach((row, index) => {
+						const tr = document.createElement('tr');
+						
+						const stepTd = document.createElement('td');
+						stepTd.style.border = '1px solid #007bff';
+						stepTd.style.padding = '8px';
+						stepTd.textContent = row.step;
+						
+						const itemTd = document.createElement('td');
+						itemTd.style.border = '1px solid #007bff';
+						itemTd.style.padding = '8px';
+						itemTd.textContent = row.index;
+						
+						const nameTd = document.createElement('td');
+						nameTd.style.border = '1px solid #007bff';
+						nameTd.style.padding = '8px';
+						nameTd.textContent = row.name;
+						
+						const actionTd = document.createElement('td');
+						actionTd.style.border = '1px solid #007bff';
+						actionTd.style.padding = '8px';
+										
+						const removeButton = document.createElement('button');
+						removeButton.textContent = '移除'; // 按鈕顯示的文本
+						removeButton.style.backgroundColor = '#f44336'; // 紅色背景
+						removeButton.style.color = 'white'; // 白色文字
+						removeButton.style.border = 'none';
+						removeButton.style.padding = '5px 10px';
+						removeButton.style.cursor = 'pointer';
+						
+						// 添加按鈕點擊事件處理
+						removeButton.addEventListener('click', () => {
+							tableBody.removeChild(tr); // 刪除該行
+							
+							tableData.splice(index, 1);
+						});
+						actionTd.appendChild(removeButton);
+						
+						tr.appendChild(stepTd);
+						tr.appendChild(itemTd);
+						tr.appendChild(nameTd);
+						tr.appendChild(actionTd);
+						
+						tableBody.appendChild(tr);
+					});
+					
+					// 添加提交按鈕
+					const submitTr = document.createElement('tr');
+					const submitTd = document.createElement('td');
+					submitTd.colSpan = 4;  // 合併所有列
+					submitTd.style.textAlign = 'center';
+
+					const submitButton = document.createElement('button');
+					submitButton.textContent = '提交';
+					submitButton.style.backgroundColor = '#007bff';  // 藍色背景
+					submitButton.style.color = 'white';
+					submitButton.style.border = 'none';
+					submitButton.style.padding = '10px 20px';
+					submitButton.style.cursor = 'pointer';
+					submitButton.style.borderRadius = '4px';
+					submitButton.style.fontSize = '16px'; // 更大的字體
+					
+					submitButton.onclick = function() {
+						submitTableData(tableData);
+					};
+					
+					submitTd.appendChild(submitButton);
+					submitTr.appendChild(submitTd);
+					tableBody.appendChild(submitTr);
+				
+				}
+				
+				function submitTableData(dataT) {
+					// 收集所有表格數據
+					const dataToSubmit = dataT.map(row => ({
+						step: row.step,
+						index: row.index,
+						name: row.name
+					}));
+					<!-- alert(JSON.stringify({ data: dataToSubmit })) -->
+					// 使用 Fetch API 發送數據到 Odoo 後端
+					fetch('/sign_update', {
+						method: 'POST',
+						headers: {
+							'Content-Type': 'application/json'
+						},
+						body: JSON.stringify({ data: dataToSubmit })
+					})
+					.then(response => response.json())
+					.then(data => {
+						if (data.success) {
+							alert('數據提交成功！');
+							tableData = []
+							tableData.length = 0;
+							<!-- alert(JSON.stringify({ tableData })) -->
+							runtable(tableData)
+							
+						} else {
+							alert('提交失敗！');
+						}
+					})
+					.catch(error => {
+						console.error('錯誤:', error);
+						alert('提交時出錯！');
+					});
+				}
+				
+				function validateQRCode(decodedText) {
+					// 正则表达式：以 B 或 C 开头，接着是 9 位数字，后跟一个横杠，再接一个整数
+					var regex = /^[BCbc]\d{9}-\d+$/;
+					
+					if (regex.test(decodedText)) {
+						console.log("格式正确");
+						// 如果通过验证，可以继续处理 decodedText
+						return true;
+					} else {
+						console.log("格式不正确");
+						// 如果格式不正确，返回 false 或处理错误
+						return false;
+					}
+				}
+				
+				// 掃碼簽名加table
+				function startQRSign(buttonType) {
+					if(!document.getElementById('workname') || document.getElementById('workname').textContent == "無" )
+					{
+						alert("請先掃描員工Qrcode再進行流程記錄！")
+						return
+					}
+					
+					
+					const qrReaderElement = document.getElementById("qr-modal");
+
+					if (!qrReaderElement) {
+						console.error("找不到 ID 为 qr-modal 的元素");
+						return;
+					}
+					qrReaderElement.style.display = "flex";
+					 
+					html5QrCode = new Html5Qrcode("qr-reader");
+					
+					html5QrCode.start(							
+						{ facingMode: "environment" },
+						{
+							fps: 10,
+							qrbox: 250
+						},
+						(decodedText) => {
+							if(validateQRCode(decodedText) == false){
+								alert("項次Qrcode不合規！")
+								return
+							}
+							
+							setp = ""
+							if (buttonType == 'lb'){
+								if (decodedText.charAt(0) === 'C' || decodedText.charAt(0) === 'c') 
+								{
+									alert("外部工單沒有冷裱流程")
+									html5QrCode.stop();
+									qrReaderElement.style.display = "none";	
+									return
+								}
+								step = '冷裱'
+							}
+							else if(buttonType == 'gb'){
+								if (decodedText.charAt(0) === 'C' || decodedText.charAt(0) === 'c') 
+								{
+									alert("外部工單沒有過板流程")
+									html5QrCode.stop();
+									qrReaderElement.style.display = "none";	
+									return
+								}
+								step = '過板'
+							}
+							else if(buttonType == 'cq'){
+								if (decodedText.charAt(0) === 'C' || decodedText.charAt(0) === 'c') 
+								{
+									alert("外部工單沒有裁切流程")
+									html5QrCode.stop();
+									qrReaderElement.style.display = "none";	
+									return
+								}
+								step = '裁切'
+							}
+							else if(buttonType == 'hz')
+								step = '後製'
+							else if(buttonType == 'pg')
+								step = '品管'
+							else if(buttonType == 'dc')
+								step = '完成包裝'
+							else if(buttonType == 'yc')
+								step = '已出貨'
+							
+							let newItem = {
+								step: step,           // 可以根据需求修改
+								index: decodedText,   // 可以根据需求修改
+								name: document.getElementById('workname').textContent
+							};
+
+							// 檢查是否已有完全相同的項目
+							const isDuplicate = tableData.some(item => 
+								item.step === newItem.step &amp;&amp; 
+								item.index === newItem.index &amp;&amp; 
+								item.name === newItem.name
+							);
+
+							if (isDuplicate) {
+								alert("此條數據已經存在，請檢查！");
+					
+							} else {
+								<!-- alert(JSON.stringify({ tableData })) -->
+								tableData.push(newItem);
+								<!-- alert(JSON.stringify({ tableData })) -->
+								runtable(tableData)	
+								if(confirm("已添加"+step+"/" +decodedText+",是否要繼續掃碼？"))
+								{
+								}
+								else
+								{
+									html5QrCode.stop();
+									qrReaderElement.style.display = "none";		
+								}
+							}
+
+							
+							
+							
+						},
+						(errorMessage) => {					
+							console.log("還未識別二維碼")
+						}
+					).catch(err => {
+						qrReaderElement.style.display = "none";
+						alert("未找到攝像頭設備")
+					});
+				}
+
+				// 绑定按钮事件
+				scan_yuangong.addEventListener('click', () => startQRScanner('yuangong'));
+				scan_lb.addEventListener('click', () => startQRSign('lb'));
+				scan_gb.addEventListener('click', () => startQRSign('gb'));
+				scan_cq.addEventListener('click', () => startQRSign('cq'));
+				scan_hz.addEventListener('click', () => startQRSign('hz'));
+				scan_pg.addEventListener('click', () => startQRSign('pg'));
+				scan_dc.addEventListener('click', () => startQRSign('dc'));
+				scan_yc.addEventListener('click', () => startQRSign('yc'));
+				closebutton.addEventListener('click', closeQRScanner);
+			});
+		</script>
+	</template>
+	
+	
+	<template id="workshop_management_forgun" name="製作物相關資訊">
+			<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet"/>
+			<script src="/dtsc/static/src/js/html5-qrcode.min.js"></script>
+			<div class="container" style="max-width: 1000px; margin: 50px auto; border: 3px solid #007bff; border-radius: 10px; padding: 20px; background-color: #f9f9f9;">
+				<div style="display: flex; justify-content: space-between;">
+					<!-- 切换按钮 -->
+					<button id="toggle-scan-mode" style="background-color: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer;">
+						切換爲攝像頭模式
+					</button>
+				</div>
+				<div id="qr-modal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); display: none; justify-content: center; align-items: center; z-index: 1000;">
+
+					<div style="position: relative; width: 70%; background: white; border-radius: 8px; padding: 10px;">
+					<!-- 二维码读取器区域 -->							
+
+					<div id="qr-reader" style="width: 100%; background: white;  border-radius: 8px;">
+					
+					
+					</div>
+					<input id="close_qr_modal_btn" type="button" style="position: absolute; top: 10px; right: 10px; background: #000; color: white; border: none; padding: 5px 10px; border-radius: 5px; cursor: pointer;" value="關閉"/>
+						
+					</div>
+				</div>
+
+				<h1 style="text-align: center; color: #007bff; font-family: Arial, sans-serif; margin-bottom: 20px;">製作物相關資訊</h1>
+				
+				<div style="text-align: center; margin-top: 50px;">
+					<input id="scan-zzw-input" type="text" placeholder="請掃描二維碼" style="font-size: 18px; padding: 10px 20px; border-radius: 5px; border: 2px solid #007bff; width: 80%; text-align: center;"/>
+				</div>
+				
+				
+				<div id="qr-result" style="margin-top: 20px;">
+					<h3>掃描結果：</h3>
+					<p id="qr-code-info">等待二維碼掃描...</p>
+				</div>
+
+				
+						
+    
+			</div>
+			
+			<script>
+
+				document.addEventListener("DOMContentLoaded", function () {
+					var inputFields = document.querySelectorAll('input[type="text"]');
+					document.getElementById("scan-zzw-input").focus();
+					tableData = []
+					let accumulatedData = "";
+					inputFields.forEach(function(input) {
+						input.addEventListener('keydown', function(event) {
+							var inputId = event.target.id;  // 获取触发事件的输入框 ID
+							var scannedData = event.key;  // 获取按下的键值
+							// 检查如果按下的是 Enter 或换行符（newline），结束扫描
+							console.log(event.target.value)
+							if (event.code === "Enter") {
+								accumulatedData = "";
+								accumulatedData = document.getElementById(inputId).value;
+								startQRScanner(accumulatedData);
+								accumulatedData = "";
+								event.target.value = ''; 
+								document.getElementById("scan-zzw-input").value = ""
+								event.preventDefault();
+							} 
+						});
+					});
+
+					document.getElementById('toggle-scan-mode').addEventListener('click', function() {
+						fetch('/switch_to_sxt')
+							.then(response => response.json())
+							.then(data => {
+								if (data.success) {					
+									window.location.href = '/workmanager';
+								} else {
+			
+									alert("請求失敗")
+								}
+							})
+							.catch(error => {
+								console.error('Error:', error);
+								alert("請求失敗");
+							});
+					})
+
+					// 定义启动扫描器函数
+					function startQRScanner(decodedText) {
+								
+						fetch('/qr_code_handler?qr_code=' + encodeURIComponent(decodedText) + '&amp;button_type=wuliao')
+						.then(response => response.json())
+						.then(data => {
+							<!-- alert(data.success) -->
+							if (data.success) {
+								const orderData = data.data;
+								let tmp = '<h3>掃描結果：</h3>';
+								tmp += `
+	
+							<div style="display: flex; justify-content: space-between; margin-bottom: -10px;">
+								<p style="font-size: 16px; color: #333; width: 45%;">單號項次: <strong style="color: #007bff;">${orderData.order_qrcode}</strong></p>
+								<p style="font-size: 16px; color: #333; width: 45%;">出貨日期: <strong style="color: #007bff;">${orderData.order_time}</strong></p>
+							</div>
+							
+							<div style="display: flex; justify-content: space-between; margin-bottom: -10px;">
+								<p style="font-size: 16px; color: #333; width: 45%;">客戶: <strong style="color: #007bff;">${orderData.order_partner}</strong></p>
+								<p style="font-size: 16px; color: #333; width: 45%;">出貨方式: <strong style="color: #007bff;">${orderData.order_chfs}</strong></p>
+							</div>
+
+							<div style="display: flex; justify-content: space-between; margin-bottom: -10px;">
+								<p style="font-size: 16px; color: #333; width: 45%;">案名: <strong style="color: #007bff;">${orderData.order_project_name}</strong></p>
+								<!-- <p style="font-size: 16px; color: #333; width: 45%;">案件摘要: <strong style="color: #007bff;">${orderData.order_project_name}</strong></p> -->
+							</div>
+
+							<table class="table table-bordered" style="width: 100%; border-collapse: collapse; font-family: Arial, sans-serif;">
+								<thead style="background-color: #007bff; color: white;">
+									<tr>
+										<th style="text-align: center; padding: 10px; width: 10%;">檔名</th>
+										<th style="text-align: center; padding: 10px; width: 20%;">輸出材質</th>
+										<th style="text-align: center; padding: 10px; width: 10%;">尺寸(cm)</th>
+										<th style="text-align: center; padding: 10px; width: 20%;">加工方式</th>
+										<th style="text-align: center; padding: 10px; width: 20%;">後加工方式</th>
+										<th style="text-align: center; padding: 10px; width: 10%;">裱</th>
+										<th style="text-align: center; padding: 10px; width: 10%;">數量</th> 
+									</tr>
+								</thead>
+								<tbody>
+									<tr>
+										<td style="padding: 10px; color: #333; border: 1px solid #007bff;">
+											${orderData.line_name}
+										</td>
+										<td style="padding: 10px; color: #333; border: 1px solid #007bff;">
+											${orderData.line_caizhi}
+										</td>
+										<td style="padding: 10px; color: #333; border: 1px solid #007bff;">
+											${orderData.line_size}
+										</td>
+										<td style="padding: 10px; color: #333; border: 1px solid #007bff;">
+											${orderData.line_jiagong}
+										</td>
+										<td style="padding: 10px; color: #333; border: 1px solid #007bff;">
+											${orderData.line_after_jiagong}
+										</td>
+										<td style="padding: 10px; color: #333; border: 1px solid #007bff;">
+											${orderData.line_lengbiao}
+										</td>
+										<td style="padding: 10px; color: #333; border: 1px solid #007bff;">
+											${orderData.line_qty}
+										</td>
+									</tr>
+								</tbody>
+							</table>
+					
+							<div style="display: flex; justify-content: space-between; margin-bottom: -10px;">
+								<p style="font-size: 16px; color: #333; width: 45%;">工廠備註: <strong style="color: #007bff;">${orderData.order_factory_comment ? orderData.order_factory_comment : "無"}</strong></p>
+							</div>		
+							
+							
+							`;
+								document.getElementById('qr-result').innerHTML = tmp;
+							} else {
+								document.getElementById('qr-code-info').innerHtml = "未找到相關數據";
+							}
+						})
+							
+						
+					}
+
+				});
+			</script>
+	</template>
+	
+	
+	<template id="workshop_management" name="製作物相關資訊">
+			<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet"/>
+			<script src="/dtsc/static/src/js/html5-qrcode.min.js"></script>
+			<div class="container" style="max-width: 1000px; margin: 50px auto; border: 3px solid #007bff; border-radius: 10px; padding: 20px; background-color: #f9f9f9;">
+				<div style="display: flex; justify-content: space-between;">
+					<!-- 切换按钮 -->
+					<button id="toggle-scan-mode" style="background-color: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer;">
+						切換爲掃碼槍模式
+					</button>
+				</div>
+				
+				<div id="qr-modal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); display: none; justify-content: center; align-items: center; z-index: 1000;">
+
+					<div style="position: relative; width: 70%; background: white; border-radius: 8px; padding: 10px;">
+					<!-- 二维码读取器区域 -->							
+
+					<div id="qr-reader" style="width: 100%; background: white;  border-radius: 8px;">
+					
+					
+					</div>
+					<input id="close_qr_modal_btn" type="button" style="position: absolute; top: 10px; right: 10px; background: #000; color: white; border: none; padding: 5px 10px; border-radius: 5px; cursor: pointer;" value="關閉"/>
+						
+					</div>
+				</div>
+
+				<h1 style="text-align: center; color: #007bff; font-family: Arial, sans-serif; margin-bottom: 20px;">製作物相關資訊</h1>
+				
+				<div style="text-align: center; margin-top: 50px;">
+					<button id="scan_wuliao" class="btn btn-primary" style="background-color: #007bff; color: white; font-size: 18px; padding: 10px 20px; border-radius: 5px; border: none; cursor: pointer;">
+						<i class="fa fa-qrcode" style="margin-right: 8px;"></i> 掃工單查詢製作物相關資訊
+					</button>
+				</div>
+				
+				
+				<div id="qr-result" style="margin-top: 20px;">
+					<h3>掃描結果：</h3>
+					<p id="qr-code-info">等待二維碼掃描...</p>
+				</div>
+				<!-- <div style="text-align: center; margin-top: 50px;"> -->
+					<!-- <button  id="scan_yuangong" class="btn btn-primary" style="background-color: #007bff; color: white; font-size: 18px; padding: 10px 20px; border-radius: 5px; border: none; cursor: pointer;"> -->
+						<!-- <i class="fa fa-qrcode" style="margin-right: 8px;"></i> 掃員工 QR Code 流程簽名 -->
+					<!-- </button> -->
+				<!-- </div> -->
+				
+						
+    
+			</div>
+			
+			<script>
+
+				document.addEventListener("DOMContentLoaded", function () {
+					let html5QrCode = null; // 全局定义 QR Code 实例
+
+					const scan_wuliao = document.getElementById('scan_wuliao');
+					const scan_yuangong = document.getElementById('scan_yuangong');
+					const closebutton = document.getElementById('close_qr_modal_btn');
+					
+					document.getElementById('toggle-scan-mode').addEventListener('click', function() {
+						fetch('/switch_to_smq')
+							.then(response => response.json())
+							.then(data => {
+								if (data.success) {					
+									window.location.href = '/workmanager';
+								} else {
+			
+									alert("請求失敗")
+								}
+							})
+							.catch(error => {
+								console.error('Error:', error);
+								alert("請求失敗");
+							});
+					})
+					// 定义关闭扫描器函数
+					function closeQRScanner() {
+						const qrReaderElement = document.getElementById("qr-modal");
+
+						if (!qrReaderElement) {
+							console.error("找不到 ID 为 qr-modal 的元素");
+							return;
+						}
+						if (html5QrCode) {
+							html5QrCode.stop().then(() => {
+								console.log("摄像头已关闭");
+								qrReaderElement.style.display = "none"; 
+								html5QrCode = null; 
+							}).catch(err => {
+								console.error("停止扫描时出错:", err);
+							});
+						} else {
+							qrReaderElement.style.display = "none"; 
+						}
+					}
+
+					// 定义启动扫描器函数
+					function startQRScanner(buttonType) {
+						/*let qrCode = "B241200003-2"
+						fetch('/qr_code_handler?qr_code=' + encodeURIComponent(qrCode) + '&amp;button_type=wuliao')
+						.then(response => response.json())
+						.then(data => {
+							if (data.success) {
+								const orderData = data.data;
+								let tmp = '<h3>掃描結果：</h3>';
+								tmp += `
+    
+							<div style="display: flex; justify-content: space-between; margin-bottom: -10px;">
+								<p style="font-size: 16px; color: #333; width: 45%;">單號項次: <strong style="color: #007bff;">${orderData.order_qrcode}</strong></p>
+								<p style="font-size: 16px; color: #333; width: 45%;">出貨日期: <strong style="color: #007bff;">${orderData.order_time}</strong></p>
+							</div>
+							
+							<div style="display: flex; justify-content: space-between; margin-bottom: -10px;">
+								<p style="font-size: 16px; color: #333; width: 45%;">客戶: <strong style="color: #007bff;">${orderData.order_partner}</strong></p>
+								<p style="font-size: 16px; color: #333; width: 45%;">出貨方式: <strong style="color: #007bff;">${orderData.order_chfs}</strong></p>
+							</div>
+
+							<div style="display: flex; justify-content: space-between; margin-bottom: -10px;">
+								<p style="font-size: 16px; color: #333; width: 45%;">案名: <strong style="color: #007bff;">${orderData.order_project_name}</strong></p>
+								<!-- <p style="font-size: 16px; color: #333; width: 45%;">案件摘要: <strong style="color: #007bff;">${orderData.order_project_name}</strong></p> -->
+							</div>
+
+							<table class="table table-bordered" style="width: 100%; border-collapse: collapse; font-family: Arial, sans-serif;">
+								<thead style="background-color: #007bff; color: white;">
+									<tr>
+										<th style="text-align: center; padding: 10px; width: 10%;">檔名</th>
+										<th style="text-align: center; padding: 10px; width: 20%;">輸出材質</th>
+										<th style="text-align: center; padding: 10px; width: 10%;">尺寸(cm)</th>
+										<th style="text-align: center; padding: 10px; width: 20%;">加工方式</th>
+										<th style="text-align: center; padding: 10px; width: 20%;">後加工方式</th>
+										<th style="text-align: center; padding: 10px; width: 10%;">裱</th>
+										<th style="text-align: center; padding: 10px; width: 10%;">數量</th> 
+									</tr>
+								</thead>
+								<tbody>
+									<tr>
+										<td style="padding: 10px; color: #333; border: 1px solid #007bff;">
+											${orderData.line_name}
+										</td>
+										<td style="padding: 10px; color: #333; border: 1px solid #007bff;">
+											${orderData.line_caizhi}
+										</td>
+										<td style="padding: 10px; color: #333; border: 1px solid #007bff;">
+											${orderData.line_size}
+										</td>
+										<td style="padding: 10px; color: #333; border: 1px solid #007bff;">
+											${orderData.line_jiagong}
+										</td>
+										<td style="padding: 10px; color: #333; border: 1px solid #007bff;">
+											${orderData.line_after_jiagong}
+										</td>
+										<td style="padding: 10px; color: #333; border: 1px solid #007bff;">
+											${orderData.line_lengbiao}
+										</td>
+										<td style="padding: 10px; color: #333; border: 1px solid #007bff;">
+											${orderData.line_qty}
+										</td>
+									</tr>
+								</tbody>
+							</table>
+					
+							<div style="display: flex; justify-content: space-between; margin-bottom: -10px;">
+								<p style="font-size: 16px; color: #333; width: 45%;">工廠備註: <strong style="color: #007bff;">${orderData.order_factory_comment ? orderData.order_factory_comment : "無"}</strong></p>
+							</div>		
+							
+							
+							`;
+								document.getElementById('qr-result').innerHTML = tmp;
+							} else {
+								document.getElementById('qr-code-info').innerHtml = "未找到相關數據";
+							}
+						})
+						.catch(error => {
+							console.error('請求失敗:', error);
+							document.getElementById('qr-code-info').innerHtml = "請求失敗，請重試";
+						});*/
+					
+					
+						const qrReaderElement = document.getElementById("qr-modal");
+
+						if (!qrReaderElement) {
+							console.error("找不到 ID 为 qr-modal 的元素");
+							return;
+						}
+						qrReaderElement.style.display = "flex";
+						 
+						html5QrCode = new Html5Qrcode("qr-reader");
+						
+						html5QrCode.start(							
+							{ facingMode: "environment" },
+							{
+								fps: 10,
+								qrbox: 250
+							},
+							(decodedText) => {
+								<!-- alert(decodedText)  -->
+								
+								fetch('/qr_code_handler?qr_code=' + encodeURIComponent(decodedText) + '&amp;button_type=wuliao')
+								.then(response => response.json())
+								.then(data => {
+									<!-- alert(data.success) -->
+									if (data.success) {
+										const orderData = data.data;
+										let tmp = '<h3>掃描結果：</h3>';
+										tmp += `
+			
+									<div style="display: flex; justify-content: space-between; margin-bottom: -10px;">
+										<p style="font-size: 16px; color: #333; width: 45%;">單號項次: <strong style="color: #007bff;">${orderData.order_qrcode}</strong></p>
+										<p style="font-size: 16px; color: #333; width: 45%;">出貨日期: <strong style="color: #007bff;">${orderData.order_time}</strong></p>
+									</div>
+									
+									<div style="display: flex; justify-content: space-between; margin-bottom: -10px;">
+										<p style="font-size: 16px; color: #333; width: 45%;">客戶: <strong style="color: #007bff;">${orderData.order_partner}</strong></p>
+										<p style="font-size: 16px; color: #333; width: 45%;">出貨方式: <strong style="color: #007bff;">${orderData.order_chfs}</strong></p>
+									</div>
+
+									<div style="display: flex; justify-content: space-between; margin-bottom: -10px;">
+										<p style="font-size: 16px; color: #333; width: 45%;">案名: <strong style="color: #007bff;">${orderData.order_project_name}</strong></p>
+										<!-- <p style="font-size: 16px; color: #333; width: 45%;">案件摘要: <strong style="color: #007bff;">${orderData.order_project_name}</strong></p> -->
+									</div>
+
+									<table class="table table-bordered" style="width: 100%; border-collapse: collapse; font-family: Arial, sans-serif;">
+										<thead style="background-color: #007bff; color: white;">
+											<tr>
+												<th style="text-align: center; padding: 10px; width: 10%;">檔名</th>
+												<th style="text-align: center; padding: 10px; width: 20%;">輸出材質</th>
+												<th style="text-align: center; padding: 10px; width: 10%;">尺寸(cm)</th>
+												<th style="text-align: center; padding: 10px; width: 20%;">加工方式</th>
+												<th style="text-align: center; padding: 10px; width: 20%;">後加工方式</th>
+												<th style="text-align: center; padding: 10px; width: 10%;">裱</th>
+												<th style="text-align: center; padding: 10px; width: 10%;">數量</th> 
+											</tr>
+										</thead>
+										<tbody>
+											<tr>
+												<td style="padding: 10px; color: #333; border: 1px solid #007bff;">
+													${orderData.line_name}
+												</td>
+												<td style="padding: 10px; color: #333; border: 1px solid #007bff;">
+													${orderData.line_caizhi}
+												</td>
+												<td style="padding: 10px; color: #333; border: 1px solid #007bff;">
+													${orderData.line_size}
+												</td>
+												<td style="padding: 10px; color: #333; border: 1px solid #007bff;">
+													${orderData.line_jiagong}
+												</td>
+												<td style="padding: 10px; color: #333; border: 1px solid #007bff;">
+													${orderData.line_after_jiagong}
+												</td>
+												<td style="padding: 10px; color: #333; border: 1px solid #007bff;">
+													${orderData.line_lengbiao}
+												</td>
+												<td style="padding: 10px; color: #333; border: 1px solid #007bff;">
+													${orderData.line_qty}
+												</td>
+											</tr>
+										</tbody>
+									</table>
+							
+									<div style="display: flex; justify-content: space-between; margin-bottom: -10px;">
+										<p style="font-size: 16px; color: #333; width: 45%;">工廠備註: <strong style="color: #007bff;">${orderData.order_factory_comment ? orderData.order_factory_comment : "無"}</strong></p>
+									</div>		
+									
+									
+									`;
+										document.getElementById('qr-result').innerHTML = tmp;
+									} else {
+										document.getElementById('qr-code-info').innerHtml = "未找到相關數據";
+									}
+								})
+								.catch(error => {
+									console.error('Error:', error);
+									alert("請求失敗");
+								});
+
+								html5QrCode.stop();
+								qrReaderElement.style.display = "none";
+								
+								
+								
+							},
+							(errorMessage) => {
+								<!-- qrReaderElement.style.display = "none"; -->
+								console.log("還未識別二維碼")<!-- alert("掃碼錯誤") -->
+							}
+						).catch(err => {
+							qrReaderElement.style.display = "none";
+							alert("未找到攝像頭設備")
+						});
+					}
+
+					// 绑定按钮事件
+					scan_wuliao.addEventListener('click', () => startQRScanner('wuliao'));
+					<!-- scan_yuangong.addEventListener('click', () => startQRScanner('yuangong')); -->
+					closebutton.addEventListener('click', closeQRScanner);
+				});
+			</script>
+	</template>
+</odoo>

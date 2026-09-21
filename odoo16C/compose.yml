@@ -1,0 +1,57 @@
+name: odoo16c
+services:
+  db:
+    image: postgres:15
+    container_name: odoo16c-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: postgres
+      POSTGRES_USER: odoo16c
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Missing DB_PASSWORD in .env}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "127.0.0.1:5434:5432"
+    volumes:
+      - ./postgresql:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U odoo16c -d postgres"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks: [community]
+
+  web:
+    image: odoo16c-runner:16.0
+    build:
+      context: .
+      dockerfile: Dockerfile.runner
+    container_name: odoo16c-web
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    entrypoint: ["python3"]
+    command: ["/opt/odoo16C/src/odooC/odoo-bin", "-c", "/etc/odoo16c.conf"]
+    working_dir: /opt/odoo16C/src/odooC
+    environment:
+      PYTHONPATH: /opt/odoo16C/src/odooC
+      PYTHONDONTWRITEBYTECODE: "1"
+    ports:
+      - "8075:8069"
+    volumes:
+      - ./src:/opt/odoo16C/src:ro
+      - ./odoo.conf:/etc/odoo16c.conf:ro
+      - ./data:/var/lib/odoo
+      - ./logs:/var/log/odoo
+      - ./run/extra-addons:/mnt/extra-addons:ro
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8069/web/login', timeout=10)"]
+      interval: 30s
+      timeout: 15s
+      start_period: 60s
+      retries: 3
+    networks: [community]
+
+networks:
+  community:
+    name: odoo16c-net

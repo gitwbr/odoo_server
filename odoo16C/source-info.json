@@ -1,0 +1,24 @@
+{
+  "created_at": "2026-09-21T02:24:43.857857+00:00",
+  "source_image": "custom-odoo:16.0.1",
+  "source_image_id": "sha256:d88582c357884a3ab47f2f8e1bdcc3f0369062d517b5ba6add22e35b4304e1fd",
+  "core_version": "16.0-20250115",
+  "copies": {
+    "addons": {
+      "files_verified": 37382,
+      "mismatches": [],
+      "symlinks": []
+    },
+    "custom-addons": {
+      "files_verified": 286,
+      "mismatches": [],
+      "symlinks": []
+    }
+  },
+  "local_adjustments": [
+    {
+      "file": "src/odooC/custom-addons/dtsc/__manifest__.py",
+      "reason": "Fresh installation: declare website_sale_delivery dependency and load customer upload notification and asset menus after views/views.xml defines their parent menus."
+    }
+  ]
+}

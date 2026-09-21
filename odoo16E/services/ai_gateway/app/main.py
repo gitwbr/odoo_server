@@ -17,9 +17,9 @@ def health():
 
 
 @app.post("/v1/agent/run")
-def run_agent(payload: AgentRunRequest):
+async def run_agent(payload: AgentRunRequest):
     try:
-        return run_langchain_agent(payload)
+        return await run_langchain_agent(payload)
     except Exception as exc:  # pragma: no cover - service guardrail
         _logger.exception("AI gateway execution failed")
         return {

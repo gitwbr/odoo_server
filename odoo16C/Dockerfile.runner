@@ -1,0 +1,5 @@
+FROM custom-odoo:16.0.1
+USER root
+RUN python3 -m pip install --no-cache-dir pycryptodome==3.23.0 \
+    && rm -rf /usr/lib/python3/dist-packages/odoo
+USER odoo

@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <data>
-        <template id="ai_assistant_floating_widget" inherit_id="website.layout" name="DTS-C AI Floating Assistant">
+        <!-- Legacy website widget disabled: the assistant is backend-only. -->
+        <template id="ai_assistant_floating_widget" inherit_id="website.layout" name="DTS-C AI Floating Assistant" active="False">
             <xpath expr="//body" position="inside">
                 <div class="o_dtsc_ai_assistant o_dtsc_ai_float"
                      data-query-url="/dtsc/ai_assistant/query"
@@ -21,13 +22,6 @@
                         </header>
                         <div class="o_dtsc_ai_form" role="search">
                             <div class="o_dtsc_ai_thread" aria-live="polite"></div>
-                            <div class="o_dtsc_ai_prompt_helper">
-                                <span>可直接問</span>
-                                <span class="o_dtsc_ai_prompt_chip">今天有多少張大圖訂單？</span>
-                                <span class="o_dtsc_ai_prompt_chip">本月訂單最多的前 10 名客戶</span>
-                                <span class="o_dtsc_ai_prompt_chip">近 6 個月大圖訂單數量趨勢</span>
-                                <span class="o_dtsc_ai_prompt_chip">目前有多少張未出貨的大圖訂單？</span>
-                            </div>
                             <div class="o_dtsc_ai_input_row">
                                 <input class="o_dtsc_ai_question"
                                        type="text"
@@ -76,13 +70,6 @@
 
                                 <div class="o_dtsc_ai_form" role="search">
                                     <div class="o_dtsc_ai_thread" aria-live="polite"></div>
-                                    <div class="o_dtsc_ai_prompt_helper">
-                                        <span>可直接問</span>
-                                        <span class="o_dtsc_ai_prompt_chip">今天有多少張大圖訂單？</span>
-                                        <span class="o_dtsc_ai_prompt_chip">本月訂單最多的前 10 名客戶</span>
-                                        <span class="o_dtsc_ai_prompt_chip">近 6 個月大圖訂單數量趨勢</span>
-                                        <span class="o_dtsc_ai_prompt_chip">目前有多少張未出貨的大圖訂單？</span>
-                                    </div>
                                     <div class="o_dtsc_ai_input_row">
                                         <input class="o_dtsc_ai_question"
                                                type="text"

@@ -903,7 +903,7 @@ odoo.define('dtsc.checkout', function (require) {
 					var newLabel10 = $('<label>')
 					.addClass('custom-file-label')
 					.attr('for', 'custom_file')
-					.html('&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;限制500M，超過請聯繫管理員');
+					.html('&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;限制1G，超過請聯繫管理員');
 					var newDiv10_2 = $('<div>').addClass('invalid-feedback').text('請選擇需要上傳的檔案');
 					var newInput10_2 = $('<input>').attr({type: 'text', class: 'custom_file_status d-none', name: 'custom_file_status', value: ''});
 					newDiv10.append(newInput10).append(newLabel10).append(newDiv10_2).append(newInput10_2);
@@ -1553,8 +1553,8 @@ odoo.define('dtsc.checkout', function (require) {
         }
         $(document).on('change', '.custom-file-input', function() {
             var fileSize = this.files[0].size / 1024 / 1024; // 转换为MB
-            if (fileSize > 500) {
-                alert('文件超過500M限制，請選擇其它文件或者聯繫管理員上傳。');
+            if (fileSize > 1024) {
+                alert('文件超過1G限制，請選擇其它文件或者聯繫管理員上傳。');
                 this.value = ''; // 重置文件输入
                 /* $(this).next('.upload-status').addClass('d-none'); // 隐藏上传状态
                 $(this).nextAll('.uploadProgressBar').hide(); // 隐藏进度条 */

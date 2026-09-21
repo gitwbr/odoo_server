@@ -1,0 +1,61 @@
+<odoo>
+<record id="view_tree_unit_conversion" model="ir.ui.view">
+    <field name="name">unit.conversion.tree</field>
+    <field name="model">dtsc.unit_conversion</field>
+    <field name="arch" type="xml">
+        <tree string="單位換算">
+            <field name="name"/>
+            <field name="parameter_length"/>
+            <field name="first_unit"/>
+            <field name="second_unit"/>
+            <field name="third_unit"/>
+            <field name="rounding_method"/>
+            <field name="decimal_places"/>
+            <field name="conversion_formula"/>
+            <field name="converted_unit_name"/>
+        </tree>
+    </field>
+</record>
+
+<record id="view_form_unit_conversion" model="ir.ui.view">
+    <field name="name">unit.conversion.form</field>
+    <field name="model">dtsc.unit_conversion</field>
+    <field name="arch" type="xml">
+        <form string="單位換算">
+            <sheet>
+                <group>
+                    <group>
+                        <field name="name"/>
+                    </group>
+                    <group>
+                        <field name="parameter_length"/>
+                        <field name="first_unit"/>
+                        <field name="second_unit"/>
+                        <field name="third_unit"/>
+                        <field name="rounding_method"/>
+                        <field name="decimal_places" default="0"/>
+                    </group>
+                </group>
+                <group>
+                    <field name="conversion_formula"/>
+                    <field name="converted_unit_name"/>
+                </group>
+            </sheet>
+        </form>
+    </field>
+</record>
+
+<record id="action_window_unit_conversion" model="ir.actions.act_window">
+    <field name="name">單位換算</field>
+    <field name="type">ir.actions.act_window</field>
+    <field name="res_model">dtsc.unit_conversion</field>
+    <field name="view_mode">tree,form</field>
+    <field name="help" type="html">
+        <p class="oe_view_nocontent_create">Click to create a new conversion</p>
+    </field>
+</record>
+
+
+
+
+</odoo>

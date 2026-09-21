@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 
+import json
+from pathlib import Path
 import logging
 import secrets
 import time
@@ -8,6 +10,8 @@ import requests
 
 from odoo import models
 
+_RUNTIME_POLICY = json.loads((Path(__file__).resolve().parents[1] / 'policy/runtime_policy.json').read_text())
+
 _logger = logging.getLogger(__name__)
 
 
@@ -15,7 +19,7 @@ class AiGatewayRunner(models.AbstractModel):
     _name = 'dtsc.ai.gateway.runner'
     _description = 'AI Gateway HTTP Client'
 
-    def run(
+    def _run(
         self,
         message,
         tool_specs=None,
@@ -27,7 +31,7 @@ class AiGatewayRunner(models.AbstractModel):
     ):
         started = time.time()
         tool_specs = tool_specs or []
-        config = self.env['dtsc.ai.gateway.config'].get_runtime_config()
+        config = self.env['dtsc.ai.gateway.config']._get_runtime_config()
         tool_names = ', '.join(spec.get('name', '') for spec in tool_specs if spec.get('name'))
 
         if not config.get('service_url') or not config.get('model') or not config.get('api_key'):
@@ -52,7 +56,14 @@ class AiGatewayRunner(models.AbstractModel):
         callback_url = '%s/dtsc/ai_assistant/gateway_tool' % config['odoo_base_url'].rstrip('/')
         callback_context = dict(actor_context or {})
         callback_context.setdefault('message', message or '')
+        # A turn includes discovery, schema lookup, queries and a final answer.
+        # Keep its deadline separate from a single provider/callback request.
+        run_timeout = max(_RUNTIME_POLICY['minimum_turn_seconds'], min(
+            (config.get('timeout') or 30.0) * _RUNTIME_POLICY['request_multiplier'],
+            _RUNTIME_POLICY['maximum_turn_seconds']))
         request_payload = {
+            'run_timeout': run_timeout,
+            'execution_policy': _RUNTIME_POLICY['execution'],
             'message': message or '',
             'system_prompt': system_prompt or '',
             'config': {
@@ -99,7 +110,7 @@ class AiGatewayRunner(models.AbstractModel):
             response = requests.post(
                 config['service_url'],
                 json=request_payload,
-                timeout=(config.get('timeout') or 30.0) + 15,
+                timeout=(_RUNTIME_POLICY['connect_seconds'], run_timeout + _RUNTIME_POLICY['response_grace_seconds']),
             )
             response.raise_for_status()
             data = response.json()
@@ -127,6 +138,11 @@ class AiGatewayRunner(models.AbstractModel):
                 partner=partner,
                 error_message=data.get('error_message'),
                 tool_results=tool_results,
+                audit_events=(data.get("audit_events") or []) + [{
+                    'event': 'completion', 'kind': data.get('completion_kind'),
+                    'policy_version': data.get('policy_version'), 'thread_id': thread_id,
+                }],
+                display_tool_results=data.get('display_tool_results', []),
             )
         except Exception as exc:  # pragma: no cover - production guardrail
             _logger.exception('AI gateway HTTP call failed')
@@ -162,6 +178,8 @@ class AiGatewayRunner(models.AbstractModel):
         partner=None,
         error_message=None,
         tool_results=None,
+        audit_events=None,
+        display_tool_results=None,
     ):
         duration_ms = int((time.time() - started) * 1000)
         log = self.env['dtsc.ai.gateway.log'].sudo().create({
@@ -172,7 +190,7 @@ class AiGatewayRunner(models.AbstractModel):
             'model_name': config.get('model'),
             'status': status,
             'request_text': (message or '')[:4000],
-            'response_text': (response or '')[:4000],
+            'response_text': self._audit_response(response, tool_results, audit_events),
             'tool_names': tool_names,
             'duration_ms': duration_ms,
             'error_message': (error_message or '')[:4000],
@@ -195,8 +213,30 @@ class AiGatewayRunner(models.AbstractModel):
             'log_id': log.id,
             'error_message': error_message or '',
             'tool_results': tool_results or [],
+            'audit_events': audit_events or [],
             'local_result': local_result,
+            'display_tool_results': display_tool_results if display_tool_results is not None else tool_results or [],
         }
+
+    @staticmethod
+    def _audit_response(response, tool_results, audit_events=None):
+        # Reuse the existing log field: no schema upgrade or historical data migration.
+        # Keep query metadata and errors, not a second copy of business record rows.
+        calls = []
+        for item in tool_results or []:
+            if not isinstance(item, dict):
+                continue
+            result = item.get('result') or {}
+            metadata = {key: result[key] for key in (
+                'ok', 'query_type', 'model', 'description', 'provenance', 'metric',
+                'basis', 'metric_version', 'error', 'message', 'error_code',
+                'total_count', 'has_more', 'response_truncated',
+            ) if key in result} if isinstance(result, dict) else {}
+            calls.append({'tool': item.get('tool'), 'arguments': item.get('arguments'),
+                          'result_metadata': metadata})
+        return (response or '') + '\n\n【查詢執行明細】\n' + json.dumps(
+            {'events': audit_events or [], 'tool_calls': calls}, ensure_ascii=False, indent=2, default=str,
+        )
 
     @staticmethod
     def _last_local_result(tool_results):

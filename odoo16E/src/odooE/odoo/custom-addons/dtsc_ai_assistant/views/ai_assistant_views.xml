@@ -12,7 +12,7 @@
                   parent="dtsc.menu_root"
                   action="action_dtsc_ai_assistant_page"
                   sequence="6"
-                  groups="dtsc.group_dtsc_mg,dtsc.group_dtsc_yw,dtsc.group_dtsc_kj,dtsc.group_dtsc_sc,dtsc.group_dtsc_ck"/>
+                  groups="dtsc.group_dtsc_gly"/>
 
         <record id="view_dtsc_ai_assistant_session_tree" model="ir.ui.view">
             <field name="name">dtsc.ai.assistant.session.tree</field>

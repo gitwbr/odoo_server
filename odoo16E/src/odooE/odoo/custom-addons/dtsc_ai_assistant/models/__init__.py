@@ -7,3 +7,4 @@ from . import ai_assistant_scope
 from . import universal_odoo_query
 from . import ai_assistant_service
 from . import ai_assistant_settings
+from . import ir_ui_menu

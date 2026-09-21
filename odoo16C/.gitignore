@@ -1,0 +1,12 @@
+/data/
+/logs/
+/postgresql/
+/run/
+/.env
+/odoo.conf
+/credentials.txt
+/src/odooC/odoo/
+/src/odooC/addons/
+/src/odooC/requirements-runtime.txt
+__pycache__/
+*.py[cod]

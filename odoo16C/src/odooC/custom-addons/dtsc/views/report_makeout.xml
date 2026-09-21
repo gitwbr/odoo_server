@@ -1,0 +1,164 @@
+﻿<odoo>
+    <template id="report_makeout_template">
+        <t t-call="web.html_container">
+			<style>
+               
+            </style>
+            <t t-foreach="docs" t-as="doc">
+                <t t-call="dtsc.external_layout_coin">
+					<!-- 计算总页数 -->
+                    <t t-set="total_lines" t-value="len(doc.order_ids)"/>
+                    <t t-set="lines_per_page" t-value="14"/>
+                    <t t-set="total_pages" t-value="(total_lines + lines_per_page - 1) // lines_per_page"/>
+
+                    <!-- 循环每页 -->
+                    <t t-foreach="[page_num for page_num in range(1, int(total_pages) + 1)]" t-as="page_num">
+						<div class="page">
+							<!-- Title -->
+							<div style="display: flex; justify-content: space-between; align-items: center;">
+								<div>
+									<h3><span t-field="doc.company_id" style="font-size: 26px;margin-right: 20px;"/>輸出工單</h3> <!-- 增加右边距 -->
+								</div>
+								<div style="font-size: 24px;">
+									<strong>單號:</strong> <span t-field="doc.name"/>
+								</div>
+							</div>
+							<hr style="border-top: 2px solid #333; opacity: 1;"/>
+							<!-- Main Information -->
+							<table class="table table-condensed"  style="font-size:19px;padding: 0px;margin:0px ;border-style: hidden;">
+								<tbody>
+									<tr  style="border-style: hidden;">
+										<td style="width: 10%;"><strong>外派公司:</strong></td>
+										<td style="width: 25%;"><span t-field="doc.supplier_id.name"/></td>
+                                        <td style="width: 10%;"><strong>開單人員:</strong></td>
+                                        <td style="width: 25%;"><span t-field="doc.kaidan"/></td>
+										<td style="width: 10%;"><strong>速別:</strong></td>
+										<td style="width: 25%;"><span t-field="doc.speed_type"/></td>
+									</tr>
+									<tr style="border-style: hidden;">
+										<td style="width: 10%;"><strong>客戶名稱:</strong></td>
+										<td style="width: 25%;"><span t-field="doc.customer_name"/></td>
+										<td style="width: 10%;"><strong>電話:</strong></td>
+										<td style="width: 25%;"><span t-field="doc.phone"/></td>
+										<td style="width: 10%;"><strong>進單時間:</strong></td>
+										<td style="width: 25%;"><span t-field="doc.order_date"/></td>
+									</tr>
+									<tr style="border-style: hidden;">										
+										<td style="width: 10%;"><strong>傳真:</strong></td>
+										<td style="width: 25%;"><span t-field="doc.fax"/></td>
+										<td style="width: 10%;"><strong>交貨方式:</strong></td>
+										<td style="width: 25%;"><span t-field="doc.delivery_method"/></td>
+										<td style="width: 10%;"><strong>交貨時間:</strong></td>
+										<td style="width: 25%;"><span t-field="doc.delivery_date"  t-options='{"format": "yyyy年MM月dd日 HH時"}'/></td>
+									</tr>
+									<t t-if="doc.is_recheck == True">
+										<tr style="border-style: hidden;">
+											<td style="width: 10%;"><strong>重製人員:</strong></td>
+											<td style="width: 25%;"><span t-field="doc.recheck_user"/></td>
+											<td style="width: 10%;"><strong>重製部門:</strong></td>
+											<td style="width: 25%;"><span t-field="doc.recheck_groups"/></td>
+											<td style="width: 10%;"><strong>來源賬單:</strong></td>
+											<td style="width: 25%;"><span t-field="doc.source_name"/></td>
+										</tr>
+										<tr style="border-style: hidden;">
+											<td style="width: 10%;"><strong>重製備註:</strong></td>
+											<td style="width: 25%;" colspan="5" ><span t-field="doc.recheck_comment"/></td>
+											
+										</tr>
+									</t>
+									<!-- <tr style="border-style: hidden;"> -->
+										<!-- <td style="width: 10%;"><strong>工廠:</strong></td> -->
+										<!-- <td style="width: 25%;" colspan="3"><span t-field="doc.factory"/></td> -->
+										<!-- <td style="width: 10%;"><strong>速別:</strong></td> -->
+										<!-- <td style="width: 25%;"><span t-field="doc.speed_type"/></td> -->
+									<!-- </tr> -->
+								</tbody>
+							</table>
+							<!-- Order Details -->
+							<table class="table table-condensed"  style="font-size:19px;width:1280px;table-layout: auto;">
+								<thead>
+									<tr>
+										<th style="height: 60px;min-width:60px; text-align: center;vertical-align: middle;border: 1px solid #000;">項</th>
+										<th style="height: 60px;min-width:60px; text-align: center;vertical-align: middle;border: 1px solid #000;">檔名</th>
+										<th style="height: 60px;min-width:100px; text-align: center;vertical-align: middle;border: 1px solid #000;">輸出材質</th>
+										<th style="height: 60px;min-width:140px; text-align: center;vertical-align: middle;border: 1px solid #000;">製作尺寸/才數</th>
+										<th style="height: 60px;min-width:100px; text-align: center;vertical-align: middle;border: 1px solid #000;">加工方式</th>
+										<th style="height: 60px;min-width:60px; text-align: center;vertical-align: middle;border: 1px solid #000;">裱</th>
+										<th style="height: 60px;min-width:60px; text-align: center;vertical-align: middle;border: 1px solid #000;">數量</th>
+										<t t-if="doc.is_recheck == True">
+											<th style="height: 60px;min-width:100px; text-align: center;vertical-align: middle;border: 1px solid #000;">原工單</th>
+										</t>
+									</tr>
+								</thead>
+								<tbody>
+									<t t-foreach="doc.order_ids[(page_num-1)*lines_per_page:page_num*lines_per_page]" t-as="order">
+									<!-- <t t-foreach="doc.order_ids" t-as="order"> -->
+										<tr>
+											<td style="height: 75px;padding: 0px; text-align: center;vertical-align: middle;border: 1px solid #000; "><span t-field="order.sequence"/></td>
+											<td style="height: 75px;padding: 0px 0px 0px 4px; text-align: left;vertical-align: middle;border: 1px solid #000; "><span t-field="order.file_name"/></td>
+											<td style="height: 75px;padding: 0px; text-align: center;vertical-align: middle;border: 1px solid #000; "><span t-field="order.output_material"/></td>
+											<td style="height: 75px;padding: 0px 0px 0px 4px; text-align: center;vertical-align: middle;border: 1px solid #000; "><span t-field="order.production_size"/>(<span t-field="order.size"/>)</td>
+											<td style="height: 75px;padding: 0px 0px 0px 4px; text-align: left;vertical-align: middle;border: 1px solid #000; "><span t-field="order.processing_method"/></td>
+											<td style="height: 75px;padding: 0px 0px 0px 4px; text-align: center;vertical-align: middle;border: 1px solid #000; "><span t-field="order.lengbiao"/></td>
+											<td style="height: 75px;padding: 0px; text-align: center;vertical-align: middle;border: 1px solid #000; "><span t-field="order.quantity"/></td>
+											<t t-if="doc.is_recheck == True">
+												<td style="height: 75px;padding: 0px; text-align: center;vertical-align: middle;border: 1px solid #000; "><span t-field="order.recheck_id_name"/></td>
+											</t>
+										</tr>
+									</t>
+									
+									<t t-set="current_page_lines" t-value="min(len(doc.order_ids) - (page_num-1)*lines_per_page, lines_per_page)"/>
+                                    <!-- <t t-if="current_page_lines &lt; lines_per_page">
+                                        <t t-foreach="range(0, lines_per_page - current_page_lines)" t-as="empty_line">
+                                            <tr>
+                                                <td style="height: 75px; padding: 0px; text-align: center;vertical-align: middle;border: 1px solid #000; "></td>
+                                                <td style="height: 75px; padding: 0px; text-align: center;vertical-align: middle;border: 1px solid #000; "></td>
+                                                <td style="height: 75px; padding: 0px; text-align: center;vertical-align: middle;border: 1px solid #000; "></td>
+                                                <td style="height: 75px; padding: 0px; text-align: center;vertical-align: middle;border: 1px solid #000; "></td>
+                                                <td style="height: 75px; padding: 0px; text-align: center;vertical-align: middle;border: 1px solid #000; "></td>
+                                                <td style="height: 75px; padding: 0px; text-align: center;vertical-align: middle;border: 1px solid #000; "></td>
+                                                <td style="height: 75px; padding: 0px; text-align: center;vertical-align: middle;border: 1px solid #000; "></td>
+                                                <td style="height: 75px; padding: 0px; text-align: center;vertical-align: middle;border: 1px solid #000; "></td>
+                                            </tr>
+                                        </t>
+                                    </t> -->
+								</tbody>
+							</table>
+							<!-- Additional Details -->
+							<div style="display: flex; justify-content: space-between;font-size:19px">
+								<div style="flex: 1;">
+								
+                                    <div><strong>訂單備註:</strong> <span t-field="doc.comment"/></div>
+                                    <div><strong>廠區備註:</strong> <span t-field="doc.factory_comment"/></div>
+								</div>
+							</div>
+							<div style="display: flex; justify-content: space-between;font-size:19px">
+								<!-- Left div -->
+								<div style="flex: 1;">
+									<div><strong>案名:</strong> <span t-field="doc.project_name"/></div>
+                                    <div><strong>業務:</strong> <span t-field="doc.user_id"/></div>
+									<!-- <div><strong>客戶備註:</strong> <span t-field="doc.comment"/></div> -->
+								</div>
+								<div style="flex: 1; text-align: center;">
+                                    <span>P：<t t-esc="page_num"/> / <t t-esc="total_pages"/></span>
+                                </div>
+								<!-- Right div -->
+								<div style="flex: 1; text-align: right;">
+									<div><strong>本單總數量:</strong> <span t-field="doc.total_quantity"/></div>
+									<div><strong>本單總才數:</strong> <span t-field="doc.total_size"/></div>
+								</div>
+								<!-- <div style="flex: 1; text-align: right; margin-right:10% "> -->
+                                    <!-- <div><strong>客戶簽章:</strong> </div> -->
+                                <!-- </div> -->
+							</div>
+						</div>
+						<!-- 分页 -->
+                        <t t-if="page_num &lt; total_pages">
+                            <div style="page-break-after: always;"></div>
+                        </t>
+					</t>
+                </t>
+            </t>
+        </t>
+    </template>
+</odoo>

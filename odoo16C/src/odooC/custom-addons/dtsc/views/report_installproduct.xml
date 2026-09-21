@@ -1,0 +1,540 @@
+﻿<odoo>
+	<record id="view_dtsc_reportmounthinstall_wizard_form" model="ir.ui.view">
+			<field name="name">dtsc.reportmounthinstall</field>
+			<field name="model">dtsc.reportmounthinstall</field>
+			<field name="arch" type="xml">
+				<form>
+					<group>
+						<field name="starttime"/>
+						<field name="endtime"/>
+
+					</group>																		
+					<footer>
+						<button string="確認列印" type="object" name="your_confirm_method"/>
+						<button string="取消" class="btn-secondary" special="cancel"/>
+					</footer>
+				</form>
+			</field>
+		</record>
+
+
+    <template id="report_install_template">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <t t-call="web.external_layout">
+					<style>
+					.page {
+						margin-top: -50px; 
+					}
+					</style>
+                    <div class="page">
+                        <!-- Title -->
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <h3><span t-field="doc.company_id" style="margin-right: 20px;"/>施工單</h3> <!-- 增加右边距 -->
+                            </div>
+                            <div>
+                                <strong>單號:</strong> <span t-field="doc.name"/>
+                            </div>
+                        </div>
+                        <hr style="border-top: 2px solid #333; opacity: 1;"/>
+                        <!-- Main Information -->
+                        <table class="table table-condensed">
+                            <tbody>
+                                <tr>
+                                    <td style="width: 13%;"><strong>客戶名稱:</strong></td>
+                                    <td style="width: 17%;"><span t-field="doc.partner_id"/></td>
+                                    <td style="width: 13%;"><strong>案件名稱:</strong></td>
+                                    <td style="width: 17%;"><span t-field="doc.project_name"/></td>
+                                </tr>
+                                <tr>
+                                    <td style="width: 13%;"><strong>施工日期:</strong></td>
+                                    <td style="width: 17%;"><span t-field="doc.install_date"/></td>
+                                    <td style="width: 13%;"><strong>施工人員:</strong></td>
+                                    <td style="width: 17%;"><span t-field="doc.install_worker"/></td>
+                                </tr>
+							
+                                <tr>
+                                    <td style="width: 13%;"><strong>現場聯絡人:</strong></td>
+                                    <td style="width: 17%;"><span t-field="doc.xcllr"/></td>
+                                    <td style="width: 13%;"><strong>承包商聯絡人:</strong></td>
+                                    <td style="width: 17%;"><span t-field="doc.cbsllr"/></td>
+                                </tr>
+                                <tr>
+                                    <td style="width: 13%;"><strong>聯絡人電話:</strong></td>
+                                    <td style="width: 17%;"><span t-field="doc.cbsllr_phone"/></td>
+                                    <td style="width: 13%;"><strong>承包商電話:</strong></td>
+                                    <td style="width: 17%;"><span t-field="doc.cbsllr_phone"/></td>
+                                    <!-- <td style="width: 12%;"><strong>撤場時間:</strong></td> -->
+                                    <!-- <td style="width: 38%;"><span t-field="doc.out_date"/></td> -->
+                                </tr>
+								<tr>
+                                    <td style="width: 12%;"><strong>進場開始時間:</strong></td>
+                                    <td style="width: 38%;"><span t-field="doc.in_date"/></td>
+                                    <td style="width: 12%;"><strong>進場結束時間:</strong></td>
+                                    <td style="width: 38%;"><span t-field="doc.in_date_end"/></td>
+								</tr>
+								<t t-if="doc.is_out_date == True">
+									<tr>
+										<td style="width: 12%;"><strong>撤場開始時間:</strong></td>
+										<td style="width: 38%;"><span t-field="doc.out_date"/></td>
+										<td style="width: 12%;"><strong>撤場結束時間:</strong></td>
+										<td style="width: 38%;"><span t-field="doc.out_date_end"/></td>
+									</tr>
+								</t>
+                                <tr>
+                                    <td><strong>施工地址:</strong></td>
+                                    <td  colspan="3"><span t-field="doc.address"/></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <!-- Order Details -->
+                       <div>
+							<div class="row" style="border-bottom: 2px solid black;  margin-bottom:10px;">
+								<div class="col">項</div>
+								<div class="col">檔名</div>
+								<div class="col">尺寸</div>
+								<div class="col" style="flex: 4;">材質</div>
+								<div class="col">才數</div>
+								<div class="col">數量</div>
+								<div class="col">工單</div>
+							</div>
+							<t t-foreach="doc.install_product_ids" t-as="order">
+								<div style="page-break-inside: avoid;">
+									<div class="row" style="border-bottom: 1px solid lightgray;margin-bottom:10px;">
+										<div class="col"><span t-field="order.sequence"/></div>
+										<div class="col"><span t-field="order.project_product_name"/></div>
+										<div class="col"><span t-field="order.size"/></div>
+										<div class="col" style="flex: 4;"><span t-field="order.caizhi"/></div>
+										<div class="col"><span t-field="order.caishu"/></div>
+										<div class="col"><span t-field="order.shuliang"/></div>
+										<div class="col"><span t-field="order.gongdan"/></div>
+									</div>
+									<div class="row" style="border-bottom: 1px solid lightgray; margin-bottom: 10px; display: flex; align-items: center;">
+										<div class="col" style="flex: 1; vertical-align: top;">
+											施工説明:<br/><span t-field="order.install_note"/>
+										</div>
+										<div class="col text-center" style="flex: 1;">
+											<!-- <img t-if="order.image_yt" t-att-src="'data:image/png;base64,' + order.image_yt.decode('utf-8')" t-att-alt="'原圖'" style="width: 150px; max-height:150px"/> -->
+											<t t-if="order.image_yt_new">
+												<img t-if="order.image_yt_new" t-att-src="image_data_uri(order.image_yt_new)"  style="width:150px; max-height:150px"/>
+												<br/>原圖
+											</t>
+										</div>
+										<div class="col text-center" style="flex: 1;">
+											<!-- <img t-if="order.image_sgq" t-att-src="'data:image/png;base64,' + order.image_sgq.decode('utf-8')" t-att-alt="'施工前'" style="width: 150px; max-height:150px"/> -->
+											<t t-if="order.image_sgq_new">
+											<img t-if="order.image_sgq_new" t-att-src="image_data_uri(order.image_sgq_new)"  style="width:150px; max-height:150px"/>
+											<br/>施工前
+											</t>
+										</div>
+										<div class="col text-center" style="flex: 1;">
+											<t t-if="order.image_wgt_new">
+											<!-- <img t-if="order.image_wgt" t-att-src="'data:image/png;base64,' + order.image_wgt.decode('utf-8')" t-att-alt="'完工圖'" style="width: 150px; max-height:150px"/> -->
+											<img t-if="order.image_wgt_new" t-att-src="image_data_uri(order.image_wgt_new)"  style="width:150px; max-height:150px"/>
+											<br/>完工圖
+											</t>
+										</div>
+									</div>
+									
+									<t t-set="extra_images" t-value="order.images"/>
+									<t t-foreach="extra_images" t-as="image">
+										<div class="row" style="border-bottom: 1px solid lightgray; margin-bottom: 10px; display: flex; align-items: center;">
+											<div class="col" style="flex: 1; vertical-align: top;">
+												施工説明:<br/><span t-field="image.install_note"/>
+											</div>
+											<div class="col text-center" style="flex: 1;">
+												<t t-if="order.image_yt_new">
+												<!-- <img t-if="image.image_yt" t-att-src="'data:image/png;base64,' + image.image_yt.decode('utf-8')" t-att-alt="'原圖'" style="width: 150px; max-height:150px"/> -->
+												<img t-if="image.image_yt_new" t-att-src="image_data_uri(image.image_yt_new)"  style="width:150px; max-height:150px"/>
+												<br/>原圖
+											</t>
+											</div>
+											<div class="col text-center" style="flex: 1;">
+												<t t-if="order.image_sgq_new">
+												<!-- <img t-if="image.image_sgq" t-att-src="'data:image/png;base64,' + image.image_sgq.decode('utf-8')" t-att-alt="'施工前'" style="width: 150px; max-height:150px"/> -->
+												<img t-if="image.image_sgq_new" t-att-src="image_data_uri(image.image_sgq_new)"  style="width:150px; max-height:150px"/>
+												<br/>施工前
+											</t>
+											</div>
+											<div class="col text-center" style="flex: 1;">
+												<t t-if="order.image_wgt_new">
+												<!-- <img t-if="image.image_wgt" t-att-src="'data:image/png;base64,' + image.image_wgt.decode('utf-8')" t-att-alt="'完工圖'" style="width: 150px; max-height:150px"/> -->
+												<img t-if="image.image_wgt_new" t-att-src="image_data_uri(image.image_wgt_new)"  style="width:150px; max-height:150px"/>
+												<br/>完工圖
+											</t>
+											</div>
+										</div>
+									</t>
+
+									
+									
+
+								</div>
+							</t>
+						</div>
+
+
+
+                        <!-- Additional Details -->
+                        <div><strong>備註:</strong> <span t-field="doc.comment"/></div>
+                        <div style="text-align: right;">
+                            <div style="display: inline-block;">
+                                <strong>負責業務:</strong> 
+                            </div>
+                            <div style="display: inline-block; margin-right: 30px;">
+                                <span t-field="doc.fzyw"/>                        
+                            </div>
+                            <div style="display: inline-block;">
+                                <strong>總才數:</strong> 
+                            </div>
+                            <div style="display: inline-block;">
+                                <span t-field="doc.zcs"/>
+                            </div>
+							<!-- <t t-if="doc.signature"> -->
+								<div style="display: inline-block;">
+									<img t-if="doc.signature" t-att-src="'data:image/png;base64,' + doc.signature.decode('utf-8')" t-att-alt="'Signature'" style="width: 150px; height: auto"/>
+								</div>
+							<!-- </t> -->
+                        </div>
+						<!-- <t t-foreach="doc.image_ids" t-as="image_record"> -->
+							<!-- <div class="image"> -->
+								<!-- <img t-att-src="'data:image/png;base64,' + image_record.image.decode('utf-8')" style="max-height:200px; max-width:200px;"/> -->
+							<!-- </div> -->
+						<!-- </t> -->
+						<!-- <t t-if="doc.image_urls"> -->
+							<!-- <div class="images"> -->
+								<!-- <t t-foreach="json.loads(doc.image_urls)" t-as="url"> -->
+									<!-- <img t-att-src="'http://43.156.27.132/uploads_makein/' + url" style="max-height:200px;max-width:200px;"/> -->
+								<!-- </t> -->
+							<!-- </div> -->
+						<!-- </t> -->
+
+						<!-- 確認清單 -->
+						<div style="margin-top: 30px; page-break-inside: avoid;">
+							<style>
+								.install-checklist-row {
+									width: 100%;
+									border-collapse: separate;
+									border-spacing: 18px 0;
+									table-layout: fixed;
+								}
+								.install-checklist-col {
+									width: 33.33%;
+									vertical-align: top;
+									padding: 0;
+									height: 100%;
+								}
+								.install-checklist-col-inner {
+									display: flex;
+									flex-direction: column;
+									height: 100%;
+									min-height: 100%;
+								}
+								.install-checklist-wrap {
+									border: 1px solid #333;
+									overflow: hidden;
+									box-sizing: border-box;
+									flex-shrink: 0;
+								}
+								.install-checklist-table {
+									width: 100%;
+									border-collapse: collapse;
+									border: 0;
+									margin: 0;
+									font-size: 12px;
+									table-layout: fixed;
+								}
+								.install-checklist-table th,
+								.install-checklist-table td {
+									border: 0;
+									border-bottom: 1px solid #333;
+									border-right: 1px solid #333;
+									padding: 5px 6px;
+									box-sizing: border-box;
+									word-wrap: break-word;
+								}
+								.install-checklist-table tr th:last-child,
+								.install-checklist-table tr td:last-child {
+									border-right: 0;
+								}
+								.install-checklist-table tbody tr:last-child td {
+									border-bottom: 0;
+								}
+								.install-checklist-table th {
+									text-align: center;
+									background-color: #f0f0f0;
+									font-weight: bold;
+								}
+								.install-checklist-table .check-col {
+									width: 42px;
+									text-align: center;
+								}
+								.install-checklist-box {
+									display: inline-block;
+									width: 12px;
+									height: 12px;
+									border: 1px solid #333;
+									vertical-align: middle;
+								}
+								.install-checklist-sign {
+									flex: 1;
+									margin-top: 8px;
+									padding: 4px 2px 0;
+									font-size: 12px;
+								}
+								.install-checklist-sign-item {
+									line-height: 28px;
+									min-height: 28px;
+									margin-bottom: 14px;
+								}
+								.install-checklist-sign-item:last-child {
+									margin-bottom: 0;
+								}
+								.install-checklist-sign-line {
+									display: inline-block;
+									width: 130px;
+									border-bottom: 1px solid #333;
+									vertical-align: bottom;
+									line-height: 22px;
+								}
+							</style>
+							<table class="install-checklist-row">
+								<tr>
+									<td class="install-checklist-col">
+										<div class="install-checklist-col-inner">
+										<div class="install-checklist-wrap">
+											<table class="install-checklist-table">
+												<thead>
+													<tr><th colspan="2">出車前確認</th></tr>
+													<tr><th>項目</th><th class="check-col">確認</th></tr>
+												</thead>
+												<tbody>
+													<tr><td>成品數量完成</td><td class="check-col"><span class="install-checklist-box"/></td></tr>
+													<tr><td>尺寸確認</td><td class="check-col"><span class="install-checklist-box"/></td></tr>
+													<tr><td>包裝完成</td><td class="check-col"><span class="install-checklist-box"/></td></tr>
+													<tr><td>工具備齊</td><td class="check-col"><span class="install-checklist-box"/></td></tr>
+													<tr><td>材料備齊</td><td class="check-col"><span class="install-checklist-box"/></td></tr>
+													<tr><td>備品攜帶</td><td class="check-col"><span class="install-checklist-box"/></td></tr>
+													<tr><td>車輛安排</td><td class="check-col"><span class="install-checklist-box"/></td></tr>
+													<tr><td>現場聯繫</td><td class="check-col"><span class="install-checklist-box"/></td></tr>
+												</tbody>
+											</table>
+										</div>
+										</div>
+									</td>
+									<td class="install-checklist-col">
+										<div class="install-checklist-col-inner">
+										<div class="install-checklist-wrap">
+											<table class="install-checklist-table">
+												<thead>
+													<tr><th colspan="2">現場施工確認</th></tr>
+													<tr><th>項目</th><th class="check-col">確認</th></tr>
+												</thead>
+												<tbody>
+													<tr><td>現場尺寸複量</td><td class="check-col"><span class="install-checklist-box"/></td></tr>
+													<tr><td>牆面平整</td><td class="check-col"><span class="install-checklist-box"/></td></tr>
+													<tr><td>清潔完成</td><td class="check-col"><span class="install-checklist-box"/></td></tr>
+													<tr><td>電源確認</td><td class="check-col"><span class="install-checklist-box"/></td></tr>
+													<tr><td>梯具安全</td><td class="check-col"><span class="install-checklist-box"/></td></tr>
+													<tr><td>養生膠帶</td><td class="check-col"><span class="install-checklist-box"/></td></tr>
+													<tr><td>拼接方向確認</td><td class="check-col"><span class="install-checklist-box"/></td></tr>
+													<tr><td>客戶最終確認</td><td class="check-col"><span class="install-checklist-box"/></td></tr>
+												</tbody>
+											</table>
+										</div>
+										</div>
+									</td>
+									<td class="install-checklist-col">
+										<div class="install-checklist-col-inner">
+										<div class="install-checklist-wrap">
+											<table class="install-checklist-table">
+												<thead>
+													<tr><th colspan="2">完工確認</th></tr>
+													<tr><th>項目</th><th class="check-col">確認</th></tr>
+												</thead>
+												<tbody>
+													<tr><td>完工拍照</td><td class="check-col"><span class="install-checklist-box"/></td></tr>
+													<tr><td>邊角檢查</td><td class="check-col"><span class="install-checklist-box"/></td></tr>
+													<tr><td>起泡檢查</td><td class="check-col"><span class="install-checklist-box"/></td></tr>
+													<tr><td>現場清潔完成</td><td class="check-col"><span class="install-checklist-box"/></td></tr>
+													<tr><td>客戶驗收簽名</td><td class="check-col"><span class="install-checklist-box"/></td></tr>
+												</tbody>
+											</table>
+										</div>
+										<div class="install-checklist-sign">
+											<div class="install-checklist-sign-item">
+												客戶簽名：<span class="install-checklist-sign-line"/>
+											</div>
+											<div class="install-checklist-sign-item">
+												施工主管：<span class="install-checklist-sign-line"/>
+											</div>
+										</div>
+										</div>
+									</td>
+								</tr>
+							</table>
+						</div>
+                    </div>
+                
+				<!-- <t t-set="image_index" t-value="0"/> -->
+                <!-- <t t-foreach="doc.image_ids" t-as="image_record"> -->
+                    <!-- <t t-if="image_index % 2 == 0"> -->
+						<!-- <div style="page-break-after: always;"></div> -->
+                        <!-- <div class="page"> -->
+                            <!-- <div class="image" style="text-align: center;"> -->
+                                <!-- <img t-att-src="'data:image/png;base64,' + image_record.image.decode('utf-8')" style="max-height: 600px; max-width: 600px;"/> -->
+                            <!-- </div> -->
+                            <!-- <t t-set="next_image_index" t-value="image_index + 1"/> -->
+                            <!-- <t t-if="next_image_index &lt; len(doc.image_ids)"> -->
+                                <!-- <div class="image" style="text-align: center;margin-top:20px"> -->
+                                    <!-- <img t-att-src="'data:image/png;base64,' + doc.image_ids[next_image_index].image.decode('utf-8')" style="max-height: 600px; max-width: 600px;"/> -->
+                                <!-- </div> -->
+                            <!-- </t> -->
+                        <!-- </div> -->
+                    <!-- </t> -->
+                    <!-- <t t-set="image_index" t-value="image_index + 1"/> -->
+                <!-- </t> -->
+				</t>
+				
+            </t>
+        </t>
+    </template>
+	
+	<template id="report_succ_install_template">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <t t-call="web.external_layout">
+					<style>
+					.page {
+						margin-top: -50px; 
+					}
+					</style>
+                    <div class="page">
+                        <!-- Title -->
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <h3><span t-field="doc.company_id" style="margin-right: 20px;"/>完工報告</h3> <!-- 增加右边距 -->
+                            </div>
+                            <div>
+                                <strong>單號:</strong> <span t-field="doc.name"/>
+                            </div>
+                        </div>
+                        <hr style="border-top: 2px solid #333; opacity: 1;"/>
+                        <!-- Main Information -->
+                        <table class="table table-condensed">                     
+                            <tbody>
+                                <tr>
+                                    <td style="width: 13%;"><strong>客戶:</strong></td>
+                                    <td style="width: 17%;"><span t-field="doc.partner_id"/></td>
+                                    <td style="width: 13%;"><strong>發貨日期:</strong></td>
+                                    <td style="width: 17%;"><span t-field="doc.checkout_id.estimated_date_str"/></td>
+                                </tr>
+                                <tr>
+                                    <td style="width: 13%;"><strong>案件摘要:</strong></td>
+                                    <td style="width: 17%;"><span t-field="doc.checkout_id.project_name"/></td>
+                                    <td style="width: 13%;"><strong>出貨單號:</strong></td>
+                                    <td style="width: 17%;"><span t-field="doc.checkout_id.delivery_order"/></td>
+                                    <!-- <td style="width: 12%;"><strong>撤場時間:</strong></td> -->
+                                    <!-- <td style="width: 38%;"><span t-field="doc.out_date"/></td> -->
+                                </tr>
+                            </tbody>
+                        </table>
+                        <!-- Order Details -->
+                       <div>
+							<div class="row" style="border-bottom: 2px solid black;  margin-bottom:10px;">
+								<div class="col">項</div>
+								<div class="col">檔名</div>
+								<div class="col">尺寸</div>
+								<div class="col" style="flex: 4;">材質</div>
+								<div class="col">才數</div>
+								<div class="col">數量</div>
+								<div class="col">工單</div>
+							</div>
+							<t t-foreach="doc.install_product_ids" t-as="order">
+								<div style="page-break-inside: avoid;">
+									<div class="row" style="border-bottom: 1px solid lightgray;margin-bottom:10px;">
+										<div class="col"><span t-field="order.sequence"/></div>
+										<div class="col"><span t-field="order.project_product_name"/></div>
+										<div class="col"><span t-field="order.size"/></div>
+										<div class="col" style="flex: 4;"><span t-field="order.caizhi"/></div>
+										<div class="col"><span t-field="order.caishu"/></div>
+										<div class="col"><span t-field="order.shuliang"/></div>
+										<div class="col"><span t-field="order.gongdan"/></div>
+									</div>
+									<div class="row" style="border-bottom: 1px solid lightgray; margin-bottom: 10px; display: flex; align-items: center;">
+										<div class="col" style="flex: 1; vertical-align: top;">
+											施工説明:<br/><span t-field="order.install_note"/>
+										</div>
+										<div class="col text-center" style="flex: 1;">
+												<t t-if="order.image_yt_new">
+											<!-- <img t-if="order.image_yt" t-att-src="'data:image/png;base64,' + order.image_yt.decode('utf-8')" t-att-alt="'原圖'" style="width: 150px; max-height:150px"/> -->
+											<img t-if="order.image_yt_new" t-att-src="image_data_uri(order.image_yt_new)"  style="width:150px; max-height:150px"/>
+											<br/>原圖
+											</t>
+										</div>
+										<div class="col text-center" style="flex: 1;">
+												<t t-if="order.image_sgq_new">
+											<!-- <img t-if="order.image_sgq" t-att-src="'data:image/png;base64,' + order.image_sgq.decode('utf-8')" t-att-alt="'施工前'" style="width: 150px; max-height:150px"/> -->
+											<img t-if="order.image_sgq_new" t-att-src="image_data_uri(order.image_sgq_new)"  style="width:150px; max-height:150px"/>
+											<br/>施工前
+											</t>
+										</div>
+										<div class="col text-center" style="flex: 1;">
+												<t t-if="order.image_wgt_new">
+											<!-- <img t-if="order.image_wgt" t-att-src="'data:image/png;base64,' + order.image_wgt.decode('utf-8')" t-att-alt="'完工圖'" style="width: 150px; max-height:150px"/> -->
+											<img t-if="order.image_wgt_new" t-att-src="image_data_uri(order.image_wgt_new)"  style="width:150px; max-height:150px"/>
+											<br/>完工圖
+											</t>
+										</div>
+									</div>
+									
+									<t t-set="extra_images" t-value="order.images"/>
+									<t t-foreach="extra_images" t-as="image">
+										<div class="row" style="border-bottom: 1px solid lightgray; margin-bottom: 10px; display: flex; align-items: center;">
+											<div class="col" style="flex: 1; vertical-align: top;">
+												施工説明:<br/><span t-field="image.install_note"/>
+											</div>
+											<div class="col text-center" style="flex: 1;">
+												<t t-if="order.image_yt_new">
+												<!-- <img t-if="image.image_yt" t-att-src="'data:image/png;base64,' + image.image_yt.decode('utf-8')" t-att-alt="'原圖'" style="width: 150px; max-height:150px"/> -->
+												<img t-if="image.image_yt_new" t-att-src="image_data_uri(image.image_yt_new)"  style="width:150px; max-height:150px"/>
+												<br/>原圖
+											</t>
+											</div>
+											<div class="col text-center" style="flex: 1;">
+												<t t-if="order.image_sgq_new">
+												<!-- <img t-if="image.image_sgq" t-att-src="'data:image/png;base64,' + image.image_sgq.decode('utf-8')" t-att-alt="'施工前'" style="width: 150px; max-height:150px"/> -->
+												<img t-if="image.image_sgq_new" t-att-src="image_data_uri(image.image_sgq_new)"  style="width:150px; max-height:150px"/>
+												<br/>施工前
+											</t>
+											</div>
+											<div class="col text-center" style="flex: 1;">
+												<t t-if="order.image_wgt_new">
+												<!-- <img t-if="image.image_wgt" t-att-src="'data:image/png;base64,' + image.image_wgt.decode('utf-8')" t-att-alt="'完工圖'" style="width: 150px; max-height:150px"/> -->
+												<img t-if="image.image_wgt_new" t-att-src="image_data_uri(image.image_wgt_new)"  style="width:150px; max-height:150px"/>
+												<br/>完工圖
+											</t>
+											</div>
+										</div>
+									</t>
+
+									
+									
+
+								</div>
+							</t>
+						</div>
+
+
+
+                       
+                    </div>
+                
+
+				</t>
+				
+            </t>
+        </t>
+    </template>
+</odoo>

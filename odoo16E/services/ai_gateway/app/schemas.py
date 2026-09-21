@@ -33,7 +33,15 @@ class ChatMessage(BaseModel):
     content: str
 
 
+class ExecutionPolicy(BaseModel):
+    version: str = '2026-09-11.2'
+    correction_attempts: int = Field(default=1, ge=0, le=3)
+    max_steps: int = Field(default=12, ge=2, le=40)
+
+
 class AgentRunRequest(BaseModel):
+    execution_policy: ExecutionPolicy = Field(default_factory=ExecutionPolicy)
+    run_timeout: float = Field(default=180.0, gt=0, le=300)
     message: str
     system_prompt: str = ""
     config: GatewayConfig
@@ -41,4 +49,3 @@ class AgentRunRequest(BaseModel):
     tool_callback: Optional[ToolCallback] = None
     messages: List[ChatMessage] = Field(default_factory=list)
     thread_id: str = ""
-

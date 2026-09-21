@@ -165,6 +165,11 @@
                     const displayName = instance.domain || `client${instance.id}`;
                     const domainDisplay = instance.domain || '-';
                     
+                    const isRunning = instance.status === 1 &&
+                        instance.containers?.web === 'running' &&
+                        instance.containers?.db === 'running';
+                    const canToggle = instance.status === 1;
+
                     return `
                         <tr>
                             <td>
@@ -184,6 +189,21 @@
                                             title="重啟實例">
                                         <i class="material-icons">refresh</i>
                                     </button>
+                                    ${canToggle ? (isRunning ? `
+                                    <button class="action-btn"
+                                            onclick="pauseInstance(${instance.id})"
+                                            title="暫停實例">
+                                        <i class="material-icons">pause_circle</i>
+                                    </button>` : `
+                                    <button class="action-btn"
+                                            onclick="startInstance(${instance.id})"
+                                            title="啟動實例">
+                                        <i class="material-icons">play_circle</i>
+                                    </button>`) : `
+                                    <button class="action-btn disabled"
+                                            title="當前狀態無法暫停/啟動">
+                                        <i class="material-icons">pause_circle</i>
+                                    </button>`}
                                     
                                     <button class="action-btn" 
                                             onclick="restoreDatabase(${instance.id})"
@@ -293,6 +313,51 @@
             } catch (error) {
                 console.error('重啟實例失敗:', error);
                 showToast('錯誤', '重啟失敗', 'error');
+            }
+        }
+
+        // 暂停实例
+        async function pauseInstance(instanceId) {
+            if (!confirm('確定要暫停此實例嗎？暫停後 Web/DB 容器將停止，數據會保留。')) {
+                return;
+            }
+            try {
+                showToast('提示', '正在暫停實例...', 'info');
+                const response = await fetch(`/api/instance/pause/${instanceId}`, {
+                    method: 'POST'
+                });
+                const data = await response.json();
+
+                if (response.ok) {
+                    showToast('成功', '實例已暫停', 'success');
+                    setTimeout(loadAllInstances, 2000);
+                } else {
+                    showToast('錯誤', data.error || '暫停失敗', 'error');
+                }
+            } catch (error) {
+                console.error('暫停實例失敗:', error);
+                showToast('錯誤', '暫停失敗', 'error');
+            }
+        }
+
+        // 启动实例
+        async function startInstance(instanceId) {
+            try {
+                showToast('提示', '正在啟動實例...', 'info');
+                const response = await fetch(`/api/instance/start/${instanceId}`, {
+                    method: 'POST'
+                });
+                const data = await response.json();
+
+                if (response.ok) {
+                    showToast('成功', '實例啟動指令已發送', 'success');
+                    setTimeout(loadAllInstances, 3000);
+                } else {
+                    showToast('錯誤', data.error || '啟動失敗', 'error');
+                }
+            } catch (error) {
+                console.error('啟動實例失敗:', error);
+                showToast('錯誤', '啟動失敗', 'error');
             }
         }
 

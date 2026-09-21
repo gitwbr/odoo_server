@@ -1,0 +1,7 @@
+<odoo>
+    <template id="dtsc_assets_backend" name="dtsc Assets" inherit_id="web.assets_backend">
+        <xpath expr="." position="inside">
+            <script type="text/javascript" src="/dtsc/static/src/js/custom_filter_button.js"/>
+        </xpath>
+    </template>
+</odoo>

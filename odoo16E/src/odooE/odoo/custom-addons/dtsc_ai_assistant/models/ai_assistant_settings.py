@@ -3,6 +3,7 @@
 import secrets
 
 from odoo import _, api, fields, models
+from odoo.exceptions import AccessError
 
 
 class AiAssistantSettings(models.TransientModel):
@@ -43,6 +44,7 @@ class AiAssistantSettings(models.TransientModel):
     }
 
     def default_get(self, fields_list):
+        self._check_settings_access()
         values = super().default_get(fields_list)
         params = self.env['ir.config_parameter'].sudo()
         values.update({
@@ -94,7 +96,10 @@ class AiAssistantSettings(models.TransientModel):
         }
 
     def _set_gateway_params(self):
+        self._check_settings_access()
         self.ensure_one()
+        self.check_access_rights('write')
+        self.check_access_rule('write')
         params = self.env['ir.config_parameter'].sudo()
         timeout = self.timeout if self.timeout and self.timeout > 0 else 30.0
         max_retries = self.max_retries if self.max_retries is not False and self.max_retries >= 0 else 2
@@ -114,6 +119,10 @@ class AiAssistantSettings(models.TransientModel):
         params.set_param(self._PARAMS['timeout'], timeout)
         params.set_param(self._PARAMS['max_retries'], max_retries)
         params.set_param(self._PARAMS['temperature'], temperature)
+
+    def _check_settings_access(self):
+        if not self.env.user.has_group('dtsc.group_dtsc_gly'):
+            raise AccessError(_('只有 DTS-C 管理員可以讀取或修改 AI 助手設定。'))
 
     @staticmethod
     def _clean(value):

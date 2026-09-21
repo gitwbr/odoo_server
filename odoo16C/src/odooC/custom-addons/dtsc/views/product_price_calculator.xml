@@ -1,0 +1,43 @@
+<odoo>
+<record id="view_tree_price_calculator" model="ir.ui.view">
+    <field name="name">price.calculator.formula.tree</field>
+    <field name="model">dtsc.productpricecalculator</field>
+    <field name="arch" type="xml">
+        <tree string="價格公式">
+            <field name="name"/>
+            <field name="conversion_formula"/>
+        </tree>
+    </field>
+</record>
+
+<record id="view_form_price_calculator" model="ir.ui.view">
+    <field name="name">price.calculator.formula.form</field>
+    <field name="model">dtsc.productpricecalculator</field>
+    <field name="arch" type="xml">
+        <form string="價格公式">
+            <sheet>
+                <group>
+                    <field name="name"/>
+                    <field name="conversion_formula"/>
+                </group>
+            </sheet>
+        </form>
+    </field>
+</record>
+
+
+
+<record id="action_product_price_calculator" model="ir.actions.act_window">
+    <field name="name">價格公式</field>
+    <field name="type">ir.actions.act_window</field>
+    <field name="res_model">dtsc.productpricecalculator</field>
+    <field name="view_mode">tree,form</field>
+    <field name="help" type="html">
+        <p class="oe_view_nocontent_create">Click to create a new conversion</p>
+    </field>
+</record>
+
+
+
+
+</odoo>

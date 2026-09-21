@@ -9,7 +9,7 @@
   var DRAG_THRESHOLD = 6;
 
   function escapeHtml(value) {
-    return String(value || '')
+    return String(value == null ? '' : value)
       .replace(/&/g, '&amp;')
       .replace(/</g, '&lt;')
       .replace(/>/g, '&gt;')
@@ -41,7 +41,7 @@
     });
   }
 
-  function renderMarkdown(value) {
+  function renderMarkdown(value, suppressTables) {
     var lines = String(value || '').replace(/\r\n?/g, '\n').split('\n');
     var html = [];
     var index = 0;
@@ -63,6 +63,7 @@
           rows.push(parseMarkdownTableRow(lines[index]));
           index += 1;
         }
+        if (suppressTables) { continue; }
         html.push('<div class="o_dtsc_ai_markdown_table_wrap"><table class="o_dtsc_ai_markdown_table"><thead><tr>');
         headers.forEach(function (header) {
           html.push('<th>' + renderMarkdownInline(header) + '</th>');
@@ -139,6 +140,14 @@
     return html.join('');
   }
 
+  function renderAssistantMessage(content, resultsHtml) {
+    // The result renderer owns business tables. Keep narrative text and use
+    // Markdown tables as a fallback when no structured table can be shown.
+    resultsHtml = resultsHtml || '';
+    return '<div class="o_dtsc_ai_answer_box o_dtsc_ai_markdown">'
+      + renderMarkdown(content, /<table(?:\s|>)/i.test(resultsHtml)) + '</div>' + resultsHtml;
+  }
+
   function getOrderUrl(order) {
     return `/web#id=${encodeURIComponent(order.id || '')}&model=dtsc.checkout&view_type=form`;
   }
@@ -147,20 +156,20 @@
     return `
             <tr>
                 <td>${escapeHtml(line.item_no)}</td>
-                <td>${escapeHtml(line.project_product_name || '')}</td>
-                <td>${escapeHtml(line.product || '')}</td>
-                <td>${escapeHtml(line.width || '')}</td>
-                <td>${escapeHtml(line.height || '')}</td>
-                <td>${escapeHtml(line.machine || '')}</td>
-                <td>${escapeHtml(line.product_atts || '')}</td>
-                <td>${escapeHtml(line.multi_chose || '')}</td>
-                <td>${escapeHtml(line.quantity || '')}</td>
-                <td>${escapeHtml(line.quantity_peijian || '')}</td>
-                <td>${escapeHtml(line.single_units || '')}</td>
-                <td>${escapeHtml(line.total_units || '')}</td>
-                <td>${escapeHtml(line.product_details || '')}</td>
-                <td>${escapeHtml(line.comment || '')}</td>
-                <td>${escapeHtml(line.image_url || '')}</td>
+                <td>${escapeHtml(line.project_product_name)}</td>
+                <td>${escapeHtml(line.product)}</td>
+                <td>${escapeHtml(line.width)}</td>
+                <td>${escapeHtml(line.height)}</td>
+                <td>${escapeHtml(line.machine)}</td>
+                <td>${escapeHtml(line.product_atts)}</td>
+                <td>${escapeHtml(line.multi_chose)}</td>
+                <td>${escapeHtml(line.quantity)}</td>
+                <td>${escapeHtml(line.quantity_peijian)}</td>
+                <td>${escapeHtml(line.single_units)}</td>
+                <td>${escapeHtml(line.total_units)}</td>
+                <td>${escapeHtml(line.product_details)}</td>
+                <td>${escapeHtml(line.comment)}</td>
+                <td>${escapeHtml(line.image_url)}</td>
             </tr>
         `;
   }
@@ -221,6 +230,10 @@
   }
 
   function renderResults(payload) {
+    var result = payload.query_result || payload;
+    if (String(result.query_type || '').indexOf('universal_') === 0) {
+      return renderUniversalResult(result);
+    }
     if (payload.show_results === false) {
       return '';
     }
@@ -230,19 +243,285 @@
     return '<div class="o_dtsc_ai_empty">沒有符合條件的資料。</div>';
   }
 
-  function appendChatMessage(root, role, html) {
+  function formatQueryValue(value) {
+    if (value == null) { return ''; }
+    if (value === false) { return '否／未填'; }
+    if (value === true) { return '是'; }
+    if (Array.isArray(value)) { return value.map(formatQueryValue).join('、'); }
+    if (typeof value === 'object') {
+      if (value.display_name != null) { return String(value.display_name); }
+      if (value.label != null) { return formatQueryValue(value.label); }
+      if (value.value != null) { return formatQueryValue(value.value); }
+      return JSON.stringify(value);
+    }
+    return String(value);
+  }
+
+  function renderQueryTable(columns, rows, model) {
+    var header = columns.map(function (column) {
+      return '<th>' + escapeHtml(column.label || column.name) + '</th>';
+    }).join('');
+    if (model) { header += '<th>單據</th>'; }
+    var body = rows.map(function (row) {
+      var cells = columns.map(function (column) {
+        return '<td>' + escapeHtml(formatQueryValue(row[column.name])) + '</td>';
+      }).join('');
+      if (model) {
+        var link = Number.isInteger(row.id) && row.id > 0
+          ? '<a target="_blank" rel="noopener" href="/web#id=' + encodeURIComponent(row.id)
+            + '&amp;model=' + encodeURIComponent(model) + '&amp;view_type=form">開啟</a>' : '';
+        cells += '<td>' + link + '</td>';
+      }
+      return '<tr>' + cells + '</tr>';
+    }).join('');
+    return '<div class="o_dtsc_ai_detail_table_wrap"><table class="o_dtsc_ai_detail_table">'
+      + '<thead><tr>' + header + '</tr></thead><tbody>' + body + '</tbody></table></div>';
+  }
+
+  function csvCell(value) {
+    var text = formatQueryValue(value);
+    // Keep spreadsheet applications from evaluating exported text as formulas.
+    if (typeof value !== 'number' && /^[\s]*[=+@\-]/.test(text)) { text = "'" + text; }
+    return '"' + text.replace(/"/g, '""') + '"';
+  }
+
+  function makeCsv(columns, rows) {
+    return '\ufeff' + [columns.map(function (column) { return csvCell(column.label || column.name); }).join(',')]
+      .concat(rows.map(function (row) {
+        return columns.map(function (column) { return csvCell(row[column.name]); }).join(',');
+      })).join('\r\n');
+  }
+
+  function resultControls(result, columns, rows) {
+    var payload = {columns: columns, rows: rows, title: result.description || '查詢结果',
+      partial: !!(result.has_more || result.response_truncated || result.results_truncated || result.offset > 0)};
+    var html = '<button type="button" class="btn btn-link" data-ai-export="'
+      + escapeHtml(JSON.stringify(payload)) + '">匯出目前顯示結果 CSV'
+      + (payload.partial ? '（部分）' : '') + '</button>';
+    var provenance = result.provenance || {};
+    if (provenance.query && provenance.query.operation && !provenance.continued_page) {
+      html += '<button type="button" class="btn btn-link" data-ai-query="' + escapeHtml(JSON.stringify(provenance.query)) + '">重新查詢</button>';
+      if (result.metric) {
+        var detailQuery = Object.assign({}, provenance.query, {metric_detail: true});
+        html += '<button type="button" class="btn btn-link" data-ai-query="' + escapeHtml(JSON.stringify(detailQuery)) + '">查看指標原單據</button>';
+      }
+    }
+    if (result.query_type === 'universal_analysis' && provenance.query) {
+      [['本期原單據', result.period], ['基期原單據', result.baseline]].forEach(function (entry) {
+        if (!entry[1]) { return; }
+        var original = provenance.query;
+        var drill = {operation: 'search', model: result.model, conditions: original.conditions,
+          relation_filter: original.relation_filter, filters: (original.filters || []).concat({
+            field: result.date_field, operator: 'between', value: entry[1]})};
+        html += '<button type="button" class="btn btn-link" data-ai-query="' + escapeHtml(JSON.stringify(drill))
+          + '">' + escapeHtml(entry[0]) + '</button>';
+      });
+    }
+    html = '<details class="o_dtsc_ai_result_actions"><summary>結果操作</summary>' + html + '</details>';
+    var basis = result.basis || (result.metric || {}).basis;
+    if (basis) {
+      html += '<p class="o_dtsc_ai_business_basis">' + escapeHtml(basis) + '</p>';
+    }
+    return html;
+  }
+
+  function renderAnalysisChart(result, columns, rows) {
+    if (rows.length < 2 || rows.length > 60) { return ''; }
+    var numeric = columns.find(function (column) {
+      return rows.some(function (row) { return typeof row[column.name] === 'number'; });
+    });
+    if (!numeric) { return ''; }
+    var values = rows.map(function (row) { return typeof row[numeric.name] === 'number' ? row[numeric.name] : 0; });
+    var max = Math.max.apply(null, values.map(Math.abs));
+    var labelColumn = columns[0].name;
+    return '<details class="o_dtsc_ai_chart" open><summary>圖表：' + escapeHtml(numeric.label) + '</summary>'
+      + rows.map(function (row, index) {
+        var value = values[index];
+        return '<div class="o_dtsc_ai_chart_row"><span>' + escapeHtml(formatQueryValue(row[labelColumn]))
+          + '</span><meter min="0" max="' + (max || 1) + '" value="' + Math.abs(value)
+          + '" title="' + escapeHtml(value) + '"></meter><strong>' + escapeHtml(value) + '</strong></div>';
+      }).join('') + '<p>條長依絕對值繪製，正負請參考標示數值；圖表只涵蓋目前返回的結果。</p></details>';
+  }
+
+  var ROLE_QUERIES = {
+    '主管': [
+      {id: 'month_orders', label: '本月接了多少訂單？', question: '本月接了多少張大圖訂單？'},
+      {id: 'compare_orders', label: '接單數比上月增加了嗎？', question: '本月1日至今天接了多少張大圖訂單？上個月1日至相同日期又接了多少張？請比較兩期單數。'},
+      {id: 'overdue_orders', label: '哪些訂單逾期還沒出貨？', question: '查截至現在已超過預計發貨時間、仍未出貨的大圖訂單，請列出總數與明細。'}
+    ],
+    '業務': [
+      {id: 'unshipped_orders', label: '哪些訂單還沒出貨？', question: '有哪些大圖訂單還沒出貨？請列出總數與明細。'},
+      {id: 'customer_orders', label: '查客戶最近的訂單', question: '請先列出5個客戶讓我選擇。等我選定後，再查該客戶最近5張未作廢的大圖訂單。'},
+      {id: 'today_shipping', label: '今天有哪些訂單要出貨？', question: '列出預計發貨日期是今天、而且尚未出貨的大圖訂單明細。'}
+    ],
+    '生產': [
+      {id: 'internal_open', label: '哪些內部工單還沒完成？', question: '有哪些內部工單還沒完成？請列出總數與明細。'},
+      {id: 'outsourced_open', label: '哪些委外工單還沒完成？', question: '有哪些委外工單還沒完成？請列出總數與明細。'},
+      {id: 'contract_open', label: '哪些代工單還沒完成？', question: '有哪些代工單還沒完成？請列出總數與明細。'}
+    ],
+    '採購': [
+      {id: 'purchase_pending', label: '哪些採購單還沒收貨？', question: '有哪些採購單還在待收貨？請列出總數與明細。'},
+      {id: 'supplier_orders', label: '查供應商最近的採購單', question: '請先列出5個供應商讓我選擇。等我選定後，再查該供應商最近5張已確認的採購單。'},
+      {id: 'month_suppliers', label: '本月向哪些供應商採購？', question: '本月向哪些供應商下了已確認的採購單？請列出各供應商的採購單數。'}
+    ],
+    '財務': [
+      {id: 'month_receivable', label: '本月應收總額是多少？', question: '本月截至今天的應收帳單含稅總額是多少？不限定帳單狀態，草稿也計入。'},
+      {id: 'month_payable', label: '本月應付總額是多少？', question: '本月截至今天的應付帳單含稅總額是多少？不限定帳單狀態，草稿也計入。'},
+      {id: 'unpaid_customers', label: '哪些客戶還有未收款？', question: '哪些客戶還有未收款？請按客戶彙總目前已過帳發票的未收金額。'}
+    ]
+  };
+
+  function preferencesKey(root) {
+    return root.dataset.actorKey ? 'dtsc_ai_preferences:' + root.dataset.actorKey : '';
+  }
+
+  function readPreferences(root) {
+    try {
+      var value = JSON.parse(getLocalValue(preferencesKey(root)) || '{}');
+      if (!value || typeof value !== 'object' || Array.isArray(value)) { return {}; }
+      return {favorites: Array.isArray(value.favorites) ? value.favorites.filter(function (item) {
+          return typeof item === 'string' && item.length <= 500;
+        }).slice(-20) : []};
+    } catch (error) { return {}; }
+  }
+
+  function renderPreferences(root) {
+    var panel = root.querySelector('.o_dtsc_ai_personal');
+    if (!panel || !preferencesKey(root)) { return; }
+    var prefs = readPreferences(root);
+    panel.innerHTML = '<button type="button" class="btn btn-link" data-ai-save="1">收藏輸入框問題</button>'
+      + (prefs.favorites || []).map(function (question, index) {
+        return '<span><button type="button" class="btn btn-link" data-ai-question="' + escapeHtml(question) + '">'
+          + escapeHtml(question) + '</button><button type="button" class="btn btn-link" data-ai-remove="' + index + '">移除</button></span>';
+      }).join('');
+  }
+
+  function rememberIdentity(root, payload) {
+    var actor = payload.actor || {};
+    if (!actor.user_id) { return; }
+    root.dataset.threadId = String(payload.thread_id || 0);
+    root.dataset.actorKey = actor.actor_type + ':' + actor.user_id + ':' + (payload.storage_scope || '') + ':' + (payload.thread_id || '');
+    renderPreferences(root);
+  }
+
+  function renderUniversalResult(result) {
+    if (result.query_type === 'universal_metrics') {
+      return '<section><h4>可用指標與口徑</h4>' + (result.metrics || []).map(function (metric) {
+        return '<p><strong>' + escapeHtml(metric.label) + '</strong> ' + escapeHtml(metric.basis) + '（' + escapeHtml(metric.version) + '）</p>';
+      }).join('') + '</section>';
+    }
+    if (result.query_type === 'universal_analysis') {
+      return '<section><h4>' + escapeHtml(result.description) + '</h4>'
+        + '<p>本期：' + escapeHtml((result.period || []).join(' 至 '))
+        + (result.baseline ? '；基期：' + escapeHtml(result.baseline.join(' 至 ')) : '') + '</p>'
+        + renderQueryTable(result.columns || [], result.records || [], null)
+        + renderAnalysisChart(result, result.columns || [], result.records || [])
+        + resultControls(result, result.columns || [], result.records || []) + '</section>';
+    }
+    if (result.query_type === 'universal_capabilities') {
+      return '<section><h4>目前可查詢的業務</h4>' + (result.models || []).map(function (model) {
+        return '<p><strong>' + escapeHtml(model.description) + '</strong> '
+          + (model.examples || []).map(function (question) {
+            return '<button type="button" class="btn btn-link" data-ai-question="' + escapeHtml(question)
+              + '">' + escapeHtml(question) + '</button>';
+          }).join('') + '</p>';
+      }).join('') + '<p>' + escapeHtml((result.limitations || []).join('；')) + '</p></section>';
+    }
+    var note = result.has_more || result.response_truncated || result.results_truncated
+      ? '<p class="o_dtsc_ai_empty">目前僅顯示部分結果，請縮小範圍以查看其餘資料。</p>' : '';
+    if (result.query_type === 'universal_multi') {
+      return (result.results || []).filter(function (item) {
+        return item.ok !== false;
+      }).map(function (item) {
+        return renderUniversalResult(result.response_truncated ? Object.assign({}, item, {response_truncated: true, history_truncated: !!result.history_truncated}) : item);
+      }).join('') + (result.ok === false ? '<p class="o_dtsc_ai_empty">部分查詢尚未完成，以下僅供參考，請縮小條件後重試。</p>' : '') + note;
+    }
+    if (result.ok === false) {
+      return '<p class="o_dtsc_ai_empty">' + escapeHtml('暫時無法完成這項查詢，請確認單號或縮小條件後重試。') + '</p>';
+    }
+    if (['universal_search', 'universal_aggregate', 'universal_count_distinct'].indexOf(result.query_type) < 0) {
+      return '';
+    }
+    var rows, columns;
+    if (result.query_type === 'universal_search') {
+      rows = result.records || [];
+      columns = result.columns || [];
+      if (!columns.length) {
+        var keys = new Set();
+        rows.forEach(function (row) { Object.keys(row).forEach(function (key) { keys.add(key); }); });
+        columns = Array.from(keys).map(function (name) { return {name: name, label: name}; });
+      }
+    } else {
+      var groupKeys = new Set(), measureKeys = new Set();
+      (result.groups || []).forEach(function (group) {
+        Object.keys(group.group || {}).forEach(function (key) { groupKeys.add(key); });
+        Object.keys(group.measures || {}).forEach(function (key) { measureKeys.add(key); });
+      });
+      columns = Array.from(groupKeys).map(function (name) {
+        return {name: 'group:' + name, label: (result.group_labels || {})[name] || name};
+      }).concat(Array.from(measureKeys).map(function (name) {
+        return {name: 'measure:' + name, label: (result.measure_labels || {})[name] || name};
+      }));
+      if ((result.groups || []).some(function (group) { return group.record_count != null; })) {
+        columns.push({name: 'record_count', label: '資料筆數'});
+      }
+      rows = (result.groups || []).map(function (group) {
+        var row = {record_count: group.record_count};
+        groupKeys.forEach(function (key) { row['group:' + key] = (group.group || {})[key]; });
+        measureKeys.forEach(function (key) { row['measure:' + key] = (group.measures || {})[key]; });
+        return row;
+      });
+    }
+    var paging = result.total_count != null
+      ? '<p>第 ' + escapeHtml(result.page_start) + '–' + escapeHtml(result.page_end)
+        + ' 筆，共 ' + escapeHtml(result.total_count) + ' 筆</p>' : '';
+    if (result.next_cursor && !result.history_truncated) {
+      paging += '<button type="button" class="btn btn-secondary" data-ai-cursor="'
+        + escapeHtml(result.next_cursor) + '">下一頁</button>';
+    }
+    if (result.pagination_notice) { paging += '<p>' + escapeHtml(result.pagination_notice) + '</p>'; }
+    return '<section class="o_dtsc_ai_query_result">'
+      + (rows.length ? renderQueryTable(columns, rows, result.query_type === 'universal_search' ? result.model : null)
+        : '<p class="o_dtsc_ai_empty">沒有符合條件的資料。</p>') + renderAnalysisChart(result, columns, rows) + resultControls(result, columns, rows) + paging + note + '</section>';
+  }
+
+  function appendChatMessage(root, role, html, options) {
     var thread = root.querySelector('.o_dtsc_ai_thread');
     if (!thread) {
-      return;
+      return null;
     }
     var message = document.createElement('div');
     message.className = 'o_dtsc_ai_message o_dtsc_ai_message_' + role;
+    if (options && options.pending) {
+      message.classList.add('o_dtsc_ai_message_pending');
+      message.dataset.aiPending = '1';
+    }
     message.innerHTML = `
             <div class="o_dtsc_ai_message_label">${role === 'user' ? '你' : 'AI 助手'}</div>
             <div class="o_dtsc_ai_message_body">${html}</div>
         `;
     thread.appendChild(message);
     thread.scrollTop = thread.scrollHeight;
+    return message;
+  }
+
+  function updateChatMessage(message, html, options) {
+    if (!message) {
+      return;
+    }
+    var body = message.querySelector('.o_dtsc_ai_message_body');
+    if (body) {
+      body.innerHTML = html;
+    }
+    message.classList.remove('o_dtsc_ai_message_pending');
+    delete message.dataset.aiPending;
+    if (options && options.error) {
+      message.classList.add('o_dtsc_ai_message_error');
+    }
+    var thread = message.parentElement;
+    if (thread) {
+      thread.scrollTop = thread.scrollHeight;
+    }
   }
 
   function clearChatThread(root) {
@@ -253,14 +532,17 @@
   }
 
   function renderStoredAssistantMessage(message) {
-    var html = `<div class="o_dtsc_ai_answer_box o_dtsc_ai_markdown">${renderMarkdown(message.content)}</div>`;
+    var resultsHtml = '';
     if (!message.result_json) {
-      return html;
+      return renderAssistantMessage(message.content);
     }
     try {
       var result = JSON.parse(message.result_json);
-      if (result && (result.query_type === 'list' || result.query_type === 'detail')) {
-        html += renderResults({
+      if (result && result.response_truncated) { result.history_truncated = true; }
+      if (result && String(result.query_type || '').indexOf('universal_') === 0) {
+        resultsHtml = renderUniversalResult(result);
+      } else if (result && (result.query_type === 'list' || result.query_type === 'detail')) {
+        resultsHtml = renderResults({
           show_results: true,
           records: result.records || [],
         });
@@ -268,35 +550,96 @@
     } catch (error) {
       // Corrupted historical payload should not break the chat UI.
     }
-    return html;
+    return renderAssistantMessage(message.content, resultsHtml);
   }
 
-  async function loadHistory(root) {
+  async function loadHistory(root, recoveringReset) {
+    if (root.dataset.resetPending === '1' && !recoveringReset) { return false; }
     if (root.dataset.historyLoaded === '1') {
-      return;
+      return true;
     }
-    root.dataset.historyLoaded = '1';
-    var url = root.dataset.historyUrl || HISTORY_URL;
+    if (root._aiHistoryRequest) { return root._aiHistoryRequest; }
+    var version = root.dataset.conversationVersion;
+    var pending = (async function () {
+      try {
+        var response = await fetch(root.dataset.historyUrl || HISTORY_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ limit: 30 }),
+        });
+        var payload = await response.json();
+        if (version !== root.dataset.conversationVersion) { return false; }
+        if (!response.ok || !payload.success || !Array.isArray(payload.messages)) {
+          throw new Error('history unavailable');
+        }
+        rememberIdentity(root, payload);
+        clearChatThread(root);
+        payload.messages.forEach(function (message) {
+          if (message.role === 'user') {
+            appendChatMessage(root, 'user', `<p>${escapeHtml(message.content)}</p>`);
+          } else if (message.role === 'assistant') {
+            appendChatMessage(root, 'assistant', renderStoredAssistantMessage(message));
+          }
+        });
+        root.dataset.historyLoaded = '1';
+        return true;
+      } catch (error) {
+        if (version === root.dataset.conversationVersion) {
+          root.dataset.historyLoaded = '0';
+          root.querySelector('.o_dtsc_ai_status').textContent = '無法確認目前對話，請重新整理後再試。';
+        }
+        return false;
+      }
+    })();
+    root._aiHistoryRequest = pending;
+    try { return await pending; }
+    finally {
+      if (root._aiHistoryRequest === pending) { root._aiHistoryRequest = null; }
+    }
+  }
+
+  async function resetConversation(root) {
+    if (root.dataset.resetPending === '1') { return; }
+    if (!window.confirm('清空目前對話並重新開始？後續查詢不會使用這段對話，管理員的排錯記錄會保留。')) { return; }
+    root.dataset.conversationVersion = String(Number(root.dataset.conversationVersion || 0) + 1);
+    root.dataset.resetPending = '1';
+    root.dataset.historyLoaded = '0';
+    root.dataset.queryPending = '0';
+    root._aiHistoryRequest = null;
+    var submit = root.querySelector('.o_dtsc_ai_submit');
+    var clear = root.querySelector('[data-ai-reset]');
+    var status = root.querySelector('.o_dtsc_ai_status');
+    root.querySelector('.o_dtsc_ai_conversation_menu').open = false;
+    submit.disabled = true;
+    clear.disabled = true;
+    status.textContent = '正在清空對話…';
+    clearChatThread(root);
+    ['answer', 'context', 'runtime', 'results'].forEach(function (name) {
+      root.querySelector('.o_dtsc_ai_' + name).innerHTML = '';
+    });
+    delete root.dataset.lastQuestion;
+    root.querySelector('.o_dtsc_ai_question').value = '';
+    setLocalValue(DRAFT_KEY, '');
     try {
-      var response = await fetch(url, {
+      var response = await fetch('/dtsc/ai_assistant/reset', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ limit: 30 }),
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({csrf_token: (window.odoo || {}).csrf_token || ''}).toString(),
       });
       var payload = await response.json();
-      if (!payload.success || !payload.messages || !payload.messages.length) {
-        return;
-      }
-      clearChatThread(root);
-      payload.messages.forEach(function (message) {
-        if (message.role === 'user') {
-          appendChatMessage(root, 'user', `<p>${escapeHtml(message.content)}</p>`);
-        } else if (message.role === 'assistant') {
-          appendChatMessage(root, 'assistant', renderStoredAssistantMessage(message));
-        }
-      });
+      if (!response.ok || !payload.success || !payload.thread_id) { throw new Error('reset failed'); }
+      rememberIdentity(root, payload);
+      root.dataset.historyLoaded = '1';
+      status.textContent = '已開始新對話，後續查詢不會使用先前的內容。';
     } catch (error) {
-      root.dataset.historyLoaded = '0';
+      // A lost response may still have committed. Reload before allowing a
+      // query, so neither the old thread nor its result actions are reused.
+      await loadHistory(root, true);
+      status.textContent = '未能確認清空成功，請確認目前對話後再試；必要時重新整理頁面。';
+    } finally {
+      root.dataset.resetPending = '0';
+      submit.disabled = false;
+      clear.disabled = false;
     }
   }
 
@@ -367,17 +710,18 @@
                     <div>
                         <strong>AI 印刷訂單助手</strong>
                     </div>
-                    <label for="o_dtsc_ai_float_toggle_dynamic" class="o_dtsc_ai_close" role="button" tabindex="0" aria-label="關閉">×</label>
+                    <div class="o_dtsc_ai_header_actions">
+                        <details class="o_dtsc_ai_conversation_menu">
+                            <summary aria-label="對話選單" title="對話選單">⋯</summary>
+                            <button type="button" data-ai-reset="1">清空對話</button>
+                        </details>
+                        <label for="o_dtsc_ai_float_toggle_dynamic" class="o_dtsc_ai_close" role="button" tabindex="0" aria-label="關閉">×</label>
+                    </div>
                 </header>
                 <div class="o_dtsc_ai_form" role="search">
                     <div class="o_dtsc_ai_thread" aria-live="polite"></div>
-                    <div class="o_dtsc_ai_prompt_helper">
-                        <span>可直接問</span>
-                        <span class="o_dtsc_ai_prompt_chip">今天有多少張大圖訂單？</span>
-                        <span class="o_dtsc_ai_prompt_chip">本月訂單最多的前 10 名客戶</span>
-                        <span class="o_dtsc_ai_prompt_chip">近 6 個月大圖訂單數量趨勢</span>
-                        <span class="o_dtsc_ai_prompt_chip">目前有多少張未出貨的大圖訂單？</span>
-                    </div>
+                    <div class="o_dtsc_ai_personal"></div>
+                    <div class="o_dtsc_ai_role_templates"></div>
                     <div class="o_dtsc_ai_input_row">
                         <input class="o_dtsc_ai_question"
                                type="text"
@@ -409,7 +753,10 @@
     return root;
   }
 
-  async function query(root, question) {
+  async function query(root, question, cursor, queryRequest) {
+    if (root.dataset.queryPending === '1' || root.dataset.resetPending === '1') { return; }
+    var version = root.dataset.conversationVersion;
+    root.dataset.queryPending = '1';
     var status = root.querySelector('.o_dtsc_ai_status');
     var answer = root.querySelector('.o_dtsc_ai_answer');
     var context = root.querySelector('.o_dtsc_ai_context');
@@ -419,56 +766,68 @@
     var url = root.dataset.queryUrl;
     var debug = root.classList.contains('is-ai-debug');
 
-    appendChatMessage(root, 'user', `<p>${escapeHtml(question)}</p>`);
-    status.textContent = 'AI 正在回覆...';
-    answer.innerHTML = '';
-    context.innerHTML = '';
-    runtime.innerHTML = '';
-    results.innerHTML = '';
+    var pendingMessage;
     submit.disabled = true;
     try {
+      if (!await loadHistory(root) || version !== root.dataset.conversationVersion) { return; }
+      appendChatMessage(root, 'user', `<p>${escapeHtml(question)}</p>`);
+      pendingMessage = appendChatMessage(
+        root,
+        'assistant',
+        '<p class="o_dtsc_ai_pending_text">AI 正在回覆...</p>',
+        { pending: true }
+      );
+      status.textContent = '';
+      answer.innerHTML = '';
+      context.innerHTML = '';
+      runtime.innerHTML = '';
+      results.innerHTML = '';
       var response = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ question: question, debug: debug }),
+        body: JSON.stringify({ question: question, debug: debug, cursor: cursor || null,
+          query_request: queryRequest || null, thread_id: Number(root.dataset.threadId || 0) }),
       });
       var payload = await response.json();
+      if (version !== root.dataset.conversationVersion) { return; }
+      if (payload.conversation_changed) {
+        root.dataset.historyLoaded = '0';
+        await loadHistory(root);
+        if (version === root.dataset.conversationVersion) {
+          status.textContent = '對話已在其他頁面更新，請重新輸入問題。';
+        }
+        return;
+      }
       if (payload.login_required && payload.login_url) {
         window.location.href = payload.login_url;
         return;
       }
       if (!payload.success) {
-        status.textContent = payload.message || '查詢失敗';
-        appendChatMessage(root, 'assistant', `<p>${escapeHtml(payload.message || '查詢失敗')}</p>`);
+        updateChatMessage(
+          pendingMessage,
+          `<p>${escapeHtml(payload.message || '查詢失敗')}</p>`,
+          { error: true }
+        );
         return;
       }
-      status.textContent = '';
-      var contextHtml = debug && payload.context_label
-        ? `<div class="o_dtsc_ai_context_box">${escapeHtml(payload.context_label)}</div>`
-        : '';
-      var answerHtml = `<div class="o_dtsc_ai_answer_box o_dtsc_ai_markdown">${renderMarkdown(payload.answer)}</div>`;
-      var runtimeHtml = '';
-      if (debug && payload.show_debug) {
-        runtime.classList.remove('d-none');
-        runtimeHtml = `
-                    <div class="o_dtsc_ai_runtime_box">
-                        <span>執行模式：${escapeHtml(payload.mode || '')}</span>
-                        <span>使用工具：${escapeHtml((payload.tools || []).join(', ') || 'local_checkout_query')}</span>
-                        ${payload.gateway && payload.gateway.log_id ? `<span>Log ID：${escapeHtml(payload.gateway.log_id)}</span>` : ''}
-                    </div>
-                `;
-        runtime.innerHTML = runtimeHtml;
-      } else {
-        runtime.classList.add('d-none');
-        runtime.innerHTML = '';
-      }
+      rememberIdentity(root, payload);
+      root.dataset.lastQuestion = question;
+      runtime.classList.add('d-none');
+      runtime.innerHTML = '';
       var resultsHtml = renderResults(payload);
-      appendChatMessage(root, 'assistant', contextHtml + answerHtml + runtimeHtml + resultsHtml);
+      updateChatMessage(pendingMessage, renderAssistantMessage(payload.answer, resultsHtml));
     } catch (error) {
-      status.textContent = '查詢失敗：' + error.message;
-      appendChatMessage(root, 'assistant', `<p>${escapeHtml('查詢失敗：' + error.message)}</p>`);
+      if (version !== root.dataset.conversationVersion) { return; }
+      updateChatMessage(
+        pendingMessage,
+        `<p>${escapeHtml('查詢失敗：' + error.message)}</p>`,
+        { error: true }
+      );
     } finally {
-      submit.disabled = false;
+      if (version === root.dataset.conversationVersion) {
+        root.dataset.queryPending = '0';
+        submit.disabled = false;
+      }
     }
   }
 
@@ -477,6 +836,7 @@
       ev.preventDefault();
       ev.stopPropagation();
     }
+    if (root.dataset.queryPending === '1' || root.dataset.resetPending === '1') { return; }
     var question = input.value.trim();
     if (question) {
       input.value = '';
@@ -490,6 +850,90 @@
       return root.querySelector('.o_dtsc_ai_question');
     }
     root.dataset.aiBound = '1';
+    var reset = root.querySelector('[data-ai-reset]');
+    if (reset) {
+      reset.addEventListener('click', function (ev) {
+        ev.preventDefault();
+        resetConversation(root);
+      });
+    }
+    var templates = root.querySelector('.o_dtsc_ai_role_templates');
+    if (templates) {
+      var roles = Object.keys(ROLE_QUERIES);
+      templates.innerHTML =
+        '<div class="o_dtsc_ai_role_tabs">'
+        + roles.map(function (role) {
+          return '<button type="button" class="o_dtsc_ai_role_tab" data-ai-role="'
+            + escapeHtml(role) + '">' + escapeHtml(role) + '常用問題</button>';
+        }).join('')
+        + '</div>'
+        + '<div class="o_dtsc_ai_role_panels">'
+        + roles.map(function (role) {
+          return '<div class="o_dtsc_ai_role_panel" data-ai-role-panel="'
+            + escapeHtml(role) + '" hidden>'
+            + ROLE_QUERIES[role].map(function (question) {
+              return '<button type="button" class="btn btn-link" data-ai-question="'
+                + escapeHtml(question.question) + '" data-ai-preset="' + escapeHtml(question.id)
+                + '">' + escapeHtml(question.label) + '</button>';
+            }).join('')
+            + '</div>';
+        }).join('')
+        + '</div>';
+      templates.addEventListener('click', function (ev) {
+        var tab = ev.target.closest('.o_dtsc_ai_role_tab');
+        if (!tab || !templates.contains(tab)) {
+          return;
+        }
+        var role = tab.getAttribute('data-ai-role');
+        var wasActive = tab.classList.contains('is-active');
+        templates.querySelectorAll('.o_dtsc_ai_role_tab').forEach(function (node) {
+          node.classList.remove('is-active');
+        });
+        templates.querySelectorAll('.o_dtsc_ai_role_panel').forEach(function (node) {
+          node.hidden = true;
+        });
+        if (wasActive) {
+          return;
+        }
+        tab.classList.add('is-active');
+        var panel = templates.querySelector('.o_dtsc_ai_role_panel[data-ai-role-panel="' + role + '"]');
+        if (panel) {
+          panel.hidden = false;
+        }
+      });
+    }
+    root.addEventListener('click', function (ev) {
+      var exportButton = ev.target.closest('[data-ai-export]');
+      if (exportButton) {
+        var exported = JSON.parse(exportButton.dataset.aiExport);
+        var blob = new Blob([makeCsv(exported.columns, exported.rows)], {type: 'text/csv;charset=utf-8'});
+        var url = URL.createObjectURL(blob), link = document.createElement('a');
+        link.href = url;
+        link.download = String(exported.title).replace(/[\\/:*?"<>|]/g, '_') + (exported.partial ? '_部分' : '_目前結果') + '.csv';
+        link.click();
+        setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+        return;
+      }
+      var edit = ev.target.closest('[data-ai-save], [data-ai-remove]');
+      if (!edit || !preferencesKey(root)) { return; }
+      var prefs = readPreferences(root);
+      if (edit.hasAttribute('data-ai-save')) {
+        var question = (root.querySelector('.o_dtsc_ai_question').value || root.dataset.lastQuestion || '').trim().slice(0, 500);
+        if (!question) { return; }
+        prefs.favorites = Array.from(new Set((prefs.favorites || []).concat(question))).slice(-20);
+      } else {
+        prefs.favorites = (prefs.favorites || []).filter(function (question, index) { return index !== Number(edit.dataset.aiRemove); });
+      }
+      setLocalValue(preferencesKey(root), JSON.stringify(prefs));
+      renderPreferences(root);
+    });
+    root.addEventListener('click', function (ev) {
+      var button = ev.target.closest('[data-ai-cursor], [data-ai-question], [data-ai-query]');
+      if (!button || !root.contains(button)) { return; }
+      ev.preventDefault();
+      query(root, button.dataset.aiQuestion || (button.dataset.aiQuery ? '重新執行查詢' : '下一頁'),
+        button.dataset.aiCursor, button.dataset.aiQuery ? JSON.parse(button.dataset.aiQuery) : null);
+    });
     var form = root.querySelector('.o_dtsc_ai_form');
     var input = root.querySelector('.o_dtsc_ai_question');
     var submit = root.querySelector('.o_dtsc_ai_submit');
@@ -688,14 +1132,20 @@
       var startHeight = panel.offsetHeight;
       var minWidth = 360;
       var minHeight = 420;
-      var maxWidth = window.innerWidth - 32;
-      var maxHeight = window.innerHeight - 110;
+      var panelRect = panel.getBoundingClientRect();
+      // Panel is bottom/right anchored; grow into remaining viewport space.
+      var maxWidth = Math.max(minWidth, Math.floor(panelRect.right - 16));
+      var maxHeight = Math.max(minHeight, Math.floor(panelRect.bottom - 16));
 
       function onMove(moveEv) {
         var width = startWidth + (startX - moveEv.clientX);
         var height = startHeight + (startY - moveEv.clientY);
-        panel.style.width = clamp(width, minWidth, maxWidth) + 'px';
-        panel.style.height = clamp(height, minHeight, maxHeight) + 'px';
+        var nextWidth = clamp(width, minWidth, maxWidth);
+        var nextHeight = clamp(height, minHeight, maxHeight);
+        panel.style.width = nextWidth + 'px';
+        panel.style.height = nextHeight + 'px';
+        panel.style.maxWidth = maxWidth + 'px';
+        panel.style.maxHeight = maxHeight + 'px';
       }
 
       function onUp() {
@@ -708,11 +1158,25 @@
     });
   }
 
-  onReady(function () {
+  async function canUseAssistant() {
+    try {
+      var response = await fetch('/dtsc/ai_assistant/access', {cache: 'no-store'});
+      if (!response.ok) { return false; }
+      var payload = await response.json();
+      return payload.success === true && payload.allowed === true;
+    } catch (error) {
+      return false;
+    }
+  }
+
+  onReady(async function () {
     var root = document.querySelector('.o_dtsc_ai_assistant:not(.o_dtsc_ai_float)');
     if (!root) {
       return;
     }
+    root.hidden = true;
+    if (!await canUseAssistant()) { root.remove(); return; }
+    root.hidden = false;
     applyDebugMode(root);
     var input = bindQuestionControls(root);
     loadHistory(root);
@@ -776,9 +1240,15 @@
     }
   }
 
-  onReady(function () {
+  onReady(async function () {
     var existing = document.querySelector('.o_dtsc_ai_float');
+    if (existing) { existing.hidden = true; }
+    if (!await canUseAssistant()) {
+      if (existing) { existing.remove(); }
+      return;
+    }
     if (existing) {
+      existing.hidden = false;
       bindFloatingWidget(existing);
       return;
     }

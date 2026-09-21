@@ -20,7 +20,7 @@ class AiGatewayConfig(models.AbstractModel):
         'odoo_base_url': 'dtsc_ai_gateway.odoo_base_url',
     }
 
-    def get_runtime_config(self):
+    def _get_runtime_config(self):
         params = self.env['ir.config_parameter'].sudo()
         timeout = params.get_param(self._PARAMS['timeout']) or '30'
         max_retries = params.get_param(self._PARAMS['max_retries']) or '2'
@@ -47,7 +47,7 @@ class AiGatewayConfig(models.AbstractModel):
         }
 
     def is_configured(self):
-        config = self.get_runtime_config()
+        config = self._get_runtime_config()
         return bool(config.get('service_url') and config.get('model') and config.get('api_key'))
 
     @staticmethod

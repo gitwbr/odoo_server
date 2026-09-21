@@ -1,14 +1,19 @@
-# -*- coding: utf-8 -*-
+  # -*- coding: utf-8 -*-
 
+import base64
+import hashlib
+import hmac
 import datetime
 import json
 import logging
 import re
 import time
+from pathlib import Path
 
 import pytz
 
 from odoo import _, fields, models
+from odoo.osv import expression
 from odoo.exceptions import AccessError, UserError, ValidationError
 
 
@@ -16,77 +21,394 @@ _logger = logging.getLogger(__name__)
 
 
 class UniversalQueryValidationError(Exception):
-    """A validation error that is safe to return to the AI gateway."""
+    """Structured query failure; diagnostics stay in the Gateway log."""
+    def __init__(self, message, code='invalid_request'):
+        super().__init__(message)
+        self.code = code
+
+
+class QueryReadAccessError(AccessError):
+    """Verified read denial, without exposing exception text or hidden records."""
+    def __init__(self, scope, target):
+        super().__init__('Query read access denied')
+        self.scope = scope
+        self.target = target
 
 
 class UniversalOdooQuery(models.AbstractModel):
     _name = 'dtsc.ai.universal.query'
     _description = 'DTS-C AI Universal Read-only Query'
 
-    _TOOL_NAME = 'universal_odoo_query'
-    _INTERNAL_ACTORS = frozenset(('admin', 'internal'))
-    _DENIED_MODELS = frozenset((
-        'dtsc.vatlogin',
-        'dtsc.linebot',
-        'dtsc.interoperate',
-        'dtsc.ai.check.log',
-    ))
-    _DENIED_MODEL_PREFIXES = (
-        'dtsc.ai.assistant.',
-        'dtsc.ai.gateway.',
-    )
-    _SENSITIVE_FIELD_TERMS = (
-        'password', 'passwd', 'pwd', 'token', 'api_key', 'apikey',
-        'secret', 'credential', 'authorization', 'attachment', 'avatar',
-        'image', 'signature', 'binary', 'body_html',
-        '密碼', '密码', '金鑰', '金钥', '密鑰', '密钥', '令牌', '憑證', '凭证',
-        '附件', '圖片', '图片', '簽名', '签名',
-    )
-    _RELATION_TYPES = frozenset(('many2one', 'one2many', 'many2many'))
-    _RETURNABLE_TYPES = frozenset((
-        'boolean', 'integer', 'float', 'monetary', 'char', 'text',
-        'date', 'datetime', 'selection', 'many2one',
-    ))
-    _NUMERIC_TYPES = frozenset(('integer', 'float', 'monetary'))
-    _DATE_GRANULARITIES = frozenset(('day', 'week', 'month', 'quarter', 'year'))
-    _FILTER_OPERATORS = {
-        '=': 'eq', 'eq': 'eq',
-        '!=': 'ne', '<>': 'ne', 'ne': 'ne',
-        'contains': 'contains', 'ilike': 'contains',
-        'not_contains': 'not_contains', 'not ilike': 'not_contains',
-        'in': 'in', 'not_in': 'not_in', 'not in': 'not_in',
-        '>': 'gt', 'gt': 'gt',
-        '>=': 'gte', 'gte': 'gte',
-        '<': 'lt', 'lt': 'lt',
-        '<=': 'lte', 'lte': 'lte',
-        'is_empty': 'is_empty', 'is_not_empty': 'is_not_empty',
-        'between': 'between', 'date_range': 'between',
-    }
-    _AGGREGATES = frozenset(('sum', 'avg', 'min', 'max', 'count'))
+    _POLICY_DIR = Path(__file__).resolve().parents[1] / 'policy'
+    _POLICY = json.loads((_POLICY_DIR / 'query_policy.json').read_text())
+    locals().update({key: frozenset(value) if key.endswith('_TYPES') else value
+                     for key, value in _POLICY['constants'].items()})
 
-    _DEFAULT_SEARCH_LIMIT = 20
-    _MAX_SEARCH_LIMIT = 100
-    _DEFAULT_GROUP_LIMIT = 20
-    _MAX_GROUP_LIMIT = 100
-    _MAX_DISCOVER_LIMIT = 50
-    _MAX_FIELDS = 20
-    _MAX_DESCRIBE_FIELDS = 250
-    _MAX_FILTERS = 20
-    _MAX_ORDER_FIELDS = 3
-    _MAX_GROUP_FIELDS = 3
-    _MAX_MEASURES = 5
-    _MAX_IN_VALUES = 100
-    _MAX_RESPONSE_CHARS = 120000
-    _MAX_TEXT_CHARS = 1500
+    def _metric_definitions(self):
+        # Optional named definitions; free-form queries use discovered metadata.
+        return json.loads((self._POLICY_DIR / 'business_metrics.json').read_text())
+
+    def _metric_catalog(self, arguments):
+        catalog = self._allowed_model_catalog()
+        entries = []
+        for key, definition in self._metric_definitions().items():
+            if definition['model'] in catalog:
+                entries.append(dict(definition, metric=key, version=self._METRIC_VERSION))
+        return {'query_type': 'universal_metrics', 'metrics': entries,
+                'limitations': ['毛利、帳齡、利用率、損耗及未列出的完成率尚未配置確定口徑，須先澄清。',
+                                '金额比较须明确字段和币种；不能把原始字段加总自动称为营业额。']}
+
+    def _metric_query(self, arguments):
+        definition = self._metric_definitions().get(arguments.get('metric'))
+        if not definition:
+            raise UniversalQueryValidationError(_('指標不存在，請先查 metric_catalog。'))
+        if arguments.get('cursor'):
+            return self._search(arguments)
+        filters = list(definition['filters']) + list(arguments.get('filters') or [])
+        if definition.get('due_field'):
+            now = fields.Datetime.now()
+            local_now = pytz.utc.localize(now).astimezone(pytz.timezone(self._user_timezone())).isoformat()
+            filters.append({'field': definition['due_field'], 'operator': 'lt', 'value': local_now})
+        if arguments.get('period_start') or arguments.get('period_end'):
+            start, end = self._period_dates(arguments.get('period_start'), arguments.get('period_end'))
+            filters.append({'field': definition['date_field'], 'operator': 'between',
+                            'value': [start.isoformat(), end.isoformat()]})
+        query = dict(arguments, model=definition['model'], filters=filters)
+        result = self._search(query) if arguments.get('metric_detail') else self._aggregate(dict(query, group_by=[], measures=[]))
+        if definition.get('numerator_filters') and not arguments.get('metric_detail'):
+            denominator = (result.get('groups') or [{}])[0].get('record_count', 0)
+            numerator_result = self._aggregate(dict(query, filters=filters + definition['numerator_filters'],
+                                                     group_by=[], measures=[]))
+            numerator = (numerator_result.get('groups') or [{}])[0].get('record_count', 0)
+            result['groups'] = [{'group': {}, 'measures': {'numerator': numerator, 'denominator': denominator,
+                                'percent': numerator / denominator * 100 if denominator else None}}]
+            result['measure_labels'] = {'numerator': '分子筆數', 'denominator': '分母筆數', 'percent': '比例 %'}
+            result['basis'] = definition['basis'] + (' 分母為0，比例不適用。' if not denominator else '')
+        result['metric'] = {'name': arguments['metric'], 'label': definition['label'],
+                            'version': self._METRIC_VERSION, 'basis': definition['basis'],
+                            'date_field': definition['date_field'], 'unit': '%' if definition.get('numerator_filters') else '筆'}
+        result['description'] = definition['label']
+        return result
+
+    @staticmethod
+    def _period_dates(start, end, parameter='period'):
+        try:
+            start_date = datetime.date.fromisoformat(start)
+            end_date = datetime.date.fromisoformat(end)
+        except (TypeError, ValueError):
+            raise UniversalQueryValidationError(
+                _('%s_start / %s_end 必須提供有效 YYYY-MM-DD 起訖日期。') % (parameter, parameter))
+        if start_date > end_date or (end_date - start_date).days > 1095:
+            raise UniversalQueryValidationError(_('日期期間必須有效且不超過1096天。'))
+        return start_date, end_date
+
+    @staticmethod
+    def _comparison_values(current, previous):
+        return {'current': current, 'previous': previous, 'delta': current - previous,
+                'change_percent': (current - previous) / abs(previous) * 100 if previous else None,
+                'rate_note': '' if previous else '基期為0，變化率不適用'}
+
+    def _period_analysis(self, arguments):
+        mode = arguments.get('analysis_mode')
+        has_baseline = bool(arguments.get('baseline_start') or arguments.get('baseline_end'))
+        # Preserve existing comparisons with a supplied baseline. A missing
+        # mode alone cannot tell us whether the user wants a trend or comparison.
+        if not mode and has_baseline:
+            mode = 'compare'
+        if not mode:
+            raise UniversalQueryValidationError(
+                _('period_analysis 缺少 analysis_mode：趨勢設為 trend；兩期比較設為 compare，'
+                  '並提供 baseline_start、baseline_end。保留已提供的 period_start、period_end。'),
+                code='analysis_mode_required')
+        if mode not in ('compare', 'trend'):
+            raise UniversalQueryValidationError(_('analysis_mode 只支持 compare/trend。'))
+        if mode == 'compare':
+            previous_start, previous_end = self._period_dates(
+                arguments.get('baseline_start'), arguments.get('baseline_end'), parameter='baseline')
+        elif has_baseline:
+            raise UniversalQueryValidationError(
+                _('trend 不使用比較基期，請移除 baseline_start、baseline_end；兩期比較請用 compare。'))
+        catalog = self._allowed_model_catalog()
+        model_name, Model = self._require_allowed_model(arguments.get('model'), catalog)
+        date_field = arguments.get('date_field')
+        spec = self._resolve_field_path(Model, date_field, catalog, purpose='filter')
+        if spec['registry_field'].type not in ('date', 'datetime') or '.' in date_field:
+            raise UniversalQueryValidationError(_('期間分析須指定直接 Date/Datetime 欄位。'))
+        start, end = self._period_dates(arguments.get('period_start'), arguments.get('period_end'))
+        measures = arguments.get('measures') or []
+        compiled = self._compile_measures(Model, measures, catalog)
+        self._validate_measure_currencies(Model, compiled, arguments)
+        base_domain = self._query_domain(Model, arguments, catalog)
+        def summary(begin, finish):
+            date_domain = self._compile_domain(Model, [{'field': date_field, 'operator': 'between',
+                         'value': [begin.isoformat(), finish.isoformat()]}], catalog)
+            grouped = Model.with_context(tz=self._user_timezone()).read_group(
+                expression.AND([base_domain, date_domain]),
+                [item['orm_spec'] for item in compiled] or ['__count'], [], lazy=False)
+            group = grouped[0] if grouped else {}
+            return ({item['alias']: ((0 if item['aggregate'] in ('sum', 'count') else None) if not group.get('__count')
+                                       else self._number_or_false(group.get(item['alias']))) for item in compiled}
+                    if measures else {'record_count': int(group.get('__count') or 0)})
+        labels = {item['alias']: item.get('label') or item['alias'] for item in compiled} if measures else {'record_count': '資料筆數'}
+        rows, columns = [], []
+        if mode == 'compare':
+            current, previous = summary(start, end), summary(previous_start, previous_end)
+            for key in labels:
+                a, b = current.get(key), previous.get(key)
+                if a is None or b is None:
+                    row = {'current': a, 'previous': b, 'delta': None, 'change_percent': None, 'rate_note': '期間沒有可比較值'}
+                else:
+                    row = self._comparison_values(a, b)
+                rows.append(dict(row, indicator=labels[key]))
+            names = [('indicator','指標'),('current','本期'),('previous','基期'),('delta','差額'),('change_percent','變化率 %'),('rate_note','說明')]
+        elif mode == 'trend':
+            granularity = arguments.get('granularity') or 'month'
+            if granularity not in ('day', 'month'):
+                raise UniversalQueryValidationError(_('補零趨勢目前支持 day/month。'))
+            buckets, current = [], start
+            while current <= end:
+                following = current + datetime.timedelta(days=1) if granularity == 'day' else (
+                    current.replace(year=current.year + 1, month=1, day=1) if current.month == 12
+                    else current.replace(month=current.month + 1, day=1))
+                finish = min(end, following - datetime.timedelta(days=1))
+                buckets.append((current, finish))
+                if len(buckets) > self._MAX_TREND_BUCKETS:
+                    raise UniversalQueryValidationError(_('補零趨勢最多60個時段，請縮小日期或改按月。'))
+                current = following
+            for begin, finish in buckets:
+                values = summary(begin, finish)
+                row = {'period': begin.isoformat() if granularity == 'day' else begin.strftime('%Y-%m'),
+                       'start': begin.isoformat(), 'end': finish.isoformat()}
+                for key, value in values.items():
+                    agg = next((item['aggregate'] for item in compiled if item['alias'] == key), 'count')
+                    row[key] = 0 if value is None and agg in ('sum', 'count') else value
+                rows.append(row)
+            names = [('period','期間'), ('start','起日'), ('end','迄日')] + list(labels.items())
+        else:
+            raise UniversalQueryValidationError(_('analysis_mode 只支持 compare/trend。'))
+        columns = [{'name': key, 'label': label} for key, label in names]
+        return {'query_type': 'universal_analysis', 'model': model_name, 'description': '期間比較' if mode == 'compare' else '補零趨勢',
+                'analysis_mode': mode, 'records': rows, 'columns': columns, 'returned_count': len(rows),
+                'date_field': date_field, 'period': [start.isoformat(), end.isoformat()],
+                'baseline': [previous_start.isoformat(), previous_end.isoformat()] if mode == 'compare' else None,
+                'metric_version': self._METRIC_VERSION, 'filled_empty': mode == 'trend', 'has_more': False,
+                'period_days': (end-start).days+1,
+                'baseline_days': (previous_end-previous_start).days+1 if mode == 'compare' else None,
+                'basis': '依指定日期欄位和條件計算；本期/基期均含起訖日，沒有自動年化或平均每日；零分母不產生百分比。'}
+
+    # Only these standard business edges may expand beyond menu entry models.
+    def _capabilities(self, arguments):
+        catalog = self._allowed_model_catalog()
+        keyword = self._clean_string(arguments.get('keyword'), 120).casefold()
+        entries = []
+        for name, entry in sorted(catalog.items()):
+            label = str(entry['description'])
+            if keyword and keyword not in (' '.join([name, label] + [str(menu) for menu in entry.get('menus', [])])).casefold():
+                continue
+            entries.append({'model': name, 'description': label,
+                            'examples': ['查詢%s最近20筆資料' % label,
+                                         '按月份統計%s筆數' % label],
+                            'operations': ['describe', 'search', 'aggregate', 'relations']})
+        return {'query_type': 'universal_capabilities', 'models': entries,
+                'available_count': len(entries), 'scope': '目前帳號可讀的業務範圍',
+                'limitations': ['聚合限存儲欄位；指標口徑須另行確認',
+                                '關聯集合超過5000筆來源記錄時須縮小範圍',
+                                '歷史資料或角色權限變更後須重新查詢']}
+
+    def _compile_conditions(self, Model, node, catalog, depth=0, budget=None):
+        if node is None and depth == 0:
+            return []
+        budget = budget if budget is not None else [0]
+        if depth > self._MAX_CONDITION_DEPTH or not isinstance(node, dict) or not node:
+            raise UniversalQueryValidationError(_('條件必須是物件，最多三層。'))
+        if 'field' in node:
+            budget[0] += 1
+            if budget[0] > self._MAX_FILTERS:
+                raise UniversalQueryValidationError(_('組合條件最多20項。'))
+            if set(node) - {'field', 'operator', 'value', 'date_range'}:
+                raise UniversalQueryValidationError(_('條件包含未知參數。'))
+            return self._compile_domain(Model, [node], catalog)
+        if len(node) != 1:
+            raise UniversalQueryValidationError(_('條件群組只能指定 all、any 或 not。'))
+        kind, children = next(iter(node.items()))
+        if kind == 'not':
+            return ['!'] + expression.normalize_domain(self._compile_conditions(Model, children, catalog, depth + 1, budget))
+        if kind not in ('all', 'any') or not isinstance(children, list) or not 1 <= len(children) <= 20:
+            raise UniversalQueryValidationError(_('all/any 必須包含1至20個條件。'))
+        domains = [self._compile_conditions(Model, child, catalog, depth + 1, budget) for child in children]
+        return (expression.AND if kind == 'all' else expression.OR)(domains)
+
+    def _query_domain(self, Model, arguments, catalog):
+        filters = arguments.get('filters') or []
+        domain = self._compile_domain(Model, filters, catalog)
+        domain = expression.AND([domain, self._compile_conditions(
+            Model, arguments.get('conditions'), catalog, budget=[len(filters)])])
+        relation_filter = arguments.get('relation_filter')
+        if relation_filter:
+            if not isinstance(relation_filter, dict):
+                raise UniversalQueryValidationError(_('relation_filter 必須是物件。'))
+            if relation_filter.get('mode') not in ('exists', 'not_exists'):
+                raise UniversalQueryValidationError(_('關聯篩選只能使用 exists/not_exists。'))
+            target, ids = self._relation_set(relation_filter, catalog)
+            if target != Model._name:
+                raise UniversalQueryValidationError(_('關聯來源欄位必須指向目前查詢模型。'))
+            domain = expression.AND([domain, [('id', 'in' if relation_filter['mode'] == 'exists' else 'not in', sorted(ids))]])
+        return domain
+
+    def _relation_spec(self, Model, field_name, catalog):
+        if not isinstance(field_name, str) or '.' in field_name:
+            raise UniversalQueryValidationError(_('請指定直接關聯欄位。'))
+        metadata = self._field_catalog(Model, catalog).get(field_name)
+        if not metadata or metadata['type'] not in self._RELATION_TYPES:
+            raise UniversalQueryValidationError(_('關聯欄位不存在或不可讀。'))
+        field = Model._fields[field_name]
+        if not field.store:
+            raise UniversalQueryValidationError(_('關聯操作只接受存儲關聯。'))
+        self._require_allowed_model(field.comodel_name, catalog)
+        return field
+
+    def _relation_set(self, source, catalog):
+        if not isinstance(source, dict):
+            raise UniversalQueryValidationError(_('集合來源必須是物件。'))
+        if set(source) - {'model', 'relation_field', 'filters', 'conditions', 'mode'}:
+            raise UniversalQueryValidationError(_('集合來源包含未知參數。'))
+        source_model_name, Model = self._require_allowed_model(source.get('model'), catalog)
+        field_name = source.get('relation_field')
+        field = self._relation_spec(Model, field_name, catalog)
+        domain = self._compile_domain(Model, source.get('filters'), catalog)
+        domain = expression.AND([domain, self._compile_conditions(Model, source.get('conditions'), catalog,
+                                                                budget=[len(source.get('filters') or [])])])
+        rows = Model.search(domain, order='id', limit=self._MAX_RELATION_RECORDS + 1)
+        if len(rows) > self._MAX_RELATION_RECORDS:
+            raise UniversalQueryValidationError(_('關聯來源超過5000筆，請縮小日期或業務範圍；未計算部分總數。'))
+        ids = set()
+        for row in rows:
+            ids.update(row[field_name].ids)
+            if len(ids) > self._MAX_RELATION_RECORDS:
+                raise UniversalQueryValidationError(_('關聯目標超過5000筆，請縮小範圍。'))
+        Target = self.env[field.comodel_name]
+        visible = Target.search([('id', 'in', sorted(ids))], order='id', limit=self._MAX_RELATION_RECORDS + 1)
+        return field.comodel_name, set(visible.ids)
+
+    def _set_query(self, arguments):
+        catalog = self._allowed_model_catalog()
+        sources = arguments.get('sources')
+        operation = arguments.get('set_operator') or 'union'
+        if operation not in ('union', 'intersection', 'difference'):
+            raise UniversalQueryValidationError(_('集合操作只接受 union/intersection/difference。'))
+        if not isinstance(sources, list) or not 2 <= len(sources) <= self._MAX_SET_SOURCES:
+            raise UniversalQueryValidationError(_('請提供2至4個集合來源。'))
+        sets = [self._relation_set(source, catalog) for source in sources]
+        if len({name for name, ids in sets}) != 1:
+            raise UniversalQueryValidationError(_('各來源必須指向同一目標模型。'))
+        ids = set(sets[0][1])
+        for target_name, other in sets[1:]:
+            ids = {'union': ids.union, 'intersection': ids.intersection,
+                   'difference': ids.difference}[operation](other)
+        return {'query_type': 'universal_count_distinct', 'model': sets[0][0],
+                'description': catalog[sets[0][0]]['description'] + '（跨模型去重）',
+                'set_operator': operation, 'count': len(ids), 'exact': True,
+                'source_counts': [len(value) for _, value in sets],
+                'groups': [{'group': {}, 'measures': {'distinct_count': len(ids)}}],
+                'measure_labels': {'distinct_count': '去重筆數'}, 'has_more': False}
+
+    def _relations(self, arguments):
+        catalog = self._allowed_model_catalog()
+        name, Model = self._require_allowed_model(arguments.get('model'), catalog)
+        outgoing, incoming = [], []
+        for field_name, meta in self._field_catalog(Model, catalog).items():
+            if meta['type'] in self._RELATION_TYPES and Model._fields[field_name].store:
+                outgoing.append({'field': field_name, 'label': meta['string'], 'model': meta['relation'], 'type': meta['type']})
+        for other_name in sorted(catalog):
+            Other = self.env[other_name]
+            for field_name, meta in self._field_catalog(Other, catalog).items():
+                if meta['relation'] == name and Other._fields[field_name].store:
+                    incoming.append({'field': field_name, 'label': meta['string'], 'model': other_name, 'type': meta['type']})
+        return {'query_type': 'universal_relations', 'model': name, 'outgoing': outgoing, 'incoming': incoming}
+
+    def _related(self, arguments):
+        if arguments.get('cursor'):
+            return self._search(arguments)
+        catalog = self._allowed_model_catalog()
+        parent_model_name, Parent = self._require_allowed_model(arguments.get('model'), catalog)
+        record_id = arguments.get('record_id')
+        if isinstance(record_id, bool) or not isinstance(record_id, int) or record_id <= 0:
+            raise UniversalQueryValidationError(_('record_id 必須是正整數。'))
+        parent = Parent.search([('id', '=', record_id)], limit=1)
+        if not parent:
+            raise AccessError(_('找不到可讀的來源單據。'))
+        field_name = arguments.get('relation_field')
+        reverse_model = arguments.get('related_model')
+        if reverse_model:
+            target_model_name, Target = self._require_allowed_model(reverse_model, catalog)
+            field = self._relation_spec(Target, field_name, catalog)
+            if field.comodel_name != Parent._name:
+                raise UniversalQueryValidationError(_('反向欄位未指向來源模型。'))
+            related_domain = [(field_name, 'in', [record_id])]
+        else:
+            field = self._relation_spec(Parent, field_name, catalog)
+            Target = self.env[field.comodel_name]
+            if field.type == 'one2many':
+                related_domain = [(field.inverse_name, '=', record_id)]
+            else:
+                ids = parent[field_name].ids
+                if len(ids) > self._MAX_RELATION_RECORDS:
+                    raise UniversalQueryValidationError(_('關聯超過5000筆，請使用目標模型篩選。'))
+                related_domain = [('id', 'in', ids)]
+        return self._search(dict(arguments, model=Target._name, operation='search'),
+                            extra_domain=related_domain,
+                            source_binding=[Parent._name, record_id, str(parent.write_date or '')
+                                            if 'write_date' in Parent._fields else ''])
+
+    def _cursor_identity(self):
+        return [self.env.uid, sorted(self.env.companies.ids), self._user_timezone()]
+
+    def _cursor_secret(self):
+        secret = self.env['ir.config_parameter'].sudo().get_param('database.secret')
+        if not secret:
+            raise UniversalQueryValidationError(_('系統缺少分頁簽章設定，請聯絡管理員。'))
+        return secret.encode('utf-8')
+
+    def _encode_cursor(self, data):
+        raw = json.dumps(data, ensure_ascii=False, separators=(',', ':'), default=str).encode('utf-8')
+        if len(raw) > self._MAX_CURSOR_CHARS:
+            return None
+        encoded = base64.urlsafe_b64encode(raw).decode('ascii')
+        signature = hmac.new(self._cursor_secret(), encoded.encode('ascii'), hashlib.sha256).hexdigest()
+        return encoded + '.' + signature
+
+    def _decode_cursor(self, value):
+        try:
+            if not isinstance(value, str) or len(value) > 24000:
+                raise ValueError()
+            encoded, signature = value.rsplit('.', 1)
+            expected = hmac.new(self._cursor_secret(), encoded.encode('ascii'), hashlib.sha256).hexdigest()
+            if not hmac.compare_digest(signature, expected):
+                raise ValueError()
+            data = json.loads(base64.urlsafe_b64decode(encoded))
+            if data['identity'] != self._cursor_identity() or time.time() > data['expires']:
+                raise ValueError()
+            return data
+        except (ValueError, KeyError, TypeError, UnicodeError):
+            raise UniversalQueryValidationError(_('分頁參照已失效或不屬於目前身份，請重新查詢。'))
+
+    def _page_fingerprint(self, Model, domain):
+        count = Model.search_count(domain)
+        latest = Model.search(domain, order='id desc', limit=1)
+        stamp = ''
+        if 'write_date' in Model._fields:
+            changed = Model.search(domain, order='write_date desc, id desc', limit=1)
+            stamp = str(changed.write_date or '') if changed else ''
+        return [count, latest.id if latest else 0, stamp]
 
     @classmethod
     def tool_schema(cls):
-        return {
+        schema = {
             'type': 'object',
             'properties': {
                 'operation': {
                     'type': 'string',
-                    'enum': ['discover', 'describe', 'search', 'aggregate', 'count_distinct'],
+                    'enum': ['capabilities', 'discover', 'describe', 'search', 'aggregate', 'count_distinct', 'relations', 'related', 'set_query', 'metric_catalog', 'metric', 'period_analysis'],
                     'description': '要執行的唯讀查詢操作。',
                 },
                 'keyword': {
@@ -95,7 +417,7 @@ class UniversalOdooQuery(models.AbstractModel):
                 },
                 'model': {
                     'type': 'string',
-                    'description': 'Odoo 模型技術名稱，例如 dtsc.checkout。',
+                    'description': 'discover 返回的實際 Odoo 模型技術名稱，不可猜測。search/aggregate/period_analysis 等模型查詢必填；不可放入 keyword。',
                 },
                 'fields': {
                     'type': 'array',
@@ -116,7 +438,7 @@ class UniversalOdooQuery(models.AbstractModel):
                                     'between',
                                 ],
                             },
-                            'value': {},
+                            'value': {'description': '一般條件值；between 使用 [start,end]，亦接受 {"start":...,"end":...}。日期為 YYYY-MM-DD。'},
                             'date_range': {
                                 'type': 'object',
                                 'properties': {
@@ -130,7 +452,7 @@ class UniversalOdooQuery(models.AbstractModel):
                         'required': ['field', 'operator'],
                         'additionalProperties': False,
                     },
-                    'description': '以隐式 AND 组合的结构化条件。',
+                    'description': 'search/aggregate/period_analysis 均使用這些隱式 AND 條件。趨勢也須保留業務單據類型與其他篩選。between 可用 value:[start,end] 或 date_range:{start,end}；不要同時傳兩組不同範圍。',
                 },
                 'order': {
                     'type': 'array',
@@ -164,12 +486,15 @@ class UniversalOdooQuery(models.AbstractModel):
                                 'type': 'string',
                                 'enum': ['sum', 'avg', 'min', 'max', 'count'],
                             },
-                            'alias': {'type': 'string'},
+                            'alias': {
+                                'type': 'string', 'pattern': r'^[A-Za-z_][A-Za-z0-9_]*$',
+                                'description': '可省略，預設使用欄位名。內部結果鍵，只能英文字母或底線開頭，後接英數底線，例如 total_amount；不可填中文顯示名稱。',
+                            },
                         },
                         'required': ['field', 'aggregate'],
                         'additionalProperties': False,
                     },
-                    'description': 'aggregate 的存儲數值欄位與聚合方式。',
+                    'description': 'aggregate / period_analysis 的實際存儲欄位與聚合方式。只計單據數時傳 [] 或省略，直接使用 record_count；禁止將 metrics 的識別碼當成 field。',
                 },
                 'distinct_field': {
                     'type': 'string',
@@ -189,12 +514,50 @@ class UniversalOdooQuery(models.AbstractModel):
             'additionalProperties': False,
         }
 
+        properties = schema['properties']
+        condition = {'type': 'object', 'additionalProperties': True,
+                     'description': '邏輯樹，葉節點同 filters。群組格式 {"all":[條件,...]}、{"any":[條件,...]}、{"not":條件}；最多3層、20項。'}
+        source = {'type': 'object', 'properties': {
+            'model': {'type': 'string'}, 'relation_field': {'type': 'string'},
+            'filters': properties['filters'], 'conditions': condition,
+        }, 'required': ['model', 'relation_field'], 'additionalProperties': False}
+        properties.update({
+            'conditions': condition,
+            'cursor': {'type': 'string', 'description': '續頁時原樣傳回 next_cursor；其餘條件由伺服器恢復，不要修改 token。'},
+            'offset': {'type': 'integer', 'description': '起始位置，預設0，最大5000；續頁優先使用 cursor。'},
+            'record_id': {'type': 'integer', 'description': 'related 的來源單據 ID；請由實際查詢結果取得。'},
+            'relation_field': {'type': 'string', 'description': 'relations 列出的直接關聯欄位。'},
+            'related_model': {'type': 'string', 'description': '反向 related 使用此模型及其指向來源的 relation_field；正向關聯省略。'},
+            'sources': {'type': 'array', 'items': source, 'description': 'set_query 的2至4組來源。結果對每组 relation_field 的目標記錄做集合計數。'},
+            'set_operator': {'type': 'string', 'enum': ['union', 'intersection', 'difference']},
+            'relation_filter': {'type': 'object', 'properties': dict(source['properties'], mode={
+                'type': 'string', 'enum': ['exists', 'not_exists']}),
+                'required': ['model', 'relation_field', 'mode'], 'additionalProperties': False,
+                'description': '來源欄位須指向本次查詢模型。可查有/沒有符合條件的關聯單據；來源最多5000筆。'},
+        })
+        properties.update({
+            'metric': {'type': 'string', 'description': 'describe.metrics 或 metric_catalog 每項的 metric 識別碼原值；不是 label 顯示名稱，也不是資料欄位。'},
+            'metric_detail': {'type': 'boolean', 'description': 'metric 返回符合口徑的原單據，否則返回統計。'},
+            'date_field': {'type': 'string', 'description': '僅 period_analysis 使用的直接日期欄位；search/aggregate 的日期條件放 filters。'},
+            'period_start': {'type': 'string', 'description': '僅 metric / period_analysis：本期起日 YYYY-MM-DD；比較時較新的期間放 period，較早的放 baseline。'},
+            'period_end': {'type': 'string', 'description': '僅 metric / period_analysis：本期迄日，含當日。'},
+            'baseline_start': {'type': 'string', 'description': 'compare 必填，trend 省略。比較基期起日 YYYY-MM-DD；同比/環比須換算為明確日期。'},
+            'baseline_end': {'type': 'string', 'description': 'compare 必填，trend 省略。比較基期迄日 YYYY-MM-DD；同天數比較須保證兩期天數相同。'},
+            'analysis_mode': {'type': 'string', 'enum': ['compare', 'trend'],
+                              'description': 'period_analysis 必須明確選擇：逐日/逐月趨勢用 trend，不需要 baseline 日期；兩期比較用 compare，另填兩個 baseline 日期。兩種模式都必須保留業務口徑的 filters/conditions 和 measures，模式只改變時間分析方式。'},
+            'granularity': {'type': 'string', 'enum': ['day', 'month'],
+                            'description': 'trend 的時間粒度，預設 month。此參數與 group_by 均不能代替 analysis_mode。'},
+        })
+        return schema
+
     @classmethod
     def tool_description(cls):
         return (
-            '以目前內部使用者權限唯讀查詢印刷訂單系統。operation 支援 discover、describe、'
-            'search、aggregate、count_distinct。未知模型或欄位時先 discover，再 describe；'
-            '所有 filters 以 AND 組合，不接受原始 domain、Python 或 SQL。search 必須限制筆數；'
+            '以目前內部使用者權限唯讀查詢可見業務資料。operation 支援 discover、describe、'
+            'search、aggregate、count_distinct、capabilities、relations、related、set_query。'
+            '問能查什麼用 capabilities；指標口徑用 metric_catalog，指標數量/明細用 metric；期間比較與補零趨勢用 period_analysis。'
+            '展開單據先 relations 確認關聯，再 related；跨模型去重用 set_query。未知模型或欄位時先 discover，再 describe；'
+            'filters 為 AND，可用 conditions 組合 all/any/not；下一頁使用 next_cursor。不接受原始 domain、Python 或 SQL。search 必須限制筆數；'
             '日期分組格式為 create_date:month。'
         )
 
@@ -209,15 +572,23 @@ class UniversalOdooQuery(models.AbstractModel):
         started = time.monotonic()
         status = 'success'
         try:
+            scope = self.env['dtsc.ai.assistant.scope']
+            if not scope._is_assistant_allowed():
+                raise UniversalQueryValidationError(
+                    scope._ASSISTANT_ACCESS_MESSAGE, code='assistant_access_denied',
+                )
             if not arguments_valid:
                 raise UniversalQueryValidationError(_('工具參數必須是 JSON object。'))
+            if set(arguments) - set(self.tool_schema()['properties']):
+                raise UniversalQueryValidationError(_('工具包含未知參數。'))
             if raw_operation is not None and not isinstance(raw_operation, str):
                 raise UniversalQueryValidationError(_('operation 必須是字串。'))
             if raw_model_name is not None and not isinstance(raw_model_name, str):
                 raise UniversalQueryValidationError(_('model 必須是字串。'))
             if len(model_name) > 128:
                 raise UniversalQueryValidationError(_('model 名稱過長。'))
-            if actor_type not in self._INTERNAL_ACTORS:
+            if (actor_type not in self._INTERNAL_ACTORS
+                    or not self.env.user.has_group('base.group_user')):
                 raise UniversalQueryValidationError(
                     _('通用查詢工具只開放給內部使用者與系統管理員。')
                 )
@@ -227,10 +598,37 @@ class UniversalOdooQuery(models.AbstractModel):
                 'search': self._search,
                 'aggregate': self._aggregate,
                 'count_distinct': self._count_distinct,
+                'capabilities': self._capabilities,
+                'relations': self._relations,
+                'related': self._related,
+                'set_query': self._set_query,
+                'metric_catalog': self._metric_catalog,
+                'metric': self._metric_query,
+                'period_analysis': self._period_analysis,
             }
             if operation not in handlers:
                 raise UniversalQueryValidationError(_('不支援的 operation：%s') % (operation or '空白'))
+            period_keys = ('date_field', 'period_start', 'period_end', 'baseline_start', 'baseline_end',
+                           'analysis_mode', 'granularity')
+            allowed_period_keys = set(period_keys) if operation == 'period_analysis' else (
+                {'period_start', 'period_end'} if operation == 'metric' else set())
+            unused_period_keys = [key for key in period_keys if arguments.get(key) is not None
+                                  and key not in allowed_period_keys]
+            if unused_period_keys:
+                raise UniversalQueryValidationError(
+                    _('%s 不使用這些期間參數：%s。不得忽略日期後查詢全期間；'
+                      '兩期比較請用 period_analysis；search/aggregate 的日期範圍請放在 filters/conditions。')
+                    % (operation, ', '.join(unused_period_keys)), code='unused_period_parameters')
             result = handlers[operation](arguments)
+            result['provenance'] = {
+                'queried_at': str(fields.Datetime.now()), 'timezone': self._user_timezone(),
+                'scope': '目前登入使用者的可讀資料',
+                'query': {key: value for key, value in arguments.items() if key != 'cursor' and value is not None},
+                'continued_page': bool(arguments.get('cursor')),
+            }
+            if len(json.dumps(result['provenance'], ensure_ascii=False, default=str)) > self._MAX_PROVENANCE_CHARS:
+                result['provenance'].pop('query', None)
+                result['provenance']['query_truncated'] = True
             result.update({
                 'ok': True,
                 'tool': self._TOOL_NAME,
@@ -239,13 +637,19 @@ class UniversalOdooQuery(models.AbstractModel):
             return self._limit_response(result)
         except UniversalQueryValidationError as exc:
             status = 'validation_error'
-            return self._error_result(operation, model_name, 'invalid_request', str(exc))
-        except AccessError:
+            return self._error_result(operation, model_name, exc.code, str(exc))
+        except AccessError as exc:
             status = 'access_denied'
-            return self._error_result(
+            result = self._error_result(
                 operation, model_name, 'access_denied',
                 _('目前使用者沒有讀取指定模型、欄位或記錄的權限。'),
             )
+            result['error'].update({
+                'access_scope': getattr(exc, 'scope', None) or (
+                    'configuration' if operation in ('discover', 'capabilities', 'metric_catalog') else 'record'),
+                'target': str(getattr(exc, 'target', '')),
+            })
+            return result
         except (UserError, ValidationError) as exc:
             status = 'query_rejected'
             return self._error_result(operation, model_name, 'query_rejected', str(exc))
@@ -265,6 +669,7 @@ class UniversalOdooQuery(models.AbstractModel):
             arguments.get('limit'), default=20, maximum=self._MAX_DISCOVER_LIMIT
         )
         catalog = self._allowed_model_catalog()
+        metric_definitions = self._metric_definitions()
         matches = []
         for model_name, item in catalog.items():
             Model = self.env[model_name]
@@ -283,6 +688,12 @@ class UniversalOdooQuery(models.AbstractModel):
                 if any(keyword in value.casefold() for value in item['actions']):
                     score = max(score, 80)
                     matched_by.append('action')
+                for metric, definition in metric_definitions.items():
+                    if definition['model'] == model_name and any(
+                            keyword in value.casefold() for value in
+                            [metric, definition.get('label', '')] + definition.get('aliases', [])):
+                        score = max(score, 95)
+                        matched_by.append('metric:%s' % metric)
                 for field_name, meta in fields_meta.items():
                     if not meta['returnable']:
                         continue
@@ -345,16 +756,90 @@ class UniversalOdooQuery(models.AbstractModel):
             'query_type': 'universal_describe',
             'model': model_name,
             'description': catalog[model_name]['description'],
+            # Keep business definitions beside the schema the agent must read.
+            # Definitions remain in one catalog; no question-keyword routing.
+            'metrics': [dict(definition, metric=key, version=self._METRIC_VERSION)
+                        for key, definition in self._metric_definitions().items()
+                        if definition['model'] == model_name],
             'fields': described,
             'returned_count': len(described),
             'available_count': len(field_catalog),
             'truncated': not requested and len(field_catalog) > len(described),
         }
 
-    def _search(self, arguments):
+    def _scope_fingerprint(self, model_name, domain):
+        # Compare executed scope across metric/search/aggregate, not their
+        # different request syntax. Only reorder a pure conjunction; preserve
+        # OR/NOT structure conservatively rather than guessing equivalence.
+        normalized = expression.normalize_domain(domain)
+        encode = lambda value: json.dumps(value, sort_keys=True, ensure_ascii=False, default=str)
+        if not any(isinstance(item, str) and item in ('|', '!') for item in normalized):
+            leaves = {encode(item): item for item in normalized if item != '&'}
+            normalized = [leaves[key] for key in sorted(leaves)]
+        scope = [model_name, normalized, self._cursor_identity(),
+                 getattr(self.env, 'context', {}).get('active_test', True)]
+        return hashlib.sha256(encode(scope).encode()).hexdigest()
+
+    @staticmethod
+    def _executed_date_ranges(Model, domain):
+        """Describe bounded Date intervals from executed AND clauses only."""
+        if any(isinstance(term, str) and term in ('|', '!') for term in domain):
+            return []
+        bounds, excluded = {}, set()
+        for term in domain:
+            if not isinstance(term, (tuple, list)) or len(term) != 3:
+                continue
+            name, operator, value = term
+            field = Model._fields.get(name)
+            if not field or field.type != 'date':
+                continue
+            try:
+                day = datetime.date.fromisoformat(str(value))
+                lower = day + datetime.timedelta(days=1) if operator == '>' else day
+                upper = day - datetime.timedelta(days=1) if operator == '<' else day
+            except (ValueError, TypeError, OverflowError):
+                excluded.add(name)
+                continue
+            if operator not in ('=', '>=', '>', '<=', '<'):
+                excluded.add(name)
+                continue
+            start, end = bounds.get(name, (None, None))
+            if operator in ('=', '>=', '>'):
+                start = max(start, lower) if start else lower
+            if operator in ('=', '<=', '<'):
+                end = min(end, upper) if end else upper
+            bounds[name] = (start, end)
+        intervals = {name: (start, end) for name, (start, end) in bounds.items()
+                     if name not in excluded and start and end and start <= end}
+        metadata = Model.fields_get(attributes=['string']) if intervals else {}
+        return [{'field': name, 'label': metadata[name]['string'],
+                 'start': start.isoformat(), 'end': end.isoformat()}
+                for name, (start, end) in intervals.items() if name in metadata]
+
+    def _search(self, arguments, extra_domain=None, source_binding=None):
+        continuation = self._decode_cursor(arguments['cursor']) if arguments.get('cursor') else None
+        if continuation:
+            arguments = continuation['query']
+            extra_domain = continuation.get('extra_domain') or []
+            source_binding = continuation.get('source_binding')
+        offset = arguments.get('offset')
+        if offset is None:
+            offset = 0
+        if isinstance(offset, bool) or not isinstance(offset, int) or not 0 <= offset <= self._MAX_OFFSET:
+            raise UniversalQueryValidationError(_('offset 必須介於0和5000。'))
         catalog = self._allowed_model_catalog()
+        if source_binding:
+            source_model_name, Source = self._require_allowed_model(source_binding[0], catalog)
+            source = Source.search([('id', '=', source_binding[1])], limit=1)
+            if not source:
+                raise AccessError(_('來源單據已不可讀，請重新查詢。'))
+            if 'write_date' in Source._fields and str(source.write_date or '') != source_binding[2]:
+                raise UniversalQueryValidationError(_('來源單據已變動，請重新展開關聯。'))
         model_name, Model = self._require_allowed_model(arguments.get('model'), catalog)
-        domain = self._compile_domain(Model, arguments.get('filters'), catalog)
+        domain = expression.AND([self._query_domain(Model, arguments, catalog), extra_domain or []])
+        fingerprint = self._page_fingerprint(Model, domain)
+        if continuation and continuation['fingerprint'] != fingerprint:
+            raise UniversalQueryValidationError(_('查詢資料已變動，請重新查詢，以免翻頁重複或遺漏。'))
         requested_fields = arguments.get('fields') or self._default_search_fields(Model, catalog)
         if not isinstance(requested_fields, list):
             raise UniversalQueryValidationError(_('fields 必須是字串陣列。'))
@@ -373,18 +858,42 @@ class UniversalOdooQuery(models.AbstractModel):
         limit = self._validated_limit(
             arguments.get('limit'), self._DEFAULT_SEARCH_LIMIT, self._MAX_SEARCH_LIMIT
         )
-        records = Model.search(domain, order=order, limit=limit + 1)
+        records = Model.search(domain, order=order, limit=limit + 1, offset=offset)
         has_more = len(records) > limit
         records = records[:limit]
         serialized = [self._serialize_record(record, field_specs) for record in records]
-        return {
+        result = {
             'query_type': 'universal_search',
             'model': model_name,
+            'scope_fingerprint': self._scope_fingerprint(model_name, domain),
+            'date_ranges': self._executed_date_ranges(Model, domain),
+            'description': catalog[model_name]['description'],
+            'columns': [{'name': spec['path'], 'label': spec['metadata'].get('string') or spec['path']}
+                        for spec in field_specs],
             'records': serialized,
             'returned_count': len(serialized),
             'limit': limit,
             'has_more': has_more,
+            'offset': offset, 'total_count': fingerprint[0],
         }
+        # Reserve space for a signed continuation before the outer response cap.
+        while len(json.dumps(result, ensure_ascii=False, default=str)) > self._SEARCH_RESPONSE_CHARS and result['records']:
+            result['records'].pop()
+            result['response_truncated'] = True
+        count = len(result['records'])
+        result.update(returned_count=count, has_more=offset + count < fingerprint[0],
+                      page_start=offset + 1 if count else 0, page_end=offset + count)
+        if result['has_more'] and count and offset + count <= self._MAX_OFFSET:
+            query = {key: value for key, value in arguments.items() if key != 'cursor'}
+            query['offset'] = offset + count
+            result['next_cursor'] = self._encode_cursor({
+                'query': query, 'extra_domain': extra_domain or [], 'fingerprint': fingerprint,
+                'source_binding': source_binding,
+                'identity': self._cursor_identity(), 'expires': (continuation or {}).get('expires', time.time() + self._CURSOR_TTL),
+            })
+        if result['has_more'] and not result.get('next_cursor'):
+            result['pagination_notice'] = '目前範圍無法繼續分頁，請縮小查詢條件。'
+        return result
 
     def _aggregate(self, arguments):
         catalog = self._allowed_model_catalog()
@@ -393,9 +902,10 @@ class UniversalOdooQuery(models.AbstractModel):
             raise UniversalQueryValidationError(
                 _('第一版不自動補齊空白日期區間；請以實際存在的分組查詢。')
             )
-        domain = self._compile_domain(Model, arguments.get('filters'), catalog)
+        domain = self._query_domain(Model, arguments, catalog)
         group_specs = self._compile_group_by(Model, arguments.get('group_by'), catalog)
         measure_specs = self._compile_measures(Model, arguments.get('measures'), catalog)
+        self._validate_measure_currencies(Model, measure_specs, arguments, group_specs)
         orderby, ranking, order_by_count = self._compile_aggregate_order(
             arguments.get('order'), group_specs, measure_specs
         )
@@ -421,8 +931,16 @@ class UniversalOdooQuery(models.AbstractModel):
         return {
             'query_type': 'universal_aggregate',
             'model': model_name,
+            'scope_fingerprint': self._scope_fingerprint(model_name, domain),
+            'date_ranges': self._executed_date_ranges(Model, domain),
+            'description': catalog[model_name]['description'],
+            'group_labels': {spec['orm_name']: spec['metadata'].get('string') or spec['orm_name']
+                             for spec in group_specs},
+            'measure_labels': {spec['alias']: spec.get('label') or spec['alias']
+                               for spec in measure_specs},
             'groups': groups,
             'returned_count': len(groups),
+            'total_record_count': sum(group['record_count'] for group in groups) if not has_more else None,
             'limit': limit,
             'has_more': has_more,
             'ranking_exact': bool(ranking),
@@ -432,7 +950,7 @@ class UniversalOdooQuery(models.AbstractModel):
     def _count_distinct(self, arguments):
         catalog = self._allowed_model_catalog()
         model_name, Model = self._require_allowed_model(arguments.get('model'), catalog)
-        domain = self._compile_domain(Model, arguments.get('filters'), catalog)
+        domain = self._query_domain(Model, arguments, catalog)
         distinct_field = (arguments.get('distinct_field') or '').strip()
         if not distinct_field:
             raise UniversalQueryValidationError(_('count_distinct 必須提供 distinct_field。'))
@@ -446,6 +964,7 @@ class UniversalOdooQuery(models.AbstractModel):
         measure_specs = [{
             'field': distinct_field,
             'aggregate': 'count_distinct',
+            'label': '%s（去重筆數）' % (resolved['metadata'].get('string') or distinct_field),
             'alias': 'distinct_count',
             'orm_spec': 'distinct_count:count_distinct(%s)' % distinct_field,
         }]
@@ -474,6 +993,13 @@ class UniversalOdooQuery(models.AbstractModel):
         result = {
             'query_type': 'universal_count_distinct',
             'model': model_name,
+            'scope_fingerprint': self._scope_fingerprint(model_name, domain),
+            'date_ranges': self._executed_date_ranges(Model, domain),
+            'description': catalog[model_name]['description'],
+            'group_labels': {spec['orm_name']: spec['metadata'].get('string') or spec['orm_name']
+                             for spec in group_specs},
+            'measure_labels': {spec['alias']: spec.get('label') or spec['alias']
+                               for spec in measure_specs},
             'distinct_field': distinct_field,
             'groups': groups,
             'returned_count': len(groups),
@@ -488,26 +1014,31 @@ class UniversalOdooQuery(models.AbstractModel):
 
     def _visible_entry_models(self):
         """Return menu-derived entry models without executing any action."""
-        root = self.env.ref('dtsc.menu_root', raise_if_not_found=False)
-        if not root:
-            return {}
-        menus = self.env['ir.ui.menu'].search([('id', 'child_of', root.id)])
+        menus = self.env['ir.ui.menu'].search([])._filter_visible_menus()
         entries = {}
         for menu in menus:
-            action = menu.action
-            if not action:
+            try:
+                action = menu.action
+                if not action:
+                    continue
+                model_name = ''
+                if action._name == 'ir.actions.act_window':
+                    model_name = action.res_model or ''
+                elif action._name == 'ir.actions.server':
+                    # Never elevate or execute actions to discover a business model.
+                    model_name = action.model_id.model if action.model_id else (action.model_name or '')
+                action_name = action.name or ''
+                menu_name = menu.complete_name or menu.name or ''
+            except AccessError:
+                # An unreadable menu/action must not abort other readable sources.
+                _logger.info('AI catalog skipped unreadable menu/action: user_id=%s menu_id=%s',
+                             self.env.uid, menu.id)
                 continue
-            model_name = ''
-            if action._name == 'ir.actions.act_window':
-                model_name = action.res_model or ''
-            elif action._name == 'ir.actions.server':
-                # Reading the declared binding is enough; never call run().
-                model_name = action.model_id.model if action.model_id else (action.model_name or '')
             if not model_name:
                 continue
             entry = entries.setdefault(model_name, {'menus': set(), 'actions': set()})
-            entry['menus'].add(menu.complete_name or menu.name or '')
-            entry['actions'].add(action.name or '')
+            entry['menus'].add(menu_name)
+            entry['actions'].add(action_name)
         return entries
 
     def _allowed_model_catalog(self):
@@ -528,47 +1059,40 @@ class UniversalOdooQuery(models.AbstractModel):
                 'relations': [],
             }
 
-        # Denied direct entries were removed before this loop and cannot contribute relations.
-        related = {}
-        for source_name in sorted(direct_names):
-            Source = self.env[source_name]
-            visible_fields = Source.fields_get(attributes=['type', 'relation', 'string', 'help'])
-            for field_name, metadata in visible_fields.items():
-                registry_field = Source._fields.get(field_name)
-                target_name = metadata.get('relation') or getattr(registry_field, 'comodel_name', '')
-                if metadata.get('type') not in self._RELATION_TYPES or not target_name:
-                    continue
-                if self._field_is_sensitive(field_name, metadata):
-                    continue
-                if target_name not in direct_names:
-                    if self._model_is_denied(target_name):
+        # Traverse actual, readable relation metadata. No business model pair list.
+        frontier = set(catalog)
+        for depth in range(self._DISCOVERY_DEPTH):
+            added = {}
+            for source_name in sorted(frontier):
+                Source = self.env[source_name]
+                for field_name, meta in Source.fields_get(attributes=['type', 'relation', 'string', 'help']).items():
+                    target = meta.get('relation')
+                    if meta.get('type') not in self._RELATION_TYPES or not target or target in catalog or target in added:
                         continue
-                    if not self._model_is_concrete_readable(target_name):
+                    if self._field_is_sensitive(field_name, meta) or self._model_is_denied(target):
                         continue
-                    if self.env[target_name]._module != 'dtsc':
+                    if not self._model_is_concrete_readable(target):
                         continue
-                related.setdefault(target_name, set()).add('%s.%s' % (source_name, field_name))
-
-        for model_name, relations in sorted(related.items()):
-            if self._model_is_denied(model_name):
-                continue
-            if model_name in catalog:
-                catalog[model_name]['relations'] = sorted(relations)
-                continue
-            catalog[model_name] = {
-                'model': model_name,
-                'description': self.env[model_name]._description or model_name,
-                'source': 'direct_relation',
-                'menus': [],
-                'actions': [],
-                'relations': sorted(relations),
-            }
-
-        # Defense in depth: apply model denial again after relationship expansion.
-        return {
-            name: metadata for name, metadata in catalog.items()
-            if not self._model_is_denied(name)
-        }
+                    if len(catalog) + len(added) >= self._MAX_CATALOG_MODELS:
+                        break
+                    added[target] = {'model': target, 'description': self.env[target]._description or target,
+                                     'source': 'business_relation', 'menus': [], 'actions': [],
+                                     'relations': [source_name + '.' + field_name]}
+            catalog.update(added)
+            frontier = set(added)
+            if not frontier:
+                break
+        if catalog:
+            # _description is the untranslated Python source. Read only names
+            # of models already admitted by the actor's ACL/menu/field checks.
+            # Elevation is limited to ir.model label metadata, never business data.
+            descriptions = self.env['ir.model'].sudo().search_read(
+                [('model', 'in', list(catalog))], ['model', 'name'],
+            )
+            for description in descriptions:
+                if description['name']:
+                    catalog[description['model']]['description'] = description['name']
+        return catalog
 
     def _model_is_concrete_readable(self, model_name):
         try:
@@ -606,6 +1130,7 @@ class UniversalOdooQuery(models.AbstractModel):
                 'string': description.get('string') or field_name,
                 'help': self._truncate_text(description.get('help') or '', 500),
                 'type': field_type,
+                'currency_field': registry_field.get_currency_field(Model) if field_type == 'monetary' else '',
                 'selection': [
                     {'value': item[0], 'label': item[1]}
                     for item in selection
@@ -613,6 +1138,7 @@ class UniversalOdooQuery(models.AbstractModel):
                 ],
                 'relation': relation or '',
                 'store': bool(registry_field.store),
+                'searchable': bool(registry_field.store or getattr(registry_field, 'search', None)),
                 'compute': bool(registry_field.compute),
                 'readonly': bool(description.get('readonly')),
                 'required': bool(description.get('required')),
@@ -629,18 +1155,33 @@ class UniversalOdooQuery(models.AbstractModel):
         model_name = (model_name or '').strip()
         if not model_name:
             raise UniversalQueryValidationError(_('此 operation 必須提供 model。'))
-        if self._model_is_denied(model_name) or model_name not in catalog:
-            raise UniversalQueryValidationError(_('模型不存在或不在目前可查詢範圍：%s') % model_name)
+        if self._model_is_denied(model_name) or model_name not in self.env:
+            raise UniversalQueryValidationError(_('模型不存在或不在目前可查詢範圍：%s') % model_name,
+                                                'model_unavailable')
         Model = self.env[model_name]
-        Model.check_access_rights('read')
+        if not Model.check_access_rights('read', raise_exception=False):
+            raise QueryReadAccessError('model', Model._description or model_name)
+        if model_name not in catalog:
+            raise UniversalQueryValidationError(_('模型不在目前可查詢範圍：%s') % model_name,
+                                                'model_unavailable')
         return model_name, Model
+
+    def _raise_unavailable_field(self, Model, field_name):
+        if field_name not in Model._fields:
+            raise UniversalQueryValidationError(_('欄位不存在，請先 describe 核對：%s') % field_name, 'field_not_found')
+        visible = Model.fields_get(attributes=['type', 'string', 'help'])
+        if field_name not in visible:
+            raise QueryReadAccessError('field', Model._description or Model._name)
+        if self._field_is_sensitive(field_name, visible[field_name]):
+            raise UniversalQueryValidationError(_('欄位受查詢資料政策限制。'), 'field_policy_denied')
+        raise UniversalQueryValidationError(_('欄位的型別或關聯尚不在可查詢範圍。'), 'field_not_supported')
 
     def _resolve_field_path(self, Model, field_path, catalog, purpose='filter'):
         if not isinstance(field_path, str) or not field_path.strip():
             raise UniversalQueryValidationError(_('欄位名稱必須是非空字串。'))
         field_path = field_path.strip()
         parts = field_path.split('.')
-        if len(parts) > 2:
+        if len(parts) > self._MAX_FIELD_PATH_PARTS:
             raise UniversalQueryValidationError(_('關係欄位路徑最多只能有一層：%s') % field_path)
         if any(not re.match(r'^[A-Za-z_][A-Za-z0-9_]*$', part) for part in parts):
             raise UniversalQueryValidationError(_('欄位名稱格式不合法：%s') % field_path)
@@ -648,10 +1189,13 @@ class UniversalOdooQuery(models.AbstractModel):
         root_catalog = self._field_catalog(Model, catalog)
         root_meta = root_catalog.get(parts[0])
         if not root_meta:
-            raise UniversalQueryValidationError(
-                _('欄位不存在、不可讀或已被安全規則排除：%s') % parts[0]
-            )
+            self._raise_unavailable_field(Model, parts[0])
         root_registry_field = Model._fields[parts[0]]
+        if purpose == 'filter' and not root_meta['searchable']:
+            raise UniversalQueryValidationError(
+                _('%s 是不可搜尋的計算顯示欄位，Odoo 會忽略此篩選。請依 describe 選擇 searchable=true '
+                  '且符合業務意義的欄位後重查，不可刪掉條件改查全部資料。') % field_path,
+                code='field_not_searchable')
         if len(parts) == 1:
             if purpose == 'return' and not root_meta['returnable']:
                 raise UniversalQueryValidationError(_('欄位不允許返回大型關係內容：%s') % field_path)
@@ -676,10 +1220,12 @@ class UniversalOdooQuery(models.AbstractModel):
         target_catalog = self._field_catalog(Target, catalog)
         leaf_meta = target_catalog.get(parts[1])
         if not leaf_meta:
-            raise UniversalQueryValidationError(
-                _('關係欄位不存在、不可讀或已被安全規則排除：%s') % field_path
-            )
+            self._raise_unavailable_field(Target, parts[1])
         leaf_registry_field = Target._fields[parts[1]]
+        if purpose == 'filter' and not leaf_meta['searchable']:
+            raise UniversalQueryValidationError(
+                _('%s 的關係末端不可搜尋；請依 describe 選擇 searchable=true 的欄位。') % field_path,
+                code='field_not_searchable')
         if leaf_registry_field.type in self._RELATION_TYPES:
             raise UniversalQueryValidationError(_('關係路徑的末端必須是一般欄位：%s') % field_path)
         if purpose == 'return' and not leaf_meta['returnable']:
@@ -765,13 +1311,20 @@ class UniversalOdooQuery(models.AbstractModel):
             raise UniversalQueryValidationError(_('between 只允許數字、Date 或 Datetime 欄位。'))
         date_range = item.get('date_range')
         value = item.get('value')
+        value_range = None
+        if isinstance(value, dict) and value and not set(value) - {'start', 'end'}:
+            value_range = (value.get('start'), value.get('end'))
+        elif isinstance(value, list) and len(value) == 2:
+            value_range = tuple(value)
         if isinstance(date_range, dict) and date_range:
             start, end = date_range.get('start'), date_range.get('end')
-        elif isinstance(value, list) and len(value) == 2:
-            start, end = value
+            if value is not None and value_range != (start, end):
+                raise UniversalQueryValidationError(_('between 的 value 與 date_range 不一致，請只提供一組範圍。'))
+        elif value_range is not None:
+            start, end = value_range
         else:
             raise UniversalQueryValidationError(
-                _('between 必須提供 [start, end]，或 date_range.start/date_range.end。')
+                _('between 的 value 必須是 [start,end] 或 {start,end}，亦可使用 date_range:{start,end}。')
             )
         if start in (None, '') and end in (None, ''):
             raise UniversalQueryValidationError(_('between 至少要提供 start 或 end。'))
@@ -869,6 +1422,8 @@ class UniversalOdooQuery(models.AbstractModel):
             if 'create_date' in Model._fields:
                 return 'create_date desc, id desc'
             return 'id desc'
+        if not any(part.split()[0] == 'id' for part in parts):
+            parts.append('id asc')
         return ', '.join(parts)
 
     def _compile_group_by(self, Model, group_by, catalog):
@@ -885,7 +1440,7 @@ class UniversalOdooQuery(models.AbstractModel):
                 granularity = (raw.get('granularity') or '').strip().lower()
             elif isinstance(raw, str):
                 parts = raw.strip().split(':')
-                if len(parts) > 2:
+                if len(parts) > self._MAX_FIELD_PATH_PARTS:
                     raise UniversalQueryValidationError(_('日期分組格式錯誤：%s') % raw)
                 field_name = parts[0]
                 granularity = parts[1].lower() if len(parts) == 2 else ''
@@ -917,6 +1472,30 @@ class UniversalOdooQuery(models.AbstractModel):
             })
         return result
 
+    def _validate_measure_currencies(self, Model, measures, arguments, groups=()):
+        """Preserve monetary units for every model, using actual field metadata.
+
+        Shared by aggregation and period analysis; no accounting table/field mapping.
+        Explicit filters are AND constraints. Nested OR conditions alone cannot prove
+        a single currency and are deliberately not treated as such.
+        """
+        grouped = {group['field'] for group in groups}
+        for measure in measures:
+            field = Model._fields[measure['field']]
+            if field.type != 'monetary' or measure['aggregate'] == 'count':
+                continue
+            currency_field = field.get_currency_field(Model)
+            if not currency_field:
+                raise UniversalQueryValidationError(_('金額欄位缺少幣種元資料，無法安全合併。'), 'currency_metadata_missing')
+            fixed = any(item.get('field') == currency_field and item.get('operator') in ('eq', '=')
+                        and isinstance(item.get('value'), int) and not isinstance(item.get('value'), bool)
+                        and item['value'] > 0 for item in arguments.get('filters') or [])
+            if currency_field not in grouped and not fixed:
+                raise UniversalQueryValidationError(
+                    _('金額統計須依幣種欄位 %s 分組，或在 filters 指定單一幣種；請先 describe 核對。') % currency_field,
+                    'currency_scope_required',
+                )
+
     def _compile_measures(self, Model, measures, catalog):
         measures = measures or []
         if not isinstance(measures, list):
@@ -929,6 +1508,11 @@ class UniversalOdooQuery(models.AbstractModel):
             if not isinstance(item, dict):
                 raise UniversalQueryValidationError(_('每個 measure 必須是物件。'))
             field_name = (item.get('field') or '').strip()
+            if field_name not in Model._fields and field_name in self._metric_definitions():
+                raise UniversalQueryValidationError(
+                    _('%s 是指標識別碼，不是資料欄位。單據數統計或兩期比較請保留原 operation、'
+                      '日期及所有篩選，只將 measures 改為 []，使用返回的 record_count。') % field_name,
+                    code='metric_not_field')
             if '.' in field_name:
                 raise UniversalQueryValidationError(_('聚合欄位不支援關係路徑：%s') % field_name)
             resolved = self._resolve_field_path(Model, field_name, catalog, purpose='aggregate')
@@ -947,7 +1531,8 @@ class UniversalOdooQuery(models.AbstractModel):
             if alias in used_aliases:
                 alias = '%s_%s' % (field_name, aggregate)
             if not re.match(r'^[A-Za-z_][A-Za-z0-9_]*$', alias):
-                raise UniversalQueryValidationError(_('measure alias 格式不合法：%s') % alias)
+                raise UniversalQueryValidationError(
+                    _('measure alias 只允許英文字母或底線開頭，後接英數底線；請省略 alias 或改用 total_amount 等英文鍵名。'))
             if alias in used_aliases:
                 raise UniversalQueryValidationError(_('measure alias 重複：%s') % alias)
             used_aliases.add(alias)
@@ -957,6 +1542,8 @@ class UniversalOdooQuery(models.AbstractModel):
             result.append({
                 'field': field_name,
                 'aggregate': aggregate,
+                'label': '%s（%s）' % (resolved['metadata'].get('string') or field_name,
+                    {'sum': '合計', 'avg': '平均', 'min': '最小', 'max': '最大', 'count': '筆數'}[aggregate]),
                 'alias': alias,
                 'orm_spec': orm_spec,
             })
@@ -1010,7 +1597,7 @@ class UniversalOdooQuery(models.AbstractModel):
         return ', '.join(parts), ranking, order_by_count
 
     def _serialize_record(self, record, field_specs):
-        values = {}
+        values = {'id': record.id}
         for spec in field_specs:
             if spec['leaf']:
                 related = record[spec['root']]
@@ -1037,7 +1624,8 @@ class UniversalOdooQuery(models.AbstractModel):
                 value = {'label': value, 'range': ranges[spec['orm_name']]}
             group_values[spec['orm_name']] = value
         measures = {
-            spec['alias']: self._number_or_false(row.get(spec['alias']))
+            spec['alias']: (0 if not row.get('__count') and spec['aggregate'] in ('sum', 'count', 'count_distinct')
+                            else self._number_or_false(row.get(spec['alias'])))
             for spec in measure_specs
         }
         return {
@@ -1062,7 +1650,7 @@ class UniversalOdooQuery(models.AbstractModel):
 
     def _serialize_value(self, value, registry_field, metadata, record):
         field_type = registry_field.type
-        if value in (None, False):
+        if value is None or value is False:
             return False
         if field_type == 'many2one':
             return {'id': value.id, 'display_name': self._truncate_text(value.display_name, 300)}
@@ -1141,7 +1729,7 @@ class UniversalOdooQuery(models.AbstractModel):
 
     def _field_is_sensitive(self, field_name, metadata):
         field_type = (metadata or {}).get('type') or ''
-        if field_type in ('binary', 'html'):
+        if field_type in self._DENIED_FIELD_TYPES:
             return True
         normalized = ' '.join((
             field_name or '',

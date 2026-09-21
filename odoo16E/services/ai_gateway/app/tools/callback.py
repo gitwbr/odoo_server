@@ -2,9 +2,11 @@
 
 import json
 import re
-from typing import Any, Dict, List, Literal
+from typing import Annotated, Any, Dict, List, Literal, Optional
 
 import requests
+import httpx
+from app.agents.query_protocol import query_prerequisite
 from langchain_core.tools import StructuredTool
 from pydantic import BaseModel, ConfigDict, Field, create_model
 
@@ -24,6 +26,12 @@ def build_callback_tool(tool_def, callback, tool_results):
 
     def callback_tool(**kwargs):
         arguments = _to_json_data(kwargs)
+        prerequisite = query_prerequisite(arguments, tool_results) if tool_def.name == 'universal_odoo_query' else None
+        if prerequisite:
+            return collect_result(arguments, {'success': True, 'result': {
+                'ok': False, 'query_type': 'universal_error',
+                'error': prerequisite,
+            }})
         response = requests.post(
             callback.url,
             headers={"X-DTSC-AI-Gateway-Token": callback.token},
@@ -35,7 +43,9 @@ def build_callback_tool(tool_def, callback, tool_results):
             timeout=callback.timeout or 30.0,
         )
         response.raise_for_status()
-        data = response.json()
+        return collect_result(arguments, response.json())
+
+    def collect_result(arguments, data):
         if not data.get("success"):
             result = {"error": data.get("message") or "tool call failed"}
         else:
@@ -45,12 +55,30 @@ def build_callback_tool(tool_def, callback, tool_results):
             "arguments": arguments,
             "result": result,
         })
-        return json.dumps(result, ensure_ascii=False)
+        return json.dumps(dict(result, _evidence_id=len(tool_results)), ensure_ascii=False)
+
+    async def async_callback_tool(**kwargs):
+        arguments = _to_json_data(kwargs)
+        prerequisite = query_prerequisite(arguments, tool_results) if tool_def.name == 'universal_odoo_query' else None
+        if prerequisite:
+            return collect_result(arguments, {'success': True, 'result': {
+                'ok': False, 'query_type': 'universal_error',
+                'error': prerequisite,
+            }})
+        async with httpx.AsyncClient(timeout=callback.timeout or 30.0) as client:
+            response = await client.post(
+                callback.url,
+                headers={"X-DTSC-AI-Gateway-Token": callback.token},
+                json={"tool_name": tool_def.name, "arguments": arguments, "context": callback.context},
+            )
+            response.raise_for_status()
+            return collect_result(arguments, response.json())
 
     callback_tool.__name__ = _safe_identifier(tool_def.name)
     callback_tool.__doc__ = tool_def.description or tool_def.name
     return StructuredTool.from_function(
         func=callback_tool,
+        coroutine=async_callback_tool,
         name=tool_def.name,
         description=tool_def.description or tool_def.name,
         args_schema=args_schema,
@@ -74,6 +102,20 @@ def _build_args_schema(tool_def):
 
 
 def _json_schema_to_python(schema, model_name):
+    schema = schema if isinstance(schema, dict) else {}
+    field_type = _json_schema_type(schema, model_name)
+    constraints = {
+        target: schema[source] for source, target in (
+            ('pattern', 'pattern'), ('minimum', 'ge'), ('maximum', 'le'),
+            ('exclusiveMinimum', 'gt'), ('exclusiveMaximum', 'lt'),
+            ('minLength', 'min_length'), ('maxLength', 'max_length'),
+            ('minItems', 'min_length'), ('maxItems', 'max_length'),
+        ) if source in schema
+    }
+    return Annotated[field_type, Field(**constraints)] if constraints else field_type
+
+
+def _json_schema_type(schema, model_name):
     schema = schema if isinstance(schema, dict) else {}
     json_type = schema.get("type")
 
@@ -123,6 +165,8 @@ def _build_object_model(schema, model_name):
             default = ...
         else:
             default = meta.get("default") if "default" in meta else None
+            if default is None:
+                field_type = Optional[field_type]
         fields[field_name] = (
             field_type,
             Field(default, description=meta.get("description") or ""),

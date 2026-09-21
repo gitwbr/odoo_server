@@ -136,54 +136,60 @@ def get_instance_status(instance_id):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+def _check_instance_permission(instance_id, action_name):
+    """校验实例存在且当前用户有权限操作，返回 (instance_info, error_response)"""
+    instance_info = Instance.get_by_id(instance_id)
+    if not instance_info:
+        logger.error(f'實例不存在: instance_id={instance_id}')
+        return None, (jsonify({'error': '實例不存在'}), 404)
+
+    current_user_id = session.get('user_id')
+    if current_user_id != 1 and instance_info.user_id != current_user_id:
+        logger.error(f'無權限{action_name}實例: user_id={current_user_id}, instance_id={instance_id}')
+        return None, (jsonify({'error': f'無權限{action_name}此實例'}), 403)
+
+    return instance_info, None
+
+
+def _instance_container_names(instance_id):
+    return (
+        f'client{instance_id}-web{instance_id}-1',
+        f'client{instance_id}-db{instance_id}-1',
+    )
+
+
 @instance.route('/restart/<int:instance_id>', methods=['POST'])
 def restart_instance(instance_id):
     try:
         logger.debug(f'收到重啟實例請求: instance_id={instance_id}')
-        
-        # 获取实例信息
-        instance_info = Instance.get_by_id(instance_id)
-        if not instance_info:
-            logger.error(f'實例不存在: instance_id={instance_id}')
-            return jsonify({'error': '實例不存在'}), 404
-            
-        # 检查用户权限
-        current_user_id = session.get('user_id')
-        logger.debug(f'檢查用戶權限: user_id={current_user_id}, instance_owner={instance_info.user_id}')
-        
-        if current_user_id != 1 and instance_info.user_id != current_user_id:
-            logger.error(f'無權限重啟實例: user_id={current_user_id}, instance_id={instance_id}')
-            return jsonify({'error': '無權限操作此實例'}), 403
-            
-        # 重启 Web 容器
-        web_container = f'client{instance_id}-web{instance_id}-1'
+
+        instance_info, error = _check_instance_permission(instance_id, '重啟')
+        if error:
+            return error
+
+        web_container, db_container = _instance_container_names(instance_id)
         logger.debug(f'開始重啟 Web 容器: container={web_container}')
-        
-        web_result = subprocess.run(['docker', 'restart', web_container], 
-                                  capture_output=True, 
+
+        web_result = subprocess.run(['docker', 'restart', web_container],
+                                  capture_output=True,
                                   text=True)
-        
+
         if web_result.returncode != 0:
             logger.error(f'Web容器重啟失敗: {web_result.stderr}')
             return jsonify({'error': f'Web容器重啟失敗: {web_result.stderr}'}), 500
-            
+
         logger.debug(f'Web容器重啟成功: {web_result.stdout}')
-        
-        # 重启 DB 容器
-        db_container = f'client{instance_id}-db{instance_id}-1'
         logger.debug(f'開始重啟 DB 容器: container={db_container}')
-        
-        db_result = subprocess.run(['docker', 'restart', db_container], 
-                                 capture_output=True, 
+
+        db_result = subprocess.run(['docker', 'restart', db_container],
+                                 capture_output=True,
                                  text=True)
-        
+
         if db_result.returncode != 0:
             logger.error(f'DB容器重啟失敗: {db_result.stderr}')
             return jsonify({'error': f'DB容器重啟失敗: {db_result.stderr}'}), 500
-            
+
         logger.debug(f'DB容器重啟成功: {db_result.stdout}')
-        
-        # 记录成功信息
         logger.debug(f'實例重啟成功: instance_id={instance_id}')
         return jsonify({
             'message': '重啟指令已發送',
@@ -192,14 +198,99 @@ def restart_instance(instance_id):
                 'db_container': db_container
             }
         }), 200
-        
+
     except subprocess.CalledProcessError as e:
         error_msg = f'Docker命令執行失敗: {str(e)}'
         logger.error(error_msg)
         return jsonify({'error': error_msg}), 500
-        
+
     except Exception as e:
         error_msg = f'重啟實例時發生錯誤: {str(e)}'
+        logger.error(error_msg)
+        return jsonify({'error': error_msg}), 500
+
+
+@instance.route('/pause/<int:instance_id>', methods=['POST'])
+def pause_instance(instance_id):
+    """暂停实例：停止 web 和 db 容器（不删除数据）"""
+    try:
+        logger.debug(f'收到暫停實例請求: instance_id={instance_id}')
+
+        instance_info, error = _check_instance_permission(instance_id, '暫停')
+        if error:
+            return error
+
+        if instance_info.status == 3:
+            return jsonify({'error': '實例已過期，無法暫停'}), 400
+
+        web_container, db_container = _instance_container_names(instance_id)
+
+        # 先停 web，再停 db
+        web_result = subprocess.run(['docker', 'stop', web_container],
+                                    capture_output=True, text=True)
+        if web_result.returncode != 0:
+            logger.error(f'Web容器暫停失敗: {web_result.stderr}')
+            return jsonify({'error': f'Web容器暫停失敗: {web_result.stderr}'}), 500
+
+        db_result = subprocess.run(['docker', 'stop', db_container],
+                                   capture_output=True, text=True)
+        if db_result.returncode != 0:
+            logger.error(f'DB容器暫停失敗: {db_result.stderr}')
+            return jsonify({'error': f'DB容器暫停失敗: {db_result.stderr}'}), 500
+
+        logger.debug(f'實例暫停成功: instance_id={instance_id}')
+        return jsonify({
+            'message': '實例已暫停',
+            'details': {
+                'web_container': web_container,
+                'db_container': db_container
+            }
+        }), 200
+
+    except Exception as e:
+        error_msg = f'暫停實例時發生錯誤: {str(e)}'
+        logger.error(error_msg)
+        return jsonify({'error': error_msg}), 500
+
+
+@instance.route('/start/<int:instance_id>', methods=['POST'])
+def start_instance(instance_id):
+    """启动已暂停的实例：先启 db，再启 web"""
+    try:
+        logger.debug(f'收到啟動實例請求: instance_id={instance_id}')
+
+        instance_info, error = _check_instance_permission(instance_id, '啟動')
+        if error:
+            return error
+
+        if instance_info.status == 3:
+            return jsonify({'error': '實例已過期，無法啟動'}), 400
+
+        web_container, db_container = _instance_container_names(instance_id)
+
+        db_result = subprocess.run(['docker', 'start', db_container],
+                                   capture_output=True, text=True)
+        if db_result.returncode != 0:
+            logger.error(f'DB容器啟動失敗: {db_result.stderr}')
+            return jsonify({'error': f'DB容器啟動失敗: {db_result.stderr}'}), 500
+
+        web_result = subprocess.run(['docker', 'start', web_container],
+                                    capture_output=True, text=True)
+        if web_result.returncode != 0:
+            logger.error(f'Web容器啟動失敗: {web_result.stderr}')
+            return jsonify({'error': f'Web容器啟動失敗: {web_result.stderr}'}), 500
+
+        logger.debug(f'實例啟動成功: instance_id={instance_id}')
+        return jsonify({
+            'message': '實例已啟動',
+            'details': {
+                'web_container': web_container,
+                'db_container': db_container
+            }
+        }), 200
+
+    except Exception as e:
+        error_msg = f'啟動實例時發生錯誤: {str(e)}'
         logger.error(error_msg)
         return jsonify({'error': error_msg}), 500
 

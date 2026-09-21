@@ -1,0 +1,20 @@
+<odoo>
+    <data>
+        <template id="custom_report_lot_label" inherit_id="stock.report_lot_label">
+            <xpath expr="//div[@class='o_label_sheet']" position="replace">
+                <t t-foreach="docs" t-as="o">
+                    <div class="page" style="margin-top: 10px; margin-left: auto; margin-right: auto; width: 100%; text-align: center; box-sizing: border-box;">
+                        <t t-if="o.barcode_image">
+                        <t t-set="barcode_data" t-value="'data:image/png;base64,' + o.barcode_image.decode('utf-8')"/>
+                        </t>
+                        <t t-else="">
+                        <t t-set="barcode_data" t-value="False"/>
+                        </t>
+                        <img t-if="barcode_data" t-att-src="barcode_data" alt="Barcode" style="width:35%; height:auto; display: block; margin-left: auto; margin-right: auto; margin-bottom: 25px;"/>
+                        <div style="text-align: center;margin-top: 10px;"><span t-esc="o.barcode"/></div>
+                    </div>
+                </t>
+            </xpath>
+        </template>
+    </data>
+</odoo>

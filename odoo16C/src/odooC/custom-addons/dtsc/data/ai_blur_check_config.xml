@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <record id="ai_blur_check_enabled" model="ir.config_parameter">
+            <field name="key">dtsc.ai_blur_check.enabled</field>
+            <field name="value">True</field>
+        </record>
+        <record id="ai_blur_check_blur_threshold" model="ir.config_parameter">
+            <field name="key">dtsc.ai_blur_check.blur_threshold</field>
+            <field name="value">80</field>
+        </record>
+        <record id="ai_blur_check_blur_percentile" model="ir.config_parameter">
+            <field name="key">dtsc.ai_blur_check.blur_percentile</field>
+            <field name="value">0</field>
+        </record>
+        <record id="ai_blur_check_tile_size" model="ir.config_parameter">
+            <field name="key">dtsc.ai_blur_check.tile_size</field>
+            <field name="value">64</field>
+        </record>
+        <record id="ai_blur_check_tile_step" model="ir.config_parameter">
+            <field name="key">dtsc.ai_blur_check.tile_step</field>
+            <field name="value">0</field>
+        </record>
+        <record id="ai_blur_check_min_texture_threshold" model="ir.config_parameter">
+            <field name="key">dtsc.ai_blur_check.min_texture_threshold</field>
+            <field name="value">8</field>
+        </record>
+        <record id="ai_blur_check_min_nonwhite_ratio" model="ir.config_parameter">
+            <field name="key">dtsc.ai_blur_check.min_nonwhite_ratio</field>
+            <field name="value">0.02</field>
+        </record>
+        <record id="ai_blur_check_min_mean_gray" model="ir.config_parameter">
+            <field name="key">dtsc.ai_blur_check.min_mean_gray</field>
+            <field name="value">20</field>
+        </record>
+        <record id="ai_blur_check_edge_threshold" model="ir.config_parameter">
+            <field name="key">dtsc.ai_blur_check.edge_threshold</field>
+            <field name="value">12</field>
+        </record>
+        <record id="ai_blur_check_min_edge_density" model="ir.config_parameter">
+            <field name="key">dtsc.ai_blur_check.min_edge_density</field>
+            <field name="value">0</field>
+        </record>
+        <record id="ai_blur_check_max_blur_findings" model="ir.config_parameter">
+            <field name="key">dtsc.ai_blur_check.max_blur_findings</field>
+            <field name="value">5</field>
+        </record>
+        <record id="ai_blur_check_max_overlap" model="ir.config_parameter">
+            <field name="key">dtsc.ai_blur_check.max_overlap</field>
+            <field name="value">0.35</field>
+        </record>
+        <record id="ai_blur_check_crop_padding" model="ir.config_parameter">
+            <field name="key">dtsc.ai_blur_check.crop_padding</field>
+            <field name="value">40</field>
+        </record>
+        <record id="ai_blur_check_overlay_alpha" model="ir.config_parameter">
+            <field name="key">dtsc.ai_blur_check.overlay_alpha</field>
+            <field name="value">0.45</field>
+        </record>
+        <record id="ai_blur_check_morph_kernel_size" model="ir.config_parameter">
+            <field name="key">dtsc.ai_blur_check.morph_kernel_size</field>
+            <field name="value">9</field>
+        </record>
+        <record id="ai_blur_check_max_embedded_overlay_coverage" model="ir.config_parameter">
+            <field name="key">dtsc.ai_blur_check.max_embedded_overlay_coverage</field>
+            <field name="value">30</field>
+        </record>
+        <record id="ai_blur_check_max_blur_area_ratio" model="ir.config_parameter">
+            <field name="key">dtsc.ai_blur_check.max_blur_area_ratio</field>
+            <field name="value">5</field>
+        </record>
+        <record id="ai_blur_check_render_dpi" model="ir.config_parameter">
+            <field name="key">dtsc.ai_blur_check.render_dpi</field>
+            <field name="value">150</field>
+        </record>
+        <record id="ai_blur_check_max_render_edge_px" model="ir.config_parameter">
+            <field name="key">dtsc.ai_blur_check.max_render_edge_px</field>
+            <field name="value">3200</field>
+        </record>
+        <record id="ai_blur_check_preview_max_edge_px" model="ir.config_parameter">
+            <field name="key">dtsc.ai_blur_check.preview_max_edge_px</field>
+            <field name="value">1200</field>
+        </record>
+        <record id="ai_blur_check_min_embedded_dpi" model="ir.config_parameter">
+            <field name="key">dtsc.ai_blur_check.min_embedded_dpi</field>
+            <field name="value">72</field>
+        </record>
+        <record id="ai_blur_check_min_embedded_area_ratio" model="ir.config_parameter">
+            <field name="key">dtsc.ai_blur_check.min_embedded_area_ratio</field>
+            <field name="value">1</field>
+        </record>
+    </data>
+</odoo>

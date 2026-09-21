@@ -1,0 +1,18 @@
+<odoo>
+    <record id="view_normalsettings_tree" model="ir.ui.view">
+        <field name="name">dtsc.normalsettings.tree</field>
+        <field name="model">dtsc.normalsettings</field>
+        <field name="arch" type="xml">
+            <tree create="false" editable="bottom">
+				<field name="key" readonly="1" string="名稱"/>
+                <field name="value"  string="值"/>
+    
+            </tree>
+        </field>
+    </record>
+	<data>
+        <record id="account_print_comment" model="dtsc.normalsettings">
+            <field name="key">對帳單下方備註</field>
+        </record>
+	</data>
+</odoo>
