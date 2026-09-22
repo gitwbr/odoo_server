@@ -1,0 +1,514 @@
+{
+  "backup": "backups/before-ai-20260921-104817",
+  "copied_files": [
+    {
+      "source": "odoo16E/src/odooE/odoo/custom-addons/dtsc_ai_assistant/__manifest__.py",
+      "destination": "src/odooC/custom-addons/dtsc_ai_assistant/__manifest__.py",
+      "source_sha256": "509a299aa194f0de7848a889a5871537a4259a7b43fdc5b699b00c32d0f83640",
+      "community_sha256": "e037e626267d8324e40081a982674e7f98f8bd459962f799c23443b4e442d1fb"
+    },
+    {
+      "source": "odoo16E/src/odooE/odoo/custom-addons/dtsc_ai_assistant/__init__.py",
+      "destination": "src/odooC/custom-addons/dtsc_ai_assistant/__init__.py",
+      "source_sha256": "01e5b9c734f4296db538f4677e8b5a41b3c44112e05ed2ff02e32f08ad7b070d",
+      "community_sha256": "01e5b9c734f4296db538f4677e8b5a41b3c44112e05ed2ff02e32f08ad7b070d"
+    },
+    {
+      "source": "odoo16E/src/odooE/odoo/custom-addons/dtsc_ai_assistant/policy/business_metrics.json",
+      "destination": "src/odooC/custom-addons/dtsc_ai_assistant/policy/business_metrics.json",
+      "source_sha256": "d3d539c1b0c336107dfd045a62eed3d8a47b9765c8451d0a5cc5f86889211911",
+      "community_sha256": "d3d539c1b0c336107dfd045a62eed3d8a47b9765c8451d0a5cc5f86889211911"
+    },
+    {
+      "source": "odoo16E/src/odooE/odoo/custom-addons/dtsc_ai_assistant/policy/query_policy.json",
+      "destination": "src/odooC/custom-addons/dtsc_ai_assistant/policy/query_policy.json",
+      "source_sha256": "577db80c823be75ed0426dc1f620a04689ccd6cd63ea6f9564bc52b65888445c",
+      "community_sha256": "577db80c823be75ed0426dc1f620a04689ccd6cd63ea6f9564bc52b65888445c"
+    },
+    {
+      "source": "odoo16E/src/odooE/odoo/custom-addons/dtsc_ai_assistant/policy/business_context.md",
+      "destination": "src/odooC/custom-addons/dtsc_ai_assistant/policy/business_context.md",
+      "source_sha256": "36f5dd3a437bc880902ad99c2e35a879b87917ccc57147d66a7a655bef64946c",
+      "community_sha256": "36f5dd3a437bc880902ad99c2e35a879b87917ccc57147d66a7a655bef64946c"
+    },
+    {
+      "source": "odoo16E/src/odooE/odoo/custom-addons/dtsc_ai_assistant/policy/assistant_instructions.txt",
+      "destination": "src/odooC/custom-addons/dtsc_ai_assistant/policy/assistant_instructions.txt",
+      "source_sha256": "f86ff4ad82fc0650380b9875c73222d7981cdad2758750242b8c3368e96b2d1f",
+      "community_sha256": "f86ff4ad82fc0650380b9875c73222d7981cdad2758750242b8c3368e96b2d1f"
+    },
+    {
+      "source": "odoo16E/src/odooE/odoo/custom-addons/dtsc_ai_assistant/static/src/css/ai_assistant.css",
+      "destination": "src/odooC/custom-addons/dtsc_ai_assistant/static/src/css/ai_assistant.css",
+      "source_sha256": "44d7b2b04933136563591ed7e71ddb2cdb09919ecf33d3a9ee85d77a9783bdd3",
+      "community_sha256": "44d7b2b04933136563591ed7e71ddb2cdb09919ecf33d3a9ee85d77a9783bdd3"
+    },
+    {
+      "source": "odoo16E/src/odooE/odoo/custom-addons/dtsc_ai_assistant/static/src/js/ai_assistant.js",
+      "destination": "src/odooC/custom-addons/dtsc_ai_assistant/static/src/js/ai_assistant.js",
+      "source_sha256": "9f84ca47e1c4f51c8a6163f1a3a2131adc5717936547f98795aaa120d1beb956",
+      "community_sha256": "9f84ca47e1c4f51c8a6163f1a3a2131adc5717936547f98795aaa120d1beb956"
+    },
+    {
+      "source": "odoo16E/src/odooE/odoo/custom-addons/dtsc_ai_assistant/security/ir.model.access.csv",
+      "destination": "src/odooC/custom-addons/dtsc_ai_assistant/security/ir.model.access.csv",
+      "source_sha256": "3e718911f3b98938a227457b8ee1bec14c17e382d4fdc7fade9efb5373a1da7a",
+      "community_sha256": "3e718911f3b98938a227457b8ee1bec14c17e382d4fdc7fade9efb5373a1da7a"
+    },
+    {
+      "source": "odoo16E/src/odooE/odoo/custom-addons/dtsc_ai_assistant/models/universal_odoo_query.py",
+      "destination": "src/odooC/custom-addons/dtsc_ai_assistant/models/universal_odoo_query.py",
+      "source_sha256": "7e023ce27766047e9759e48d3b68e9bdfe6ccaee2a55d8814df4acdb99abe335",
+      "community_sha256": "7e023ce27766047e9759e48d3b68e9bdfe6ccaee2a55d8814df4acdb99abe335"
+    },
+    {
+      "source": "odoo16E/src/odooE/odoo/custom-addons/dtsc_ai_assistant/models/ai_assistant_session.py",
+      "destination": "src/odooC/custom-addons/dtsc_ai_assistant/models/ai_assistant_session.py",
+      "source_sha256": "628f8250957076a3e6a761dc708649c409ebc9779d1c6532f7dabdca6c671b5d",
+      "community_sha256": "628f8250957076a3e6a761dc708649c409ebc9779d1c6532f7dabdca6c671b5d"
+    },
+    {
+      "source": "odoo16E/src/odooE/odoo/custom-addons/dtsc_ai_assistant/models/ai_assistant_scope.py",
+      "destination": "src/odooC/custom-addons/dtsc_ai_assistant/models/ai_assistant_scope.py",
+      "source_sha256": "385ba263f145cd9eedb03d059796ee81620f9264a079aa2afb7bce930bae66e3",
+      "community_sha256": "385ba263f145cd9eedb03d059796ee81620f9264a079aa2afb7bce930bae66e3"
+    },
+    {
+      "source": "odoo16E/src/odooE/odoo/custom-addons/dtsc_ai_assistant/models/ai_assistant_settings.py",
+      "destination": "src/odooC/custom-addons/dtsc_ai_assistant/models/ai_assistant_settings.py",
+      "source_sha256": "9179785e4c163c0c4655ce631b977ab6ed1445fe80f5d2638123079498ad5bfc",
+      "community_sha256": "62cbc3c63b0e74993a34fcdba9a30b9490fc368260939bc73075441d859d1a1a"
+    },
+    {
+      "source": "odoo16E/src/odooE/odoo/custom-addons/dtsc_ai_assistant/models/ir_ui_menu.py",
+      "destination": "src/odooC/custom-addons/dtsc_ai_assistant/models/ir_ui_menu.py",
+      "source_sha256": "ec761230a314368bbc2803dd539c5aa2d2da6c8e0eba21c4b09f9794a3ca236a",
+      "community_sha256": "ec761230a314368bbc2803dd539c5aa2d2da6c8e0eba21c4b09f9794a3ca236a"
+    },
+    {
+      "source": "odoo16E/src/odooE/odoo/custom-addons/dtsc_ai_assistant/models/ai_assistant_message.py",
+      "destination": "src/odooC/custom-addons/dtsc_ai_assistant/models/ai_assistant_message.py",
+      "source_sha256": "8e56badec24a94b1499def44a5c1df211c3ceb85ba68b52e0353aa41b1f547d7",
+      "community_sha256": "8e56badec24a94b1499def44a5c1df211c3ceb85ba68b52e0353aa41b1f547d7"
+    },
+    {
+      "source": "odoo16E/src/odooE/odoo/custom-addons/dtsc_ai_assistant/models/ai_assistant_service.py",
+      "destination": "src/odooC/custom-addons/dtsc_ai_assistant/models/ai_assistant_service.py",
+      "source_sha256": "6d84519008c4878716e59ae9f5287581b3c534de8c98aa1b150cbe1bfe18921f",
+      "community_sha256": "6d84519008c4878716e59ae9f5287581b3c534de8c98aa1b150cbe1bfe18921f"
+    },
+    {
+      "source": "odoo16E/src/odooE/odoo/custom-addons/dtsc_ai_assistant/models/ai_assistant_thread.py",
+      "destination": "src/odooC/custom-addons/dtsc_ai_assistant/models/ai_assistant_thread.py",
+      "source_sha256": "ed20bf2f979500854742b68bb64ce9b9a42daae3b5e7678dd775ec127c09a01c",
+      "community_sha256": "ed20bf2f979500854742b68bb64ce9b9a42daae3b5e7678dd775ec127c09a01c"
+    },
+    {
+      "source": "odoo16E/src/odooE/odoo/custom-addons/dtsc_ai_assistant/models/__init__.py",
+      "destination": "src/odooC/custom-addons/dtsc_ai_assistant/models/__init__.py",
+      "source_sha256": "a71adfcb05548e2e6f9ef91c4e3e9fc55cf0160eda937fa4dd31065a70548598",
+      "community_sha256": "a71adfcb05548e2e6f9ef91c4e3e9fc55cf0160eda937fa4dd31065a70548598"
+    },
+    {
+      "source": "odoo16E/src/odooE/odoo/custom-addons/dtsc_ai_assistant/tests/replay_agent_readonly.py",
+      "destination": "src/odooC/custom-addons/dtsc_ai_assistant/tests/replay_agent_readonly.py",
+      "source_sha256": "2a2ce65e50bd0f1f6873872045c00e607e26142da16316715024daf47929cbe9",
+      "community_sha256": "2a2ce65e50bd0f1f6873872045c00e607e26142da16316715024daf47929cbe9"
+    },
+    {
+      "source": "odoo16E/src/odooE/odoo/custom-addons/dtsc_ai_assistant/tests/test_universal_odoo_query.py",
+      "destination": "src/odooC/custom-addons/dtsc_ai_assistant/tests/test_universal_odoo_query.py",
+      "source_sha256": "1b256fd82baa0d33cdb8f5fc4d19e0514b26e9eeffa8a2c11a2ca579b8346fdf",
+      "community_sha256": "1b256fd82baa0d33cdb8f5fc4d19e0514b26e9eeffa8a2c11a2ca579b8346fdf"
+    },
+    {
+      "source": "odoo16E/src/odooE/odoo/custom-addons/dtsc_ai_assistant/tests/test_query_rendering.js",
+      "destination": "src/odooC/custom-addons/dtsc_ai_assistant/tests/test_query_rendering.js",
+      "source_sha256": "8828839510a871f16e5f9d43575d2f92a4ccc663e8550a496ba527c113111b13",
+      "community_sha256": "8828839510a871f16e5f9d43575d2f92a4ccc663e8550a496ba527c113111b13"
+    },
+    {
+      "source": "odoo16E/src/odooE/odoo/custom-addons/dtsc_ai_assistant/tests/test_assistant_access.js",
+      "destination": "src/odooC/custom-addons/dtsc_ai_assistant/tests/test_assistant_access.js",
+      "source_sha256": "f11ef9a84ffad7babd26ac19995ad1bff7b26c0cfadfc69061fc0e96786fa4b3",
+      "community_sha256": "f11ef9a84ffad7babd26ac19995ad1bff7b26c0cfadfc69061fc0e96786fa4b3"
+    },
+    {
+      "source": "odoo16E/src/odooE/odoo/custom-addons/dtsc_ai_assistant/tests/verify_presets_readonly.py",
+      "destination": "src/odooC/custom-addons/dtsc_ai_assistant/tests/verify_presets_readonly.py",
+      "source_sha256": "99f48c454cd4bbb726420f049c13fe28047c7a990577a077c861d1b1a0fd953d",
+      "community_sha256": "99f48c454cd4bbb726420f049c13fe28047c7a990577a077c861d1b1a0fd953d"
+    },
+    {
+      "source": "odoo16E/src/odooE/odoo/custom-addons/dtsc_ai_assistant/tests/test_rpc_security.py",
+      "destination": "src/odooC/custom-addons/dtsc_ai_assistant/tests/test_rpc_security.py",
+      "source_sha256": "bbccf4650dc93936110d4853261c4e2e75959165da2a8fd23ec7d0a52f268574",
+      "community_sha256": "bbccf4650dc93936110d4853261c4e2e75959165da2a8fd23ec7d0a52f268574"
+    },
+    {
+      "source": "odoo16E/src/odooE/odoo/custom-addons/dtsc_ai_assistant/tests/verify_query_readonly.py",
+      "destination": "src/odooC/custom-addons/dtsc_ai_assistant/tests/verify_query_readonly.py",
+      "source_sha256": "e58998338817d4efb2a8646a2ec909cafd6e7d17ab88ed7bbbf30880497543cf",
+      "community_sha256": "e58998338817d4efb2a8646a2ec909cafd6e7d17ab88ed7bbbf30880497543cf"
+    },
+    {
+      "source": "odoo16E/src/odooE/odoo/custom-addons/dtsc_ai_assistant/tests/test_query_expansion.py",
+      "destination": "src/odooC/custom-addons/dtsc_ai_assistant/tests/test_query_expansion.py",
+      "source_sha256": "a693e5230e983e25ff157169fda98fd270d1d0cd75ce5eb09b491b7ec19ed38e",
+      "community_sha256": "a693e5230e983e25ff157169fda98fd270d1d0cd75ce5eb09b491b7ec19ed38e"
+    },
+    {
+      "source": "odoo16E/src/odooE/odoo/custom-addons/dtsc_ai_assistant/tests/test_conversation_reset.js",
+      "destination": "src/odooC/custom-addons/dtsc_ai_assistant/tests/test_conversation_reset.js",
+      "source_sha256": "6a598d3be867ead21646e7f324249d97fb496ec270e48b68cf8289a84edff895",
+      "community_sha256": "6a598d3be867ead21646e7f324249d97fb496ec270e48b68cf8289a84edff895"
+    },
+    {
+      "source": "odoo16E/src/odooE/odoo/custom-addons/dtsc_ai_assistant/tests/test_conversation_reset.py",
+      "destination": "src/odooC/custom-addons/dtsc_ai_assistant/tests/test_conversation_reset.py",
+      "source_sha256": "7eb3a9cda91d8ffbe90ea38651d50a10eebfe053d1f7783c93803274a9284fc3",
+      "community_sha256": "7eb3a9cda91d8ffbe90ea38651d50a10eebfe053d1f7783c93803274a9284fc3"
+    },
+    {
+      "source": "odoo16E/src/odooE/odoo/custom-addons/dtsc_ai_assistant/tests/__init__.py",
+      "destination": "src/odooC/custom-addons/dtsc_ai_assistant/tests/__init__.py",
+      "source_sha256": "8f1732ca5eab73aaeceaba60ca471682bd5f714eacb0423b8f1d6d8ce89611a6",
+      "community_sha256": "8f1732ca5eab73aaeceaba60ca471682bd5f714eacb0423b8f1d6d8ce89611a6"
+    },
+    {
+      "source": "odoo16E/src/odooE/odoo/custom-addons/dtsc_ai_assistant/controllers/ai_assistant.py",
+      "destination": "src/odooC/custom-addons/dtsc_ai_assistant/controllers/ai_assistant.py",
+      "source_sha256": "0c94d63997571bf14bd1e57c8370194482e4f953180e41903e432164c211f398",
+      "community_sha256": "0c94d63997571bf14bd1e57c8370194482e4f953180e41903e432164c211f398"
+    },
+    {
+      "source": "odoo16E/src/odooE/odoo/custom-addons/dtsc_ai_assistant/controllers/__init__.py",
+      "destination": "src/odooC/custom-addons/dtsc_ai_assistant/controllers/__init__.py",
+      "source_sha256": "0fd73518262a4976d59c99f50e1188259ba7ecf574933fc2cfc4333116203fb1",
+      "community_sha256": "0fd73518262a4976d59c99f50e1188259ba7ecf574933fc2cfc4333116203fb1"
+    },
+    {
+      "source": "odoo16E/src/odooE/odoo/custom-addons/dtsc_ai_assistant/views/ai_assistant_templates.xml",
+      "destination": "src/odooC/custom-addons/dtsc_ai_assistant/views/ai_assistant_templates.xml",
+      "source_sha256": "0f5a6d03627165b890634ac376ebc1c6bf1fe3300bf519fb820d86b64d885121",
+      "community_sha256": "0f5a6d03627165b890634ac376ebc1c6bf1fe3300bf519fb820d86b64d885121"
+    },
+    {
+      "source": "odoo16E/src/odooE/odoo/custom-addons/dtsc_ai_assistant/views/ai_assistant_settings_views.xml",
+      "destination": "src/odooC/custom-addons/dtsc_ai_assistant/views/ai_assistant_settings_views.xml",
+      "source_sha256": "c5a4205c531114e8e9ed88098ed6799e7e78dab57d69c9a7300643b7d6615ca0",
+      "community_sha256": "63ccf3a3b5b2d7d6f4bc659e29d25cba8bbd80893081c860fc3ee0e6f2b865a8"
+    },
+    {
+      "source": "odoo16E/src/odooE/odoo/custom-addons/dtsc_ai_assistant/views/ai_assistant_views.xml",
+      "destination": "src/odooC/custom-addons/dtsc_ai_assistant/views/ai_assistant_views.xml",
+      "source_sha256": "61d583e7855dafaf164260bad49cb54f6b1d86d005655235ca6c336c9ba99e0b",
+      "community_sha256": "61d583e7855dafaf164260bad49cb54f6b1d86d005655235ca6c336c9ba99e0b"
+    },
+    {
+      "source": "odoo16E/src/odooE/odoo/custom-addons/dtsc_ai_gateway/__manifest__.py",
+      "destination": "src/odooC/custom-addons/dtsc_ai_gateway/__manifest__.py",
+      "source_sha256": "f8d626bca4706212858eff7af69922fe36296bbfa43ef6e0df7dbf3d4d1c96f2",
+      "community_sha256": "f8d626bca4706212858eff7af69922fe36296bbfa43ef6e0df7dbf3d4d1c96f2"
+    },
+    {
+      "source": "odoo16E/src/odooE/odoo/custom-addons/dtsc_ai_gateway/__init__.py",
+      "destination": "src/odooC/custom-addons/dtsc_ai_gateway/__init__.py",
+      "source_sha256": "8074043ca4337348c656eded3125434fecc8cd99c5d25e03ae1042e8230dbbcf",
+      "community_sha256": "8074043ca4337348c656eded3125434fecc8cd99c5d25e03ae1042e8230dbbcf"
+    },
+    {
+      "source": "odoo16E/src/odooE/odoo/custom-addons/dtsc_ai_gateway/policy/runtime_policy.json",
+      "destination": "src/odooC/custom-addons/dtsc_ai_gateway/policy/runtime_policy.json",
+      "source_sha256": "44b3198b8875abbaefe89c98bf04f703758eb69fe6bbc14d11d9c3318c3c4266",
+      "community_sha256": "44b3198b8875abbaefe89c98bf04f703758eb69fe6bbc14d11d9c3318c3c4266"
+    },
+    {
+      "source": "odoo16E/src/odooE/odoo/custom-addons/dtsc_ai_gateway/security/ir.model.access.csv",
+      "destination": "src/odooC/custom-addons/dtsc_ai_gateway/security/ir.model.access.csv",
+      "source_sha256": "b1197235c245095868ce24599dfffdde786b00447b03d905eaa15864d294b241",
+      "community_sha256": "b1197235c245095868ce24599dfffdde786b00447b03d905eaa15864d294b241"
+    },
+    {
+      "source": "odoo16E/src/odooE/odoo/custom-addons/dtsc_ai_gateway/models/ai_gateway_log.py",
+      "destination": "src/odooC/custom-addons/dtsc_ai_gateway/models/ai_gateway_log.py",
+      "source_sha256": "4ece97e2ab2aea8eb430753c622bbbe041cb3293eb09c9ce6920c1fa08090531",
+      "community_sha256": "4ece97e2ab2aea8eb430753c622bbbe041cb3293eb09c9ce6920c1fa08090531"
+    },
+    {
+      "source": "odoo16E/src/odooE/odoo/custom-addons/dtsc_ai_gateway/models/ai_gateway_config.py",
+      "destination": "src/odooC/custom-addons/dtsc_ai_gateway/models/ai_gateway_config.py",
+      "source_sha256": "510d8693b95f9a107f6255e9953d4079f737d0a92ac915db1ef509c01fcd5da8",
+      "community_sha256": "ec908897b339215d8cc86d8154427649e53edcd606ecbc5c9c8fdddcd743af8b"
+    },
+    {
+      "source": "odoo16E/src/odooE/odoo/custom-addons/dtsc_ai_gateway/models/ai_gateway_runner.py",
+      "destination": "src/odooC/custom-addons/dtsc_ai_gateway/models/ai_gateway_runner.py",
+      "source_sha256": "a4692afe571bedc65a864b0a44058a711d1abe6de9de14d3d9a5d5186111d1ec",
+      "community_sha256": "a4692afe571bedc65a864b0a44058a711d1abe6de9de14d3d9a5d5186111d1ec"
+    },
+    {
+      "source": "odoo16E/src/odooE/odoo/custom-addons/dtsc_ai_gateway/models/__init__.py",
+      "destination": "src/odooC/custom-addons/dtsc_ai_gateway/models/__init__.py",
+      "source_sha256": "1cfa93e92be41352d0c346a39ef79b99c53c8e97c1e49a17854dbb5cf0aa3d63",
+      "community_sha256": "1cfa93e92be41352d0c346a39ef79b99c53c8e97c1e49a17854dbb5cf0aa3d63"
+    },
+    {
+      "source": "odoo16E/src/odooE/odoo/custom-addons/dtsc_ai_gateway/views/ai_gateway_log_views.xml",
+      "destination": "src/odooC/custom-addons/dtsc_ai_gateway/views/ai_gateway_log_views.xml",
+      "source_sha256": "26092c56e1c7363757155c88da6b920bf636babccfc646a23e4ffe1b1ae45d51",
+      "community_sha256": "26092c56e1c7363757155c88da6b920bf636babccfc646a23e4ffe1b1ae45d51"
+    },
+    {
+      "source": "odoo16E/services/ai_gateway/Dockerfile",
+      "destination": "services/ai_gateway/Dockerfile",
+      "source_sha256": "5e40cb7739240aa7806e21f372d46c27e25e92a2536ff8363f67261145e39040",
+      "community_sha256": "c55e7ea8d01540f94b25596249a1f00c6d71867d94fdf5c99ef20574ff8f7c17"
+    },
+    {
+      "source": "odoo16E/services/ai_gateway/requirements.txt",
+      "destination": "services/ai_gateway/requirements.txt",
+      "source_sha256": "f92c4d3d8f076af9b2c8e7e00f6994c683d27ac7d00f8fb02fb41c26caaef321",
+      "community_sha256": "f92c4d3d8f076af9b2c8e7e00f6994c683d27ac7d00f8fb02fb41c26caaef321"
+    },
+    {
+      "source": "odoo16E/services/ai_gateway/tests/test_runner.py",
+      "destination": "services/ai_gateway/tests/test_runner.py",
+      "source_sha256": "f1af27ac4200ca388a0d76a2009872603f97ceddf7991c5250e9b4310cda92d9",
+      "community_sha256": "f1af27ac4200ca388a0d76a2009872603f97ceddf7991c5250e9b4310cda92d9"
+    },
+    {
+      "source": "odoo16E/services/ai_gateway/tests/test_callback.py",
+      "destination": "services/ai_gateway/tests/test_callback.py",
+      "source_sha256": "60c4754c2b0ce054f973d600ad6e7f166ccc8f62475cd33c4c57d54b32c0fe60",
+      "community_sha256": "60c4754c2b0ce054f973d600ad6e7f166ccc8f62475cd33c4c57d54b32c0fe60"
+    },
+    {
+      "source": "odoo16E/services/ai_gateway/tests/__init__.py",
+      "destination": "services/ai_gateway/tests/__init__.py",
+      "source_sha256": "8b084a9f378124b2b1a51563bf3c22444eb7ff33692017da28b2136ae56987ed",
+      "community_sha256": "8b084a9f378124b2b1a51563bf3c22444eb7ff33692017da28b2136ae56987ed"
+    },
+    {
+      "source": "odoo16E/services/ai_gateway/app/schemas.py",
+      "destination": "services/ai_gateway/app/schemas.py",
+      "source_sha256": "bbddf8653c77b983982d98e8325bc6cb3eebab0703bf2fcbc2323ce69feb759a",
+      "community_sha256": "bbddf8653c77b983982d98e8325bc6cb3eebab0703bf2fcbc2323ce69feb759a"
+    },
+    {
+      "source": "odoo16E/services/ai_gateway/app/main.py",
+      "destination": "services/ai_gateway/app/main.py",
+      "source_sha256": "1fb700809a057cc11d57118f3e777991d0c1850c00e25d08cd87c29b1dc49153",
+      "community_sha256": "1fb700809a057cc11d57118f3e777991d0c1850c00e25d08cd87c29b1dc49153"
+    },
+    {
+      "source": "odoo16E/services/ai_gateway/app/__init__.py",
+      "destination": "services/ai_gateway/app/__init__.py",
+      "source_sha256": "53cf1bb58279284f7b89d484b200976ef56c76baa54c6856e425fb18745d5243",
+      "community_sha256": "53cf1bb58279284f7b89d484b200976ef56c76baa54c6856e425fb18745d5243"
+    },
+    {
+      "source": "odoo16E/services/ai_gateway/app/tools/callback.py",
+      "destination": "services/ai_gateway/app/tools/callback.py",
+      "source_sha256": "c8ae9cedb1957c267bc5153a862da181272427364f7ead2d70c4809d749e456a",
+      "community_sha256": "c8ae9cedb1957c267bc5153a862da181272427364f7ead2d70c4809d749e456a"
+    },
+    {
+      "source": "odoo16E/services/ai_gateway/app/tools/__init__.py",
+      "destination": "services/ai_gateway/app/tools/__init__.py",
+      "source_sha256": "3bd093d41d85f9c541f1e953d04a0225b82471f7e3be59aab5ea9abece208838",
+      "community_sha256": "3bd093d41d85f9c541f1e953d04a0225b82471f7e3be59aab5ea9abece208838"
+    },
+    {
+      "source": "odoo16E/services/ai_gateway/app/observability/logging.py",
+      "destination": "services/ai_gateway/app/observability/logging.py",
+      "source_sha256": "c03237caf79169a060b83d40759326c6de0ccb5cf86bd43eb6400fe2a66365da",
+      "community_sha256": "c03237caf79169a060b83d40759326c6de0ccb5cf86bd43eb6400fe2a66365da"
+    },
+    {
+      "source": "odoo16E/services/ai_gateway/app/observability/__init__.py",
+      "destination": "services/ai_gateway/app/observability/__init__.py",
+      "source_sha256": "3bd093d41d85f9c541f1e953d04a0225b82471f7e3be59aab5ea9abece208838",
+      "community_sha256": "3bd093d41d85f9c541f1e953d04a0225b82471f7e3be59aab5ea9abece208838"
+    },
+    {
+      "source": "odoo16E/services/ai_gateway/app/agents/query_protocol.py",
+      "destination": "services/ai_gateway/app/agents/query_protocol.py",
+      "source_sha256": "e2de2544ede580a0198570e3489b24b7ad00e12aafb320dcd96b21a6d3023215",
+      "community_sha256": "e2de2544ede580a0198570e3489b24b7ad00e12aafb320dcd96b21a6d3023215"
+    },
+    {
+      "source": "odoo16E/services/ai_gateway/app/agents/runner.py",
+      "destination": "services/ai_gateway/app/agents/runner.py",
+      "source_sha256": "08f74106f837e357f6bb97b561931078f85913fc47dbc7e4095472dbb5f940a1",
+      "community_sha256": "08f74106f837e357f6bb97b561931078f85913fc47dbc7e4095472dbb5f940a1"
+    },
+    {
+      "source": "odoo16E/services/ai_gateway/app/agents/__init__.py",
+      "destination": "services/ai_gateway/app/agents/__init__.py",
+      "source_sha256": "3bd093d41d85f9c541f1e953d04a0225b82471f7e3be59aab5ea9abece208838",
+      "community_sha256": "3bd093d41d85f9c541f1e953d04a0225b82471f7e3be59aab5ea9abece208838"
+    },
+    {
+      "source": "odoo16E/services/ai_gateway/app/providers/factory.py",
+      "destination": "services/ai_gateway/app/providers/factory.py",
+      "source_sha256": "cf697bd60f788e394bb2d5a1b656cfc5ee6175a14b88046a2adf930bf84f979a",
+      "community_sha256": "cf697bd60f788e394bb2d5a1b656cfc5ee6175a14b88046a2adf930bf84f979a"
+    },
+    {
+      "source": "odoo16E/services/ai_gateway/app/providers/__init__.py",
+      "destination": "services/ai_gateway/app/providers/__init__.py",
+      "source_sha256": "3bd093d41d85f9c541f1e953d04a0225b82471f7e3be59aab5ea9abece208838",
+      "community_sha256": "3bd093d41d85f9c541f1e953d04a0225b82471f7e3be59aab5ea9abece208838"
+    }
+  ],
+  "business_metadata_changes": [
+    {
+      "file": "src/odooC/custom-addons/dtsc/models/checkout.py",
+      "class": "Checkout",
+      "metadata": "estimated_date.help",
+      "value": "大圖訂單目前排定或選擇的發貨時間；未生成 S 單時用於超期未出貨判斷，生成 S 單時會同步為 dtsc.deliveryorder.delivery_date，但不代表已完成出貨。"
+    },
+    {
+      "file": "src/odooC/custom-addons/dtsc/models/checkout.py",
+      "class": "Checkout",
+      "metadata": "checkout_order_type.help",
+      "value": "A 普通、F 打樣、D CRM/報價、E 重製、M 被合併單標記；皆屬 dtsc.checkout。M 是被合併的非目標 A 單，不是合併目標單。"
+    },
+    {
+      "file": "src/odooC/custom-addons/dtsc/models/checkout.py",
+      "class": "Checkout",
+      "metadata": "is_delivery.help",
+      "value": "表示大圖訂單已建立獨立的 S 出貨單，不是訂單狀態。"
+    },
+    {
+      "file": "src/odooC/custom-addons/dtsc/models/checkout.py",
+      "class": "Checkout",
+      "metadata": "delivery_order.help",
+      "value": "對應的獨立 S 出貨單號；正式關聯由 dtsc.deliveryorder.checkout_ids 表示。"
+    },
+    {
+      "file": "src/odooC/custom-addons/dtsc/models/checkout.py",
+      "class": "Checkout",
+      "metadata": "source_name.help",
+      "value": "複製或重製單所保留的來源大圖訂單號；E 重製單會寫入原訂單單號。"
+    },
+    {
+      "file": "src/odooC/custom-addons/dtsc/models/checkout.py",
+      "class": "CheckOutLine",
+      "metadata": "origin_checkout_id.help",
+      "value": "合併時記錄此產品行原本所屬的大圖訂單，供取消合併時移回；這是產品行欄位。"
+    },
+    {
+      "file": "src/odooC/custom-addons/dtsc/models/deliveryorder.py",
+      "class": "DeliveryOrder",
+      "metadata": "_description",
+      "value": "出貨單（S 單）"
+    },
+    {
+      "file": "src/odooC/custom-addons/dtsc/models/deliveryorder.py",
+      "class": "DeliveryOrder",
+      "metadata": "install_state.help",
+      "value": "S 出貨單本身的流程狀態，不是大圖訂單狀態；有效單據統計應排除作廢。"
+    },
+    {
+      "file": "src/odooC/custom-addons/dtsc/models/deliveryorder.py",
+      "class": "DeliveryOrder",
+      "metadata": "checkout_ids.help",
+      "value": "一張 S 出貨單可關聯一張或多張大圖訂單；作廢時此歷史關係可能仍保留，有效關聯應排除 install_state=cancel，並可核對大圖訂單 delivery_order。"
+    },
+    {
+      "file": "src/odooC/custom-addons/dtsc/models/installproduct.py",
+      "class": "Installproduct",
+      "metadata": "_description",
+      "value": "施工工單（T 單）"
+    },
+    {
+      "file": "src/odooC/custom-addons/dtsc/models/installproduct.py",
+      "class": "Installproduct",
+      "metadata": "install_state.help",
+      "value": "T 工單流程狀態；有效單據統計應排除作廢。"
+    },
+    {
+      "file": "src/odooC/custom-addons/dtsc/models/installproduct.py",
+      "class": "Installproduct",
+      "metadata": "checkout_id.help",
+      "value": "此 T 施工工單所屬的大圖訂單；統計母單數量時應依此欄位去重。"
+    },
+    {
+      "file": "src/odooC/custom-addons/dtsc/models/make_in.py",
+      "class": "MakeIn",
+      "metadata": "_description",
+      "value": "內部生產工單（B 單）"
+    },
+    {
+      "file": "src/odooC/custom-addons/dtsc/models/make_in.py",
+      "class": "MakeIn",
+      "metadata": "install_state.help",
+      "value": "B 工單流程狀態；有效單據統計應排除作廢。"
+    },
+    {
+      "file": "src/odooC/custom-addons/dtsc/models/make_in.py",
+      "class": "MakeIn",
+      "metadata": "checkout_id.help",
+      "value": "此 B 內部工單所屬的大圖訂單；統計母單數量時應依此欄位去重。"
+    },
+    {
+      "file": "src/odooC/custom-addons/dtsc/models/make_om.py",
+      "class": "MakeOm",
+      "metadata": "_description",
+      "value": "代工工單（G 單）"
+    },
+    {
+      "file": "src/odooC/custom-addons/dtsc/models/make_om.py",
+      "class": "MakeOm",
+      "metadata": "install_state.help",
+      "value": "G 工單流程狀態；有效單據統計應排除作廢。"
+    },
+    {
+      "file": "src/odooC/custom-addons/dtsc/models/make_om.py",
+      "class": "MakeOm",
+      "metadata": "checkout_id.help",
+      "value": "此 G 代工單所屬的大圖訂單；make_om 需求也會進入 B 單需求，統計需求可重疊；單獨統計 G 母單時依此欄位去重，跨 B/G 母單不可把兩邊去重數相加。"
+    },
+    {
+      "file": "src/odooC/custom-addons/dtsc/models/make_out.py",
+      "class": "MakeOut",
+      "metadata": "_description",
+      "value": "委外生產工單（C 單）"
+    },
+    {
+      "file": "src/odooC/custom-addons/dtsc/models/make_out.py",
+      "class": "MakeOut",
+      "metadata": "install_state.help",
+      "value": "C 工單流程狀態；有效單據統計應排除作廢。"
+    },
+    {
+      "file": "src/odooC/custom-addons/dtsc/models/make_out.py",
+      "class": "MakeOut",
+      "metadata": "checkout_id.help",
+      "value": "此 C 委外工單所屬的大圖訂單；統計母單數量時應依此欄位去重。"
+    }
+  ],
+  "business_logic_ast_unchanged": true,
+  "adapted_files": [
+    "src/odooC/custom-addons/dtsc_ai_assistant/__manifest__.py",
+    "src/odooC/custom-addons/dtsc_ai_assistant/models/ai_assistant_settings.py",
+    "src/odooC/custom-addons/dtsc_ai_assistant/views/ai_assistant_settings_views.xml",
+    "src/odooC/custom-addons/dtsc_ai_gateway/models/ai_gateway_config.py",
+    "services/ai_gateway/Dockerfile"
+  ],
+  "unchanged_copied_files": 55,
+  "model_configuration_reused_by_user_request": true,
+  "validation": {
+    "odoo_unit_tests": 88,
+    "gateway_unit_tests": 59,
+    "frontend_reset_tests": 8,
+    "frontend_access_and_rendering": "passed",
+    "real_model_test": "Connectivity, real callbacks and conversation persistence passed after explicit approval; all-status scope did not pass.",
+    "http_metric_checks": 18,
+    "http_model_descriptions": 8,
+    "internal_network_roundtrip": "passed",
+    "known_semantic_limitation": "Requested all states, but the model added checkout_order_state != cancel. Empty data makes both counts zero; only connectivity, tool execution and persistence are validated."
+  }
+}

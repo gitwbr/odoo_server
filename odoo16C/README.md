@@ -16,6 +16,8 @@
 
 为通过全新数据库安装，仅在此副本的 `dtsc/__manifest__.py` 中修正了两项原有问题：显式声明已被视图继承的 `website_sale_delivery` 依赖；把客户上传通知与资产菜单安排在父菜单定义之后加载。SaaS 原文件未修改。
 
+随后已按用户要求迁入企业版 AI 助手：新增 `dtsc_ai_assistant`、`dtsc_ai_gateway`、独立 Gateway 服务，以及 6 个业务模型文件的 AI 说明元数据。完整差异、环境适配和验收范围见 [AI迁移说明](document/AI迁移说明.md)。
+
 ## 日常操作
 
 ```bash
@@ -36,6 +38,8 @@ tail -f logs/odoo.log
 | Web 容器 | `odoo16c-web` |
 | 数据库容器 | `odoo16c-db` |
 | Docker 网络 | `odoo16c-net` |
+| AI Gateway 容器 | `odoo16c-ai-gateway` |
+| AI Gateway 健康检查 | `http://127.0.0.1:8076/health` |
 | HTTP 端口 | `8075` |
 | PostgreSQL 端口 | `127.0.0.1:5434` |
 | 测试数据库 | `odoo16c_test` |
@@ -45,6 +49,8 @@ tail -f logs/odoo.log
 数据库通过 Odoo 的标准建库流程创建，不含 SaaS 或企业版业务数据，也不加载演示数据。数据库、附件、日志分别保存在本目录的 `postgresql/`、`data/`、`logs/`。
 
 `dtsc` 主业务模块已安装。三个自定义支付模块保留源码，暂不启用：原有 ATM/信用卡交易视图引用了 Odoo 16 交易模型不存在的 `capture_manually` 字段，需另行修复后再安装；普通支付代码也存在对该字段的引用。未配置真实支付商户。
+
+AI 助手及 Odoo 网关模块已安装。模型/API 配置按用户要求沿用企业版，服务地址、回调地址和令牌独立；管理部账号可从后台浮窗进入，在「设置 → AI助手设置」维护配置。真实问答链路已打通；本次空库验收发现的状态范围语义限制详见迁移说明。
 
 默认采用单进程测试配置，定时任务线程数为 0。`addons_path` 仅指向容器内本目录源码的挂载路径。没有修改现有 SaaS 的 Compose、Nginx 或数据库。
 

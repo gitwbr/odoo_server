@@ -20,5 +20,6 @@
       "file": "src/odooC/custom-addons/dtsc/__manifest__.py",
       "reason": "Fresh installation: declare website_sale_delivery dependency and load customer upload notification and asset menus after views/views.xml defines their parent menus."
     }
-  ]
+  ],
+  "ai_migration_inventory": "document/ai-migration-inventory.json"
 }
