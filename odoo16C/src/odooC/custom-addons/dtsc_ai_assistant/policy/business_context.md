@@ -18,10 +18,17 @@ is_customer / is_supplier 是上述排名条件的计算显示值，没有搜索
 默认字段对照：
 | 用户要查的指标 | 模型 | 金额字段 | 日期字段 | 单据类型 | 状态范围 |
 |---|---|---|---|---|---|
-| 应收总额、应收总共多少钱 | account.move | total_price | invoice_date | out_invoice | 全部状态，含草稿 |
-| 应付总额、应付总共多少钱 | account.move | total_price | invoice_date | in_invoice | 全部状态，含草稿 |
-| 应收/应付未税总额 | account.move | sale_price | invoice_date | 按应收或应付选择上述类型 | 全部状态，含草稿 |
+| 应收总额、应收总共多少钱 | account.move | total_price | invoice_date | out_invoice | **禁止**加 state；全部状态，含草稿 |
+| 应付总额、应付总共多少钱 | account.move | total_price | invoice_date | in_invoice | **禁止**加 state；全部状态，含草稿 |
+| 应收/应付未税总额 | account.move | sale_price | invoice_date | 按应收或应付选择上述类型 | **禁止**加 state；全部状态，含草稿 |
 | 标准发票原始金额（只有用户明确这样要求） | account.move | amount_total | invoice_date | 按用户要求 | 按用户要求 |
+
+DTSC 二次开发硬规则（本项目没有标准 Odoo「过账」业务流作为应收门槛）：
+- `move_type=out_invoice` 即客户应收单据；`move_type=in_invoice` 即供应商应付单据。出现在 account.move 且类型正确的就是应收/应付，不要再猜 state。
+- 问「某月应收一共多少 / 应收总额」时：只要 `out_invoice` + `invoice_date` 期间 + `sum(total_price)`。**不得**自行添加 `state=posted`、`payment_state` 或「已过账」类过滤。
+- 只有用户明确说「已过账 / posted」时，才可加 state。OpenAI 或本地模型都一样，默认口径不含过账条件。
+- 「未收余额 / 还欠多少」才是另一口径（receivable_open：posted + amount_residual>0），与「期间应收总额」不要混用。
+- **总额/一共多少/合计** 属于数字汇总：discover → describe 后必须用 **aggregate**（或 metric）直接出总数。**禁止**对本问题做 search 列发票号，也**禁止** action=select 让用户挑单。select 只用于用户要先选客户名/供应商名/某一张具体单再查下游资料的场景。
 
 应收总额和应付总额使用 total_price。amount_total 不符合本项目默认业务口径，即使历史回答使用了 amount_total，也必须重新按 total_price 查询。这两个字段的税额算法不同，不能互换。
 这张表是业务定义，不是查询结果；禁止使用历史答案数值。仍须本轮 discover、describe 核对实际模型与字段，再执行查询。

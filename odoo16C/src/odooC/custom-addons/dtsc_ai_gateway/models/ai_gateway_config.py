@@ -41,7 +41,7 @@ class AiGatewayConfig(models.AbstractModel):
             'service_token': params.get_param(self._PARAMS['service_token']) or '',
             'odoo_base_url': (
                 params.get_param(self._PARAMS['odoo_base_url'])
-                or 'http://web:8069'
+                or 'http://odoo:8069'
             ),
         }
 

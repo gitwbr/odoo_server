@@ -9,8 +9,18 @@ from langchain_core.exceptions import OutputParserException
 
 from app.agents.query_protocol import AgentStep, TurnAnswer, PROTOCOL_PROMPT, STEP_PROMPT, CATALOG_RESULTS, DATA_RESULTS, validate_answer, render_answer, incomplete_result, selection_answer, selection_context, detail_evidence_correction
 
-from app.providers.factory import create_chat_model
+from app.providers.factory import create_chat_model, structured_output_method
 from app.tools.callback import build_callback_tools
+
+
+JSON_MODE_PROMPT = """
+Local JSON mode: reply with ONE JSON object only (no markdown). Exact field names required.
+Greeting / non-data reply example:
+{"action":"finish","tool_name":"","arguments_json":"{}","completion":{"kind":"conversation","answer":"你好！有什么可以帮你？","evidence_ids":[],"detail_evidence_ids":[],"result_scope":"complete"},"candidate_evidence_id":null}
+Tool call example:
+{"action":"tool","tool_name":"universal_odoo_query","arguments_json":"{\\"operation\\":\\"discover\\"}","completion":null,"candidate_evidence_id":null}
+completion must use answer (never text). tool_name must be empty string when action is finish or select.
+"""
 
 
 def _compact(value):
@@ -19,6 +29,74 @@ def _compact(value):
     if isinstance(value, list):
         return [_compact(item) for item in value]
     return value
+
+
+def _repair_structured_payload(data):
+    """Normalize common local-model JSON mistakes before pydantic validation."""
+    if not isinstance(data, dict):
+        return data
+    payload = dict(data)
+    # Top-level TurnAnswer (finalizer)
+    if 'kind' in payload and 'action' not in payload:
+        if not payload.get('answer') and payload.get('text'):
+            payload['answer'] = payload.pop('text')
+        if not payload.get('answer') and payload.get('message'):
+            payload['answer'] = payload.pop('message')
+        payload.setdefault('evidence_ids', [])
+        payload.setdefault('detail_evidence_ids', [])
+        payload.setdefault('result_scope', 'complete')
+        return payload
+    completion = payload.get('completion')
+    if isinstance(completion, dict):
+        completion = dict(completion)
+        if not completion.get('answer') and completion.get('text'):
+            completion['answer'] = completion.pop('text')
+        if not completion.get('answer') and completion.get('message'):
+            completion['answer'] = completion.pop('message')
+        completion.setdefault('evidence_ids', [])
+        completion.setdefault('detail_evidence_ids', [])
+        completion.setdefault('result_scope', 'complete')
+        payload['completion'] = completion
+        payload.setdefault('action', 'finish')
+    if payload.get('tool_name') in (None, 'None', 'null', 'nil'):
+        payload['tool_name'] = ''
+    payload.setdefault('arguments_json', '{}')
+    if isinstance(payload.get('arguments_json'), dict):
+        payload['arguments_json'] = json.dumps(payload['arguments_json'], ensure_ascii=False)
+    return payload
+
+
+def _bind_structured(model, schema, method):
+    if method == 'json_mode':
+        return model.with_structured_output(schema, method=method, include_raw=True)
+    return model.with_structured_output(schema, method=method)
+
+
+async def _ainvoke_structured(bound, schema, messages, method):
+    result = await bound.ainvoke(messages)
+    if method != 'json_mode':
+        return result
+    if not isinstance(result, dict):
+        return result
+    parsed = result.get('parsed')
+    if parsed is not None:
+        return parsed
+    content = getattr(result.get('raw'), 'content', None) or ''
+    if isinstance(content, list):
+        content = ''.join(
+            part.get('text', '') if isinstance(part, dict) else str(part)
+            for part in content
+        )
+    content = str(content).strip()
+    if content.startswith('```'):
+        content = content.strip('`')
+        if content.startswith('json'):
+            content = content[4:].strip()
+    try:
+        data = json.loads(content)
+    except (TypeError, ValueError) as exc:
+        raise OutputParserException(str(exc) or 'structured_output_invalid') from exc
+    return schema.model_validate(_repair_structured_payload(data))
 
 
 def _validation_errors(exc):
@@ -40,20 +118,25 @@ async def run_langchain_agent(payload):
     tool_results, audit_events = [], []
     tools = {tool.name: tool for tool in build_callback_tools(payload.tools, payload.tool_callback, tool_results)}
     model = create_chat_model(payload.config)
+    output_method = structured_output_method(payload.config)
     step_schema = create_model('AgentStep', __base__=AgentStep, tool_name=(
         Literal.__getitem__(tuple([''] + list(tools))),
         Field(default='', description='Exact registered tool name; operation names belong inside arguments_json.')))
-    planner = model.with_structured_output(step_schema, method='function_calling')
+    planner = _bind_structured(model, step_schema, output_method)
     lookup_schema = create_model('AgentLookupStep', __base__=step_schema, action=(
         Literal['tool', 'finish'], Field(description='tool: execute a schema/data query. finish: return the final answer '
             'in completion (must include kind, answer, evidence_ids). A successful zero/empty result can finish. '
             'select is unavailable until actual candidate search results exist; discover/describe are not candidates.')))
-    lookup_planner = model.with_structured_output(lookup_schema, method='function_calling')
-    finalizer = model.with_structured_output(TurnAnswer, method='function_calling')
+    lookup_planner = _bind_structured(model, lookup_schema, output_method)
+    finalizer = _bind_structured(model, TurnAnswer, output_method)
+    audit_events.append({'event': 'structured_output_method', 'method': output_method,
+                         'base_url': getattr(payload.config, 'base_url', '') or ''})
     budget = payload.execution_policy
     final_answer, failure = None, 'query_incomplete'
     selected_context = None
     instructions = (payload.system_prompt or '') + PROTOCOL_PROMPT + STEP_PROMPT
+    if output_method == 'json_mode':
+        instructions += JSON_MODE_PROMPT
     instructions += '\nAvailable tool schemas: ' + json.dumps([
         {'name': tool.name, 'description': tool.description,
          'parameters': tool.args_schema.model_json_schema()} for tool in tools.values()
@@ -85,7 +168,10 @@ async def run_langchain_agent(payload):
         prompt = messages + [{'role':'user','content':
             '執行已因 '+stop_reason+' 停止。只使用本輪有效 evidence ID。若未取得業務資料則回報 failure；'
             '不可把執行限制改稱使用者缺少條件，不可要求重新確認前文已確定的口徑。'}]
-        final_answer = TurnAnswer.model_validate(await finalizer.ainvoke(prompt))
+        raw_final = await _ainvoke_structured(finalizer, TurnAnswer, prompt, output_method)
+        final_answer = TurnAnswer.model_validate(
+            raw_final.model_dump() if isinstance(raw_final, TurnAnswer) else raw_final
+        )
         failure = validate_answer(final_answer, tool_results)
         if failure == 'query_incomplete':
             # Preserve the latest unresolved tool error, or partial evidence,
@@ -117,7 +203,7 @@ async def run_langchain_agent(payload):
                 can_select = any(selection_answer(dict(call.get('result') or {}, _evidence_id=index)) is not None
                                  for index, call in enumerate(tool_results, 1))
                 active_schema, active_planner = (step_schema, planner) if can_select else (lookup_schema, lookup_planner)
-                raw_step = await active_planner.ainvoke(messages)
+                raw_step = await _ainvoke_structured(active_planner, active_schema, messages, output_method)
                 step = active_schema.model_validate(raw_step.model_dump() if isinstance(raw_step, AgentStep) else raw_step)
             except (ValidationError, OutputParserException) as exc:
                 errors = (_validation_errors(exc)
@@ -127,7 +213,10 @@ async def run_langchain_agent(payload):
                     '步驟格式校驗失敗：' + json.dumps(errors, ensure_ascii=False) +
                     '。action=finish 必須填 completion 物件，包含 kind、answer、evidence_ids；查無資料或金額0也要用有效證據回答。'
                     '。tool_name 只能使用 ' + json.dumps(list(tools)) +
-                    '；操作名稱應放入 arguments_json 的 operation。請依 AgentStep schema 重送一步。'})
+                    '；操作名稱應放入 arguments_json 的 operation。請依 AgentStep schema 重送一步。'
+                    + (' 範例：{"action":"finish","tool_name":"","arguments_json":"{}","completion":'
+                       '{"kind":"conversation","answer":"你好","evidence_ids":[]},"candidate_evidence_id":null}'
+                       if output_method == 'json_mode' else '')})
                 continue
             messages.append({'role':'assistant','content':step.model_dump_json()})
             if step.action == 'select':

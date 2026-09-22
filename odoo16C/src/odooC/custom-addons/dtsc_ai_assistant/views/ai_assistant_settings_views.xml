@@ -14,33 +14,45 @@
                             </p>
                         </div>
                         <group>
+                            <group string="模型來源">
+                                <field name="model_source" widget="radio"/>
+                                <div class="text-muted" attrs="{'invisible': [('model_source', '!=', 'local')]}">
+                                    本地模式會預填 Ollama 位址與 API Key；模型名須與
+                                    <code>ollama list</code> 一致。Gateway / Callback URL 不用改。
+                                </div>
+                                <div class="text-muted" attrs="{'invisible': [('model_source', '!=', 'external')]}">
+                                    外部模式請填雲端或第三方的模型名與 API Key；官方 OpenAI 可留空 Base URL。
+                                </div>
+                            </group>
                             <group string="模型設定">
                                 <field name="provider"/>
-                                <field name="model_name" placeholder="例如：gpt-4o-mini"/>
-                                <field name="api_key" password="True" placeholder="sk-..."/>
-                                <field name="base_url" placeholder="OpenAI 官方可留空；第三方 compatible 服務才填"/>
+                                <field name="model_name" placeholder="本地：qwen… / 外部：gpt-4o-mini"/>
+                                <field name="api_key" password="True" placeholder="本地填 ollama；外部填 sk-..."/>
+                                <field name="base_url" placeholder="本地：http://host.docker.internal:11434/v1"/>
                             </group>
+                        </group>
+                        <group>
                             <group string="Gateway 服務">
                                 <field name="gateway_url" placeholder="http://ai-gateway:8071/v1/agent/run"/>
                                 <field name="gateway_token" password="True" placeholder="留空保存時自動產生"/>
-                                <field name="odoo_base_url" placeholder="http://web:8069"/>
+                                <field name="odoo_base_url" placeholder="http://odoo:8069"/>
                                 <div class="text-muted">
                                     Gateway 服務隨專案部署，但以獨立 Python 3.11 進程執行；模型與 API Key 仍由本頁配置。
                                 </div>
                             </group>
-                        </group>
-                        <group>
                             <group string="執行設定">
                                 <field name="timeout"/>
                                 <field name="max_retries"/>
                                 <field name="temperature"/>
                                 <div class="text-muted">
                                     Temperature 控制模型回答隨機性；大圖訂單查詢建議維持 0。
+                                    本地大模型建議 Timeout ≥ 180 秒。
                                 </div>
                             </group>
                         </group>
                         <group string="對應系統參數">
                             <div>
+                                <p><code>dtsc_ai_gateway.model_source</code></p>
                                 <p><code>dtsc_ai_gateway.service_url</code></p>
                                 <p><code>dtsc_ai_gateway.service_token</code></p>
                                 <p><code>dtsc_ai_gateway.model</code></p>

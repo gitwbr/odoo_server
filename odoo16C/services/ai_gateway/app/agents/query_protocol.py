@@ -80,6 +80,9 @@ do not replace them with a looser status filter. Otherwise derive the scope from
 For totals, sums, counts or comparisons over all matching records, use aggregate/count_distinct/
 period_analysis over the full requested scope. Never sum a search page in your answer. has_more,
 response_truncated, an offset or a returned page smaller than total_count means partial evidence.
+Never answer a totals/一共多少/合计 question with search + select of invoice names; after describe,
+run aggregate (or metric) and finish. select is only when the user must pick a customer/vendor/
+named record before a downstream query.
 If only a list/page is requested, use result_scope=page; the server will explain the visible page.
 Do not switch a totals question to page scope just to bypass completeness validation.
 If the user requests BOTH totals and details, keep result_scope=complete, cite the complete
