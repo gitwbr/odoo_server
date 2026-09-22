@@ -601,6 +601,7 @@
   async function resetConversation(root) {
     if (root.dataset.resetPending === '1') { return; }
     if (!window.confirm('清空目前對話並重新開始？後續查詢不會使用這段對話，管理員的排錯記錄會保留。')) { return; }
+    if (root._stopAiProgress) { root._stopAiProgress(); }
     root.dataset.conversationVersion = String(Number(root.dataset.conversationVersion || 0) + 1);
     root.dataset.resetPending = '1';
     root.dataset.historyLoaded = '0';
@@ -753,6 +754,110 @@
     return root;
   }
 
+  function pendingMarkup() {
+    return '<div class="o_dtsc_ai_activity" data-state="pending">'
+      + '<div class="o_dtsc_ai_activity_top"><span class="o_dtsc_ai_activity_badge"><i></i>處理中</span>'
+      + '<span class="o_dtsc_ai_activity_time" aria-hidden="true">0:00</span></div>'
+      + '<div class="o_dtsc_ai_activity_main"><span class="o_dtsc_ai_activity_symbol" aria-hidden="true">'
+      + '<svg viewBox="0 0 24 24" fill="none"><path d="M12 4l2.2 5.8L20 12l-5.8 2.2L12 20l-2.2-5.8L4 12l5.8-2.2L12 4Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg></span>'
+      + '<div class="o_dtsc_ai_activity_copy" role="status" aria-live="polite" aria-atomic="true">'
+      + '<div class="o_dtsc_ai_activity_title">正在接收你的問題</div>'
+      + '<div class="o_dtsc_ai_activity_detail">稍等一下，回覆會顯示在這裡</div></div></div>'
+      + '<ul class="o_dtsc_ai_activity_steps" aria-label="本次已完成的步驟" hidden></ul>'
+      + '<div class="o_dtsc_ai_activity_wave" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div></div>';
+  }
+
+  function progressRequestId() {
+    if (!window.crypto || !window.crypto.getRandomValues || !window.AbortController) { return ''; }
+    var bytes = new Uint8Array(16);
+    window.crypto.getRandomValues(bytes);
+    return Array.from(bytes, function (value) { return value.toString(16).padStart(2, '0'); }).join('');
+  }
+
+  function startProgress(root, message, requestId, version) {
+    if (!requestId) { return function () {}; }
+    var labels = {
+      pending: ['正在接收你的問題', '稍等一下，回覆會顯示在這裡'],
+      thinking: ['正在分析你的問題', '釐清需求，整理接下來的處理方式'],
+      querying: ['正在查詢相關資料', '依照你的問題，讀取需要的資訊'],
+      checking: ['正在核對查詢結果', '確認取得的資料能支持這次回覆'],
+      correcting: ['正在調整查詢方式', '剛才的處理需要調整，助手正在繼續嘗試'],
+      finishing: ['正在整理回覆', '將本次處理結果整理成容易閱讀的內容'],
+      done: ['回覆即將顯示', '正在完成這次對話的最後處理'],
+      failed: ['正在整理處理結果', '這次未能完成，稍後會顯示結果說明'],
+      unavailable: ['仍在等待回覆', '暫時無法更新進度，請稍候'],
+    };
+    var stopped = false, timer, controller;
+    var started = Date.now(), lastState = 'pending', lastMilestones = '';
+    var completedLabels = {source_checked: '已完成資料來源檢索', schema_read: '已讀取資料結構說明',
+      data_queried: '已完成資料查詢', answer_checked: '已完成回覆校驗'};
+    function setMilestones(items) {
+      if (!active() || !Array.isArray(items)) { return; }
+      var list = message.querySelector('.o_dtsc_ai_activity_steps');
+      if (!list) { return; }
+      var seen = {};
+      var safe = items.slice(-3).filter(function (item) {
+        if (!item || !Object.prototype.hasOwnProperty.call(completedLabels, item.kind) || seen[item.kind]
+            || !Number.isInteger(item.count) || item.count < 1 || item.count > 40) { return false; }
+        seen[item.kind] = true; return true;
+      });
+      var signature = JSON.stringify(safe.map(function (item) { return [item.kind, item.count]; }));
+      if (signature === lastMilestones) { return; }
+      lastMilestones = signature;
+      list.hidden = safe.length === 0;
+      list.innerHTML = safe.map(function (item) {
+        return '<li><span class="o_dtsc_ai_step_check" aria-hidden="true">✓</span><span>'
+          + completedLabels[item.kind] + '</span>'
+          + (item.count > 1 ? '<span class="o_dtsc_ai_step_count">' + item.count + ' 次</span>' : '') + '</li>';
+      }).join('');
+    }
+    function active() { return !stopped && version === root.dataset.conversationVersion; }
+    function setState(state) {
+      if (!active() || state === lastState) { return; }
+      var card = message.querySelector('.o_dtsc_ai_activity');
+      if (!card) { return; }
+      lastState = state;
+      card.dataset.state = state;
+      card.querySelector('.o_dtsc_ai_activity_title').textContent = labels[state][0];
+      card.querySelector('.o_dtsc_ai_activity_detail').textContent = labels[state][1];
+    }
+    function renderTime() {
+      if (!active()) { stop(); return; }
+      var text = message.querySelector('.o_dtsc_ai_activity_time');
+      var seconds = Math.floor((Date.now() - started) / 1000);
+      if (text) { text.textContent = Math.floor(seconds / 60) + ':' + String(seconds % 60).padStart(2, '0'); }
+    }
+    var elapsedTimer = window.setInterval(renderTime, 1000);
+    function stop() {
+      stopped = true;
+      window.clearInterval(elapsedTimer);
+      window.clearTimeout(timer);
+      if (controller) { controller.abort(); }
+      if (root._stopAiProgress === stop) { root._stopAiProgress = null; }
+    }
+    async function poll() {
+      if (!active()) { stop(); return; }
+      controller = new window.AbortController();
+      var timeout = window.setTimeout(function () { controller.abort(); }, 4000);
+      try {
+        var response = await fetch('/dtsc/ai_assistant/progress?request_id=' + encodeURIComponent(requestId),
+          {cache: 'no-store', signal: controller.signal});
+        if (!response.ok) { throw new Error('unavailable'); }
+        var payload = await response.json();
+        setState(Object.prototype.hasOwnProperty.call(labels, payload.state) ? payload.state : 'unavailable');
+        setMilestones(payload.milestones);
+      } catch (error) {
+        setState('unavailable');
+      } finally {
+        window.clearTimeout(timeout);
+        if (active() && lastState !== 'done' && lastState !== 'failed') { timer = window.setTimeout(poll, 1000); }
+      }
+    }
+    root._stopAiProgress = stop;
+    timer = window.setTimeout(poll, 750);
+    return stop;
+  }
+
   async function query(root, question, cursor, queryRequest) {
     if (root.dataset.queryPending === '1' || root.dataset.resetPending === '1') { return; }
     var version = root.dataset.conversationVersion;
@@ -767,6 +872,7 @@
     var debug = root.classList.contains('is-ai-debug');
 
     var pendingMessage;
+    var stopProgress = function () {};
     submit.disabled = true;
     try {
       if (!await loadHistory(root) || version !== root.dataset.conversationVersion) { return; }
@@ -774,7 +880,7 @@
       pendingMessage = appendChatMessage(
         root,
         'assistant',
-        '<p class="o_dtsc_ai_pending_text">AI 正在回覆...</p>',
+        pendingMarkup(),
         { pending: true }
       );
       status.textContent = '';
@@ -782,13 +888,16 @@
       context.innerHTML = '';
       runtime.innerHTML = '';
       results.innerHTML = '';
+      var progressId = cursor || queryRequest ? '' : progressRequestId();
+      stopProgress = startProgress(root, pendingMessage, progressId, version);
       var response = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ question: question, debug: debug, cursor: cursor || null,
-          query_request: queryRequest || null, thread_id: Number(root.dataset.threadId || 0) }),
+          query_request: queryRequest || null, thread_id: Number(root.dataset.threadId || 0), progress_id: progressId }),
       });
       var payload = await response.json();
+      stopProgress();
       if (version !== root.dataset.conversationVersion) { return; }
       if (payload.conversation_changed) {
         root.dataset.historyLoaded = '0';
@@ -820,10 +929,11 @@
       if (version !== root.dataset.conversationVersion) { return; }
       updateChatMessage(
         pendingMessage,
-        `<p>${escapeHtml('查詢失敗：' + error.message)}</p>`,
+        '<p>暫時無法取得回覆，請稍後重新整理確認對話。</p>',
         { error: true }
       );
     } finally {
+      stopProgress();
       if (version === root.dataset.conversationVersion) {
         root.dataset.queryPending = '0';
         submit.disabled = false;

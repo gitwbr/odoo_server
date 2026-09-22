@@ -329,19 +329,121 @@
   color: #173f49;
 }
 
+.o_dtsc_ai_message_pending {
+  width: 100%;
+}
+
 .o_dtsc_ai_message_pending .o_dtsc_ai_message_body {
-  color: #52707a;
-  font-style: italic;
+  width: 340px;
+  max-width: 92%;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid #dcecea;
+  background: linear-gradient(125deg, #fff 35%, #f0faf8);
+  box-shadow: 0 3px 14px rgba(26, 89, 84, .045);
+  font-style: normal;
 }
 
-.o_dtsc_ai_pending_text {
-  margin: 0;
-  animation: o-dtsc-ai-pending-pulse 1.2s ease-in-out infinite;
+.o_dtsc_ai_activity {
+  padding: 14px 16px 12px;
+  color: #214d50;
 }
 
-@keyframes o-dtsc-ai-pending-pulse {
-  0%, 100% { opacity: .55; }
-  50% { opacity: 1; }
+.o_dtsc_ai_activity_top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.o_dtsc_ai_activity_badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #507d79;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .08em;
+}
+
+.o_dtsc_ai_activity_badge i {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #4fae9c;
+  box-shadow: 0 0 0 3px #e7f5f0;
+}
+
+.o_dtsc_ai_activity_time {
+  color: #7b9595;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: .03em;
+}
+
+.o_dtsc_ai_activity_main {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.o_dtsc_ai_activity_symbol {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  flex: 0 0 38px;
+  border-radius: 50%;
+  background: #e7f5f1;
+  color: #247f75;
+}
+
+.o_dtsc_ai_activity_symbol::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  border: 1px solid transparent;
+  border-top-color: #66b7a7;
+  border-right-color: #cce7df;
+  animation: o-dtsc-ai-orbit 3s linear infinite;
+}
+
+.o_dtsc_ai_activity_symbol svg { width: 22px; height: 22px; }
+.o_dtsc_ai_activity_copy { min-width: 0; }
+.o_dtsc_ai_activity_title { font-size: 13px; font-weight: 600; line-height: 1.6; }
+.o_dtsc_ai_activity_detail { margin-top: 3px; font-size: 11px; line-height: 1.65; color: #78918f; }
+
+.o_dtsc_ai_activity_wave {
+  display: flex;
+  height: 10px;
+  align-items: center;
+  gap: 3px;
+  margin: 13px 0 0 50px;
+}
+
+.o_dtsc_ai_activity_wave i {
+  display: block;
+  width: 3px;
+  height: 4px;
+  border-radius: 3px;
+  background: #91c6b9;
+  animation: o-dtsc-ai-wave 1.4s ease-in-out infinite;
+}
+.o_dtsc_ai_activity_wave i:nth-child(2) { animation-delay: .12s; }
+.o_dtsc_ai_activity_wave i:nth-child(3) { animation-delay: .24s; }
+.o_dtsc_ai_activity_wave i:nth-child(4) { animation-delay: .36s; }
+.o_dtsc_ai_activity_wave i:nth-child(5) { animation-delay: .48s; }
+.o_dtsc_ai_activity[data-state="unavailable"] .o_dtsc_ai_activity_wave i,
+.o_dtsc_ai_activity[data-state="failed"] .o_dtsc_ai_activity_wave i { animation: none; background: #b5c2bf; }
+.o_dtsc_ai_activity[data-state="unavailable"] .o_dtsc_ai_activity_symbol::after,
+.o_dtsc_ai_activity[data-state="failed"] .o_dtsc_ai_activity_symbol::after { animation: none; border-color: #d4e4df; }
+
+@keyframes o-dtsc-ai-orbit { to { transform: rotate(360deg); } }
+@keyframes o-dtsc-ai-wave { 0%, 70%, 100% { transform: scaleY(1); opacity: .55; } 35% { transform: scaleY(2.2); opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  .o_dtsc_ai_activity_symbol::after, .o_dtsc_ai_activity_wave i { animation: none; }
 }
 
 .o_dtsc_ai_message .o_dtsc_ai_answer_box,
@@ -844,4 +946,30 @@ a.o_dtsc_ai_order_no:hover {
   width: auto;
   max-width: 100%;
   margin: 0 .35rem .35rem 0;
+}
+
+/* Completed events stay visible while the current action changes. */
+.o_dtsc_ai_activity_steps {
+  list-style: none;
+  padding: 11px 0 0;
+  margin: 14px 0 0;
+  border-top: 1px solid #e2eeea;
+}
+.o_dtsc_ai_activity_steps[hidden] { display: none; }
+.o_dtsc_ai_activity_steps li {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  color: #6a8780;
+  font-size: 11px;
+  line-height: 1.7;
+  padding: 3px 0;
+}
+.o_dtsc_ai_step_check { color: #438e7c; font-size: 12px; }
+.o_dtsc_ai_step_count {
+  margin-left: auto;
+  flex-shrink: 0;
+  color: #809b92;
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
 }

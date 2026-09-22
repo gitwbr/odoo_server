@@ -40,6 +40,8 @@ class ExecutionPolicy(BaseModel):
 
 
 class AgentRunRequest(BaseModel):
+    progress_id: str = Field(default='', pattern=r'^(?:[0-9a-f]{64})?$', max_length=64)
+    progress_token: str = Field(default='', pattern=r'^(?:[0-9a-f]{64})?$', max_length=64)
     execution_policy: ExecutionPolicy = Field(default_factory=ExecutionPolicy)
     run_timeout: float = Field(default=180.0, gt=0, le=300)
     message: str

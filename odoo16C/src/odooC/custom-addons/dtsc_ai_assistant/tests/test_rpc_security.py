@@ -390,6 +390,7 @@ class RpcSecurityTest(unittest.TestCase):
         }
         class Env(dict):
             uid = 7
+            context = {}
         runner = Mock()
         runner.env = Env({'dtsc.ai.gateway.config': config})
         http = Mock()

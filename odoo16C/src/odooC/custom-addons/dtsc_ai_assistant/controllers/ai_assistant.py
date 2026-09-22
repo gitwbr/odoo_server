@@ -32,6 +32,14 @@ class DtscAiAssistantController(http.Controller):
         response.headers['Cache-Control'] = 'no-store'
         return response
 
+    @http.route('/dtsc/ai_assistant/progress', type='http', auth='user', methods=['GET'])
+    def ai_assistant_progress(self, request_id=None, **kwargs):
+        if not self._is_allowed():
+            return self._access_denied_response()
+        response = self._json_response(request.env['dtsc.ai.gateway.config']._read_progress(request_id))
+        response.headers['Cache-Control'] = 'no-store'
+        return response
+
     @http.route('/dtsc/ai_assistant', type='http', auth='user', website=True)
     def ai_assistant_page(self, **kwargs):
         if not self._is_allowed():
@@ -69,7 +77,10 @@ class DtscAiAssistantController(http.Controller):
                 request.session.get('partner_id') or '',
                 question[:160],
             )
-            result = request.env['dtsc.ai.assistant.service'].answer_question(
+            service = request.env['dtsc.ai.assistant.service']
+            if payload.get('progress_id'):
+                service = service.with_context(**request.env['dtsc.ai.gateway.config']._progress_identity(payload['progress_id']))
+            result = service.answer_question(
                 question,
                 custom_partner_id=None,
                 show_debug=self._show_debug(payload),

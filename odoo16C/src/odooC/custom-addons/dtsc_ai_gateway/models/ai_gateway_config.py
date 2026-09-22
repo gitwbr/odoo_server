@@ -1,5 +1,12 @@
 # -*- coding: utf-8 -*-
 
+import hashlib
+import hmac
+import json
+import re
+from urllib.parse import urlsplit, urlunsplit
+import requests
+
 from odoo import models
 
 
@@ -44,6 +51,47 @@ class AiGatewayConfig(models.AbstractModel):
                 or 'http://odoo:8069'
             ),
         }
+
+    def _progress_identity(self, request_id):
+        if not isinstance(request_id, str) or not re.fullmatch(r'[0-9a-f]{32}', request_id):
+            return {}
+        secret = self.env['ir.config_parameter'].sudo().get_param('database.secret')
+        if not secret:
+            return {}
+        identity = json.dumps([self.env.cr.dbname, self.env.uid, request_id]).encode()
+        return {'ai_progress_id': hashlib.sha256(identity).hexdigest(),
+                'ai_progress_token': hmac.new(secret.encode(), identity, hashlib.sha256).hexdigest()}
+
+    def _read_progress(self, request_id):
+        identity = self._progress_identity(request_id)
+        if not identity:
+            return {'state': 'unavailable'}
+        url = urlsplit(self._get_runtime_config()['service_url'])
+        if not url.path.rstrip('/').endswith('/agent/run'):
+            return {'state': 'unavailable'}
+        path = url.path.rstrip('/')[:-4] + '/progress/' + identity['ai_progress_id']
+        try:
+            response = requests.get(urlunsplit((url.scheme, url.netloc, path, '', '')),
+                headers={'X-DTSC-AI-Progress-Token': identity['ai_progress_token']},
+                timeout=(1, 2), allow_redirects=False)
+            if response.status_code == 404:
+                return {'state': 'pending'}
+            response.raise_for_status()
+            payload = response.json()
+            state = payload.get('state')
+            if state in ('thinking', 'querying', 'checking', 'correcting', 'finishing', 'done', 'failed'):
+                milestones = []
+                items = payload.get('milestones')
+                for item in items[-3:] if isinstance(items, list) else []:
+                    if not isinstance(item, dict):
+                        continue
+                    kind, count = item.get('kind'), item.get('count')
+                    if kind in ('source_checked', 'schema_read', 'data_queried', 'answer_checked') and type(count) is int and 1 <= count <= 40:
+                        milestones.append({'kind': kind, 'count': count})
+                return {'state': state, 'milestones': milestones}
+        except (requests.RequestException, ValueError, TypeError, AttributeError):
+            pass
+        return {'state': 'unavailable'}
 
     def is_configured(self):
         config = self._get_runtime_config()

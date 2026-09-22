@@ -62,6 +62,8 @@ class AiGatewayRunner(models.AbstractModel):
             (config.get('timeout') or 30.0) * _RUNTIME_POLICY['request_multiplier'],
             _RUNTIME_POLICY['maximum_turn_seconds']))
         request_payload = {
+            'progress_id': self.env.context.get('ai_progress_id', ''),
+            'progress_token': self.env.context.get('ai_progress_token', ''),
             'run_timeout': run_timeout,
             'execution_policy': _RUNTIME_POLICY['execution'],
             'message': message or '',

@@ -98,8 +98,8 @@ class RunnerTest(unittest.TestCase):
             [data()], args_schema=Args)
         self.assertEqual(result['status'], 'success', result)
         self.assertEqual(len(calls), 1)
-        self.assertEqual(result['audit_events'][0]['errors'][0]['path'], ['measures', 0, 'alias'])
-        self.assertIn('pattern', result['audit_events'][0]['errors'][0]['constraints'])
+        self.assertEqual(next(e for e in result['audit_events'] if e['event'] == 'invalid_tool_arguments')['errors'][0]['path'], ['measures', 0, 'alias'])
+        self.assertIn('pattern', next(e for e in result['audit_events'] if e['event'] == 'invalid_tool_arguments')['errors'][0]['constraints'])
 
     def test_failed_duplicate_repeats_concrete_error_and_recovers(self):
         invalid = {'ok': False, 'query_type': 'universal_error', 'error': {
@@ -131,7 +131,7 @@ class RunnerTest(unittest.TestCase):
             [bad, query(), finish(kind='query', ids=[1])], [data()])
         self.assertEqual(result['status'], 'success', result)
         self.assertEqual(len(calls), 1)
-        event = result['audit_events'][0]
+        event = next(e for e in result['audit_events'] if e['event'] == 'invalid_tool_arguments')
         self.assertEqual(event['errors'], [{'path': ['model'], 'type': 'string_type'}])
         self.assertNotIn('secret', json.dumps(event))
         corrections = [m['content'] for m in planner.ainvoke.call_args.args[0]
@@ -142,7 +142,7 @@ class RunnerTest(unittest.TestCase):
     def payload(self,**kwargs):
         return AgentRunRequest(message=kwargs.pop('message', '25年应收总共多少钱'),config={'model':'test','api_key':'test'},**kwargs)
 
-    def run_steps(self, steps, observations=(), final=None, payload=None, args_schema=None):
+    def run_steps(self, steps, observations=(), final=None, payload=None, args_schema=None, progress=None):
         planner=SimpleNamespace(ainvoke=AsyncMock(side_effect=steps))
         finalizer=SimpleNamespace(ainvoke=AsyncMock(return_value=final or done('failure')))
         model=SimpleNamespace(with_structured_output=lambda schema,**kwargs: planner if issubclass(schema, AgentStep) else finalizer)
@@ -158,8 +158,22 @@ class RunnerTest(unittest.TestCase):
                 return json.dumps(dict(result,_evidence_id=len(calls)))
             return [StructuredTool.from_function(coroutine=invoke,name='universal_odoo_query',description='test',args_schema=args_schema or Args)]
         with patch('app.agents.runner.create_chat_model',return_value=model),patch('app.agents.runner.build_callback_tools',side_effect=build):
-            result=asyncio.run(run_langchain_agent(payload or self.payload()))
+            result=asyncio.run(run_langchain_agent(payload or self.payload(), progress=progress))
         return result,executed,planner,finalizer
+
+    def test_progress_reflects_actual_tool_repair(self):
+        events = []
+        result, calls, _, _ = self.run_steps(
+            [query(), query(model='custom.other'), finish(kind='query', ids=[2])],
+            [error(), data()], progress=events.append)
+        self.assertEqual(result['status'], 'success')
+        self.assertEqual(events, ['thinking', 'querying', 'correcting', 'querying', 'data_queried', 'thinking', 'checking', 'answer_checked', 'finishing'])
+
+    def test_progress_callback_cannot_break_answer(self):
+        def broken(state):
+            raise RuntimeError('unavailable')
+        result, _, _, _ = self.run_steps([finish()], progress=broken)
+        self.assertEqual(result['status'], 'success')
 
     def test_operation_used_as_tool_name_recovers(self):
         bad = AgentStep(action='tool', tool_name='discover', arguments_json='{}')
@@ -167,7 +181,7 @@ class RunnerTest(unittest.TestCase):
             [bad, query(), finish(kind='query', ids=[1])], [data()])
         self.assertEqual(result['status'], 'success', result)
         self.assertEqual(len(calls), 1)
-        self.assertEqual(result['audit_events'][0]['event'], 'invalid_planner_output')
+        self.assertTrue(any(e['event'] == 'invalid_planner_output' for e in result['audit_events']))
         corrections = [m['content'] for m in planner.ainvoke.call_args.args[0]
                        if m['role'] == 'user' and '步驟格式校驗失敗' in m['content']]
         self.assertIn('universal_odoo_query', corrections[0])
@@ -192,7 +206,7 @@ class RunnerTest(unittest.TestCase):
             [query('search'),finish(kind='query',answer='總額 2200000',ids=[1]),
              query(),finish(kind='query',answer='完整彙總',ids=[2])],[page,data()])
         self.assertEqual(result['status'],'success',result)
-        self.assertEqual(result['audit_events'][0]['error'],'incomplete_query_evidence')
+        self.assertEqual(next(e for e in result['audit_events'] if e['event'] == 'completion_validation')['error'],'incomplete_query_evidence')
         self.assertEqual(result['answer'],'完整彙總')
         self.assertEqual(len(result['display_tool_results']),1)
         self.assertEqual(result['display_tool_results'][0]['result']['query_type'],'universal_aggregate')
@@ -453,7 +467,7 @@ class RunnerTest(unittest.TestCase):
         self.assertEqual(result['status'],'success',result)
         self.assertEqual([call['operation'] for call in calls], ['discover','search'])
         self.assertIn('候選客戶', result['answer'])
-        self.assertEqual(result['audit_events'][0]['event'], 'invalid_planner_output')
+        self.assertTrue(any(e['event'] == 'invalid_planner_output' for e in result['audit_events']))
 
     def test_numeric_choice_uses_previous_candidate_id_and_original_request(self):
         context = {'query_type':'universal_selection','model':'custom.contact',
