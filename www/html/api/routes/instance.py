@@ -1,5 +1,6 @@
 from flask import Blueprint, jsonify, request, session
 from models.instance import Instance
+from utils.extra_addons import ensure_extra_addons_installed
 import logging
 import subprocess
 
@@ -168,12 +169,28 @@ def restart_instance(instance_id):
             return error
 
         web_container, db_container = _instance_container_names(instance_id)
+
+        # 依 odoo.conf 的 extra_addons 自動安裝尚未安裝的擴展模組
+        extra_result = ensure_extra_addons_installed(instance_id)
+        if extra_result.get('error'):
+            # 儘量把 Web 拉起來，避免安裝失敗後實例一直停著
+            subprocess.run(['docker', 'start', web_container],
+                           capture_output=True, text=True)
+            return jsonify({
+                'error': f"extra_addons 處理失敗: {extra_result['error']}",
+                'extra_addons': extra_result,
+            }), 500
+
         logger.debug(f'開始重啟 Web 容器: container={web_container}')
 
         web_result = subprocess.run(['docker', 'restart', web_container],
                                   capture_output=True,
                                   text=True)
 
+        if web_result.returncode != 0:
+            # 若先前為安裝而 stop，restart 失敗時再嘗試 start
+            web_result = subprocess.run(['docker', 'start', web_container],
+                                        capture_output=True, text=True)
         if web_result.returncode != 0:
             logger.error(f'Web容器重啟失敗: {web_result.stderr}')
             return jsonify({'error': f'Web容器重啟失敗: {web_result.stderr}'}), 500
@@ -195,7 +212,8 @@ def restart_instance(instance_id):
             'message': '重啟指令已發送',
             'details': {
                 'web_container': web_container,
-                'db_container': db_container
+                'db_container': db_container,
+                'extra_addons': extra_result,
             }
         }), 200
 
@@ -274,6 +292,16 @@ def start_instance(instance_id):
             logger.error(f'DB容器啟動失敗: {db_result.stderr}')
             return jsonify({'error': f'DB容器啟動失敗: {db_result.stderr}'}), 500
 
+        # 啟動前同樣處理 extra_addons（暫停後改 conf 再開機也能裝）
+        extra_result = ensure_extra_addons_installed(instance_id)
+        if extra_result.get('error'):
+            subprocess.run(['docker', 'start', web_container],
+                           capture_output=True, text=True)
+            return jsonify({
+                'error': f"extra_addons 處理失敗: {extra_result['error']}",
+                'extra_addons': extra_result,
+            }), 500
+
         web_result = subprocess.run(['docker', 'start', web_container],
                                     capture_output=True, text=True)
         if web_result.returncode != 0:
@@ -285,7 +313,8 @@ def start_instance(instance_id):
             'message': '實例已啟動',
             'details': {
                 'web_container': web_container,
-                'db_container': db_container
+                'db_container': db_container,
+                'extra_addons': extra_result,
             }
         }), 200
 

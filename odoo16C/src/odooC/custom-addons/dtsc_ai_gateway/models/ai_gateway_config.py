@@ -80,15 +80,23 @@ class AiGatewayConfig(models.AbstractModel):
             payload = response.json()
             state = payload.get('state')
             if state in ('thinking', 'querying', 'checking', 'correcting', 'finishing', 'done', 'failed'):
+                def safe_subject(value):
+                    return value if isinstance(value, str) and re.fullmatch(r'[\w ()（）/&·\-]{1,48}', value) else ''
                 milestones = []
                 items = payload.get('milestones')
                 for item in items[-3:] if isinstance(items, list) else []:
                     if not isinstance(item, dict):
                         continue
-                    kind, count = item.get('kind'), item.get('count')
-                    if kind in ('source_checked', 'schema_read', 'data_queried', 'answer_checked') and type(count) is int and 1 <= count <= 40:
-                        milestones.append({'kind': kind, 'count': count})
-                return {'state': state, 'milestones': milestones}
+                    kind = item.get('kind')
+                    if kind in ('data_ready', 'data_empty', 'summary_ready', 'partial_data', 'partial_summary', 'answer_checked'):
+                        milestones.append({'kind': kind, 'subject': safe_subject(item.get('subject'))})
+                action = payload.get('action')
+                seconds = payload.get('phase_seconds')
+                return {'state': state, 'milestones': milestones,
+                    'subject': safe_subject(payload.get('subject')),
+                    'action': action if action in ('search', 'aggregate', 'compare', 'prepare') else '',
+                    'active': payload.get('active') is True and state not in ('done', 'failed'),
+                    'phase_seconds': min(600, max(0, seconds)) if type(seconds) is int else 0}
         except (requests.RequestException, ValueError, TypeError, AttributeError):
             pass
         return {'state': 'unavailable'}

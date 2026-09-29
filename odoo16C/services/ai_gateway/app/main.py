@@ -23,9 +23,11 @@ async def run_agent(payload: AgentRunRequest):
     def emit(state):
         if tracked:
             progress_store.update(payload.progress_id, state)
+    finished = False
     try:
         result = await run_langchain_agent(payload, progress=emit)
         emit('done' if result.get('status') == 'success' else 'failed')
+        finished = True
         return result
     except Exception as exc:  # pragma: no cover - service guardrail
         emit('failed')
@@ -39,6 +41,10 @@ async def run_agent(payload: AgentRunRequest):
             "duration_ms": 0,
             "error_message": str(exc),
         }
+
+    finally:
+        if not finished:
+            emit('failed')
 
 
 @app.get('/v1/agent/progress/{run_id}')

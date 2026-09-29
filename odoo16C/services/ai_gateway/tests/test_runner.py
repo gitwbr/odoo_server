@@ -167,7 +167,9 @@ class RunnerTest(unittest.TestCase):
             [query(), query(model='custom.other'), finish(kind='query', ids=[2])],
             [error(), data()], progress=events.append)
         self.assertEqual(result['status'], 'success')
-        self.assertEqual(events, ['thinking', 'querying', 'correcting', 'querying', 'data_queried', 'thinking', 'checking', 'answer_checked', 'finishing'])
+        self.assertEqual(events, ['thinking', {'state': 'querying', 'action': 'aggregate', 'subject': ''}, 'correcting',
+            {'state': 'querying', 'action': 'aggregate', 'subject': ''},
+            {'kind': 'summary_ready', 'subject': ''}, 'thinking', 'checking', 'answer_checked', 'finishing'])
 
     def test_progress_callback_cannot_break_answer(self):
         def broken(state):

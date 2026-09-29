@@ -788,38 +788,79 @@
       unavailable: ['仍在等待回覆', '暫時無法更新進度，請稍候'],
     };
     var stopped = false, timer, controller;
-    var started = Date.now(), lastState = 'pending', lastMilestones = '';
-    var completedLabels = {source_checked: '已完成資料來源檢索', schema_read: '已讀取資料結構說明',
-      data_queried: '已完成資料查詢', answer_checked: '已完成回覆校驗'};
+    var started = Date.now(), lastState = 'pending', lastMilestones = '', lastDisplay = '';
+    var completedLabels = {
+      data_ready: function (name) { return '已取得' + name + '結果'; },
+      data_empty: function (name) { return name + '查詢未找到匹配記錄'; },
+      summary_ready: function (name) { return '已取得' + name + '統計結果'; },
+      partial_data: function (name) { return '已取得部分' + name + '結果'; },
+      partial_summary: function (name) { return '已取得部分' + name + '統計結果'; },
+      answer_checked: function () { return '已核對回覆依據'; },
+    };
+    function safeSubject(value) {
+      return typeof value === 'string' && /^[\p{L}\p{N}_ ()（）/&·\-]{1,48}$/u.test(value) ? value : '';
+    }
+    function safeMilestones(items) {
+      if (!Array.isArray(items)) { return []; }
+      var seen = {};
+      return items.slice(-3).filter(function (item) {
+        if (!item || !Object.prototype.hasOwnProperty.call(completedLabels, item.kind)) { return false; }
+        var slot = item.kind === 'answer_checked' ? 'answer' : 'subject:' + safeSubject(item.subject);
+        if (seen[slot]) { return false; }
+        seen[slot] = true; return true;
+      }).map(function (item) { return {kind: item.kind, subject: safeSubject(item.subject)}; });
+    }
     function setMilestones(items) {
       if (!active() || !Array.isArray(items)) { return; }
       var list = message.querySelector('.o_dtsc_ai_activity_steps');
       if (!list) { return; }
-      var seen = {};
-      var safe = items.slice(-3).filter(function (item) {
-        if (!item || !Object.prototype.hasOwnProperty.call(completedLabels, item.kind) || seen[item.kind]
-            || !Number.isInteger(item.count) || item.count < 1 || item.count > 40) { return false; }
-        seen[item.kind] = true; return true;
-      });
-      var signature = JSON.stringify(safe.map(function (item) { return [item.kind, item.count]; }));
+      var safe = safeMilestones(items);
+      var signature = JSON.stringify(safe);
       if (signature === lastMilestones) { return; }
       lastMilestones = signature;
       list.hidden = safe.length === 0;
       list.innerHTML = safe.map(function (item) {
-        return '<li><span class="o_dtsc_ai_step_check" aria-hidden="true">✓</span><span>'
-          + completedLabels[item.kind] + '</span>'
-          + (item.count > 1 ? '<span class="o_dtsc_ai_step_count">' + item.count + ' 次</span>' : '') + '</li>';
+        var name = item.subject || '資料';
+        var partial = item.kind === 'partial_data' || item.kind === 'partial_summary';
+        // A partial result is progress, not a completed overall query.
+        var icon = partial || item.kind === 'data_empty' ? '·' : '✓';
+        return '<li><span class="o_dtsc_ai_step_check" aria-hidden="true">' + icon + '</span><span>'
+          + escapeHtml(completedLabels[item.kind](name)) + '</span></li>';
       }).join('');
     }
     function active() { return !stopped && version === root.dataset.conversationVersion; }
-    function setState(state) {
-      if (!active() || state === lastState) { return; }
+    function setState(state, payload) {
+      if (!active()) { return; }
       var card = message.querySelector('.o_dtsc_ai_activity');
       if (!card) { return; }
+      payload = payload || {};
+      var title = labels[state][0], detail = labels[state][1];
+      var name = safeSubject(payload.subject);
+      var subject = name || '相關資料';
+      if (state === 'querying') {
+        var verbs = {search: '正在查找', aggregate: '正在彙總', compare: '正在分析', prepare: '正在確認查詢方式'};
+        title = Object.prototype.hasOwnProperty.call(verbs, payload.action)
+          ? verbs[payload.action] + (payload.action === 'prepare' ? '' : subject) : title;
+        detail = payload.action === 'prepare' ? '確認可查詢的範圍，再取得你需要的資訊' : '按本次查詢條件處理，取得結果後繼續整理';
+      } else if (state === 'thinking') {
+        var results = safeMilestones(payload.milestones).filter(function (item) { return item.kind !== 'answer_checked'; });
+        if (results.length) {
+          var latestSubject = results[results.length - 1].subject;
+          title = latestSubject ? '正在整理' + latestSubject + '結果' : '正在整理查詢結果';
+          detail = '根據已取得的結果，確認是否還需要補充資料';
+        }
+      }
+      if (payload.active === true && Number.isInteger(payload.phase_seconds) && payload.phase_seconds >= 20
+          && state !== 'done' && state !== 'failed') {
+        detail = '這一步等待時間較長，仍在處理中';
+      }
       lastState = state;
+      var signature = JSON.stringify([state, title, detail]);
+      if (signature === lastDisplay) { return; }
+      lastDisplay = signature;
       card.dataset.state = state;
-      card.querySelector('.o_dtsc_ai_activity_title').textContent = labels[state][0];
-      card.querySelector('.o_dtsc_ai_activity_detail').textContent = labels[state][1];
+      card.querySelector('.o_dtsc_ai_activity_title').textContent = title;
+      card.querySelector('.o_dtsc_ai_activity_detail').textContent = detail;
     }
     function renderTime() {
       if (!active()) { stop(); return; }
@@ -844,7 +885,7 @@
           {cache: 'no-store', signal: controller.signal});
         if (!response.ok) { throw new Error('unavailable'); }
         var payload = await response.json();
-        setState(Object.prototype.hasOwnProperty.call(labels, payload.state) ? payload.state : 'unavailable');
+        setState(Object.prototype.hasOwnProperty.call(labels, payload.state) ? payload.state : 'unavailable', payload);
         setMilestones(payload.milestones);
       } catch (error) {
         setState('unavailable');

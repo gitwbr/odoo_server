@@ -28,17 +28,22 @@ class ProgressTest(unittest.TestCase):
 
     def test_payload_is_filtered_and_url_is_server_controlled(self):
         response = Mock(status_code=200)
-        response.json.return_value = {'state': 'querying', 'error': 'SECRET'}
+        response.json.return_value = {'state': 'querying', 'action': 'aggregate', 'subject': '大圖訂單',
+            'active': True, 'phase_seconds': 25, 'error': 'SECRET', 'milestones': [
+                {'kind': 'summary_ready', 'subject': '大圖訂單', 'private': 'SECRET'},
+                {'kind': 'SECRET'}, {'kind': 'data_ready', 'subject': '<script>SECRET</script>'}]}
         with patch('requests.get', return_value=response) as get:
-            self.assertEqual(Config._read_progress(self.config(), 'a' * 32), {'state': 'querying', 'milestones': []})
+            result = Config._read_progress(self.config(), 'a' * 32)
+            self.assertEqual(result, {'state': 'querying', 'action': 'aggregate', 'subject': '大圖訂單',
+                'active': True, 'phase_seconds': 25, 'milestones': [
+                    {'kind': 'summary_ready', 'subject': '大圖訂單'}, {'kind': 'data_ready', 'subject': ''}]})
             self.assertIn('/v1/agent/progress/', get.call_args.args[0])
-            response.json.return_value = {'state': 'querying', 'milestones': [
-                {'kind': 'data_queried', 'count': 2, 'private': 'SECRET'},
-                {'kind': 'SECRET', 'count': 1}, {'kind': 'schema_read', 'count': True}]}
-            self.assertEqual(Config._read_progress(self.config(), 'a' * 32),
-                {'state': 'querying', 'milestones': [{'kind': 'data_queried', 'count': 2}]})
             response.json.return_value = {'state': 'SECRET'}
             self.assertEqual(Config._read_progress(self.config(), 'a' * 32), {'state': 'unavailable'})
+            response.json.return_value = {'state': 'done', 'active': True, 'phase_seconds': 'SECRET'}
+            result = Config._read_progress(self.config(), 'a' * 32)
+            self.assertFalse(result['active'])
+            self.assertEqual(result['phase_seconds'], 0)
 
 
 if __name__ == '__main__':

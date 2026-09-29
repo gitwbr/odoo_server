@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_petty_manager_form_cashflow" model="ir.ui.view">
+        <field name="name">dtsc.pettymanager.form.cashflow</field>
+        <field name="model">dtsc.pettymanager</field>
+        <field name="inherit_id" ref="dtsc.view_petty_manager_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='pettycash_ids']/tree/field[@name='in_cash']" position="after">
+                <field name="cash_bank_id"
+                         attrs="{'required': [('in_cash', '>', 0)]}"
+                         options="{'no_create_edit': True}"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

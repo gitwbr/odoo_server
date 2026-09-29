@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_dtsc_cash_transaction_tree" model="ir.ui.view">
+        <field name="name">dtsc.cash.transaction.tree</field>
+        <field name="model">dtsc.cash.transaction</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="date"/>
+                <field name="name"/>
+                <field name="bank_id"/>
+                <field name="transaction_type"/>
+                <field name="amount" sum="合計"/>
+                <field name="operator_id"/>
+                <field name="move_id"/>
+                <field name="note"/>
+                <field name="state"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_dtsc_cash_transaction_form" model="ir.ui.view">
+        <field name="name">dtsc.cash.transaction.form</field>
+        <field name="model">dtsc.cash.transaction</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_cancel" type="object" string="作廢"
+                            attrs="{'invisible': [('state', '!=', 'done')]}"
+                            confirm="確定作廢此流水？"/>
+                    <field name="state" widget="statusbar"/>
+                </header>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="name" readonly="1"/>
+                            <field name="date"/>
+                            <field name="bank_id"/>
+                            <field name="transaction_type"/>
+                            <field name="amount"/>
+                        </group>
+                        <group>
+                            <field name="operator_id"/>
+                            <field name="move_id" readonly="1"/>
+                            <field name="pettycash_id" readonly="1"/>
+                            <field name="note"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_dtsc_cash_transaction_graph" model="ir.ui.view">
+        <field name="name">dtsc.cash.transaction.graph</field>
+        <field name="model">dtsc.cash.transaction</field>
+        <field name="arch" type="xml">
+            <graph type="bar" sample="1">
+                <field name="date" interval="day"/>
+                <field name="amount" type="measure"/>
+                <field name="transaction_type"/>
+            </graph>
+        </field>
+    </record>
+
+    <record id="view_dtsc_cash_transaction_pivot" model="ir.ui.view">
+        <field name="name">dtsc.cash.transaction.pivot</field>
+        <field name="model">dtsc.cash.transaction</field>
+        <field name="arch" type="xml">
+            <pivot sample="1">
+                <field name="bank_id" type="row"/>
+                <field name="transaction_type" type="col"/>
+                <field name="amount" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="view_dtsc_cash_transaction_search" model="ir.ui.view">
+        <field name="name">dtsc.cash.transaction.search</field>
+        <field name="model">dtsc.cash.transaction</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="bank_id"/>
+                <field name="operator_id"/>
+                <filter string="完成" name="done" domain="[('state','=','done')]"/>
+                <filter string="應收已收" name="receive" domain="[('transaction_type','=','receive')]"/>
+                <filter string="應付已付" name="pay" domain="[('transaction_type','=','pay')]"/>
+                <filter string="零用金預存" name="petty" domain="[('transaction_type','=','petty_in')]"/>
+                <group expand="0" string="分組">
+                    <filter string="銀行" name="group_bank" context="{'group_by': 'bank_id'}"/>
+                    <filter string="類型" name="group_type" context="{'group_by': 'transaction_type'}"/>
+                    <filter string="日期" name="group_date" context="{'group_by': 'date:month'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_dtsc_cash_transaction" model="ir.actions.act_window">
+        <field name="name">金流水帳</field>
+        <field name="res_model">dtsc.cash.transaction</field>
+        <field name="view_mode">tree,form,graph,pivot</field>
+        <field name="context">{'search_default_done': 1}</field>
+    </record>
+</odoo>

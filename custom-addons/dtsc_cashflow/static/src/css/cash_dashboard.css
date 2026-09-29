@@ -1,0 +1,122 @@
+.o_cashflow_dashboard {
+    padding: 16px 20px 28px;
+    background: #f5f7f9;
+    min-height: 100%;
+}
+
+.o_cashflow_dashboard_header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.o_cashflow_dashboard_header h1 {
+    margin: 0;
+    font-size: 22px;
+}
+
+.o_cashflow_dashboard_actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.o_cashflow_filters {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(140px, 1fr));
+    gap: 12px;
+    background: #fff;
+    border: 1px solid #e6e6e6;
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 14px;
+}
+
+.o_cashflow_filters label {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin: 0;
+    font-size: 12px;
+    color: #666;
+}
+
+.o_cashflow_filters select,
+.o_cashflow_filters input {
+    height: 34px;
+    border: 1px solid #d0d5dd;
+    border-radius: 6px;
+    padding: 0 8px;
+    background: #fff;
+}
+
+.o_cashflow_kpi {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(140px, 1fr));
+    gap: 10px;
+    margin-bottom: 16px;
+}
+
+.o_cashflow_kpi_card {
+    background: #fff;
+    border: 1px solid #e6e6e6;
+    border-radius: 8px;
+    padding: 10px 12px;
+}
+
+.o_cashflow_kpi_card span {
+    display: block;
+    font-size: 12px;
+    color: #777;
+}
+
+.o_cashflow_kpi_card strong {
+    font-size: 20px;
+}
+
+.o_cashflow_chart_wrap {
+    position: relative;
+    width: 100%;
+    height: 360px;
+    max-height: 360px;
+    overflow: hidden;
+    box-sizing: border-box;
+    background: #fff;
+    border: 1px solid #e6e6e6;
+    border-radius: 8px;
+    padding: 12px 8px 28px;
+    margin-bottom: 16px;
+}
+
+.o_cashflow_chart_wrap canvas {
+    max-height: 100% !important;
+}
+
+.o_cashflow_table {
+    background: #fff;
+    border: 1px solid #e6e6e6;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.o_cashflow_tx_wrap {
+    max-height: 420px;
+    overflow: auto;
+    background: #fff;
+    border: 1px solid #e6e6e6;
+    border-radius: 8px;
+}
+
+.o_cashflow_loading {
+    padding: 8px 0;
+    color: #666;
+}
+
+@media (max-width: 992px) {
+    .o_cashflow_filters,
+    .o_cashflow_kpi {
+        grid-template-columns: repeat(2, minmax(140px, 1fr));
+    }
+}

@@ -62,3 +62,7 @@ is_open_linebot = False
 is_open_full_checkoutorder = False
 is_open_makein_qrcode = False
 is_pro = False
+
+# 擴展模組自動安裝（逗號分隔）。SaaS 頁面重啟/啟動時，未安裝的會自動 -i。
+# 從列表移除不會自動卸載。示例：extra_addons = dtsc_cashflow
+# extra_addons =

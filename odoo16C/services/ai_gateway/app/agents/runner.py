@@ -9,6 +9,7 @@ from langchain_core.exceptions import OutputParserException
 
 from app.agents.query_protocol import AgentStep, TurnAnswer, PROTOCOL_PROMPT, STEP_PROMPT, CATALOG_RESULTS, DATA_RESULTS, validate_answer, render_answer, incomplete_result, selection_answer, selection_context, detail_evidence_correction
 
+from app.progress import query_activity, completed_query
 from app.providers.factory import create_chat_model, structured_output_method
 from app.tools.callback import build_callback_tools
 
@@ -306,19 +307,15 @@ async def run_langchain_agent(payload, progress=None):
                         '已找到來源就 describe，再查資料；不要重複探索，也不要把重複操作當成使用者缺少條件。'})
                 emit('correcting')
                 continue
-            emit('querying')
+            emit(query_activity(arguments, tool_results) if step.tool_name == 'universal_odoo_query' else 'querying')
             observation = await tool.ainvoke(arguments)
             observation_data = json.loads(observation)
             attempted_requests[attempt_key] = observation_data
             if observation_data.get('ok') is True:
                 successful_requests.add(fingerprint)
-                query_type = observation_data.get('query_type')
-                if query_type in ('universal_discover', 'universal_capabilities', 'universal_metrics'):
-                    emit('source_checked')
-                elif query_type in CATALOG_RESULTS:
-                    emit('schema_read')
-                elif query_type in DATA_RESULTS:
-                    emit('data_queried')
+                completed = completed_query(observation_data, tool_results)
+                if completed:
+                    emit(completed)
                 emit('thinking')
             else:
                 emit('correcting')

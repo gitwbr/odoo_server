@@ -5,11 +5,13 @@
 - [x] 4. Run simulated regression checks and reload only community services.
 
 ## Validation results (latest implementation)
-- Gateway: 63 simulated tests passed, network disabled.
+- Gateway: 66 simulated tests passed, network disabled.
 - Odoo: 90 isolated tests passed, no registry/database/provider calls.
 - Frontend: 8 conversation tests and access/rendering checks passed.
 - Browser: real JS/CSS with mocked status; desktop and 320px viewport, reduced motion and final cleanup passed.
 - Existing test assertions now select audit events by name, preserving the new structured-output audit event.
 - No direct database writes or live model/business tests.
 
-- Completed-step revision: successful-event capture, last-three deduplication/counting, filtering, polling-gap retention and mobile rendering verified with mocks.
+- Completed-step revision: verified business-name capture, latest-three business summaries, filtering, polling-gap retention and mobile rendering verified with mocks.
+
+- Business revision: zero amounts vs zero records, partial results, cancellation/active status, business summaries and browser disconnect fallback verified using mocks.

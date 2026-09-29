@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- 讓「會計」也能進入報表目錄（原僅管理部）；子選單仍各自控權 -->
+    <record id="dtsc.menu_chart_dashboard_root" model="ir.ui.menu">
+        <field name="groups_id" eval="[(4, ref('dtsc.group_dtsc_kj'))]"/>
+    </record>
+
+    <!-- 報表 → 金流：僅大圖「管理部」「會計」 -->
+    <menuitem id="menu_dtsc_cashflow_root"
+              name="金流管理"
+              parent="dtsc.menu_chart_dashboard_root"
+              sequence="200"
+              groups="dtsc.group_dtsc_gly,dtsc.group_dtsc_kj"/>
+
+    <menuitem id="menu_dtsc_cash_dashboard"
+              name="金流看板"
+              parent="menu_dtsc_cashflow_root"
+              action="action_dtsc_cash_dashboard"
+              sequence="10"
+              groups="dtsc.group_dtsc_gly,dtsc.group_dtsc_kj"/>
+
+    <menuitem id="menu_dtsc_cash_bank"
+              name="銀行帳戶"
+              parent="menu_dtsc_cashflow_root"
+              action="action_dtsc_cash_bank"
+              sequence="20"
+              groups="dtsc.group_dtsc_gly,dtsc.group_dtsc_kj"/>
+
+    <menuitem id="menu_dtsc_cash_transaction"
+              name="金流水帳"
+              parent="menu_dtsc_cashflow_root"
+              action="action_dtsc_cash_transaction"
+              sequence="30"
+              groups="dtsc.group_dtsc_gly,dtsc.group_dtsc_kj"/>
+</odoo>
