@@ -1,0 +1,13 @@
+{
+  "version": "2026-09-17.1",
+  "minimum_turn_seconds": 90,
+  "maximum_turn_seconds": 300,
+  "request_multiplier": 6,
+  "connect_seconds": 10,
+  "response_grace_seconds": 15,
+  "execution": {
+    "version": "2026-09-17.1",
+    "correction_attempts": 1,
+    "max_steps": 12
+  }
+}

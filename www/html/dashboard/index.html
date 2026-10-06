@@ -7,6 +7,8 @@
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <link rel="stylesheet" href="/dashboard/css/dashboard.css">
     <script src="/dashboard/js/common.js"></script>
+    <link rel="stylesheet" href="/dashboard/css/ai-controls.css">
+    <script defer src="/dashboard/js/ai-controls.js"></script>
 </head>
 <body>
     <div class="dashboard">
@@ -235,6 +237,7 @@
                                         </div>
                                     </div>
                                 </div>
+                                <div class="saas-ai-controls" data-ai-instance="${instance.id}" data-ai-operable="${instance.status === 1}"></div>
                             </td>
                             <td>${instance.user_id}</td>
                             <td>${instance.username}</td>

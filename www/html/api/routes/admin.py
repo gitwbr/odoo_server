@@ -9,6 +9,7 @@ import re
 import subprocess
 import time
 import requests
+from utils import ai_service
 
 admin_bp = Blueprint('admin', __name__)
 logger = logging.getLogger(__name__)
@@ -43,6 +44,14 @@ def get_all_instances():
 @admin_bp.route('/instance/<int:instance_id>/upgrade', methods=['POST'])
 @require_admin
 def upgrade_instance(instance_id):
+    try:
+        with ai_service.instance_lock(instance_id):
+            return _upgrade_instance(instance_id)
+    except ai_service.InstanceBusy as exc:
+        return jsonify({'error': str(exc)}), 409
+
+
+def _upgrade_instance(instance_id):
     try:
         data = request.get_json()
         target_version = data.get('target_version')
@@ -122,7 +131,9 @@ def upgrade_instance(instance_id):
                 
                 # 重启实例
                 client_name = f'client{instance_id}'
-                subprocess.run(['docker', 'compose', '-f', f'/home/odoo/odoo16/instances/{client_name}/docker-compose.yml', 'restart'])
+                subprocess.run(['docker', 'compose', '-f', f'/home/odoo/odoo16/instances/{client_name}/docker-compose.yml',
+                                'restart', f'db{instance_id}', f'web{instance_id}'], check=True)
+                ai_service.start_gateway(instance_id, restart=True)
                 
                 # 等待服务重启
                 time.sleep(5)

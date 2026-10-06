@@ -1,0 +1,146 @@
+{
+  "version": "2026-09-27.1",
+  "constants": {
+    "_TOOL_NAME": "universal_odoo_query",
+    "_INTERNAL_ACTORS": [
+      "admin",
+      "internal"
+    ],
+    "_DENIED_MODELS": [
+      "dtsc.vatlogin"
+    ],
+    "_DENIED_MODEL_PREFIXES": [
+      "dtsc.ai.assistant.",
+      "dtsc.ai.gateway.",
+      "ir.",
+      "mail.",
+      "bus.",
+      "auth.",
+      "base.",
+      "web.",
+      "res.config",
+      "res.users"
+    ],
+    "_SENSITIVE_FIELD_TERMS": [
+      "password",
+      "passwd",
+      "pwd",
+      "token",
+      "api_key",
+      "apikey",
+      "secret",
+      "credential",
+      "authorization",
+      "密碼",
+      "密码",
+      "金鑰",
+      "金钥",
+      "密鑰",
+      "密钥",
+      "令牌",
+      "憑證",
+      "凭证"
+    ],
+    "_RELATION_TYPES": [
+      "many2many",
+      "many2one",
+      "one2many"
+    ],
+    "_RETURNABLE_TYPES": [
+      "boolean",
+      "char",
+      "date",
+      "datetime",
+      "float",
+      "integer",
+      "many2one",
+      "monetary",
+      "selection",
+      "text"
+    ],
+    "_NUMERIC_TYPES": [
+      "float",
+      "integer",
+      "monetary"
+    ],
+    "_DATE_GRANULARITIES": [
+      "day",
+      "month",
+      "quarter",
+      "week",
+      "year"
+    ],
+    "_FILTER_OPERATORS": {
+      "=": "eq",
+      "eq": "eq",
+      "!=": "ne",
+      "<>": "ne",
+      "ne": "ne",
+      "contains": "contains",
+      "ilike": "contains",
+      "not_contains": "not_contains",
+      "not ilike": "not_contains",
+      "in": "in",
+      "not_in": "not_in",
+      "not in": "not_in",
+      ">": "gt",
+      "gt": "gt",
+      ">=": "gte",
+      "gte": "gte",
+      "<": "lt",
+      "lt": "lt",
+      "<=": "lte",
+      "lte": "lte",
+      "is_empty": "is_empty",
+      "is_not_empty": "is_not_empty",
+      "between": "between",
+      "date_range": "between"
+    },
+    "_AGGREGATES": [
+      "avg",
+      "count",
+      "max",
+      "min",
+      "sum"
+    ],
+    "_DEFAULT_SEARCH_LIMIT": 20,
+    "_MAX_SEARCH_LIMIT": 100,
+    "_DEFAULT_GROUP_LIMIT": 20,
+    "_MAX_GROUP_LIMIT": 100,
+    "_MAX_DISCOVER_LIMIT": 50,
+    "_MAX_FIELDS": 20,
+    "_MAX_DESCRIBE_FIELDS": 250,
+    "_MAX_FILTERS": 20,
+    "_MAX_ORDER_FIELDS": 3,
+    "_MAX_GROUP_FIELDS": 3,
+    "_MAX_MEASURES": 5,
+    "_MAX_IN_VALUES": 100,
+    "_MAX_RESPONSE_CHARS": 120000,
+    "_MAX_TEXT_CHARS": 1500,
+    "_METRIC_VERSION": "2026-09-27.1",
+    "_MAX_RELATION_RECORDS": 5000,
+    "_CURSOR_TTL": 900,
+    "_DISCOVERY_DEPTH": 4,
+    "_MAX_CATALOG_MODELS": 500,
+    "_MAX_OFFSET": 5000,
+    "_MAX_ANALYSIS_DAYS": 1096,
+    "_MAX_TREND_BUCKETS": 60,
+    "_MAX_CURSOR_CHARS": 16000,
+    "_SEARCH_RESPONSE_CHARS": 85000,
+    "_MAX_PROVENANCE_CHARS": 4000,
+    "_MAX_CONDITION_DEPTH": 3,
+    "_MAX_SET_SOURCES": 4,
+    "_MAX_FIELD_PATH_PARTS": 2,
+    "_DENIED_FIELD_TYPES": [
+      "binary",
+      "html"
+    ]
+  },
+  "history": {
+    "context_messages": 12,
+    "context_results": 2,
+    "max_messages": 60,
+    "result_chars": 10000,
+    "max_result_sections": 8
+  }
+}

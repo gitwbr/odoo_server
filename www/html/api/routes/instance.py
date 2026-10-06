@@ -3,9 +3,66 @@ from models.instance import Instance
 from utils.extra_addons import ensure_extra_addons_installed
 import logging
 import subprocess
+from functools import wraps
+from urllib.parse import urlsplit
+from utils import ai_service
 
 logger = logging.getLogger(__name__)
 instance = Blueprint('instance', __name__)
+
+
+def serialized_instance_action(func):
+    @wraps(func)
+    def wrapped(instance_id, *args, **kwargs):
+        _, error = _check_instance_permission(instance_id, '操作')
+        if error:
+            return error
+        try:
+            with ai_service.instance_lock(instance_id):
+                return func(instance_id, *args, **kwargs)
+        except ai_service.InstanceBusy as exc:
+            return jsonify({'error': str(exc)}), 409
+        except ai_service.AiOperationError as exc:
+            return jsonify({'error': str(exc)}), 400
+    return wrapped
+
+
+def _start_ai(instance_id, restart=False):
+    try:
+        ai_service.start_gateway(instance_id, restart=restart)
+        return None
+    except Exception:
+        logger.exception('AI gateway start failed for instance %s', instance_id)
+        return 'Odoo 已啟動，但 AI 服務啟動失敗，請使用「重新載入 AI」重試。'
+
+
+@instance.route('/ai/<int:instance_id>', methods=['GET'])
+def ai_status(instance_id):
+    _, error = _check_instance_permission(instance_id, '查看 AI')
+    if error:
+        return error
+    return jsonify(ai_service.status(instance_id))
+
+
+@instance.route('/ai/<int:instance_id>/<action>', methods=['POST'])
+def ai_action(instance_id, action):
+    info, error = _check_instance_permission(instance_id, '管理 AI')
+    if error:
+        return error
+    origin = request.headers.get('Origin')
+    if request.headers.get('X-SaaS-AI-Action') != '1' or (origin and urlsplit(origin).netloc != request.host):
+        return jsonify({'error': '請從 SaaS 控制台操作 AI。'}), 403
+    if action not in ('enable', 'disable', 'reload'):
+        return jsonify({'error': '不支援的 AI 操作。'}), 400
+    if action != 'disable' and info.status != 1:
+        return jsonify({'error': '請先完成實例開機；過期或建立中的實例不能開啟 AI。'}), 409
+    try:
+        ai_service.submit(instance_id, action)
+        return jsonify({'message': 'AI 操作已開始，進度會自動更新。'}), 202
+    except ai_service.InstanceBusy as exc:
+        return jsonify({'error': str(exc)}), 409
+    except ai_service.AiOperationError as exc:
+        return jsonify({'error': str(exc)}), 400
 
 @instance.route('/create', methods=['POST'])
 def create():
@@ -99,6 +156,7 @@ def list_instances():
         }), 500
 
 @instance.route('/delete/<int:instance_id>', methods=['DELETE'])
+@serialized_instance_action
 def delete_instance(instance_id):
     try:
         # 检查用户是否登录
@@ -139,6 +197,8 @@ def get_instance_status(instance_id):
 
 def _check_instance_permission(instance_id, action_name):
     """校验实例存在且当前用户有权限操作，返回 (instance_info, error_response)"""
+    if not session.get('user_id'):
+        return None, (jsonify({'error': '請先登入。'}), 401)
     instance_info = Instance.get_by_id(instance_id)
     if not instance_info:
         logger.error(f'實例不存在: instance_id={instance_id}')
@@ -160,6 +220,7 @@ def _instance_container_names(instance_id):
 
 
 @instance.route('/restart/<int:instance_id>', methods=['POST'])
+@serialized_instance_action
 def restart_instance(instance_id):
     try:
         logger.debug(f'收到重啟實例請求: instance_id={instance_id}')
@@ -169,6 +230,13 @@ def restart_instance(instance_id):
             return error
 
         web_container, db_container = _instance_container_names(instance_id)
+
+        if instance_info.status != 1:
+            return jsonify({'error': '當前實例狀態不允許重啟。'}), 409
+
+        # Stop Web before restarting DB; never restart DB after Web has become ready.
+        subprocess.run(['docker', 'stop', web_container], check=True, capture_output=True, text=True)
+        subprocess.run(['docker', 'restart', db_container], check=True, capture_output=True, text=True)
 
         # 依 odoo.conf 的 extra_addons 自動安裝尚未安裝的擴展模組
         extra_result = ensure_extra_addons_installed(instance_id)
@@ -181,6 +249,7 @@ def restart_instance(instance_id):
                 'extra_addons': extra_result,
             }), 500
 
+        ai_warning = _start_ai(instance_id, restart=True)
         logger.debug(f'開始重啟 Web 容器: container={web_container}')
 
         web_result = subprocess.run(['docker', 'restart', web_container],
@@ -196,17 +265,6 @@ def restart_instance(instance_id):
             return jsonify({'error': f'Web容器重啟失敗: {web_result.stderr}'}), 500
 
         logger.debug(f'Web容器重啟成功: {web_result.stdout}')
-        logger.debug(f'開始重啟 DB 容器: container={db_container}')
-
-        db_result = subprocess.run(['docker', 'restart', db_container],
-                                 capture_output=True,
-                                 text=True)
-
-        if db_result.returncode != 0:
-            logger.error(f'DB容器重啟失敗: {db_result.stderr}')
-            return jsonify({'error': f'DB容器重啟失敗: {db_result.stderr}'}), 500
-
-        logger.debug(f'DB容器重啟成功: {db_result.stdout}')
         logger.debug(f'實例重啟成功: instance_id={instance_id}')
         return jsonify({
             'message': '重啟指令已發送',
@@ -214,6 +272,7 @@ def restart_instance(instance_id):
                 'web_container': web_container,
                 'db_container': db_container,
                 'extra_addons': extra_result,
+                'ai_warning': ai_warning,
             }
         }), 200
 
@@ -229,6 +288,7 @@ def restart_instance(instance_id):
 
 
 @instance.route('/pause/<int:instance_id>', methods=['POST'])
+@serialized_instance_action
 def pause_instance(instance_id):
     """暂停实例：停止 web 和 db 容器（不删除数据）"""
     try:
@@ -243,6 +303,7 @@ def pause_instance(instance_id):
 
         web_container, db_container = _instance_container_names(instance_id)
 
+        ai_service.stop_gateway(instance_id)
         # 先停 web，再停 db
         web_result = subprocess.run(['docker', 'stop', web_container],
                                     capture_output=True, text=True)
@@ -272,6 +333,7 @@ def pause_instance(instance_id):
 
 
 @instance.route('/start/<int:instance_id>', methods=['POST'])
+@serialized_instance_action
 def start_instance(instance_id):
     """启动已暂停的实例：先启 db，再启 web"""
     try:
@@ -302,6 +364,7 @@ def start_instance(instance_id):
                 'extra_addons': extra_result,
             }), 500
 
+        ai_warning = _start_ai(instance_id)
         web_result = subprocess.run(['docker', 'start', web_container],
                                     capture_output=True, text=True)
         if web_result.returncode != 0:
@@ -315,6 +378,7 @@ def start_instance(instance_id):
                 'web_container': web_container,
                 'db_container': db_container,
                 'extra_addons': extra_result,
+                'ai_warning': ai_warning,
             }
         }), 200
 
@@ -364,6 +428,7 @@ def check_domain():
         }), 500
 
 @instance.route('/restore/<int:instance_id>', methods=['POST'])
+@serialized_instance_action
 def restore_database(instance_id):
     try:
         # 检查用户是否登录

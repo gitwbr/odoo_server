@@ -8,6 +8,7 @@ import stat
 import pwd
 from config import DB_RESTORE, ENABLE_DB_RESTORE
 import time
+from utils import ai_service
 
 logger = logging.getLogger(__name__)
 
@@ -166,6 +167,10 @@ class Instance:
             
             # 先停止 web 容器
             web_name = f'client{instance_id}-web{instance_id}-1'
+            if ai_service.paths(instance_id)['runtime'].exists():
+                ai_service._set_enabled(instance_id, False)
+                ai_service._module_config(instance_id, False)
+                ai_service.stop_gateway(instance_id)
             subprocess.run(['docker', 'stop', web_name], check=True)
             
             # 执行数据库恢复
@@ -475,6 +480,7 @@ networks:
             logger.debug(f"删除实例 {instance_id} 开始...")
             
             success = True  # 标记是否所有操作都成功
+            ai_service.stop_gateway(instance_id, remove=True)
             
             # 停止和删除 web 容器
             logger.debug(f"停止 web 容器: {web_name}")
@@ -502,6 +508,7 @@ networks:
                 logger.error(f"删除 db 容器失败: {result.stderr}")
                 success = False
             
+            ai_service.remove_network(instance_id)
             # 删除实例目录
             instance_dir = f'/home/odoo/odoo16/instances/{client_name}'
             if os.path.exists(instance_dir):
@@ -722,5 +729,3 @@ networks:
         except Exception as e:
             logger.error(f'检查域名失败: {str(e)}')
             raise Exception('检查域名失败')
-
-    

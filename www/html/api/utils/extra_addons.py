@@ -4,6 +4,7 @@ import os
 import re
 import subprocess
 import time
+import shlex
 
 logger = logging.getLogger(__name__)
 
@@ -115,7 +116,7 @@ def _module_state(paths, module_name, db_name, db_user):
     return state or None
 
 
-def _install_modules(paths, modules, db_name):
+def _install_modules(paths, modules, db_name, upgrade=False):
     """
     使用實例同款鏡像一次性 -i。
     先以 root 補齊常見執行期依賴（如 pycryptodome），再切 odoo 用戶安裝，
@@ -131,11 +132,15 @@ def _install_modules(paths, modules, db_name):
     if inspect.returncode == 0 and inspect.stdout.strip():
         image = inspect.stdout.strip()
 
+    if not modules or any(not re.fullmatch(r'[a-zA-Z_][a-zA-Z0-9_]*', name) for name in modules):
+        raise ValueError('Invalid addon name')
     module_csv = ','.join(modules)
+    odoo_command = shlex.join(['odoo', '-c', '/etc/odoo/odoo.conf', '-d', db_name,
+                              '-u' if upgrade else '-i', module_csv, '--stop-after-init',
+                              '--no-http', '--workers=0', '--max-cron-threads=0'])
     script = (
         'pip install -q pycryptodome >/dev/null 2>&1 || true; '
-        f'su -s /bin/bash odoo -c "odoo -c /etc/odoo/odoo.conf -d {db_name} '
-        f'-i {module_csv} --stop-after-init"'
+        'su -s /bin/bash odoo -c ' + shlex.quote(odoo_command)
     )
     run_cmd = [
         'docker', 'run', '--rm',
@@ -156,7 +161,7 @@ def _install_modules(paths, modules, db_name):
     return _run(run_cmd, timeout=INSTALL_TIMEOUT_SEC)
 
 
-def ensure_extra_addons_installed(instance_id):
+def ensure_extra_addons_installed(instance_id, modules=None):
     """
     讀取 odoo.conf 的 extra_addons，對尚未安裝的模組執行安裝。
 
@@ -178,7 +183,7 @@ def ensure_extra_addons_installed(instance_id):
         result['error'] = f'配置文件不存在: {paths["config_path"]}'
         return result
 
-    modules = get_extra_addons(instance_id)
+    modules = list(modules) if modules is not None else get_extra_addons(instance_id)
     result['extra_addons'] = modules
     if not modules:
         logger.debug('實例 %s 未配置 extra_addons，跳過自動安裝', instance_id)
@@ -232,7 +237,9 @@ def ensure_extra_addons_installed(instance_id):
         instance_id, ','.join(to_install), ','.join(already) or '-',
     )
 
-    _stop_web(paths)
+    if not _stop_web(paths):
+        result['error'] = '無法停止 Odoo，已取消模組安裝'
+        return result
 
     install = _install_modules(paths, to_install, db_name)
     if install.returncode != 0:

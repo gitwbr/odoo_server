@@ -1,0 +1,5 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_dtsc_ai_assistant_session_system,dtsc.ai.assistant.session system,model_dtsc_ai_assistant_session,base.group_system,1,0,0,0
+access_dtsc_ai_assistant_thread_system,dtsc.ai.assistant.thread system,model_dtsc_ai_assistant_thread,base.group_system,1,0,0,0
+access_dtsc_ai_assistant_message_system,dtsc.ai.assistant.message system,model_dtsc_ai_assistant_message,base.group_system,1,0,0,0
+access_dtsc_ai_assistant_settings,dtsc.ai.assistant.settings,model_dtsc_ai_assistant_settings,dtsc.group_dtsc_gly,1,1,1,1

@@ -1,0 +1,8 @@
+.saas-ai-controls { margin-top: 8px; min-width: 230px; max-width: 410px; text-align: left; }
+.saas-ai-buttons { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.saas-ai-state { width: 100%; font-size: 12px; color: #64748b; }
+[data-ai-enabled="true"] .saas-ai-state { color: #087c69; }
+.saas-ai-buttons button { padding: 5px 8px; border: 1px solid #cbd5e1; border-radius: 5px; background: #fff; color: #334155; cursor: pointer; font-size: 12px; }
+.saas-ai-buttons button:hover:not(:disabled) { background: #eef8f7; border-color: #089981; }
+.saas-ai-buttons button:disabled { opacity: .45; cursor: default; }
+.saas-ai-message { font-size: 12px; color: #64748b; white-space: normal; overflow-wrap: anywhere; line-height: 1.5; margin-top: 4px; }

@@ -9,6 +9,7 @@ import os
 from pathlib import Path
 from utils.backup_db import backup_database
 from utils.backup_manager_db import backup_manager_database
+from utils import ai_service
 
 def check_expired_instances():
     """检查过期实例的任务"""
@@ -39,7 +40,8 @@ def check_expired_instances():
                             # 超过30天，删除实例
                             try:
                                 instance = Instance.get_by_id(instance_id)
-                                instance.delete()
+                                with ai_service.instance_lock(instance_id):
+                                    instance.delete()
                                 logger.info(f'已删除过期超过30天的实例: {instance_id}')
                             except Exception as e:
                                 logger.error(f'删除过期实例失败: {str(e)}')
@@ -49,8 +51,10 @@ def check_expired_instances():
                                 # 停止容器
                                 web_container = f'client{instance_id}-web{instance_id}-1'
                                 db_container = f'client{instance_id}-db{instance_id}-1'
-                                subprocess.run(['docker', 'stop', web_container], check=True)
-                                subprocess.run(['docker', 'stop', db_container], check=True)
+                                with ai_service.instance_lock(instance_id):
+                                    ai_service.stop_gateway(instance_id)
+                                    subprocess.run(['docker', 'stop', web_container], check=True)
+                                    subprocess.run(['docker', 'stop', db_container], check=True)
                                 
                                 # 更新状态
                                 cur.execute("UPDATE instances SET status = 3 WHERE id = %s", (instance_id,))
