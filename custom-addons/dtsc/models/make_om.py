@@ -178,12 +178,13 @@ class MakeOm(models.Model):
     @api.depends("checkout_id", "checkout_id.customer_id", "checkout_id.customer_id.name", "checkout_id.customer_bianhao")
     def _compute_customer_name(self):
         for record in self:
-            if not record.checkout_id or not record.checkout_id.customer_id:
+            checkout = record.checkout_id
+            if not checkout or not checkout.exists() or not checkout.customer_id:
                 record.customer_name = False
-            elif record.checkout_id.customer_bianhao:
-                record.customer_name = record.checkout_id.customer_id.name + "("+record.checkout_id.customer_bianhao+")"
+            elif checkout.customer_bianhao:
+                record.customer_name = checkout.customer_id.name + "(" + checkout.customer_bianhao + ")"
             else:
-                record.customer_name = record.checkout_id.customer_id.name
+                record.customer_name = checkout.customer_id.name
     
     @api.depends("order_ids.file_name","order_ids.output_material","order_ids.production_size","order_ids.processing_method","order_ids.processing_method_after","order_ids.lengbiao","order_ids.barcode","project_name","factory_comment","factory","install_state","name","user_id","user_id.name","source_name","checkout_id.customer_id.name","checkout_id.customer_bianhao","contact_person","delivery_method","phone","fax")
     def _compute_search_line_name(self):

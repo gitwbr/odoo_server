@@ -1,4 +1,4 @@
-from odoo import models, fields, api
+from odoo import models, fields, api, _
 import math
 import base64
 import requests
@@ -6,6 +6,7 @@ import json
 import hashlib
 import time
 import json
+import re
 from odoo.exceptions import UserError, AccessError
 from odoo.tools.translate import _
 from odoo.tools import config
@@ -16,6 +17,24 @@ import qrcode
 from io import BytesIO
 import logging
 _logger = logging.getLogger(__name__)
+
+
+# 員工假期額度欄位 → (假別, 可用/過期)
+LEAVE_QUOTA_FIELD_MAP = {
+    'tx_days': ('tx', 'available'),
+    'tx_locked': ('tx', 'locked'),
+    'bj_days': ('bj', 'available'),
+    'bj_locked': ('bj', 'locked'),
+    'sj_days': ('sj', 'available'),
+    'sj_locked': ('sj', 'locked'),
+    'slj_days': ('slj', 'available'),
+    'slj_locked': ('slj', 'locked'),
+    'jtzgj_days': ('jtzgj', 'available'),
+    'jtzgj_locked': ('jtzgj', 'locked'),
+    'hj_days': ('hj', 'available'),
+    'saj_days': ('saj', 'available'),
+}
+
 class Department(models.Model):
     _name = "dtsc.department"
     
@@ -111,8 +130,11 @@ class WorkerQRcode(models.Model):
     is_qh = fields.Boolean("請購單簽核")
     is_daka_qh = fields.Boolean("打卡簽核")
     in_company_date = fields.Date("入職日期")
-    out_company_date = fields.Date("離職日期")
-    
+    out_company_date = fields.Date("離職日期") 
+    gender = fields.Selection([
+        ('male', '男'),
+        ('female', '女'),
+    ], string="性別")
     is_zhuguan_crm_sign = fields.Boolean("CRM 簽核主管")
     is_manager_crm_sign = fields.Boolean("CRM 簽核總經理")
     
@@ -120,19 +142,49 @@ class WorkerQRcode(models.Model):
     out_time = fields.Char('下班時間')
     
     tx_locked = fields.Float(string="特休(過期/小時)",default=0)
+    tx_locked_start_date = fields.Date(string="特休過期開始日期")
+    tx_locked_end_date = fields.Date(string="特休過期結束日期")
     tx_days = fields.Float(string="特休(小時)",default=0)
+    tx_start_date = fields.Date(string="特休開始日期")
+    tx_end_date = fields.Date(string="特休結束日期")
     
     bj_locked = fields.Float(string="病假(過期/小時)",default=0)
     bj_days = fields.Float(string="病假(小時)",default=240)
+    bj_start_date = fields.Date(string="病假開始日期")
+    bj_end_date = fields.Date(string="病假結束日期")
     
     sj_locked = fields.Float(string="事假(過期/小時)",default=0)
     sj_days = fields.Float(string="事假(小時)",default=112)
+    sj_start_date = fields.Date(string="事假開始日期")
+    sj_end_date = fields.Date(string="事假結束日期")
     
     slj_locked = fields.Float(string="生理假(過期/小時)",default=0)
-    slj_days = fields.Float(string="生理假(小時)",default=24)
+    slj_days = fields.Float(string="生理假(小時)",default=96)
+    slj_start_date = fields.Date(string="生理假開始日期")
+    slj_end_date = fields.Date(string="生理假結束日期")
     
     jtzgj_locked = fields.Float(string="家庭照顧假(過期/小時)",default=0)
     jtzgj_days = fields.Float(string="家庭照顧假(小時)",default=56)
+    jtzgj_start_date = fields.Date(string="家庭照顧假開始日期")
+    jtzgj_end_date = fields.Date(string="家庭照顧假結束日期") 
+
+    # 婚假 / 喪假：不自動發放，由管理員手動填寫小時與有效期
+    hj_days = fields.Float(string="婚假(小時)", default=0)
+    hj_start_date = fields.Date(string="婚假開始日期")
+    hj_end_date = fields.Date(string="婚假結束日期")
+    saj_days = fields.Float(string="喪假(小時)", default=0)
+    saj_start_date = fields.Date(string="喪假開始日期")
+    saj_end_date = fields.Date(string="喪假結束日期")
+    
+    
+    leave_quota_log_ids = fields.One2many(
+        'dtsc.leavequotalog', 'worker_id', string='假期額度變更記錄'
+    )
+    leave_quota_log_display_ids = fields.Many2many(
+        'dtsc.leavequotalog',
+        compute='_compute_leave_quota_log_display_ids',
+        string='假期額度變更記錄',
+    )
     
     department = fields.Many2one("dtsc.department",string="所屬部門")
     
@@ -147,12 +199,39 @@ class WorkerQRcode(models.Model):
         compute="_compute_non_rsgl_readonly",
     )
 
+    def action_refresh_leave_grants(self):
+        """手動刷新該員工假期分發（缺漏門檻才補發；已發放过的不覆蓋現有額度）。"""
+        Attendance = self.env['dtsc.attendance']
+        for record in self:
+            if not record.in_company_date:
+                raise UserError("請先設定入職日期，再刷新假期。")
+            Attendance._grant_leaves_for_worker(record)
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {
+                'title': '假期刷新完成',
+                'message': '已依目前特休時間表與入職日補發缺漏假期；已發放过的額度不會被覆蓋。',
+                'type': 'success',
+                'sticky': False,
+            },
+        }
+
+
     @api.depends_context('uid')
     def _compute_non_rsgl_readonly(self):
         readonly = not self.env.user.has_group('dtsc.group_dtsc_rsgl')
         for record in self:
             record.non_rsgl_readonly = readonly
     
+    @api.depends('leave_quota_log_ids', 'leave_quota_log_ids.leave_type', 'gender')
+    def _compute_leave_quota_log_display_ids(self):
+        for rec in self:
+            logs = rec.leave_quota_log_ids
+            if rec.gender != 'female':
+                logs = logs.filtered(lambda l: l.leave_type != 'slj')
+            rec.leave_quota_log_display_ids = logs
+            
     @api.depends("user_id")
     def _compute_is_show_signature(self):
         user = self.env.user
@@ -176,8 +255,112 @@ class WorkerQRcode(models.Model):
                     _('您沒有權限修改以下欄位：%s')
                     % ', '.join(sorted(illegal))
                 )
-        return super().write(vals)
-            
+
+        gender_changing = 'gender' in vals
+        old_genders = {rec.id: rec.gender for rec in self} if gender_changing else {}
+        
+        changed_quota = [f for f in LEAVE_QUOTA_FIELD_MAP if f in vals]
+        before_map = {}
+        if changed_quota and not self.env.context.get('skip_leave_quota_log'):
+            for rec in self:
+                before_map[rec.id] = {f: rec[f] for f in changed_quota}
+
+        res = super().write(vals)
+
+        if changed_quota and not self.env.context.get('skip_leave_quota_log'):
+            source = self.env.context.get('leave_quota_source') or 'manual'
+            note = self.env.context.get('leave_quota_note') or False
+            threshold = self.env.context.get('leave_quota_threshold') or False
+            if not threshold:
+                if source == 'manual':
+                    threshold = 'manual'
+                elif source == 'leave':
+                    threshold = 'leave'
+            leave_id = self.env.context.get('leave_quota_leave_id') or False
+            if leave_id and not hasattr(leave_id, 'id'):
+                leave_id = self.env['dtsc.leave'].browse(int(leave_id))
+            Log = self.env['dtsc.leavequotalog']
+            for rec in self:
+                for field_name in changed_quota:
+                    leave_type, balance_kind = LEAVE_QUOTA_FIELD_MAP[field_name]
+                    Log.log_change(
+                        worker=rec,
+                        leave_type=leave_type,
+                        balance_kind=balance_kind,
+                        source=source,
+                        hours_before=before_map[rec.id][field_name],
+                        hours_after=rec[field_name],
+                        threshold_days=threshold,
+                        leave_id=leave_id,
+                        note=note if source != 'manual' else (note or '後台手動修改假期額度'),
+                    )
+        # 性別改為女：單獨補發生理假（不看 year_N，看生理假本身有沒有發過）
+        if gender_changing and not self.env.context.get('skip_slj_gender_grant'):
+            Attendance = self.env['dtsc.attendance']
+            for rec in self:
+                old_g = old_genders.get(rec.id)
+                if rec.gender == 'female' and old_g != 'female':
+                    Attendance._grant_slj_for_worker(rec)
+                elif rec.gender == 'male' and old_g == 'female':
+                    if (rec.slj_days or 0) or rec.slj_start_date or rec.slj_end_date:
+                        rec.with_context(
+                            leave_quota_source='manual',
+                            leave_quota_note='性別改為男，清除生理假額度',
+                            leave_quota_threshold='manual',
+                        ).write({
+                            'slj_days': 0,
+                            'slj_start_date': False,
+                            'slj_end_date': False,
+                        })
+        return res
+
+
+    @api.model
+    def _next_work_id(self):
+        """依 ID 最大的員工編號：保留前綴，數字部分 +1（維持原位數補零）。
+
+        例：0034→0035、A0001→A0002、ASDFA0001→ASDFA0002
+        若最新一筆沒有編號，往前找最近一筆有編號的。
+        """
+        last = self.search([('work_id', '!=', False), ('work_id', '!=', '')], order='id desc', limit=1)
+        if not last or not (last.work_id or '').strip():
+            return '0001'
+
+        raw = last.work_id.strip()
+        m = re.match(r'^(.*?)(\d+)$', raw)
+        if not m:
+            # 沒有結尾數字：在後面接 0001
+            candidate = f'{raw}0001'
+        else:
+            prefix, num_str = m.group(1), m.group(2)
+            width = len(num_str)
+            next_num = int(num_str) + 1
+            candidate = f'{prefix}{str(next_num).zfill(width)}'
+
+        # 若撞號則繼續 +1
+        while self.search_count([('work_id', '=', candidate)]):
+            m2 = re.match(r'^(.*?)(\d+)$', candidate)
+            if not m2:
+                break
+            prefix, num_str = m2.group(1), m2.group(2)
+            next_num = int(num_str) + 1
+            candidate = f'{prefix}{str(next_num).zfill(len(num_str))}'
+        return candidate
+
+    @api.model
+    def default_get(self, fields_list):
+        res = super().default_get(fields_list)
+        if 'work_id' in fields_list and not res.get('work_id'):
+            res['work_id'] = self._next_work_id()
+        return res
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        for vals in vals_list:
+            if not vals.get('work_id'):
+                vals['work_id'] = self._next_work_id()
+        return super().create(vals_list)
+
             
     @api.depends("name")
     def _generate_bar_image_code(self):

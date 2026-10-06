@@ -1461,6 +1461,15 @@ class Checkout(models.Model):
             target_record.lock_price = True
         target_record.hebing_type = "1"
         name_list = []
+        
+        # 廠區備註合併到主單（去重，以 / 串接）
+        factory_parts = []
+        for src in [target_record] + list(other_records):
+            text = (src.comment_factory or '').strip()
+            if text and text not in factory_parts:
+                factory_parts.append(text)
+        
+        
         for record in other_records:
             record.hebing_type = "2"
             record.hebing_comment = "合併至:" + target_record.name
@@ -1475,7 +1484,13 @@ class Checkout(models.Model):
                 line.write({'checkout_product_id': target_record.id})  # 把checkoutline对应到合并单中
         if name_list:
             original_comment = target_record.hebing_comment or ""
-            target_record.hebing_comment = original_comment + '-'.join(name_list)            
+            target_record.hebing_comment = original_comment + '-'.join(name_list)      
+
+        if factory_parts:
+            # 寫入合併後的廠區備註（inverse 為空，會直接存到主單）
+            target_record.comment_factory = ' / '.join(factory_parts)
+
+            
         return {
             'type': 'ir.actions.client',
             'tag': 'display_notification',
@@ -2916,6 +2931,35 @@ class Checkout(models.Model):
             sequence.number_next = 1
             sequence.prefix = new_prefix
         return True
+
+    def _void_related_work_orders(self):
+        """刪除大圖單前，將關聯 B/C/G/T 工單作廢並改名（加 -D），避免殘留佔號。"""
+        work_models = (
+            'dtsc.makein',
+            'dtsc.makeout',
+            'dtsc.makeom',
+            'dtsc.installproduct',
+        )
+        for checkout in self:
+            for model_name in work_models:
+                if model_name not in self.env:
+                    continue
+                orders = self.env[model_name].sudo().search([
+                    ('checkout_id', '=', checkout.id),
+                    ('name', 'not ilike', '%-D'),
+                ])
+                for order in orders:
+                    vals = {
+                        'install_state': 'cancel',
+                        'checkout_id': False,
+                    }
+                    if order.name and not str(order.name).endswith('-D'):
+                        vals['name'] = '%s-D' % order.name
+                    order.write(vals)
+
+    def unlink(self):
+        self._void_related_work_orders()
+        return super(Checkout, self).unlink()
 
 #后加工方式列表
 class CheckOutlineAfterMakePriceList(models.Model):

@@ -183,12 +183,13 @@ class MakeOut(models.Model):
     @api.depends("checkout_id", "checkout_id.customer_id", "checkout_id.customer_id.name", "checkout_id.customer_bianhao")
     def _compute_customer_name(self):
         for record in self:
-            if not record.checkout_id or not record.checkout_id.customer_id:
+            checkout = record.checkout_id
+            if not checkout or not checkout.exists() or not checkout.customer_id:
                 record.customer_name = False
-            elif record.checkout_id.customer_bianhao:
-                record.customer_name = record.checkout_id.customer_id.name + "("+record.checkout_id.customer_bianhao+")"
+            elif checkout.customer_bianhao:
+                record.customer_name = checkout.customer_id.name + "(" + checkout.customer_bianhao + ")"
             else:
-                record.customer_name = record.checkout_id.customer_id.name
+                record.customer_name = checkout.customer_id.name
     
     def everyday_set(self):
         # 設置時區

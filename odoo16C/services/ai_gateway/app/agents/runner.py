@@ -7,7 +7,11 @@ from pydantic import ValidationError, create_model, Field
 from typing import Literal
 from langchain_core.exceptions import OutputParserException
 
-from app.agents.query_protocol import AgentStep, TurnAnswer, PROTOCOL_PROMPT, STEP_PROMPT, CATALOG_RESULTS, DATA_RESULTS, validate_answer, render_answer, incomplete_result, selection_answer, selection_context, detail_evidence_correction
+from app.agents.query_protocol import (
+    AgentStep, TurnAnswer, PROTOCOL_PROMPT, STEP_PROMPT, CATALOG_RESULTS, DATA_RESULTS,
+    validate_answer, render_answer, incomplete_result, selection_answer, selection_context,
+    detail_evidence_correction, coerce_page_scope_for_list_evidence,
+)
 
 from app.progress import query_activity, completed_query
 from app.providers.factory import create_chat_model, structured_output_method
@@ -258,6 +262,7 @@ async def run_langchain_agent(payload, progress=None):
                 correction = ('目前證據只有部分資料，不能提供完整總額。請依原問題的條件使用 aggregate '
                     '完成全範圍彙總並引用新證據；不要自行加總分頁或把最後一頁當成完整資料。'
                     '使用者同時要求明細時，將同範圍分頁放 detail_evidence_ids 保留展示。'
+                    '若使用者只要列表／列一下，可改 finish 且 result_scope=page，引用已有 search/metric_detail。'
                     if failure == 'incomplete_query_evidence' else '請修正或提出具體業務澄清問題。')
                 if failure == 'incomplete_query_evidence':
                     correction = detail_evidence_correction(final_answer, tool_results) or correction
@@ -332,6 +337,16 @@ async def run_langchain_agent(payload, progress=None):
     except Exception as exc:
         failure = 'agent_execution_error'
         audit_events.append({'event':failure,'exception_type':type(exc).__name__})
+    # List questions often end with a search page marked complete; after corrections
+    # fail, salvage as page scope so the UI still shows the fetched rows.
+    if failure == 'incomplete_query_evidence' and final_answer:
+        coerced, coerced_failure = coerce_page_scope_for_list_evidence(final_answer, tool_results)
+        # validate_answer returns '' on success; 'not_applicable' means do not coerce.
+        if coerced is not final_answer and not coerced_failure:
+            final_answer = coerced
+            failure = None
+            audit_events.append({'event':'completion_scope_coerced','result_scope':'page',
+                                 'reason':'list_search_page_after_validation'})
     if not failure:
         emit('answer_checked')
     emit('failed' if failure else 'finishing')

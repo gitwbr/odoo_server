@@ -218,11 +218,24 @@ class RunnerTest(unittest.TestCase):
         page={'ok':True,'query_type':'universal_search','records':[{'id':1}],'has_more':True}
         result,_,_,_=self.run_steps([query('search'),finish(kind='query',answer='總額 2200000',ids=[1]),
             finish(kind='query',answer='總額 2200000',ids=[1])], [page], done('query','總額 2200000',[1]))
-        self.assertEqual(result['status'],'error',result)
-        self.assertEqual(result['error_message'],'incomplete_query_evidence')
+        # After validation fails, list-only search pages are salvaged as result_scope=page;
+        # the free-text claimed total is replaced by the page notice.
+        self.assertEqual(result['status'],'success',result)
         self.assertNotIn('2200000',result['answer'])
-        self.assertIn('部分資料',result['answer'])
-        self.assertEqual(result['display_tool_results'],[])
+        self.assertIn('分頁',result['answer'])
+        self.assertEqual(result['display_tool_results'][0]['result']['query_type'],'universal_search')
+
+    def test_list_search_page_is_coerced_to_page_scope(self):
+        page={'ok':True,'query_type':'universal_search','model':'dtsc.checkout',
+              'records':[{'id':1,'name':'A1'}],'has_more':True,'total_count':44}
+        result,_,_,_=self.run_steps(
+            [query('search'),finish(kind='query',answer='如下',ids=[1])], [page],
+            done('query','如下',[1]),
+            self.payload(execution_policy={'max_steps':2,'correction_attempts':0}))
+        self.assertEqual(result['status'],'success',result)
+        self.assertIn('分頁',result['answer'])
+        self.assertEqual(len(result['display_tool_results'][0]['result']['records']),1)
+        self.assertTrue(any(e.get('event')=='completion_scope_coerced' for e in result['audit_events']))
 
     def test_failed_finalizer_preserves_incomplete_evidence_explanation(self):
         page={'ok':True,'query_type':'universal_search','records':[{'id':1}],'has_more':True}
@@ -245,6 +258,30 @@ class RunnerTest(unittest.TestCase):
             result={**data(),flag:True}
             self.assertEqual(validate_answer(done('query','總額',[1]),[{'result':result}]),
                              'incomplete_query_evidence')
+
+    def test_ranking_exact_top_n_is_complete_despite_has_more(self):
+        ranked = {
+            **data(),
+            'has_more': True,
+            'ranking_exact': True,
+            'ranking_method': 'orm_ordered_read_group',
+            'group_labels': {'product_id': '商品名稱'},
+            'groups': [{
+                'group': {'product_id': {'id': 1, 'display_name': '高遮蔽PVC'}},
+                'measures': {'sales_amount': 383250.0},
+                'record_count': 102,
+            }],
+        }
+        self.assertEqual(validate_answer(done('query', '最近三個月賣最好的是高遮蔽PVC', [1]),
+                                         [{'result': ranked}]), '')
+        # Truncation without ranking_exact still cannot support a complete total.
+        self.assertEqual(validate_answer(done('query', '總額', [1]),
+                                         [{'result': {**ranked, 'ranking_exact': False}}]),
+                         'incomplete_query_evidence')
+        # Hard truncation flags still block even ranked results.
+        self.assertEqual(validate_answer(done('query', '排行', [1]),
+                                         [{'result': {**ranked, 'response_truncated': True}}]),
+                         'incomplete_query_evidence')
 
     def test_page_scope_cannot_smuggle_total_claim_in_free_text(self):
         page={'ok':True,'query_type':'universal_search','records':[{'id':1}],'has_more':True}

@@ -41,3 +41,30 @@
     min-width: 110px !important;
     overflow: hidden;
 }
+
+/* 假期額度：數字緊挨「小時」，不要被 o_row 拉開 */
+.o_dtsc_leave_quota_row {
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 0.35rem;
+    width: auto !important;
+    max-width: 100%;
+}
+.o_dtsc_leave_quota_row > .o_field_widget,
+.o_dtsc_leave_quota_row > span {
+    flex: 0 0 auto !important;
+    width: auto !important;
+    max-width: none !important;
+}
+.o_dtsc_leave_quota_row .o_dtsc_leave_hours,
+.o_dtsc_leave_quota_row .o_dtsc_leave_hours input {
+    width: 4.5rem !important;
+    max-width: 4.5rem !important;
+    min-width: 4.5rem !important;
+}
+.o_dtsc_leave_quota_row .o_dtsc_leave_date,
+.o_dtsc_leave_quota_row .o_dtsc_leave_date input {
+    width: 9.5rem !important;
+    max-width: 9.5rem !important;
+    min-width: 9.5rem !important;
+}

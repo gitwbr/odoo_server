@@ -1,5 +1,5 @@
 {
-  "version": "2026-09-17.1",
+  "version": "2026-09-27.1",
   "constants": {
     "_TOOL_NAME": "universal_odoo_query",
     "_INTERNAL_ACTORS": [
@@ -117,7 +117,7 @@
     "_MAX_IN_VALUES": 100,
     "_MAX_RESPONSE_CHARS": 120000,
     "_MAX_TEXT_CHARS": 1500,
-    "_METRIC_VERSION": "2026-09-17.1",
+    "_METRIC_VERSION": "2026-09-27.1",
     "_MAX_RELATION_RECORDS": 5000,
     "_CURSOR_TTL": 900,
     "_DISCOVERY_DEPTH": 4,

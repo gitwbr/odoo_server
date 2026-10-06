@@ -77,20 +77,38 @@ For grouping, use only stored groupable fields confirmed by describe.
 Read the metrics returned by describe. If an existing metric matches the requested business
 concept, prefer metric for both its count and detail. Its full filters define that concept;
 do not replace them with a looser status filter. Otherwise derive the scope from verified metadata.
+For overdue/list metrics, use metric_detail and keep due_field in the returned fields
+(estimated_date for checkout_overdue; delivery_date for s_overdue). Never list overdue rows
+with only create_date and omit the due date.
 For totals, sums, counts or comparisons over all matching records, use aggregate/count_distinct/
 period_analysis over the full requested scope. Never sum a search page in your answer. has_more,
-response_truncated, an offset or a returned page smaller than total_count means partial evidence.
+response_truncated, an offset or a returned page smaller than total_count means partial evidence—
+except when ranking_exact=true on an aggregate/metric (ORM-ordered top-N): that ranking is
+complete evidence for 「賣得最好／排行／top」questions even if more lower ranks exist; finish
+with result_scope=complete and cite it. Do not demand a grand total of every product group.
+When the user asks 趋势/走势/逐月/每个月多少/近几个月变化: you MUST run period_analysis with
+analysis_mode=trend and granularity=month (unless they ask for daily), cite that evidence, and
+present each month's amount. For 大圖/销售趋势 on dtsc.checkout, measures MUST include
+sum(total_price_added_tax) and sum(unit_all); never finish a sales trend with only record_count.
+Do NOT answer a trend question with only one whole-period metric or aggregate total
+(e.g. checkout_tax_total for the full range) and suggest subdividing later—produce the
+monthly series in this turn.
 Never answer a totals/一共多少/合计 question with search + select of invoice names; after describe,
 run aggregate (or metric) and finish. select is only when the user must pick a customer/vendor/
 named record before a downstream query.
-If only a list/page is requested, use result_scope=page; the server will explain the visible page.
+If only a list/page is requested (列一下/列出/有哪些), finish with result_scope=page after
+metric_detail or search; do not require a complete aggregate first. For overdue lists prefer
+metric checkout_overdue with metric_detail=true, then finish page-scoped.
 Do not switch a totals question to page scope just to bypass completeness validation.
 If the user requests BOTH totals and details, keep result_scope=complete, cite the complete
 aggregate/count in evidence_ids and the matching search page in detail_evidence_ids.
 Return both; do not drop the requested detail rows after obtaining a complete summary.
 Do not substitute an order amount for a different business concept just because it is numeric.
 Never repeat an identical tool request in the same turn: the observation is already available.
-If the user has not specified a materially ambiguous amount/date basis, ask a business clarification.
+If business_context or describe.metrics already maps the amount concept to a field or metric
+(e.g. 大圖訂單含稅金額 → checkout_tax_total / total_price_added_tax), do not ask which field;
+run metric or aggregate and finish. Only ask clarification when the amount/date basis is still
+materially ambiguous after those sources.
 """
 
 
@@ -110,6 +128,10 @@ Explain access restrictions only when a current tool reports access_denied or as
 missing permission group or claim a discovery miss proves lack of permission. An empty successful
 query means no matching records within this user's readable scope, not that the company has none.
 Use failure when unable to complete. Internal errors belong to logs, not the answer text.
+User-facing answer text MUST use business Chinese only: never quote technical field codes,
+model technical names (e.g. dtsc.checkout), snake_case columns (e.g. total_price_added_tax,
+related_checkout_id), metric ids, or JSON keys. You may briefly explain what was counted in
+plain language (进单日、税后总价、开单人员、已关联的大图订单等).
 """
 
 # These are protocol output types, not business model/field mappings.
@@ -153,8 +175,15 @@ def selection_context(result):
 
 def incomplete_result(result):
     """Use execution metadata, not the answer's words, to detect missing coverage."""
-    if any(result.get(flag) for flag in ('has_more', 'response_truncated', 'results_truncated')):
+    if result.get('response_truncated') or result.get('results_truncated'):
         return True
+    if result.get('has_more'):
+        # Exact ORM ranking (order by measure before LIMIT) answers top-N questions
+        # completely; has_more only means more lower ranks exist beyond the limit.
+        ranking = (result.get('ranking_exact')
+                   and result.get('query_type') in ('universal_aggregate', 'universal_count_distinct'))
+        if not ranking:
+            return True
     if result.get('offset') or (result.get('provenance') or {}).get('continued_page'):
         return True
     rows = result.get('records')
@@ -162,6 +191,34 @@ def incomplete_result(result):
     if isinstance(rows, list) and isinstance(total, int) and not isinstance(total, bool) and len(rows) < total:
         return True
     return any(incomplete_result(item) for item in result.get('results') or [] if isinstance(item, dict))
+
+
+def coerce_page_scope_for_list_evidence(answer, calls):
+    """Downgrade complete→page when the only data evidence is a search page.
+
+    List questions often finish with result_scope=complete after metric_detail/search.
+    Without this, validation fails and the UI hides the already-fetched rows.
+    """
+    if not answer or answer.kind != 'query' or answer.result_scope != 'complete':
+        return answer, 'not_applicable'
+    if answer.detail_evidence_ids:
+        return answer, 'not_applicable'
+    data = []
+    for evidence_id in answer.evidence_ids:
+        if evidence_id < 1 or evidence_id > len(calls):
+            return answer, 'not_applicable'
+        result = calls[evidence_id - 1].get('result') or {}
+        if result.get('ok') is not True:
+            return answer, 'not_applicable'
+        if result.get('query_type') in CATALOG_RESULTS:
+            continue
+        if result.get('query_type') != 'universal_search':
+            return answer, 'not_applicable'
+        data.append(result)
+    if not data or not any(incomplete_result(result) for result in data):
+        return answer, 'not_applicable'
+    coerced = answer.model_copy(update={'result_scope': 'page'})
+    return coerced, validate_answer(coerced, calls)
 
 
 def render_answer(answer, calls):

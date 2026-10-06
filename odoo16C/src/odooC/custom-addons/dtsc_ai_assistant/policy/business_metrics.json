@@ -2,16 +2,68 @@
   "checkout_count": {
     "model": "dtsc.checkout",
     "label": "有效大圖訂單進單數",
-    "aliases": ["large format order", "large format printing order"],
+    "aliases": [
+      "large format order",
+      "large format printing order",
+      "大圖訂單",
+      "大图订单",
+      "進單數",
+      "进单数"
+    ],
     "date_field": "create_date",
     "filters": [
       {
+        "field": "is_invisible",
+        "operator": "eq",
+        "value": false
+      },
+      {
         "field": "checkout_order_state",
-        "operator": "ne",
-        "value": "cancel"
+        "operator": "not_in",
+        "value": ["cancel", "waiting_confirmation"]
       }
     ],
-    "basis": "按建立時間計 A/F/E/M/D 母單記錄；排除作廢，M 保留，非產品行數。"
+    "basis": "按建立時間計 A/F/E/M 等大圖主選單母單；排除作廢、隱藏與 CRM 待確認，M 保留，非產品行數。待確認不計入大圖訂單。"
+  },
+  "checkout_tax_total": {
+    "model": "dtsc.checkout",
+    "label": "大圖訂單含稅金額合計（稅後總價）",
+    "aliases": [
+      "含稅金額",
+      "含税金额",
+      "含稅總價",
+      "含税总价",
+      "稅後總價",
+      "税后总价",
+      "大圖訂單金額",
+      "大图订单金额",
+      "訂單含稅",
+      "订单含税",
+      "tax inclusive total",
+      "order amount with tax"
+    ],
+    "date_field": "create_date",
+    "filters": [
+      {
+        "field": "is_invisible",
+        "operator": "eq",
+        "value": false
+      },
+      {
+        "field": "checkout_order_state",
+        "operator": "not_in",
+        "value": ["cancel", "waiting_confirmation"]
+      }
+    ],
+    "measures": [
+      {
+        "field": "total_price_added_tax",
+        "aggregate": "sum",
+        "alias": "tax_inclusive_total"
+      }
+    ],
+    "unit": "金額",
+    "basis": "按進單日合計大圖主選單口徑母單的 total_price_added_tax（界面名稅後總價）；排除作廢、隱藏與 CRM 待確認。用戶說含稅金額/含稅總價即此欄。與應收 account.move.total_price 不同。同次回傳的 record_count 為同口徑單數。"
   },
   "checkout_unshipped": {
     "model": "dtsc.checkout",
@@ -19,13 +71,23 @@
     "date_field": "create_date",
     "filters": [
       {"field": "is_delivery", "operator": "eq", "value": false},
-      {"field": "checkout_order_state", "operator": "not_in", "value": ["cancel", "closed"]}
+      {"field": "is_invisible", "operator": "eq", "value": false},
+      {"field": "checkout_order_state", "operator": "not_in", "value": ["cancel", "closed", "waiting_confirmation"]}
     ],
-    "basis": "尚未出貨且未作廢/結案，不限是否逾期。今天預計出貨須另外篩選 estimated_date 的今天起訖，不可使用逾期條件。"
+    "basis": "尚未出貨且未作廢/結案/待確認/隱藏，不限是否逾期。今天預計出貨須另外篩選 estimated_date 的今天起訖，不可使用逾期條件。"
   },
   "checkout_overdue": {
     "model": "dtsc.checkout",
     "label": "大圖訂單逾期未出貨（預計發貨時間早於現在）",
+    "aliases": [
+      "逾期",
+      "逾期訂單",
+      "逾期订单",
+      "逾期未出貨",
+      "逾期未出货",
+      "超期未出貨",
+      "超期未出货"
+    ],
     "date_field": "create_date",
     "filters": [
       {
@@ -34,21 +96,45 @@
         "value": false
       },
       {
+        "field": "is_invisible",
+        "operator": "eq",
+        "value": false
+      },
+      {
         "field": "checkout_order_state",
         "operator": "not_in",
         "value": [
           "cancel",
-          "closed"
+          "closed",
+          "waiting_confirmation"
         ]
       }
     ],
     "due_field": "estimated_date",
-    "basis": "沿用概覽 _get_delivery_risk_items：未出貨且未作廢/結案，預計發貨時間早於查詢時刻。期間按母單建立日期。"
+    "detail_fields": [
+      "name",
+      "estimated_date",
+      "customer_id",
+      "checkout_order_state",
+      "create_date"
+    ],
+    "basis": "沿用概覽 _get_delivery_risk_items：未出貨、未隱藏、未作廢/結案/待確認，預計發貨時間早於查詢時刻。期間按母單建立日期。列明細時必須含 estimated_date（發貨日期），不能只列進單日。待確認（CRM 草稿）與大圖主選單一致，不計入逾期。"
   },
   "b_open": {
     "model": "dtsc.makein",
     "label": "B 內部工單未完成數",
-    "aliases": ["internal work order", "internal production order"],
+    "aliases": [
+      "internal work order",
+      "internal production order",
+      "內部工單",
+      "内部工单",
+      "B工單",
+      "B工单",
+      "工廠內部",
+      "工厂内部",
+      "工廠內部訂單",
+      "工厂内部订单"
+    ],
     "date_field": "create_date",
     "filters": [
       {
@@ -61,6 +147,35 @@
       }
     ],
     "basis": "沿用概覽工單完成狀態；按工單建立日期計目前未完成的單據數，不是母單去重或歷史時點存量。"
+  },
+  "b_period_count": {
+    "model": "dtsc.makein",
+    "label": "B 內部工單期間進單數（未作廢）",
+    "aliases": [
+      "內部工單數",
+      "内部工单数",
+      "內部訂單數",
+      "内部订单数",
+      "B單數量",
+      "B单数量",
+      "內部委外比例",
+      "内部委外比例",
+      "內部外包比例",
+      "内部外包比例",
+      "工廠內部和外包",
+      "工厂内部和外包",
+      "內部工單和委外",
+      "内部工单和委外"
+    ],
+    "date_field": "create_date",
+    "filters": [
+      {
+        "field": "install_state",
+        "operator": "ne",
+        "value": "cancel"
+      }
+    ],
+    "basis": "期間內建立的內部工單（B / dtsc.makein）筆數，排除作廢。用於與委外 C 單算比例時的分母/分子之一。"
   },
   "b_completion_rate": {
     "model": "dtsc.makein",
@@ -87,7 +202,18 @@
   "c_open": {
     "model": "dtsc.makeout",
     "label": "C 委外工單未完成數",
-    "aliases": ["outsourced work order", "outsourced production order"],
+    "aliases": [
+      "outsourced work order",
+      "outsourced production order",
+      "委外工單",
+      "委外工单",
+      "外包工單",
+      "外包工单",
+      "外包訂單",
+      "外包订单",
+      "C工單",
+      "C工单"
+    ],
     "date_field": "create_date",
     "filters": [
       {
@@ -100,6 +226,33 @@
       }
     ],
     "basis": "沿用概覽工單完成狀態；按工單建立日期計目前未完成的單據數，不是母單去重或歷史時點存量。"
+  },
+  "c_period_count": {
+    "model": "dtsc.makeout",
+    "label": "C 委外工單期間進單數（未作廢）",
+    "aliases": [
+      "委外工單數",
+      "委外工单数",
+      "外包單數",
+      "外包单数",
+      "C單數量",
+      "C单数量",
+      "內部委外比例",
+      "内部委外比例",
+      "內部外包比例",
+      "内部外包比例",
+      "工廠內部和外包",
+      "工厂内部和外包"
+    ],
+    "date_field": "create_date",
+    "filters": [
+      {
+        "field": "install_state",
+        "operator": "ne",
+        "value": "cancel"
+      }
+    ],
+    "basis": "期間內建立的委外工單（C / dtsc.makeout）筆數，排除作廢。與 b_period_count 一起回答內部:委外比例。"
   },
   "c_completion_rate": {
     "model": "dtsc.makeout",
@@ -200,15 +353,140 @@
     ],
     "basis": "分子為目前完成工單數，分母為期間建立且未作廢工單數；不是產品行完成率、需求轉單率或母單完成率。"
   },
-  "rework_share": {
+  "crm_d_conversion_rate": {
     "model": "dtsc.checkout",
-    "label": "E重製單占有效進單比例",
+    "label": "CRM D單轉A成單比例",
+    "aliases": [
+      "CRM轉化率",
+      "CRM转化率",
+      "D單轉化率",
+      "D单转化率",
+      "D轉A",
+      "D转A",
+      "CRM成單率",
+      "CRM成单率",
+      "報價轉化率",
+      "报价转化率",
+      "商機轉化",
+      "商机转化"
+    ],
     "date_field": "create_date",
     "filters": [
       {
-        "field": "checkout_order_state",
+        "field": "is_invisible",
+        "operator": "eq",
+        "value": false
+      },
+      {
+        "field": "checkout_order_type",
+        "operator": "eq",
+        "value": "d"
+      }
+    ],
+    "numerator_filters": [
+      {
+        "field": "related_checkout_id",
         "operator": "ne",
-        "value": "cancel"
+        "value": false
+      }
+    ],
+    "basis": "CRM 為大圖 D 單。成單後 D 單保留，並透過「關聯大圖訂單」指向對應 A 單（雙方互關聯）。分子為期間建立且已填關聯的 D 單；分母為同期全部 D 單（含仍為待確認者）。不是標準商機表，也不是內部工單。"
+  },
+  "a_period_count": {
+    "model": "dtsc.checkout",
+    "label": "A 普通大圖訂單期間進單數",
+    "aliases": [
+      "A單",
+      "A单",
+      "A單數量",
+      "A单数量",
+      "普通大圖訂單",
+      "普通大图订单"
+    ],
+    "date_field": "create_date",
+    "filters": [
+      {
+        "field": "is_invisible",
+        "operator": "eq",
+        "value": false
+      },
+      {
+        "field": "checkout_order_state",
+        "operator": "not_in",
+        "value": ["cancel", "waiting_confirmation"]
+      },
+      {
+        "field": "checkout_order_type",
+        "operator": "eq",
+        "value": "a"
+      }
+    ],
+    "basis": "大圖主選單口徑下 checkout_order_type=a 的普通進單數；與重製 E 單比較時用此為 A 側筆數。不是工單。"
+  },
+  "e_period_count": {
+    "model": "dtsc.checkout",
+    "label": "E 重製單期間進單數",
+    "aliases": [
+      "重製單",
+      "重制单",
+      "重置單",
+      "重置单",
+      "E單",
+      "E单",
+      "重新製作",
+      "重新制作",
+      "重製單數量",
+      "重制单数量",
+      "重置單數量",
+      "重置单数量"
+    ],
+    "date_field": "create_date",
+    "filters": [
+      {
+        "field": "is_invisible",
+        "operator": "eq",
+        "value": false
+      },
+      {
+        "field": "checkout_order_state",
+        "operator": "not_in",
+        "value": ["cancel", "waiting_confirmation"]
+      },
+      {
+        "field": "checkout_order_type",
+        "operator": "eq",
+        "value": "e"
+      }
+    ],
+    "basis": "大圖訂單中的重製單（E / checkout_order_type=e），表示重新製作；用戶說重置單同義。不是內部/委外工單。"
+  },
+  "rework_share": {
+    "model": "dtsc.checkout",
+    "label": "E重製單占有效進單比例",
+    "aliases": [
+      "重製單比例",
+      "重制单比例",
+      "重置單比例",
+      "重置单比例",
+      "重製比例",
+      "重制比例",
+      "重置比例",
+      "E單比例",
+      "E单比例",
+      "重新製作比例",
+      "重新制作比例"
+    ],
+    "date_field": "create_date",
+    "filters": [
+      {
+        "field": "is_invisible",
+        "operator": "eq",
+        "value": false
+      },
+      {
+        "field": "checkout_order_state",
+        "operator": "not_in",
+        "value": ["cancel", "waiting_confirmation"]
       }
     ],
     "numerator_filters": [
@@ -218,7 +496,246 @@
         "value": "e"
       }
     ],
-    "basis": "分子為E單筆數，分母為所有未作廢A/F/E/M/D進單筆數，包含M；不代表原始訂單被重製的機率。"
+    "basis": "分子為E重製/重置單筆數，分母為大圖主選單口徑未作廢進單總數（排除待確認/隱藏，含 A/F/M 等）。回答時可同時報 A 單數（a_period_count）與 E 單數（e_period_count）對照。禁止查工單 makein/makeout。"
+  },
+  "checkout_kaidan_rank": {
+    "model": "dtsc.checkout",
+    "label": "大圖訂單開單人員排行（才數與稅後總價）",
+    "aliases": [
+      "開單人員",
+      "开单人员",
+      "開單最多",
+      "开单最多",
+      "開單最多的人",
+      "开单最多的人",
+      "誰開單最多",
+      "谁开单最多",
+      "開單排行",
+      "开单排行",
+      "業務開單",
+      "业务开单",
+      "kaidan"
+    ],
+    "date_field": "create_date",
+    "group_by": ["kaidan"],
+    "order": [{"field": "tax_inclusive_total", "direction": "desc"}],
+    "limit": 10,
+    "filters": [
+      {
+        "field": "is_invisible",
+        "operator": "eq",
+        "value": false
+      },
+      {
+        "field": "checkout_order_state",
+        "operator": "not_in",
+        "value": ["cancel", "waiting_confirmation"]
+      },
+      {
+        "field": "kaidan",
+        "operator": "ne",
+        "value": false
+      }
+    ],
+    "measures": [
+      {
+        "field": "unit_all",
+        "aggregate": "sum",
+        "alias": "units_total"
+      },
+      {
+        "field": "total_price_added_tax",
+        "aggregate": "sum",
+        "alias": "tax_inclusive_total"
+      }
+    ],
+    "unit": "金額",
+    "basis": "按大圖訂單開單人員 kaidan（界面名開單人員，dtsc.userlistbefore）分組；同時合計總才數 unit_all 與稅後總價 total_price_added_tax。預設按稅後總價降序前 10，groups.record_count 為開單筆數。不是銷售人員 user_id，也不是 create_uid。用戶要比才數時看 units_total 排序結果或說明才數維度。"
+  },
+  "checkout_machine_usage": {
+    "model": "dtsc.checkoutline",
+    "label": "大圖訂單機台用量排行（按總才數）",
+    "aliases": [
+      "機台用量",
+      "机台用量",
+      "用量前五的機台",
+      "用量前五的机台",
+      "機台排行",
+      "机台排行",
+      "哪個機台用量最多",
+      "哪个机台用量最多",
+      "生產機台用量",
+      "生产机台用量",
+      "top machines",
+      "machine usage"
+    ],
+    "date_field": "checkout_product_id.create_date",
+    "group_by": ["machine_id"],
+    "order": [{"field": "units_total", "direction": "desc"}],
+    "limit": 5,
+    "filters": [
+      {
+        "field": "checkout_product_id.is_invisible",
+        "operator": "eq",
+        "value": false
+      },
+      {
+        "field": "checkout_product_id.checkout_order_state",
+        "operator": "not_in",
+        "value": ["cancel", "waiting_confirmation"]
+      },
+      {
+        "field": "machine_id",
+        "operator": "ne",
+        "value": false
+      }
+    ],
+    "measures": [
+      {
+        "field": "total_units",
+        "aggregate": "sum",
+        "alias": "units_total"
+      },
+      {
+        "field": "price",
+        "aggregate": "sum",
+        "alias": "sales_amount"
+      }
+    ],
+    "unit": "才數",
+    "basis": "大圖訂單明細 dtsc.checkoutline 的生產機台 machine_id（界面名生產機台，關聯 dtsc.machineprice）。按母單進單日分組加總總才數 total_units 排名，並附行金額合計。排除無機台、作廢/隱藏/待確認。預設前 5。不是工作中心工時，也不是 MRP workcenter。"
+  },
+  "checkout_product_sales": {
+    "model": "dtsc.checkoutline",
+    "label": "大圖訂單銷售產品排行（按總才數）",
+    "aliases": [
+      "賣得最好",
+      "卖得最好",
+      "賣最好",
+      "卖最好",
+      "暢銷產品",
+      "畅销产品",
+      "銷量最好",
+      "销量最好",
+      "銷售最好產品",
+      "销售最好产品",
+      "最好賣的產品",
+      "最好卖的产品",
+      "產品銷售排行",
+      "产品销售排行",
+      "才數最多",
+      "才数最多",
+      "總才數排行",
+      "总才数排行",
+      "best selling product",
+      "top selling product"
+    ],
+    "date_field": "checkout_product_id.create_date",
+    "group_by": ["product_id"],
+    "order": [{"field": "units_total", "direction": "desc"}],
+    "limit": 10,
+    "filters": [
+      {
+        "field": "checkout_product_id.is_invisible",
+        "operator": "eq",
+        "value": false
+      },
+      {
+        "field": "checkout_product_id.checkout_order_state",
+        "operator": "not_in",
+        "value": ["cancel", "waiting_confirmation"]
+      }
+    ],
+    "measures": [
+      {
+        "field": "total_units",
+        "aggregate": "sum",
+        "alias": "units_total"
+      },
+      {
+        "field": "price",
+        "aggregate": "sum",
+        "alias": "sales_amount"
+      }
+    ],
+    "unit": "才數",
+    "basis": "按母單進單日對大圖訂單明細按商品名稱 product_id 分組，加總總才數 total_units（預設排序依據）；同時回傳行金額合計 price 供對照。排除作廢、隱藏與 CRM 待確認。預設才數降序前 10。禁止只列明細行或把 ID 當銷量；不是採購用產品、也不是標準 sale.order。"
+  },
+  "purchase_product_spend": {
+    "model": "purchase.order.line",
+    "label": "採購產品金額排行（按採購明細）",
+    "aliases": [
+      "採購最多",
+      "采购最多",
+      "採購最好",
+      "采购最好",
+      "採購產品排行",
+      "采购产品排行",
+      "採購材料",
+      "采购材料",
+      "買得最多",
+      "买得最多",
+      "進貨最多",
+      "进货最多",
+      "top purchased product"
+    ],
+    "date_field": "order_id.date_order",
+    "group_by": ["product_id", "currency_id"],
+    "order": [{"field": "purchase_amount", "direction": "desc"}],
+    "limit": 10,
+    "filters": [
+      {
+        "field": "order_id.state",
+        "operator": "in",
+        "value": ["purchase", "done"]
+      }
+    ],
+    "measures": [
+      {
+        "field": "price_total",
+        "aggregate": "sum",
+        "alias": "purchase_amount"
+      }
+    ],
+    "unit": "金額",
+    "basis": "來源是採購訂單明細 purchase.order.line（母單 purchase.order）；按母單訂單日 order_id.date_order，已確認/完成（state in purchase/done）分組加總 price_total。產品為 product.product。不含供應商欄；問供應商用 purchase_product_supplier_spend 或同口徑再按 partner_id 分組。"
+  },
+  "purchase_product_supplier_spend": {
+    "model": "purchase.order.line",
+    "label": "採購產品×供應商金額排行",
+    "aliases": [
+      "採購供應商",
+      "采购供应商",
+      "材料供應商",
+      "材料供应商",
+      "誰供應",
+      "谁供应",
+      "供應商是誰",
+      "供应商是谁",
+      "跟哪家買",
+      "跟哪家买",
+      "purchase supplier"
+    ],
+    "date_field": "order_id.date_order",
+    "group_by": ["product_id", "partner_id", "currency_id"],
+    "order": [{"field": "purchase_amount", "direction": "desc"}],
+    "limit": 15,
+    "filters": [
+      {
+        "field": "order_id.state",
+        "operator": "in",
+        "value": ["purchase", "done"]
+      }
+    ],
+    "measures": [
+      {
+        "field": "price_total",
+        "aggregate": "sum",
+        "alias": "purchase_amount"
+      }
+    ],
+    "unit": "金額",
+    "basis": "同一採購明細口徑，按商品 product_id + 供應商 partner_id（= 採購單 purchase.order.partner_id，存於明細）分組加總 price_total。用戶同時問「採購最多的材料＋供應商是誰」時：先用 purchase_product_spend 定材料，再用本指標或同口徑 filters 限定該 product_id 按 partner_id 列出供應商；也可直接用本指標報該材料金額最高的供應商。禁止說採購單沒有供應商。"
   },
   "purchase_confirmed": {
     "model": "purchase.order",
@@ -310,7 +827,13 @@
         "value": "draft"
       }
     ],
-    "basis": "明確操作口徑：草稿 S 的交貨時間早於查詢時刻；非大圖订单逾期，也不代表物流逾期。",
-    "due_field": "delivery_date"
+    "basis": "明確操作口徑：草稿 S 的交貨時間早於查詢時刻；非大圖订单逾期，也不代表物流逾期。列明細時必須含 delivery_date。",
+    "due_field": "delivery_date",
+    "detail_fields": [
+      "name",
+      "delivery_date",
+      "install_state",
+      "create_date"
+    ]
   }
 }

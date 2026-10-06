@@ -53,7 +53,9 @@ class UniversalOdooQuery(models.AbstractModel):
         entries = []
         for key, definition in self._metric_definitions().items():
             if definition['model'] in catalog:
-                entries.append(dict(definition, metric=key, version=self._METRIC_VERSION))
+                entry = dict(definition, metric=key, version=self._METRIC_VERSION)
+                entry['basis'] = self._public_basis(definition.get('basis') or '')
+                entries.append(entry)
         return {'query_type': 'universal_metrics', 'metrics': entries,
                 'limitations': ['毛利、帳齡、利用率、損耗及未列出的完成率尚未配置確定口徑，須先澄清。',
                                 '金额比较须明确字段和币种；不能把原始字段加总自动称为营业额。']}
@@ -74,21 +76,71 @@ class UniversalOdooQuery(models.AbstractModel):
             filters.append({'field': definition['date_field'], 'operator': 'between',
                             'value': [start.isoformat(), end.isoformat()]})
         query = dict(arguments, model=definition['model'], filters=filters)
-        result = self._search(query) if arguments.get('metric_detail') else self._aggregate(dict(query, group_by=[], measures=[]))
+        measures = list(definition.get('measures') or [])
+        group_by = list(definition.get('group_by') or [])
+        if arguments.get('metric_detail'):
+            query = self._metric_detail_query(definition, query)
+            result = self._search(query)
+        elif definition.get('numerator_filters'):
+            result = self._aggregate(dict(query, group_by=[], measures=[]))
+        else:
+            agg_args = dict(query, group_by=group_by, measures=measures)
+            order = arguments.get('order') or definition.get('order')
+            if order:
+                agg_args['order'] = order
+            limit = arguments.get('limit')
+            if limit is None:
+                limit = definition.get('limit')
+            if limit is not None:
+                agg_args['limit'] = limit
+            result = self._aggregate(agg_args)
         if definition.get('numerator_filters') and not arguments.get('metric_detail'):
             denominator = (result.get('groups') or [{}])[0].get('record_count', 0)
             numerator_result = self._aggregate(dict(query, filters=filters + definition['numerator_filters'],
                                                      group_by=[], measures=[]))
             numerator = (numerator_result.get('groups') or [{}])[0].get('record_count', 0)
+            percent = round(numerator / denominator * 100, 2) if denominator else None
             result['groups'] = [{'group': {}, 'measures': {'numerator': numerator, 'denominator': denominator,
-                                'percent': numerator / denominator * 100 if denominator else None}}]
+                                'percent': percent}}]
             result['measure_labels'] = {'numerator': '分子筆數', 'denominator': '分母筆數', 'percent': '比例 %'}
             result['basis'] = definition['basis'] + (' 分母為0，比例不適用。' if not denominator else '')
+        if definition.get('numerator_filters'):
+            unit = '%'
+        elif measures:
+            unit = definition.get('unit') or '金額'
+        else:
+            unit = definition.get('unit') or '筆'
+        public_basis = self._public_basis(result.get('basis') or definition['basis'])
         result['metric'] = {'name': arguments['metric'], 'label': definition['label'],
-                            'version': self._METRIC_VERSION, 'basis': definition['basis'],
-                            'date_field': definition['date_field'], 'unit': '%' if definition.get('numerator_filters') else '筆'}
+                            'version': self._METRIC_VERSION, 'basis': public_basis,
+                            'date_field': definition['date_field'], 'unit': unit}
         result['description'] = definition['label']
+        result['basis'] = public_basis
         return result
+
+    def _metric_detail_query(self, definition, query):
+        """Ensure overdue/list metrics always return the business-critical columns."""
+        required = []
+        for name in list(definition.get('detail_fields') or []):
+            if name and name not in required:
+                required.append(name)
+        due_field = definition.get('due_field')
+        if due_field and due_field not in required:
+            # Put the due date near the front so chat tables show why a row is overdue.
+            insert_at = 1 if required and required[0] in ('name', 'display_name') else 0
+            required.insert(insert_at, due_field)
+        fields = list(query.get('fields') or [])
+        if not fields:
+            fields = list(required)
+        else:
+            for name in required:
+                if name not in fields:
+                    fields.append(name)
+        if fields:
+            query = dict(query, fields=fields)
+        if due_field and not query.get('order'):
+            query = dict(query, order=[{'field': due_field, 'direction': 'asc'}])
+        return query
 
     @staticmethod
     def _period_dates(start, end, parameter='period'):
@@ -104,8 +156,18 @@ class UniversalOdooQuery(models.AbstractModel):
 
     @staticmethod
     def _comparison_values(current, previous):
-        return {'current': current, 'previous': previous, 'delta': current - previous,
-                'change_percent': (current - previous) / abs(previous) * 100 if previous else None,
+        delta = current - previous
+        change = (current - previous) / abs(previous) * 100 if previous else None
+        if isinstance(change, float):
+            change = round(change, 2)
+        if isinstance(delta, float):
+            delta = round(delta, 2)
+        if isinstance(current, float):
+            current = round(current, 2)
+        if isinstance(previous, float):
+            previous = round(previous, 2)
+        return {'current': current, 'previous': previous, 'delta': delta,
+                'change_percent': change,
                 'rate_note': '' if previous else '基期為0，變化率不適用'}
 
     def _period_analysis(self, arguments):
@@ -135,7 +197,21 @@ class UniversalOdooQuery(models.AbstractModel):
         if spec['registry_field'].type not in ('date', 'datetime') or '.' in date_field:
             raise UniversalQueryValidationError(_('期間分析須指定直接 Date/Datetime 欄位。'))
         start, end = self._period_dates(arguments.get('period_start'), arguments.get('period_end'))
-        measures = arguments.get('measures') or []
+        measures = list(arguments.get('measures') or [])
+        # Sales-trend questions often omit measures and only get order counts.
+        # Default checkout trends to tax-inclusive amount + 總才數 so charts are useful.
+        if mode == 'trend' and not measures and model_name == 'dtsc.checkout':
+            defaults = []
+            if 'total_price_added_tax' in Model._fields:
+                defaults.append({
+                    'field': 'total_price_added_tax', 'aggregate': 'sum',
+                    'alias': 'tax_inclusive_total',
+                })
+            if 'unit_all' in Model._fields:
+                defaults.append({
+                    'field': 'unit_all', 'aggregate': 'sum', 'alias': 'units_total',
+                })
+            measures = defaults
         compiled = self._compile_measures(Model, measures, catalog)
         self._validate_measure_currencies(Model, compiled, arguments)
         base_domain = self._query_domain(Model, arguments, catalog)
@@ -194,7 +270,8 @@ class UniversalOdooQuery(models.AbstractModel):
                 'metric_version': self._METRIC_VERSION, 'filled_empty': mode == 'trend', 'has_more': False,
                 'period_days': (end-start).days+1,
                 'baseline_days': (previous_end-previous_start).days+1 if mode == 'compare' else None,
-                'basis': '依指定日期欄位和條件計算；本期/基期均含起訖日，沒有自動年化或平均每日；零分母不產生百分比。'}
+                'basis': self._public_basis(
+                    '依查詢期間與業務條件計算；本期/基期均含起訖日，沒有自動年化或平均每日；零分母不產生百分比。')}
 
     # Only these standard business edges may expand beyond menu entry models.
     def _capabilities(self, arguments):
@@ -253,7 +330,50 @@ class UniversalOdooQuery(models.AbstractModel):
             if target != Model._name:
                 raise UniversalQueryValidationError(_('關聯來源欄位必須指向目前查詢模型。'))
             domain = expression.AND([domain, [('id', 'in' if relation_filter['mode'] == 'exists' else 'not in', sorted(ids))]])
+        # 大圖主選單口徑：隱藏單與 CRM「待確認」預設不進任何大圖訂單查詢。
+        if Model._name == 'dtsc.checkout' and not self._allows_waiting_confirmation(arguments):
+            domain = expression.AND([domain, [
+                ('is_invisible', '=', False),
+                ('checkout_order_state', '!=', 'waiting_confirmation'),
+            ]])
         return domain
+
+    @staticmethod
+    def _allows_waiting_confirmation(arguments):
+        """Allow CRM 待確認 when explicitly scoped, or when querying D（CRM）單.
+
+        D 單成單後仍常保持 waiting_confirmation，且以 related_checkout_id 關聯 A 單；
+        查 CRM 轉化率必須能讀到這批 D 單。
+        """
+        values = []
+        type_values = []
+        for item in arguments.get('filters') or []:
+            if not isinstance(item, dict):
+                continue
+            if item.get('field') == 'checkout_order_state':
+                values.append(item.get('value'))
+            if item.get('field') == 'checkout_order_type':
+                type_values.append(item.get('value'))
+        conditions = arguments.get('conditions') or {}
+        for key in ('all', 'any'):
+            for item in conditions.get(key) or []:
+                if not isinstance(item, dict):
+                    continue
+                if item.get('field') == 'checkout_order_state':
+                    values.append(item.get('value'))
+                if item.get('field') == 'checkout_order_type':
+                    type_values.append(item.get('value'))
+        for value in values:
+            if value == 'waiting_confirmation':
+                return True
+            if isinstance(value, (list, tuple)) and 'waiting_confirmation' in value:
+                return True
+        for value in type_values:
+            if value == 'd':
+                return True
+            if isinstance(value, (list, tuple)) and 'd' in value:
+                return True
+        return False
 
     def _relation_spec(self, Model, field_name, catalog):
         if not isinstance(field_name, str) or '.' in field_name:
@@ -663,8 +783,38 @@ class UniversalOdooQuery(models.AbstractModel):
                 int((time.monotonic() - started) * 1000),
             )
 
+    # Common Simplified→Traditional pairs so discover matches 内部工单 ↔ 內部工單.
+    _ZH_FOLD = str.maketrans({
+        '单': '單', '厂': '廠', '内': '內', '订': '訂', '数': '數', '据': '據',
+        '销': '銷', '购': '購', '户': '戶', '产': '產', '图': '圖', '发': '發',
+        '总': '總', '计': '計', '额': '額', '买': '買', '卖': '賣', '仓': '倉',
+        '库': '庫', '账': '賬', '报': '報', '态': '態', '价': '價', '类': '類',
+        '条': '條', '笔': '筆', '运': '運', '费': '費', '确': '確', '认': '認',
+        '请': '請', '询': '詢', '务': '務', '业': '業', '过': '過', '时': '時',
+        '间': '間', '开': '開', '关': '關', '还': '還', '这': '這', '个': '個',
+        '为': '為', '与': '與', '从': '從', '对': '對', '会': '會', '经': '經',
+        '达': '達', '质': '質', '门': '門', '国': '國', '外': '外', '包': '包',
+    })
+
+    @classmethod
+    def _fold_search_text(cls, value):
+        return (value or '').casefold().translate(cls._ZH_FOLD)
+
+    @classmethod
+    def _text_contains(cls, keyword, haystack):
+        """Match either direction so long user phrases still hit short labels/aliases."""
+        k = cls._fold_search_text(keyword)
+        h = cls._fold_search_text(haystack)
+        if not k or not h:
+            return False
+        if k in h:
+            return True
+        # Alias/label inside a longer user phrase (min length avoids noisy 1–2 char hits).
+        return len(h) >= 3 and h in k
+
     def _discover(self, arguments):
-        keyword = self._clean_string(arguments.get('keyword'), max_length=120).casefold()
+        keyword = self._clean_string(arguments.get('keyword'), max_length=120)
+        keyword_folded = self._fold_search_text(keyword)
         limit = self._validated_limit(
             arguments.get('limit'), default=20, maximum=self._MAX_DISCOVER_LIMIT
         )
@@ -676,21 +826,21 @@ class UniversalOdooQuery(models.AbstractModel):
             fields_meta = self._field_catalog(Model, catalog)
             score = 1
             matched_by = []
-            if keyword:
+            if keyword_folded:
                 score = 0
                 direct_values = [model_name, item['description']]
-                if any(keyword in (value or '').casefold() for value in direct_values):
+                if any(self._text_contains(keyword, value or '') for value in direct_values):
                     score = max(score, 100)
                     matched_by.append('model')
-                if any(keyword in value.casefold() for value in item['menus']):
+                if any(self._text_contains(keyword, value) for value in item['menus']):
                     score = max(score, 90)
                     matched_by.append('menu')
-                if any(keyword in value.casefold() for value in item['actions']):
+                if any(self._text_contains(keyword, value) for value in item['actions']):
                     score = max(score, 80)
                     matched_by.append('action')
                 for metric, definition in metric_definitions.items():
                     if definition['model'] == model_name and any(
-                            keyword in value.casefold() for value in
+                            self._text_contains(keyword, value) for value in
                             [metric, definition.get('label', '')] + definition.get('aliases', [])):
                         score = max(score, 95)
                         matched_by.append('metric:%s' % metric)
@@ -698,7 +848,7 @@ class UniversalOdooQuery(models.AbstractModel):
                     if not meta['returnable']:
                         continue
                     haystack = ' '.join((field_name, meta.get('string') or '', meta.get('help') or ''))
-                    if keyword in haystack.casefold():
+                    if self._text_contains(keyword, haystack):
                         score = max(score, 20)
                         matched_by.append('field:%s' % field_name)
                         if len(matched_by) >= 8:
@@ -720,7 +870,7 @@ class UniversalOdooQuery(models.AbstractModel):
         selected = matches[:limit]
         return {
             'query_type': 'universal_discover',
-            'keyword': keyword,
+            'keyword': keyword_folded or keyword,
             'models': selected,
             'returned_count': len(selected),
             'available_count': len(matches),
@@ -758,9 +908,12 @@ class UniversalOdooQuery(models.AbstractModel):
             'description': catalog[model_name]['description'],
             # Keep business definitions beside the schema the agent must read.
             # Definitions remain in one catalog; no question-keyword routing.
-            'metrics': [dict(definition, metric=key, version=self._METRIC_VERSION)
-                        for key, definition in self._metric_definitions().items()
-                        if definition['model'] == model_name],
+            'metrics': [
+                dict(definition, metric=key, version=self._METRIC_VERSION,
+                     basis=self._public_basis(definition.get('basis') or ''))
+                for key, definition in self._metric_definitions().items()
+                if definition['model'] == model_name
+            ],
             'fields': described,
             'returned_count': len(described),
             'available_count': len(field_catalog),
@@ -1661,7 +1814,8 @@ class UniversalOdooQuery(models.AbstractModel):
             local_value = fields.Datetime.context_timestamp(
                 record.with_context(tz=self._user_timezone()), value
             )
-            return local_value.isoformat()
+            # Display in user/local wall time; no ISO "T" or offset suffix for chat tables.
+            return local_value.strftime('%Y-%m-%d %H:%M:%S')
         if field_type == 'date':
             return fields.Date.to_string(value)
         if isinstance(value, str):
@@ -1672,7 +1826,12 @@ class UniversalOdooQuery(models.AbstractModel):
 
     def _default_search_fields(self, Model, catalog):
         available = self._field_catalog(Model, catalog)
-        preferred = ['id', Model._rec_name, 'name', 'display_name', 'create_date', 'write_date']
+        # Prefer business labels over alphabetical noise (e.g. production counters).
+        preferred = [
+            'id', Model._rec_name, 'name', 'display_name', 'product_id', 'price',
+            'checkout_product_id', 'customer_id', 'partner_id', 'quantity',
+            'create_date', 'write_date',
+        ]
         result = []
         for name in preferred + sorted(available):
             if name in result or name not in available or not available[name]['returnable']:
@@ -1716,8 +1875,9 @@ class UniversalOdooQuery(models.AbstractModel):
             )
 
     def _user_timezone(self):
-        timezone = self.env.context.get('tz') or self.env.user.tz or 'UTC'
-        return timezone if timezone in pytz.all_timezones else 'UTC'
+        # DTSC 業務預設台北；使用者有設定時區時仍以使用者為準。
+        timezone = self.env.context.get('tz') or self.env.user.tz or 'Asia/Taipei'
+        return timezone if timezone in pytz.all_timezones else 'Asia/Taipei'
 
     @staticmethod
     def _is_date_only(value):
@@ -1765,7 +1925,32 @@ class UniversalOdooQuery(models.AbstractModel):
 
     @staticmethod
     def _number_or_false(value):
-        return value if isinstance(value, (int, float)) and not isinstance(value, bool) else (0 if value is False else value)
+        if isinstance(value, bool):
+            return value
+        if isinstance(value, float):
+            return round(value, 2)
+        if isinstance(value, int):
+            return value
+        return 0 if value is False else value
+
+    @classmethod
+    def _public_basis(cls, text):
+        """Strip technical model/field codes from user-visible口径说明."""
+        if not text:
+            return text
+        cleaned = str(text)
+        cleaned = re.sub(r'`[^`]+`', '', cleaned)
+        cleaned = re.sub(r'\b[a-z][a-z0-9_]*\.[a-z][a-z0-9_.]*\b', '', cleaned)
+        cleaned = re.sub(r'\b[a-z][a-z0-9]*(?:_[a-z0-9]+)+\b', '', cleaned)
+        cleaned = re.sub(r'\b(?:eq|ne|in|not_in|gt|lt|gte|lte)\b', '', cleaned)
+        cleaned = re.sub(r'\s*=\s*[a-zA-Z0-9_.\'"]+', '', cleaned)
+        cleaned = re.sub(r'[（(]\s*[）)]', '', cleaned)
+        cleaned = re.sub(r'不是\s*，\s*也不是', '也不是', cleaned)
+        cleaned = re.sub(r'，\s*，+', '，', cleaned)
+        cleaned = re.sub(r'\s{2,}', ' ', cleaned)
+        cleaned = re.sub(r'\s+([，。；：、%）])', r'\1', cleaned)
+        cleaned = re.sub(r'([（(])\s+', r'\1', cleaned)
+        return cleaned.strip(' ，、；;')
 
     @staticmethod
     def _truncate_text(value, limit):

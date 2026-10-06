@@ -123,6 +123,10 @@
 		<field name="model">dtsc.workqrcode</field>
 		<field name="arch" type="xml">
 			<form>
+				<header>
+					<button name="action_refresh_leave_grants" type="object" string="刷新假期分發" class="btn-primary"
+						confirm="將依入職日與特休時間表重算/補發此員工假期，是否繼續？"/>
+				</header>
 				<sheet class="w3000">
 					<group>
 						<field name="non_rsgl_readonly" invisible="1"/>
@@ -135,20 +139,105 @@
 						<field name="is_daka_qh" attrs="{'readonly': [('non_rsgl_readonly', '=', True)]}"/>
 						<field name="in_company_date" />
 						<field name="out_company_date" />
+						<field name="gender" /> 
 						<field name="out_worker" />
 						<field name="in_time" />
 						<field name="out_time" />
 						<field name="department" options="{'no_create': True, 'no_create_edit': True}"/>
-						<field name="tx_locked" attrs="{'readonly': [('non_rsgl_readonly', '=', True)]}"/>
-						<field name="tx_days" attrs="{'readonly': [('non_rsgl_readonly', '=', True)]}"/>
-						<field name="bj_locked" attrs="{'readonly': [('non_rsgl_readonly', '=', True)]}"/>
-						<field name="bj_days" attrs="{'readonly': [('non_rsgl_readonly', '=', True)]}"/>
-						<field name="sj_locked" attrs="{'readonly': [('non_rsgl_readonly', '=', True)]}"/>
-						<field name="sj_days" attrs="{'readonly': [('non_rsgl_readonly', '=', True)]}"/>
-						<field name="slj_locked" attrs="{'readonly': [('non_rsgl_readonly', '=', True)]}"/>
-						<field name="slj_days" attrs="{'readonly': [('non_rsgl_readonly', '=', True)]}"/>
-						<field name="jtzgj_locked" attrs="{'readonly': [('non_rsgl_readonly', '=', True)]}"/>
-						<field name="jtzgj_days" attrs="{'readonly': [('non_rsgl_readonly', '=', True)]}"/>
+					</group>
+					<group string="假期額度" class="o_dtsc_leave_quota_group">
+						<label for="tx_locked" string="特休(過期)"/>
+						<div class="o_row o_dtsc_leave_quota_row">
+							<field name="tx_locked" nolabel="1" class="oe_inline o_dtsc_leave_hours" attrs="{'readonly': [('non_rsgl_readonly', '=', True)]}"/>
+							<span class="oe_inline">小時　有效期</span>
+							<field name="tx_locked_start_date" nolabel="1" class="oe_inline o_dtsc_leave_date" readonly="1"/>
+							<span class="oe_inline">~</span>
+							<field name="tx_locked_end_date" nolabel="1" class="oe_inline o_dtsc_leave_date" readonly="1"/>
+						</div>
+
+						<label for="tx_days" string="特休"/>
+						<div class="o_row o_dtsc_leave_quota_row">
+							<field name="tx_days" nolabel="1" class="oe_inline o_dtsc_leave_hours" attrs="{'readonly': [('non_rsgl_readonly', '=', True)]}"/>
+							<span class="oe_inline">小時　有效期</span>
+							<field name="tx_start_date" nolabel="1" class="oe_inline o_dtsc_leave_date" readonly="1"/>
+							<span class="oe_inline">~</span>
+							<field name="tx_end_date" nolabel="1" class="oe_inline o_dtsc_leave_date" readonly="1"/>
+						</div>
+
+						<label for="bj_days" string="病假"/>
+						<div class="o_row o_dtsc_leave_quota_row">
+							<field name="bj_days" nolabel="1" class="oe_inline o_dtsc_leave_hours" attrs="{'readonly': [('non_rsgl_readonly', '=', True)]}"/>
+							<span class="oe_inline">小時　有效期</span>
+							<field name="bj_start_date" nolabel="1" class="oe_inline o_dtsc_leave_date" readonly="1"/>
+							<span class="oe_inline">~</span>
+							<field name="bj_end_date" nolabel="1" class="oe_inline o_dtsc_leave_date" readonly="1"/>
+						</div>
+
+						<label for="sj_days" string="事假"/>
+						<div class="o_row o_dtsc_leave_quota_row">
+							<field name="sj_days" nolabel="1" class="oe_inline o_dtsc_leave_hours" attrs="{'readonly': [('non_rsgl_readonly', '=', True)]}"/>
+							<span class="oe_inline">小時　有效期</span>
+							<field name="sj_start_date" nolabel="1" class="oe_inline o_dtsc_leave_date" readonly="1"/>
+							<span class="oe_inline">~</span>
+							<field name="sj_end_date" nolabel="1" class="oe_inline o_dtsc_leave_date" readonly="1"/>
+						</div>
+
+						<label for="slj_days" string="生理假" attrs="{'invisible': [('gender', '!=', 'female')]}"/>
+						<div class="o_row o_dtsc_leave_quota_row" attrs="{'invisible': [('gender', '!=', 'female')]}">
+							<field name="slj_days" nolabel="1" class="oe_inline o_dtsc_leave_hours" attrs="{'readonly': [('non_rsgl_readonly', '=', True)]}"/>
+							<span class="oe_inline">小時　有效期</span>
+							<field name="slj_start_date" nolabel="1" class="oe_inline o_dtsc_leave_date" readonly="1"/>
+							<span class="oe_inline">~</span>
+							<field name="slj_end_date" nolabel="1" class="oe_inline o_dtsc_leave_date" readonly="1"/>
+						</div>
+
+						<label for="jtzgj_days" string="家庭照顧假"/>
+						<div class="o_row o_dtsc_leave_quota_row">
+							<field name="jtzgj_days" nolabel="1" class="oe_inline o_dtsc_leave_hours" attrs="{'readonly': [('non_rsgl_readonly', '=', True)]}"/>
+							<span class="oe_inline">小時　有效期</span>
+							<field name="jtzgj_start_date" nolabel="1" class="oe_inline o_dtsc_leave_date" readonly="1"/>
+							<span class="oe_inline">~</span>
+							<field name="jtzgj_end_date" nolabel="1" class="oe_inline o_dtsc_leave_date" readonly="1"/>
+						</div>
+						
+						<label for="hj_days" string="婚假"/>
+						<div class="o_row o_dtsc_leave_quota_row">
+							<field name="hj_days" nolabel="1" class="oe_inline o_dtsc_leave_hours"/>
+							<span class="oe_inline">小時　有效期</span>
+							<field name="hj_start_date" nolabel="1" class="oe_inline o_dtsc_leave_date"/>
+							<span class="oe_inline">~</span>
+							<field name="hj_end_date" nolabel="1" class="oe_inline o_dtsc_leave_date"/>
+						</div>
+
+						<label for="saj_days" string="喪假"/>
+						<div class="o_row o_dtsc_leave_quota_row">
+							<field name="saj_days" nolabel="1" class="oe_inline o_dtsc_leave_hours"/>
+							<span class="oe_inline">小時　有效期</span>
+							<field name="saj_start_date" nolabel="1" class="oe_inline o_dtsc_leave_date"/>
+							<span class="oe_inline">~</span>
+							<field name="saj_end_date" nolabel="1" class="oe_inline o_dtsc_leave_date"/>
+						</div>
+						
+					</group>
+					<group>
+						<field name="leave_quota_log_display_ids" readonly="1">
+							<tree create="false" delete="false" edit="false" default_order="create_date desc">
+								<field name="create_date" string="時間"/>
+								<field name="source"/>
+								<field name="leave_type"/>
+								<field name="balance_kind"/>
+								<field name="hours_before"/>
+								<field name="hours_after"/>
+								<field name="hours_delta"/>
+								<field name="threshold_label"/>
+								<field name="threshold_days" invisible="1"/>
+								<field name="leave_id"/>
+								<field name="note"/>
+								<field name="create_uid" string="操作人"/>
+							</tree>
+						</field>
+						
+						
 						<field name="line_user_id" attrs="{'readonly': [('non_rsgl_readonly', '=', True)]}"/>
 						<field name="userlistbefore_id" />
 						<field name="userlist_id" />

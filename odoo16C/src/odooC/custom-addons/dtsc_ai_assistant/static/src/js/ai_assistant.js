@@ -243,16 +243,47 @@
     return '<div class="o_dtsc_ai_empty">沒有符合條件的資料。</div>';
   }
 
+  function formatQueryNumber(value) {
+    if (typeof value !== 'number' || !Number.isFinite(value)) { return String(value); }
+    // Integers stay plain; percentages and other decimals keep two places.
+    if (Number.isInteger(value)) { return String(value); }
+    return (Math.round(value * 100) / 100).toFixed(2);
+  }
+
   function formatQueryValue(value) {
-    if (value == null) { return ''; }
-    if (value === false) { return '否／未填'; }
+    if (value == null || value === false) { return '未填'; }
     if (value === true) { return '是'; }
+    if (value === 'False' || value === 'false') { return '未填'; }
+    if (typeof value === 'number') { return formatQueryNumber(value); }
     if (Array.isArray(value)) { return value.map(formatQueryValue).join('、'); }
     if (typeof value === 'object') {
-      if (value.display_name != null) { return String(value.display_name); }
-      if (value.label != null) { return formatQueryValue(value.label); }
-      if (value.value != null) { return formatQueryValue(value.value); }
+      // Selection: {value, label} — check before many2one empty heuristics.
+      if (Object.prototype.hasOwnProperty.call(value, 'label')
+          || Object.prototype.hasOwnProperty.call(value, 'value')) {
+        if (value.label != null && value.label !== false) {
+          return formatQueryValue(value.label);
+        }
+        if (value.value != null && value.value !== false) {
+          return formatQueryValue(value.value);
+        }
+        return '未填';
+      }
+      if (value.display_name != null && value.display_name !== false) {
+        return String(value.display_name);
+      }
+      // Empty many2one comes back as {id:false, display_name:false} or bare false.
+      if (Object.prototype.hasOwnProperty.call(value, 'display_name')
+          || Object.prototype.hasOwnProperty.call(value, 'id')) {
+        return '未填';
+      }
       return JSON.stringify(value);
+    }
+    // Numeric strings from some serializers (e.g. "33.70786516853933").
+    if (typeof value === 'string' && /^-?\d+(\.\d+)?$/.test(value)) {
+      var asNumber = Number(value);
+      if (Number.isFinite(asNumber) && value.indexOf('.') >= 0) {
+        return formatQueryNumber(asNumber);
+      }
     }
     return String(value);
   }
@@ -292,6 +323,21 @@
       })).join('\r\n');
   }
 
+  function sanitizeBusinessText(text) {
+    // Never show DB/API field codes (snake_case, model.field) in user-facing notes.
+    return String(text || '')
+      .replace(/`[^`]+`/g, '')
+      .replace(/\b[a-z][a-z0-9_]*\.[a-z][a-z0-9_.]*\b/g, '')
+      .replace(/\b[a-z][a-z0-9]*(?:_[a-z0-9]+)+\b/g, '')
+      .replace(/\b(?:eq|ne|in|not_in|gt|lt|gte|lte)\b/g, '')
+      .replace(/\s*=\s*[a-zA-Z0-9_.'"]+/g, '')
+      .replace(/[（(]\s*[）)]/g, '')
+      .replace(/\s{2,}/g, ' ')
+      .replace(/\s+([，。；：、%）])/g, '$1')
+      .replace(/([（(])\s+/g, '$1')
+      .replace(/^[，、；;\s]+|[，、；;\s]+$/g, '');
+  }
+
   function resultControls(result, columns, rows) {
     var payload = {columns: columns, rows: rows, title: result.description || '查詢结果',
       partial: !!(result.has_more || result.response_truncated || result.results_truncated || result.offset > 0)};
@@ -318,7 +364,7 @@
       });
     }
     html = '<details class="o_dtsc_ai_result_actions"><summary>結果操作</summary>' + html + '</details>';
-    var basis = result.basis || (result.metric || {}).basis;
+    var basis = sanitizeBusinessText(result.basis || (result.metric || {}).basis || '');
     if (basis) {
       html += '<p class="o_dtsc_ai_business_basis">' + escapeHtml(basis) + '</p>';
     }
@@ -327,19 +373,33 @@
 
   function renderAnalysisChart(result, columns, rows) {
     if (rows.length < 2 || rows.length > 60) { return ''; }
-    var numeric = columns.find(function (column) {
+    function isNumericColumn(column) {
       return rows.some(function (row) { return typeof row[column.name] === 'number'; });
+    }
+    // Never chart bare record IDs; prefer measure:/record_count, then other numerics.
+    var numeric = columns.find(function (column) {
+      return String(column.name).indexOf('measure:') === 0 && isNumericColumn(column);
+    }) || columns.find(function (column) {
+      return column.name === 'record_count' && isNumericColumn(column);
+    }) || columns.find(function (column) {
+      return column.name !== 'id' && isNumericColumn(column);
     });
     if (!numeric) { return ''; }
     var values = rows.map(function (row) { return typeof row[numeric.name] === 'number' ? row[numeric.name] : 0; });
     var max = Math.max.apply(null, values.map(Math.abs));
-    var labelColumn = columns[0].name;
+    var labelColumn = (columns.find(function (column) {
+      return column.name === 'group:product_id' || column.name === 'product_id'
+        || column.name === 'display_name' || column.name === 'name';
+    }) || columns.find(function (column) {
+      return column.name !== 'id' && column.name !== numeric.name;
+    }) || columns[0]).name;
     return '<details class="o_dtsc_ai_chart" open><summary>圖表：' + escapeHtml(numeric.label) + '</summary>'
       + rows.map(function (row, index) {
         var value = values[index];
         return '<div class="o_dtsc_ai_chart_row"><span>' + escapeHtml(formatQueryValue(row[labelColumn]))
           + '</span><meter min="0" max="' + (max || 1) + '" value="' + Math.abs(value)
-          + '" title="' + escapeHtml(value) + '"></meter><strong>' + escapeHtml(value) + '</strong></div>';
+          + '" title="' + escapeHtml(formatQueryNumber(value)) + '"></meter><strong>'
+          + escapeHtml(formatQueryNumber(value)) + '</strong></div>';
       }).join('') + '<p>條長依絕對值繪製，正負請參考標示數值；圖表只涵蓋目前返回的結果。</p></details>';
   }
 
@@ -347,7 +407,8 @@
     '主管': [
       {id: 'month_orders', label: '本月接了多少訂單？', question: '本月接了多少張大圖訂單？'},
       {id: 'compare_orders', label: '接單數比上月增加了嗎？', question: '本月1日至今天接了多少張大圖訂單？上個月1日至相同日期又接了多少張？請比較兩期單數。'},
-      {id: 'overdue_orders', label: '哪些訂單逾期還沒出貨？', question: '查截至現在已超過預計發貨時間、仍未出貨的大圖訂單，請列出總數與明細。'}
+      {id: 'overdue_orders', label: '哪些訂單逾期還沒出貨？', question: '查截至現在已超過預計發貨時間、仍未出貨的大圖訂單，請列出總數與明細。'},
+      {id: 'best_products', label: '最近三個月賣最好的產品？', question: '最近三個月賣得最好的產品是什麼？請按商品名稱匯總總才數排行。'}
     ],
     '業務': [
       {id: 'unshipped_orders', label: '哪些訂單還沒出貨？', question: '有哪些大圖訂單還沒出貨？請列出總數與明細。'},

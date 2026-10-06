@@ -666,5 +666,119 @@ class ExpansionTest(unittest.TestCase):
         self.assertIsNone(result['groups'][0]['measures']['percent'])
         self.assertIn('不適用', result['basis'])
 
+    def test_checkout_hides_waiting_confirmation_by_default(self):
+        model = self.query.env['dtsc.checkout']
+        model._fields['checkout_order_state'] = Field()
+        model._fields['is_invisible'] = Field('boolean')
+        for row in model.rows:
+            row.data['checkout_order_state'] = 'waiting_confirmation' if row.id <= 3 else 'producing'
+            row.data['is_invisible'] = False
+        result = self.run_query(operation='aggregate', model='dtsc.checkout')
+        self.assertTrue(result['ok'], result)
+        self.assertEqual(result['groups'][0]['record_count'], 122)
+        allowed = self.run_query(operation='aggregate', model='dtsc.checkout', filters=[
+            {'field': 'checkout_order_state', 'operator': 'eq', 'value': 'waiting_confirmation'},
+        ])
+        self.assertTrue(allowed['ok'], allowed)
+        self.assertEqual(allowed['groups'][0]['record_count'], 3)
+
+    def test_checkout_overdue_detail_includes_estimated_date(self):
+        definition = self.query._metric_definitions()['checkout_overdue']
+        query = self.query._metric_detail_query(definition, {'fields': ['name', 'create_date']})
+        self.assertIn('estimated_date', query['fields'])
+        self.assertIn('customer_id', query['fields'])
+        self.assertEqual(query['order'], [{'field': 'estimated_date', 'direction': 'asc'}])
+        defaults = self.query._metric_detail_query(definition, {})
+        self.assertEqual(defaults['fields'][:2], ['name', 'estimated_date'])
+
+    def test_checkout_tax_total_sums_tax_inclusive_amount(self):
+        model = self.query.env['dtsc.checkout']
+        model._fields['checkout_order_state'] = Field()
+        model._fields['is_invisible'] = Field('boolean')
+        model._fields['total_price_added_tax'] = Field('integer')
+        model._fields['create_date'] = Field('date')
+        for row in model.rows:
+            row.data['checkout_order_state'] = 'cancel' if row.id == 1 else 'producing'
+            row.data['is_invisible'] = False
+            row.data['total_price_added_tax'] = 100 * row.id
+            row.data['create_date'] = datetime.date(2026, 3, 10)
+        model.rows[1].data['create_date'] = datetime.date(2026, 4, 1)
+        self.query._allowed_model_catalog = lambda: {
+            name: {'description': name, 'menus': [], 'actions': [], 'source': 'menu_action'}
+            for name, item in self.query.env.items() if getattr(item, 'allowed', False)
+        }
+        discovered = self.run_query(operation='discover', keyword='含稅金額')
+        self.assertEqual(discovered['models'][0]['model'], 'dtsc.checkout')
+        self.assertIn('metric:checkout_tax_total', discovered['models'][0]['matched_by'])
+        described = self.run_query(operation='describe', model='dtsc.checkout',
+                                   fields=['total_price_added_tax', 'create_date'])
+        self.assertIn('checkout_tax_total', [item['metric'] for item in described['metrics']])
+        result = self.run_query(operation='metric', metric='checkout_tax_total',
+                                period_start='2026-03-01', period_end='2026-03-31')
+        self.assertTrue(result['ok'], result)
+        # ids 2..125 in March, exclude cancelled id=1; id=2 is April → March = 3..125
+        expected = sum(100 * i for i in range(3, 126))
+        self.assertEqual(result['groups'][0]['measures']['tax_inclusive_total'], expected)
+        self.assertEqual(result['groups'][0]['record_count'], 123)
+        self.assertEqual(result['metric']['unit'], '金額')
+
+    def test_public_basis_strips_technical_field_codes(self):
+        raw = ('CRM 為大圖 D 單（checkout_order_type=d）。成單後 related_checkout_id 指向 A；'
+               '不是 crm.lead。分母為0，比例不適用。')
+        public = self.query._public_basis(raw)
+        self.assertNotIn('checkout_order_type', public)
+        self.assertNotIn('related_checkout_id', public)
+        self.assertNotIn('crm.lead', public)
+        self.assertIn('不適用', public)
+
+    def test_checkout_product_sales_metric_discovers_and_groups(self):
+        definition = self.query._metric_definitions()['checkout_product_sales']
+        self.assertEqual(definition['model'], 'dtsc.checkoutline')
+        self.assertEqual(definition['group_by'], ['product_id'])
+        self.assertEqual(definition['date_field'], 'checkout_product_id.create_date')
+        line = Model('dtsc.checkoutline', {
+            'product_id': Field('many2one', 'product.template'),
+            'total_units': Field('float'),
+            'price': Field('float'),
+            'checkout_product_id': Field('many2one', 'dtsc.checkout'),
+        }, [{'id': 1, 'product_id': 1, 'total_units': 12, 'price': 100, 'checkout_product_id': 1}])
+        line.env = self.query.env
+        self.query.env[line._name] = line
+        self.query._allowed_model_catalog = lambda: {
+            name: {'description': name, 'menus': [], 'actions': [], 'source': 'menu_action'}
+            for name, item in self.query.env.items() if getattr(item, 'allowed', False)
+        }
+        discovered = self.run_query(operation='discover', keyword='賣得最好')
+        self.assertTrue(discovered['ok'], discovered)
+        self.assertEqual(discovered['models'][0]['model'], 'dtsc.checkoutline')
+        self.assertIn('metric:checkout_product_sales', discovered['models'][0]['matched_by'])
+        described = self.run_query(operation='describe', model='dtsc.checkoutline')
+        self.assertIn('checkout_product_sales', [item['metric'] for item in described['metrics']])
+        captured = {}
+        original = self.query._aggregate
+
+        def capture(arguments):
+            captured.update(arguments)
+            return {
+                'ok': True, 'query_type': 'universal_aggregate', 'groups': [],
+                'measure_labels': {}, 'group_labels': {},
+            }
+
+        self.query._aggregate = capture
+        try:
+            result = self.run_query(
+                operation='metric', metric='checkout_product_sales',
+                period_start='2026-07-01', period_end='2026-09-27',
+            )
+        finally:
+            self.query._aggregate = original
+        self.assertTrue(result['ok'], result)
+        self.assertEqual(captured.get('group_by'), ['product_id'])
+        self.assertEqual(captured.get('limit'), 10)
+        self.assertEqual(captured.get('order'), [{'field': 'units_total', 'direction': 'desc'}])
+        self.assertEqual(result['metric']['unit'], '才數')
+        measure_fields = [item['field'] for item in captured.get('measures') or []]
+        self.assertIn('total_units', measure_fields)
+
 
 if __name__ == '__main__': unittest.main()

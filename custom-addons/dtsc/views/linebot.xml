@@ -550,10 +550,18 @@
 									bj: "病假",
 									sj: "事假",
 									slj: "生理假",
-									jtzgj: "家庭照顧假"
+									jtzgj: "家庭照顧假",
+									hj: "婚假",
+									saj: "喪假"
 								};
-
+								const gender = data.data.gender || '';
+								const sljOption = document.querySelector('#leave_type option[value="slj"]');
+								if (sljOption) {
+									sljOption.hidden = gender !== 'female';
+									sljOption.disabled = gender !== 'female';
+								}
 								const displayText = Object.entries(data.data)
+									.filter(([k, v]) => labelMap[k]) 
 									.map(([k, v]) => `${labelMap[k] || k}：${v} 小时`)
 									.join('｜');
 
@@ -1607,6 +1615,7 @@
 		<field name="numbercall">-1</field>
 		<field name="active">True</field>
 		<field name="doall">True</field>
-		<field name="nextcall" eval="(datetime.utcnow() + relativedelta(hour=15, minute=30, second=0)).strftime('%Y-%m-%d %H:%M:%S')"/>
+		<!-- UTC 20:30 = 台北 04:30，業務日切點後再跑缺卡 -->
+		<field name="nextcall" eval="(datetime.utcnow() + relativedelta(hour=20, minute=30, second=0)).strftime('%Y-%m-%d %H:%M:%S')"/>
 	</record>
 </odoo>
