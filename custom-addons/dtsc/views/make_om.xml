@@ -103,7 +103,10 @@
 							<field name="is_open_makeom_qrcode" invisible="1"/>
 
 						
-						
+							<div style="margin-bottom: 8px;">
+								<button string="全選外站發送" type="object" name="set_aftermake_field_true" style="margin-right:20px" help="全選外站發送"/>
+								<button string="取消外站發送" type="object" name="set_aftermake_field_false" style="margin-right:20px" help="取消外站發送"/>
+							</div>
 							<field name="order_ids">
 								<tree editable="bottom" create="false" delete="false">
 									<field name="is_select" attrs="{'invisible': [('parent.is_open_makeom_qrcode', '=', False)]}"/>

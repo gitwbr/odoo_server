@@ -81,6 +81,27 @@
         <field name="implied_ids" eval="[(4,ref('base.group_user')),(4,ref('dtsc.group_dtsc_mg')),(4,ref('dtsc.group_dtsc_yw')),(4,ref('dtsc.group_dtsc_kj')),(4,ref('dtsc.group_dtsc_sc')),(4,ref('dtsc.group_dtsc_cg')),(4,ref('dtsc.group_dtsc_ck')),(4,ref('dtsc.group_dtsc_bs'))]" />
     </record>
 
+	<!-- 臨時權限 -->
+	<record id="group_dtsc_disable" model="res.groups">
+		<field name="name">禁止訪問</field>
+		<field name="category_id" ref="module_category_large_image" />
+    </record>
+
+	<record id="group_dtsc_disable_ysyf" model="res.groups">
+		<field name="name">禁止訪問應收應付</field>
+		<field name="category_id" ref="module_category_large_image" />
+    </record>
+
+	<record id="group_dtsc_disable_cg" model="res.groups">
+		<field name="name">禁止訪問採購</field>
+		<field name="category_id" ref="module_category_large_image" />
+    </record>
+
+	<record id="group_dtsc_disable_bb" model="res.groups">
+		<field name="name">禁止訪問報表</field>
+		<field name="category_id" ref="module_category_large_image" />
+    </record>
+
     <record id="group_dtsc_rsgl" model="res.groups">
 		<field name="name">人事管理</field>
 		<field name="category_id" ref="module_category_large_image" />

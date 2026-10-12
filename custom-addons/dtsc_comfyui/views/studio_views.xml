@@ -1,0 +1,249 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_dtsc_comfyui_studio_form" model="ir.ui.view">
+        <field name="name">dtsc.comfyui.studio.form</field>
+        <field name="model">dtsc.comfyui.studio</field>
+        <field name="arch" type="xml">
+            <form string="出圖工作台" create="0" delete="0" class="o_dtsc_comfyui_studio" js_class="comfyui_studio_form">
+                <header>
+                    <button name="action_stop" type="object" string="停止出圖" class="btn-danger"
+                            attrs="{'invisible': [('state', '!=', 'running')]}"/>
+                    <field name="state" widget="statusbar"/>
+                </header>
+                <sheet>
+                    <field name="ui_open_tab" invisible="1"/>
+                    <div class="oe_title">
+                        <h1>AI 出圖</h1>
+                    </div>
+                    <div class="o_dtsc_comfyui_live" attrs="{'invisible': [('state', '!=', 'running')]}">
+                        <strong>正在出圖中，請勿離開本頁。</strong>
+                        <div>
+                            <field name="progress_text" widget="comfyui_live_status" nolabel="1" readonly="1"/>
+                        </div>
+                        <div class="o_dtsc_comfyui_bar">
+                            <div class="o_dtsc_comfyui_bar_inner"/>
+                        </div>
+                    </div>
+                    <field name="error_message" readonly="1" attrs="{'invisible': [('error_message', '=', False)]}" class="text-danger"/>
+                    <notebook>
+                        <!-- 與 dtsc 客戶/大圖單相同思路：用狀態控制 page 可見，隱形後 notebook 會落到下一可見頁 -->
+                        <page string="文生圖" name="txt2img"
+                              attrs="{'invisible': [('ui_open_tab', '=', 'img2img')]}">
+                            <label for="txt_prompt" string="提示詞"/>
+                            <div class="o_dtsc_comfyui_prompt">
+                                <field name="txt_prompt" nolabel="1" placeholder="例如：一位短髮女將軍，左手方天畫戟，右手舉盾，站在戰場上"
+                                       attrs="{'readonly': [('state', '=', 'running')]}"/>
+                            </div>
+                            <div class="mt-3 mb-3">
+                                <button name="action_generate_txt2img" type="object" string="生成圖片" class="btn-primary"
+                                        attrs="{'invisible': [('state', '=', 'running')]}"/>
+                                <button name="action_stop" type="object" string="停止出圖" class="btn-danger"
+                                        attrs="{'invisible': [('state', '!=', 'running')]}"/>
+                            </div>
+                            <separator string="本次結果"/>
+                            <div class="text-muted" attrs="{'invisible': [('result_at', '=', False)]}">
+                                出圖時間：<field name="result_at" readonly="1" class="oe_inline"/>
+                            </div>
+                            <div class="o_dtsc_comfyui_result">
+                                <field name="result_image" widget="image" nolabel="1"/>
+                            </div>
+                            <div class="mt-2 mb-3" attrs="{'invisible': ['|', ('result_image', '=', False), ('state', '=', 'running')]}">
+                                <button name="action_continue_edit" type="object" string="繼續處理"
+                                        class="btn-secondary"
+                                        help="將本次結果放入圖生圖圖片一，並清空圖片二/三與編輯描述"/>
+                            </div>
+                        </page>
+                        <page string="圖生圖" name="img2img">
+                            <group col="3">
+                                <group string="圖片一">
+                                    <field name="image1" widget="image" nolabel="1"/>
+                                </group>
+                                <group string="圖片二">
+                                    <field name="image2" widget="image" nolabel="1"/>
+                                </group>
+                                <group string="圖片三">
+                                    <field name="image3" widget="image" nolabel="1"/>
+                                </group>
+                            </group>
+                            <label for="img_prompt" string="編輯描述"/>
+                            <div class="o_dtsc_comfyui_prompt">
+                                <field name="img_prompt" nolabel="1" placeholder="例如：把三張圖並排成一行，大小接近"
+                                       attrs="{'readonly': [('state', '=', 'running')]}"/>
+                            </div>
+                            <div class="mt-3 mb-3">
+                                <button name="action_generate_img2img" type="object" string="生成圖片" class="btn-primary"
+                                        attrs="{'invisible': [('state', '=', 'running')]}"/>
+                                <button name="action_stop" type="object" string="停止出圖" class="btn-danger"
+                                        attrs="{'invisible': [('state', '!=', 'running')]}"/>
+                            </div>
+                            <separator string="本次結果"/>
+                            <div class="text-muted" attrs="{'invisible': [('result_at', '=', False)]}">
+                                出圖時間：<field name="result_at" readonly="1" class="oe_inline"/>
+                            </div>
+                            <div class="o_dtsc_comfyui_result">
+                                <field name="result_image" widget="image" nolabel="1"/>
+                            </div>
+                            <div class="mt-2 mb-3" attrs="{'invisible': ['|', ('result_image', '=', False), ('state', '=', 'running')]}">
+                                <button name="action_continue_edit" type="object" string="繼續處理"
+                                        class="btn-secondary"
+                                        help="將本次結果放入圖生圖圖片一，並清空圖片二/三與編輯描述"/>
+                            </div>
+                        </page>
+                        <page string="歷史記錄">
+                            <field name="job_ids" mode="kanban,tree" readonly="1">
+                                <kanban>
+                                    <field name="image"/>
+                                    <field name="mode"/>
+                                    <field name="prompt"/>
+                                    <field name="create_date"/>
+                                    <field name="state"/>
+                                    <templates>
+                                        <t t-name="kanban-box">
+                                            <div class="oe_kanban_global_click o_dtsc_comfyui_hist_card">
+                                                <div class="o_kanban_image">
+                                                    <field name="image" widget="image"/>
+                                                </div>
+                                                <div class="oe_kanban_details">
+                                                    <strong><field name="mode"/></strong>
+                                                    <div><field name="create_date"/></div>
+                                                    <div class="text-muted"><field name="prompt"/></div>
+                                                </div>
+                                            </div>
+                                        </t>
+                                    </templates>
+                                </kanban>
+                                <tree>
+                                    <field name="create_date"/>
+                                    <field name="mode"/>
+                                    <field name="prompt"/>
+                                    <field name="image" widget="image"/>
+                                    <field name="state"/>
+                                </tree>
+                                <form>
+                                    <sheet>
+                                        <group>
+                                            <field name="create_date"/>
+                                            <field name="mode"/>
+                                            <field name="state"/>
+                                            <field name="user_id"/>
+                                        </group>
+                                        <group string="提示詞">
+                                            <field name="prompt" nolabel="1"/>
+                                        </group>
+                                        <group string="出圖結果">
+                                            <field name="image" widget="image" nolabel="1"/>
+                                        </group>
+                                        <group string="參考圖" attrs="{'invisible': [('mode', '!=', 'img2img')]}">
+                                            <field name="ref_image1" widget="image"/>
+                                            <field name="ref_image2" widget="image"/>
+                                            <field name="ref_image3" widget="image"/>
+                                        </group>
+                                    </sheet>
+                                </form>
+                            </field>
+                        </page>
+                        <page string="設置">
+                            <group>
+                                <field name="comfyui_url"/>
+                                <field name="prompt_id" readonly="1"/>
+                            </group>
+                            <div class="text-muted">
+                                Docker 裡的 Odoo 請用 http://host.docker.internal:8188 ，與 Ollama 同一套 Windows 轉發。
+                            </div>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_open_studio_server" model="ir.actions.server">
+        <field name="name">出圖工作台</field>
+        <field name="model_id" ref="model_dtsc_comfyui_studio"/>
+        <field name="state">code</field>
+        <field name="code">action = model.action_open_studio()</field>
+    </record>
+
+    <menuitem id="menu_dtsc_comfyui_root"
+              name="AI 出圖"
+              sequence="46"
+              web_icon="dtsc_comfyui,static/description/icon.png"/>
+    <menuitem id="menu_dtsc_comfyui_studio"
+              name="出圖工作台"
+              parent="menu_dtsc_comfyui_root"
+              action="action_open_studio_server"
+              sequence="10"/>
+    <record id="view_dtsc_comfyui_job_kanban" model="ir.ui.view">
+        <field name="name">dtsc.comfyui.job.kanban</field>
+        <field name="model">dtsc.comfyui.job</field>
+        <field name="arch" type="xml">
+            <kanban create="0">
+                <field name="image"/>
+                <field name="mode"/>
+                <field name="prompt"/>
+                <field name="create_date"/>
+                <templates>
+                    <t t-name="kanban-box">
+                        <div class="oe_kanban_global_click o_dtsc_comfyui_hist_card">
+                            <div class="o_kanban_image">
+                                <field name="image" widget="image"/>
+                            </div>
+                            <div class="oe_kanban_details">
+                                <strong><field name="mode"/></strong>
+                                <div><field name="create_date"/></div>
+                                <div class="text-muted"><field name="prompt"/></div>
+                            </div>
+                        </div>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+    <record id="view_dtsc_comfyui_job_tree" model="ir.ui.view">
+        <field name="name">dtsc.comfyui.job.tree</field>
+        <field name="model">dtsc.comfyui.job</field>
+        <field name="arch" type="xml">
+            <tree string="出圖歷史" create="0">
+                <field name="create_date"/>
+                <field name="mode"/>
+                <field name="prompt"/>
+                <field name="image" widget="image"/>
+                <field name="user_id"/>
+                <field name="state"/>
+            </tree>
+        </field>
+    </record>
+    <record id="view_dtsc_comfyui_job_form" model="ir.ui.view">
+        <field name="name">dtsc.comfyui.job.form</field>
+        <field name="model">dtsc.comfyui.job</field>
+        <field name="arch" type="xml">
+            <form string="出圖歷史" create="0">
+                <sheet>
+                    <group>
+                        <field name="create_date"/>
+                        <field name="mode"/>
+                        <field name="state"/>
+                        <field name="user_id"/>
+                    </group>
+                    <group string="提示詞">
+                        <field name="prompt" nolabel="1"/>
+                    </group>
+                    <group string="出圖結果">
+                        <field name="image" widget="image" nolabel="1"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    <record id="action_dtsc_comfyui_job" model="ir.actions.act_window">
+        <field name="name">出圖歷史</field>
+        <field name="res_model">dtsc.comfyui.job</field>
+        <field name="view_mode">kanban,tree,form</field>
+        <field name="domain">[('user_id', '=', uid)]</field>
+    </record>
+    <menuitem id="menu_dtsc_comfyui_job"
+              name="出圖歷史"
+              parent="menu_dtsc_comfyui_root"
+              action="action_dtsc_comfyui_job"
+              sequence="20"/>
+</odoo>

@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_ai_settings_saas" model="ir.ui.view">
+        <field name="name">dtsc.ai.assistant.settings.saas</field>
+        <field name="model">dtsc.ai.assistant.settings</field>
+        <field name="inherit_id" ref="dtsc_ai_assistant.view_dtsc_ai_assistant_settings_form"/>
+        <field name="arch" type="xml">
+            <field name="gateway_url" position="attributes">
+                <attribute name="readonly">1</attribute>
+            </field>
+            <field name="gateway_token" position="attributes">
+                <attribute name="invisible">1</attribute>
+                <attribute name="readonly">1</attribute>
+            </field>
+            <field name="odoo_base_url" position="attributes">
+                <attribute name="readonly">1</attribute>
+            </field>
+            <xpath expr="//group[field[@name='gateway_url']]/div" position="replace">
+                <div class="text-muted">AI 服務由 SaaS 控制台管理；請在本頁設定自己的模型與 API Key。</div>
+            </xpath>
+        </field>
+    </record>
+</odoo>

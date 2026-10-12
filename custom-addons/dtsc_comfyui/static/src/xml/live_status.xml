@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="dtsc_comfyui.LiveStatus" owl="1">
+        <div class="o_dtsc_comfyui_live_status">
+            <t t-esc="props.record.data.progress_text or ''"/>
+        </div>
+    </t>
+</templates>

@@ -352,6 +352,8 @@ class LeaveQuotaLog(models.Model):
                 year_part = year_part[:-4] if year_part.endswith('_slj') else year_part
             try:
                 n = int(float(year_part))
+                if n == 0:
+                    return '入職首年(生理假)' if is_slj else '入職首年'
                 return f'{n}年(生理假)' if is_slj else f'{n}年'
             except (TypeError, ValueError):
                 return text
@@ -743,6 +745,7 @@ class Attendance(models.Model):
         - 寫入各假期有效起迄日
 
         病假/事假/生理假/家庭照顧假：
+        - 入職當日即可發放第一年（year_0）；之後每滿一整年再發下一年
         - 每年補發時直接重置可用額度，舊餘額作廢，不轉入過期
         """
         in_company_date = user.in_company_date
@@ -841,9 +844,12 @@ class Attendance(models.Model):
                     'tx_end_date': _as_date(new_end),
                 })
 
-        # === 其他假期：病假/事假/家庭照顧假（共用 year_N）；生理假單獨處理 ===
-        years_worked = relativedelta(today_dt, in_company_date).years
-        if years_worked >= 1:
+        # === 其他假期：病假/事假/家庭照顧假（共用 year_N，含入職首年 year_0）；生理假單獨處理 ===
+        # 入職日當天即可發 year_0；滿一整年後發 year_1、year_2…
+        if today_dt.date() >= in_company_date:
+            years_worked = relativedelta(today_dt, in_company_date).years
+            if years_worked < 0:
+                years_worked = 0
             already = grantlog_model.search([
                 ('worker_id', '=', user.id),
                 ('threshold_days', '=', f"year_{years_worked}"),
@@ -855,13 +861,14 @@ class Attendance(models.Model):
                 jtzgj_new = settingObj.jtzgj_day or 56
                 period_start, period_end = _year_period_dates(years_worked)
 
+                year_label = "入職首年" if years_worked == 0 else f"第 {years_worked} 年"
                 _logger.info(
-                    f"[年度假] 員工 {user.name} 第 {years_worked} 年補發："
+                    f"[年度假] 員工 {user.name} {year_label}補發："
                     f"病假 {user.bj_days}->{bj_new}，事假 {user.sj_days}->{sj_new}，"
                     f"家庭照顧假 {user.jtzgj_days}->{jtzgj_new}"
                 )
                 year_note = (
-                    f"年度假期分發：第 {years_worked} 年"
+                    f"年度假期分發：{year_label}"
                     f"（舊餘額作廢，不轉過期；不含生理假）"
                 )
                 user.with_context(
@@ -889,7 +896,7 @@ class Attendance(models.Model):
         return True
 
     def _grant_slj_for_worker(self, user, settingObj=None):
-        """單獨發放生理假。依「本年度生理假有沒有發過」判斷，不看 year_N。"""
+        """單獨發放生理假。入職首年即可發；依「本年度生理假有沒有發過」判斷。"""
         if not user or user.gender != 'female' or not user.in_company_date:
             return False
 
@@ -897,9 +904,11 @@ class Attendance(models.Model):
             settingObj = self.env['dtsc.linebot'].search([("linebot_type", "=", "for_worker")], limit=1)
 
         today_dt = datetime.combine(fields.Date.today(), datetime.min.time())
-        years_worked = relativedelta(today_dt, user.in_company_date).years
-        if years_worked < 1:
+        if today_dt.date() < user.in_company_date:
             return False
+        years_worked = relativedelta(today_dt, user.in_company_date).years
+        if years_worked < 0:
+            years_worked = 0
 
         grantlog_model = self.env['dtsc.leavegrantlog']
         slj_key = f"year_{years_worked}_slj"
@@ -939,14 +948,15 @@ class Attendance(models.Model):
                 return False
 
         slj_new = settingObj.slj_day or 96
+        year_label = "入職首年" if years_worked == 0 else f"第 {years_worked} 年"
         _logger.info(
-            f"[生理假] 員工 {user.name} 第 {years_worked} 年補發："
+            f"[生理假] 員工 {user.name} {year_label}補發："
             f"{user.slj_days}->{slj_new}"
         )
         user.with_context(
             leave_quota_source='grant',
             leave_quota_threshold=slj_key,
-            leave_quota_note=f'生理假分發：第 {years_worked} 年（性別為女）',
+            leave_quota_note=f'生理假分發：{year_label}（性別為女）',
         ).write({
             'slj_days': slj_new,
             'slj_start_date': period_start,

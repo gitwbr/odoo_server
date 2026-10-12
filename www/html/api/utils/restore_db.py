@@ -120,7 +120,8 @@ def restore_database(
             image_name,
             '-c',
             'set -e; rm -rf -- "$1"; mkdir -p -- "$2"; '
-            'tar -xzf "/backup/$3" -C "$2"',
+            'tar -xzf "/backup/$3" -C "$2"; '
+            'chown -R odoo:odoo "$2"; chmod -R 777 "$2"',
             'restore-filestore',
             f'{filestore_dir}/{db_name}',
             filestore_dir,

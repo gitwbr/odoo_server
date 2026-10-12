@@ -99,11 +99,11 @@
 		<field name="name">dtsc.workqrcode.report.tree</field>
 		<field name="model">dtsc.workqrcode</field>
 		<field name="arch" type="xml">
-			<tree decoration-danger="out_company_date">
-				<field name="name"  readonly="1"  />
-				<field name="bar_image"  widget="image" readonly="1" attrs="{'invisible':[('out_company_date','!=',False)]}" />
+			<tree decoration-danger="out_company_date" default_order="work_id">
+				<field name="work_id" string="員工編號" readonly="1"/>
+				<field name="name" readonly="1"/>
+				<field name="bar_image" widget="image" options="{'size': [80, 80]}" readonly="1" attrs="{'invisible':[('out_company_date','!=',False)]}"/>
 				<field name="out_company_date" invisible="1"/>
-
 			</tree>
 		</field>
 	</record>

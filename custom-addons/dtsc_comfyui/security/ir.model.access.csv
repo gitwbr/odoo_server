@@ -1,0 +1,3 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_dtsc_comfyui_studio_user,dtsc.comfyui.studio.user,model_dtsc_comfyui_studio,base.group_user,1,1,1,1
+access_dtsc_comfyui_job_user,dtsc.comfyui.job.user,model_dtsc_comfyui_job,base.group_user,1,1,1,1

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <record id="param_comfyui_base_url" model="ir.config_parameter">
+        <field name="key">dtsc_comfyui.base_url</field>
+        <field name="value">http://host.docker.internal:8188</field>
+    </record>
+</odoo>

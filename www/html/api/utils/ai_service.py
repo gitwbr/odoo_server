@@ -19,7 +19,7 @@ import yaml
 from utils import extra_addons
 
 ROOT = Path('/home/odoo/odoo16')
-MODULES = ('dtsc_ai_gateway', 'dtsc_ai_assistant')
+MODULES = ('dtsc_ai_gateway', 'dtsc_ai_assistant', 'dtsc_ai_saas')
 logger = logging.getLogger(__name__)
 
 
@@ -158,21 +158,23 @@ def render_compose(document, instance_id, image):
     elif 'ai' not in networks:
         networks.append('ai')
     web['networks'] = networks
-    environment = web.setdefault('environment', {})
+    # Compatibility with a previously rendered configuration. The common code
+    # needs no SaaS flag; installing dtsc_ai_saas supplies all integration.
+    environment = web.get('environment', {})
     if isinstance(environment, list):
         environment[:] = [item for item in environment if item.split('=', 1)[0] != 'DTSC_AI_DEPLOYMENT']
-        environment.append('DTSC_AI_DEPLOYMENT=saas')
     else:
-        environment['DTSC_AI_DEPLOYMENT'] = 'saas'
+        environment.pop('DTSC_AI_DEPLOYMENT', None)
     document.setdefault('networks', {})['ai'] = {'name': p['network'], 'driver': 'bridge'}
     document['services'][p['service']] = {
         'image': image, 'container_name': p['gateway'], 'restart': 'unless-stopped',
         # Disabled gateways must not start during a generic `compose up` (e.g. a plan upgrade).
         'profiles': ['ai'],
         'command': ['uvicorn', 'app.main:app', '--host', '0.0.0.0', '--port', '8071'],
-        'environment': {'DTSC_AI_DEPLOYMENT': 'saas', 'DTSC_AI_RUNTIME_FILE': '/run/dtsc-ai/runtime.json',
-                        'PYTHONDONTWRITEBYTECODE': '1'},
-        'volumes': [str(p['runtime'].parent) + ':/run/dtsc-ai:ro'],
+        # The unchanged gateway runs only on this customer's private network.
+        # It receives the provider key and callback token through the original
+        # request protocol; deployment files are only read by the Odoo adapter.
+        'environment': {'PYTHONDONTWRITEBYTECODE': '1'},
         'networks': ['ai'],
         'healthcheck': {'test': ['CMD', 'python', '-c',
             "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8071/health', timeout=3)"],

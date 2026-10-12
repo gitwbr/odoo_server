@@ -46,10 +46,10 @@ class AiServiceTest(unittest.TestCase):
         self.assertEqual(gateway['networks'], ['ai'])
         self.assertNotIn('ports', gateway)
         self.assertEqual(gateway['profiles'], ['ai'])
-        self.assertEqual(gateway['environment']['DTSC_AI_DEPLOYMENT'], 'saas')
-        self.assertEqual(doc['services']['web109']['environment']['DTSC_AI_DEPLOYMENT'], 'saas')
+        self.assertNotIn('DTSC_AI_DEPLOYMENT', gateway['environment'])
+        self.assertNotIn('DTSC_AI_DEPLOYMENT', doc['services']['web109'].get('environment', {}))
         self.assertEqual(gateway['command'][-1], '8071')
-        self.assertEqual(gateway['volumes'], [str(self.p['runtime'].parent) + ':/run/dtsc-ai:ro'])
+        self.assertNotIn('volumes', gateway)
         self.assertNotIn('depends_on', doc['services']['web109'])
         self.assertEqual(ai.render_compose(copy.deepcopy(doc), 109, 'test:v1'), doc)
 
@@ -62,12 +62,12 @@ class AiServiceTest(unittest.TestCase):
     def test_existing_environment_list_is_preserved(self):
         self.document['services']['web109']['environment'] = ['TZ=Asia/Taipei', 'DTSC_AI_DEPLOYMENT=standalone']
         doc = ai.render_compose(self.document, 109, 'test:v1')
-        self.assertEqual(doc['services']['web109']['environment'], ['TZ=Asia/Taipei', 'DTSC_AI_DEPLOYMENT=saas'])
+        self.assertEqual(doc['services']['web109']['environment'], ['TZ=Asia/Taipei'])
 
     def test_config_preserves_other_modules_and_is_repeatable(self):
         ai._module_config(109, True)
         ai._module_config(109, True)
-        self.assertIn('extra_addons = dtsc_cashflow,dtsc_ai_gateway,dtsc_ai_assistant', self.p['conf'].read_text())
+        self.assertIn('extra_addons = dtsc_cashflow,dtsc_ai_gateway,dtsc_ai_assistant,dtsc_ai_saas', self.p['conf'].read_text())
         ai._module_config(109, False)
         self.assertIn('extra_addons = dtsc_cashflow\n', self.p['conf'].read_text())
         self.assertNotIn('dtsc_ai_', self.p['conf'].read_text())
@@ -92,6 +92,7 @@ class AiServiceTest(unittest.TestCase):
              patch.object(ai.extra_addons, 'ensure_extra_addons_installed', return_value={}) as install:
             ai._apply(109, 'enable')
         install.assert_called_once_with(109, modules=ai.MODULES)
+        self.assertEqual(ai.MODULES, ('dtsc_ai_gateway', 'dtsc_ai_assistant', 'dtsc_ai_saas'))
         ready.assert_called_once_with(109)
         self.assertTrue(ai.is_enabled(109))
         self.assertIn('ai-gateway109', ai.yaml.safe_load(self.p['compose'].read_text())['services'])

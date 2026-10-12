@@ -200,7 +200,10 @@ class WorkerQRcode(models.Model):
     )
 
     def action_refresh_leave_grants(self):
-        """手動刷新該員工假期分發（缺漏門檻才補發；已發放过的不覆蓋現有額度）。"""
+        """手動刷新該員工假期分發（缺漏門檻才補發；已發放过的不覆蓋現有額度）。
+
+        病假/事假/家庭照顧假/生理假：入職即可發首年，不必滿一年。
+        """
         Attendance = self.env['dtsc.attendance']
         for record in self:
             if not record.in_company_date:
@@ -211,7 +214,7 @@ class WorkerQRcode(models.Model):
             'tag': 'display_notification',
             'params': {
                 'title': '假期刷新完成',
-                'message': '已依目前特休時間表與入職日補發缺漏假期；已發放过的額度不會被覆蓋。',
+                'message': '已依目前特休時間表與入職日補發缺漏假期（含入職首年病假/事假等）；已發放过的額度不會被覆蓋。',
                 'type': 'success',
                 'sticky': False,
             },

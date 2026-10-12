@@ -36,6 +36,7 @@ from . import crm
 from . import res_groups
 from . import website_sale 
 from . import order_preview 
+from . import ir_ui_menu
 from . import linebot
 from . import pettycash
 from . import calendar

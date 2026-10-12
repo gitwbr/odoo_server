@@ -1,0 +1,62 @@
+.o_dtsc_comfyui_studio .o_dtsc_comfyui_prompt {
+    max-width: 920px;
+}
+.o_dtsc_comfyui_studio .o_dtsc_comfyui_prompt .o_field_widget {
+    display: block;
+    width: 100%;
+}
+.o_dtsc_comfyui_studio .o_dtsc_comfyui_prompt textarea {
+    display: block;
+    width: 100%;
+    min-height: 140px;
+}
+.o_dtsc_comfyui_studio .o_dtsc_comfyui_prompt .o_field_text {
+    display: block;
+    width: 100%;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+.o_dtsc_comfyui_studio .o_dtsc_comfyui_live {
+    background: #fff8e8;
+    border: 1px solid #f0c36d;
+    border-radius: 6px;
+    padding: 12px 16px;
+    margin: 0 0 16px 0;
+}
+.o_dtsc_comfyui_studio .o_dtsc_comfyui_bar {
+    height: 8px;
+    background: #eee;
+    border-radius: 4px;
+    overflow: hidden;
+    margin-top: 10px;
+}
+.o_dtsc_comfyui_studio .o_dtsc_comfyui_bar_inner {
+    height: 100%;
+    width: 35%;
+    background: #7c5cbf;
+    animation: o_dtsc_comfyui_slide 1.4s ease-in-out infinite;
+}
+.o_dtsc_comfyui_studio .o_dtsc_comfyui_result {
+    max-width: 480px;
+    margin: 8px 0 16px 0;
+}
+.o_dtsc_comfyui_studio .o_dtsc_comfyui_result .o_field_image,
+.o_dtsc_comfyui_studio .o_dtsc_comfyui_result .o_field_widget {
+    max-width: 480px;
+}
+.o_dtsc_comfyui_studio .o_dtsc_comfyui_result img {
+    max-width: 480px !important;
+    max-height: 360px !important;
+    width: auto !important;
+    height: auto !important;
+    object-fit: contain;
+}
+.o_dtsc_comfyui_hist_card {
+    padding: 8px;
+    min-width: 180px;
+}
+.o_dtsc_comfyui_hist_card .o_kanban_image img,
+.o_dtsc_comfyui_hist_card .o_field_image img {
+    max-width: 160px;
+    max-height: 160px;
+}
