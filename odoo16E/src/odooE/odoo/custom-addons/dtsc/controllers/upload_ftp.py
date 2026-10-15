@@ -4,6 +4,7 @@ from odoo import http, _
 from odoo.http import request, Response
 from ..models.upload_ftp import UploadModel
 from ..utils.ai_blur_detector import AiBlurDetector
+from ..utils.print_color_check import check_print_colors
 import json
 import os
 import datetime
@@ -581,7 +582,11 @@ class UploadController(http.Controller):
         }
 
     def check_multi_artboard_ai(self, file_content, file_extension):
-        """Multi-artboard simplified check: multi-page gate, then legacy outline only."""
+        """RGB gate, then the existing multi-page and outline checks."""
+        color_result = check_print_colors(file_content, file_extension)
+        if not color_result.get('success'):
+            return color_result
+
         multi_result = self.check_is_multi_artboard_ai(file_content, file_extension)
         image_info = dict(multi_result.get('image_info') or {})
         if not multi_result.get('success'):
@@ -604,6 +609,10 @@ class UploadController(http.Controller):
         return dict({'success': True}, **image_info)
 
     def check_image(self, file_content, file_extension, filename, expected_width=None, expected_height=None):
+        color_result = check_print_colors(file_content, file_extension)
+        if not color_result.get('success'):
+            return color_result
+
         errors = []
         image_info = {}
 

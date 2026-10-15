@@ -1,4 +1,30 @@
 #!/bin/bash
+# 企業版測試環境重啟腳本（不是正式環境）
+#
+# 訪問網址：
+#   首頁：https://coinimaging.euhon.com
+#   後台登入：https://coinimaging.euhon.com/web/login
+#   會員圖片檢測：https://coinimaging.euhon.com/my/ai-check
+#   伺服器本機：http://127.0.0.1:8070
+#
+# 使用方式（在伺服器終端執行，依需求擇一）：
+#   1. 僅重啟，不執行模組升級；Python 程式修改（如 RGB 攔截）使用此方式。
+#      sudo bash /home/odoo/odoo16/odoo16E/restart_odoo16e.sh
+#   2. 升級 dtsc 模組並重啟；XML 視圖／頁面說明文字修改也要生效時使用。
+#      此方式會正常更新 coinimaging 資料庫中的 dtsc 模組。
+#      sudo bash /home/odoo/odoo16/odoo16E/restart_odoo16e.sh --upgrade dtsc
+#
+# 其他選項：
+#   --upgrade 模組1,模組2  升級指定模組；省略模組名稱時預設為 dtsc。
+#   --full                升級 dtsc,dtsc_ai_gateway,dtsc_ai_assistant 並重啟。
+#   --refresh-groups      重啟後重新產生使用者群組視圖，會寫入資料庫。
+#   --db 資料庫名稱       指定升級／群組視圖更新使用的資料庫，預設 coinimaging。
+#   --wait 秒數           設定每項服務健康檢查的等待上限，預設 120 秒。
+#   --help                顯示完整用法，不執行重啟。
+#
+# 腳本會重啟企業版 Web、AI Gateway 與資料庫，並等待服務健康檢查通過。
+# 終端顯示「Restart completed.」表示完成；若顯示錯誤或逾時，請查看輸出日誌。
+#
 set -euo pipefail
 
 BASE_DIR="/home/odoo/odoo16/odoo16E"

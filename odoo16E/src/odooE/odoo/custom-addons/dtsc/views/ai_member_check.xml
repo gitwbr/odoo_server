@@ -776,7 +776,7 @@
                                 <span class="o_ai_member_hint_alert">先按「批量選檔」選擇檔案</span>，系統會自動指派到對應項次並勾選；
                                 <span class="o_ai_member_hint_alert">再按「批量檢測並上傳」</span>執行完整檢測與上傳。
                                 多畫板 <strong>.ai</strong> 檔案可改按
-                                <span class="o_ai_member_hint_alert">「多圖批量簡易檢測並上傳」</span>：先判斷是否多圖，非多圖直接報錯；通過後僅檢查文字轉外框（不檢查尺寸與模糊），成功即上傳。
+                                <span class="o_ai_member_hint_alert">「多圖批量簡易檢測並上傳」</span>：先檢查色彩，含 RGB 時請轉為 CMYK 後重新上傳；通過後判斷是否多圖，非多圖直接報錯，再檢查文字轉外框（不檢查尺寸與模糊），成功即上傳。
                             </p>
 
                             <div class="o_ai_member_items">
