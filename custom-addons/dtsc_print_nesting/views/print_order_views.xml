@@ -1,0 +1,171 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_print_order_tree" model="ir.ui.view">
+        <field name="name">dtsc.print.order.tree</field>
+        <field name="model">dtsc.print.order</field>
+        <field name="arch" type="xml">
+            <tree decoration-danger="need_renest" decoration-muted="state == 'cancel'">
+                <field name="name"/>
+                <field name="material_product_id"/>
+                <field name="machine_id"/>
+                <field name="roll_width_mm"/>
+                <field name="total_demand_qty"/>
+                <field name="total_placed_qty"/>
+                <field name="total_used_length_mm"/>
+                <field name="utilization_rate"/>
+                <field name="need_renest"/>
+                <field name="earliest_delivery"/>
+                <field name="state"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_print_order_form" model="ir.ui.view">
+        <field name="name">dtsc.print.order.form</field>
+        <field name="model">dtsc.print.order</field>
+        <field name="arch" type="xml">
+            <form string="印刷單">
+                <header>
+                    <button name="action_auto_nest" type="object" string="自動排版"
+                            class="oe_highlight"
+                            attrs="{'invisible': [('state', 'in', ['done', 'cancel'])]}"/>
+                    <button name="action_renest" type="object" string="重新最優排列"
+                            class="oe_highlight"
+                            attrs="{'invisible': ['|', ('need_renest', '=', False), ('state', 'in', ['done', 'cancel'])]}"/>
+                    <button name="action_confirm" type="object" string="確認"
+                            attrs="{'invisible': [('state', 'not in', ['nested'])]}"/>
+                    <button name="action_reserve_selected_wizard" type="object" string="鎖定全部可動圖塊"
+                            attrs="{'invisible': [('state', 'in', ['done', 'cancel'])]}"/>
+                    <button name="action_unlock_reserved" type="object" string="解除全部鎖定"
+                            attrs="{'invisible': [('state', 'in', ['done', 'cancel'])]}"/>
+                    <button name="action_done" type="object" string="整單標記已印刷"
+                            confirm="將本單所有圖塊標記為已印刷且不可再改，確定？"
+                            attrs="{'invisible': [('state', 'not in', ['nested', 'confirmed'])]}"/>
+                    <button name="action_cancel" type="object" string="作廢"
+                            confirm="作廢將清除未印刷排版，確定？"
+                            attrs="{'invisible': [('state', 'in', ['done', 'cancel'])]}"/>
+                    <button name="action_set_draft" type="object" string="回草稿"
+                            attrs="{'invisible': [('state', 'not in', ['nested', 'confirmed'])]}"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,nested,confirmed,done"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button class="oe_stat_button" type="action"
+                                name="%(dtsc_print_nesting.action_print_roll)d"
+                                icon="fa-film"
+                                context="{'search_default_order_id': active_id}">
+                            <field name="total_placed_qty" widget="statinfo" string="已排圖塊"/>
+                        </button>
+                    </div>
+                    <div attrs="{'invisible': [('need_renest', '=', False)]}"
+                         class="alert alert-warning" role="alert">
+                        <field name="need_renest" invisible="1"/>
+                        <strong>需重排：</strong>工單內容有變更，請點「重新最優排列」（已鎖定／已印刷圖塊不會移動）。
+                    </div>
+                    <div class="oe_title">
+                        <h1><field name="name" readonly="1"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="material_product_id" attrs="{'readonly': [('state', 'not in', ['draft'])]}"/>
+                            <field name="machine_id"/>
+                            <field name="roll_width_mm" attrs="{'readonly': [('state', 'in', ['done', 'cancel'])]}"/>
+                        </group>
+                        <group>
+                            <field name="gap_mm"/>
+                            <field name="margin_mm"/>
+                            <field name="allow_rotate"/>
+                            <field name="earliest_delivery" readonly="1"/>
+                            <field name="total_used_length_mm" readonly="1"/>
+                            <field name="utilization_rate" readonly="1"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                        </group>
+                    </group>
+                    <field name="unplaced_info" readonly="1"
+                             attrs="{'invisible': [('unplaced_info', 'in', [False, ''])]}"/>
+                    <notebook>
+                        <page string="需求項次">
+                            <field name="line_ids"
+                                     attrs="{'readonly': [('state', 'in', ['done', 'cancel'])]}">
+                                <tree editable="bottom">
+                                    <field name="makeinline_id"
+                                             domain="[('need_print_nesting','=',True),('print_material_id','=',parent.material_product_id)]"/>
+                                    <field name="makein_name"/>
+                                    <field name="sequence_label"/>
+                                    <field name="display_label"/>
+                                    <field name="piece_w_mm"/>
+                                    <field name="piece_h_mm"/>
+                                    <field name="qty"/>
+                                    <field name="placed_qty"/>
+                                    <field name="printed_qty"/>
+                                    <field name="delivery_date"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page string="捲料排版">
+                            <field name="roll_ids" mode="tree">
+                                <tree>
+                                    <field name="sequence"/>
+                                    <field name="name"/>
+                                    <field name="stock_lot_id"/>
+                                    <field name="lot_qty"/>
+                                    <field name="roll_width_mm"/>
+                                    <field name="used_length_mm"/>
+                                    <field name="utilization_rate"/>
+                                    <field name="piece_count"/>
+                                </tree>
+                                <form>
+                                    <header>
+                                        <button name="action_reserve_all" type="object" string="鎖定本捲可動圖塊"/>
+                                        <button name="action_unlock_all_reserved" type="object" string="解除本捲鎖定"/>
+                                        <button name="action_mark_printed" type="object" string="本捲標記已印刷"
+                                                confirm="本捲全部圖塊將永久鎖定，確定？"/>
+                                    </header>
+                                    <sheet>
+                                        <group>
+                                            <field name="name"/>
+                                            <field name="sequence"/>
+                                            <field name="roll_width_mm"/>
+                                            <field name="used_length_mm"/>
+                                            <field name="utilization_rate"/>
+                                            <field name="stock_lot_id" options="{'no_create': True}"/>
+                                            <field name="lot_barcode" readonly="1"/>
+                                            <field name="lot_qty" readonly="1"/>
+                                        </group>
+                                        <separator string="排版預覽"/>
+                                        <field name="preview_svg" nolabel="1"/>
+                                        <separator string="圖塊"/>
+                                        <field name="piece_ids">
+                                            <tree editable="bottom">
+                                                <field name="label"/>
+                                                <field name="makeinline_id"/>
+                                                <field name="x_mm"/>
+                                                <field name="y_mm"/>
+                                                <field name="width_mm"/>
+                                                <field name="height_mm"/>
+                                                <field name="rotated"/>
+                                                <field name="lock_state"/>
+                                                <button name="action_reserve" type="object" string="鎖" icon="fa-lock"/>
+                                                <button name="action_unlock" type="object" string="解" icon="fa-unlock"/>
+                                                <button name="action_mark_printed" type="object" string="已印" icon="fa-check"/>
+                                            </tree>
+                                        </field>
+                                    </sheet>
+                                </form>
+                            </field>
+                        </page>
+                        <page string="備註">
+                            <field name="note"/>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_print_order" model="ir.actions.act_window">
+        <field name="name">印刷單</field>
+        <field name="res_model">dtsc.print.order</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+</odoo>

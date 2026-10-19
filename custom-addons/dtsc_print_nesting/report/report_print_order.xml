@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="action_report_print_order" model="ir.actions.report">
+        <field name="name">印刷單排版</field>
+        <field name="model">dtsc.print.order</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">dtsc_print_nesting.report_print_order_document</field>
+        <field name="report_file">dtsc_print_nesting.report_print_order_document</field>
+        <field name="binding_type">report</field>
+    </record>
+
+    <template id="report_print_order_document">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="o">
+                <t t-call="web.external_layout">
+                    <div class="page">
+                        <h2>印刷單 <span t-field="o.name"/></h2>
+                        <p>
+                            捲材：<span t-field="o.material_product_id"/>
+                            ｜門幅：<span t-field="o.roll_width_mm"/> mm
+                            ｜狀態：<span t-field="o.state"/>
+                        </p>
+                        <t t-foreach="o.roll_ids" t-as="roll">
+                            <h3 style="page-break-before: always;" t-if="not roll_first">
+                                捲料 <span t-field="roll.name"/>
+                            </h3>
+                            <h3 t-if="roll_first">
+                                捲料 <span t-field="roll.name"/>
+                            </h3>
+                            <p>
+                                用料長 <span t-esc="roll.used_length_mm"/> mm
+                                ｜利用率 <span t-esc="roll.utilization_rate"/>%
+                            </p>
+                            <div t-raw="roll.preview_svg"/>
+                            <table class="table table-sm table-bordered">
+                                <thead>
+                                    <tr>
+                                        <th>標籤</th>
+                                        <th>X</th>
+                                        <th>Y</th>
+                                        <th>寬</th>
+                                        <th>高</th>
+                                        <th>旋轉</th>
+                                        <th>鎖定</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr t-foreach="roll.piece_ids" t-as="p">
+                                        <td t-esc="p.label"/>
+                                        <td t-esc="p.x_mm"/>
+                                        <td t-esc="p.y_mm"/>
+                                        <td t-esc="p.width_mm"/>
+                                        <td t-esc="p.height_mm"/>
+                                        <td t-esc="p.rotated"/>
+                                        <td t-esc="p.lock_state"/>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </t>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+</odoo>

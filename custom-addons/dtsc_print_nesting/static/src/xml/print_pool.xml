@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="dtsc_print_nesting.PrintPoolAction" owl="1">
+        <div class="o_print_pool h-100 d-flex flex-column">
+            <div class="o_print_pool_header d-flex align-items-center justify-content-between px-3 py-2 border-bottom bg-view">
+                <div>
+                    <strong>印刷池</strong>
+                    <span class="text-muted ms-2">工單捲材項次 → 舊料優先排版 → 截斷鎖定成印刷單</span>
+                </div>
+                <div>
+                    <button class="btn btn-secondary btn-sm me-2" t-on-click="reloadOverview" t-att-disabled="state.loading">重新整理</button>
+                    <button class="btn btn-primary btn-sm"
+                            t-on-click="lockSelected"
+                            t-att-disabled="state.locking or !state.layout">
+                        鎖定截斷範圍並生成印刷單
+                    </button>
+                </div>
+            </div>
+
+            <div t-if="state.error" class="alert alert-danger m-2" t-esc="state.error"/>
+
+            <div class="o_print_pool_body d-flex flex-grow-1 overflow-hidden">
+                <!-- 左：材料 -->
+                <div class="o_print_pool_left border-end overflow-auto">
+                    <div class="p-2 text-muted small">材料 / 門幅</div>
+                    <t t-if="!state.materials.length">
+                        <div class="p-3 text-muted">目前沒有待排項次。只有「印刷池啟用之後」新產生、且未完成的捲材工單項次會進來。</div>
+                    </t>
+                    <t t-foreach="state.materials" t-as="mat" t-key="mat.id">
+                        <div t-att-class="'o_print_pool_mat p-2 ' + (state.selectedId === mat.id ? 'active' : '')"
+                             t-on-click="() => this.selectMaterial(mat.id)">
+                            <div class="fw-bold" t-esc="mat.name"/>
+                            <div class="small text-muted">
+                                寬 <t t-esc="mat.width_cm"/> cm
+                                ／長 <t t-esc="mat.length_m"/> m
+                            </div>
+                            <div class="small">
+                                待排 <t t-esc="mat.pending_pieces"/> 塊
+                                · 項次 <t t-esc="mat.pending_lines"/>
+                                · 可用捲 <t t-esc="mat.lot_count"/>
+                            </div>
+                        </div>
+                    </t>
+                </div>
+
+                <!-- 右：長條 -->
+                <div class="o_print_pool_right flex-grow-1 overflow-auto p-3">
+                    <t t-if="state.loading">
+                        <div class="text-muted">載入中…</div>
+                    </t>
+                    <t t-elif="state.layout">
+                        <div class="mb-2">
+                            <strong t-esc="state.layout.material.name"/>
+                            <span class="text-muted ms-2">
+                                已排 <t t-esc="state.layout.placed_total"/> / <t t-esc="state.layout.pending_total"/>
+                            </span>
+                        </div>
+
+                        <t t-foreach="state.layout.strips" t-as="strip" t-key="strip.key">
+                            <div class="o_print_strip_card mb-4">
+                                <div class="d-flex align-items-center justify-content-between mb-1">
+                                    <div>
+                                        <span t-att-class="'badge me-2 ' + (strip.kind === 'new' ? 'bg-primary' : 'bg-warning text-dark')"
+                                              t-esc="strip.kind === 'new' ? '新料' : '舊料'"/>
+                                        <strong t-esc="strip.label"/>
+                                    </div>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <label class="small mb-0">截斷至 (mm)</label>
+                                        <input type="number" class="form-control form-control-sm"
+                                               style="width:110px"
+                                               t-att-value="state.cutoffs[strip.key]"
+                                               t-att-max="strip.capacity_mm"
+                                               t-on-input="(ev) => this.onCutoffInput(strip.key, ev)"/>
+                                        <span class="small text-muted">
+                                            ≈ <t t-esc="mmToM(state.cutoffs[strip.key])"/> m
+                                            ／容量 <t t-esc="mmToM(strip.capacity_mm)"/> m
+                                        </span>
+                                    </div>
+                                </div>
+                                <div class="o_print_strip_scroll">
+                                    <div class="o_print_strip_box" t-att-style="stripBoxStyle(strip)">
+                                        <t t-foreach="strip.pieces" t-as="piece" t-key="piece.key">
+                                            <div t-att-class="'o_print_piece ' + (isPieceLocked(strip, piece) ? 'locked' : 'open')"
+                                                 t-att-style="pieceStyle(strip, piece)"
+                                                 t-att-title="piece.label">
+                                                <span t-esc="piece.label"/>
+                                            </div>
+                                        </t>
+                                        <div class="o_print_cutoff" t-att-style="cutoffLineStyle(strip)"/>
+                                    </div>
+                                </div>
+                                <div class="small text-muted mt-1">
+                                    綠=截斷內將鎖定　灰=暫不印　紅線=截斷位置　長條方向=捲長
+                                </div>
+                            </div>
+                        </t>
+
+                        <t t-if="state.layout.unplaced.length">
+                            <div class="alert alert-warning">
+                                尚有 <t t-esc="state.layout.unplaced.length"/> 塊放不下（超過門幅或舊料+新料都滿了）：
+                                <t t-foreach="state.layout.unplaced" t-as="u" t-key="u.key">
+                                    <span class="badge bg-secondary me-1" t-esc="u.label"/>
+                                </t>
+                            </div>
+                        </t>
+                    </t>
+                    <t t-else="">
+                        <div class="text-muted">請從左側選擇材料</div>
+                    </t>
+                </div>
+            </div>
+        </div>
+    </t>
+</templates>

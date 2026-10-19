@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- 產品規格：放在「一般資訊」產品類型下方，與庫存無關 -->
+    <record id="view_product_template_form_roll_width" model="ir.ui.view">
+        <field name="name">product.template.form.roll.width</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="product.product_template_form_view"/>
+        <field name="priority">99</field>
+        <field name="arch" type="xml">
+            <xpath expr="//page[@name='general_information']//field[@name='detailed_type']" position="after">
+                <field name="tracking" invisible="1"/>
+                <field name="roll_width_cm"
+                         string="寬度(cm)"
+                         attrs="{'invisible': [('tracking', '!=', 'serial')]}"/>
+                <field name="roll_length_m"
+                         string="長度(m)"
+                         attrs="{'invisible': [('tracking', '!=', 'serial')]}"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

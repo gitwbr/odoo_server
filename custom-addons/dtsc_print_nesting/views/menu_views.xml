@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <menuitem id="menu_print_nesting_root"
+              name="印刷排版"
+              parent="dtsc.makein"
+              sequence="20"
+              groups="dtsc.group_dtsc_mg,dtsc.group_dtsc_sc"/>
+
+    <menuitem id="menu_print_pool"
+              name="印刷池"
+              parent="menu_print_nesting_root"
+              action="action_print_pool"
+              sequence="1"/>
+
+    <menuitem id="menu_print_order"
+              name="印刷單"
+              parent="menu_print_nesting_root"
+              action="action_print_order"
+              sequence="2"/>
+
+    <menuitem id="menu_create_print_order"
+              name="新建印刷單"
+              parent="menu_print_nesting_root"
+              action="action_create_print_order_wizard"
+              sequence="3"/>
+
+    <menuitem id="menu_pending_print_lines"
+              name="待印項次列表"
+              parent="menu_print_nesting_root"
+              action="action_pending_print_lines"
+              sequence="4"/>
+
+    <menuitem id="menu_print_roll"
+              name="排版捲料"
+              parent="menu_print_nesting_root"
+              action="action_print_roll"
+              sequence="5"/>
+
+    <menuitem id="menu_available_print_lots"
+              name="倉庫可用捲材"
+              parent="menu_print_nesting_root"
+              action="action_available_print_lots"
+              sequence="6"/>
+</odoo>

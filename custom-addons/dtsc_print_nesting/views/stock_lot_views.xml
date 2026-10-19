@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_stock_lot_tree_available_print" model="ir.ui.view">
+        <field name="name">stock.lot.tree.available.print</field>
+        <field name="model">stock.lot</field>
+        <field name="arch" type="xml">
+            <tree create="0" delete="0" string="倉庫可用捲材">
+                <field name="name"/>
+                <field name="barcode"/>
+                <field name="product_id"/>
+                <field name="print_available_qty"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="action_available_print_lots" model="ir.actions.server">
+        <field name="name">倉庫可用捲材</field>
+        <field name="model_id" ref="stock.model_stock_lot"/>
+        <field name="state">code</field>
+        <field name="code">action = model.action_open_available_print_lots()</field>
+    </record>
+</odoo>

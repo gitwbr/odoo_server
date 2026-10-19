@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_create_print_order_wizard" model="ir.ui.view">
+        <field name="name">dtsc.print.order.create.wizard.form</field>
+        <field name="model">dtsc.print.order.create.wizard</field>
+        <field name="arch" type="xml">
+            <form string="建立印刷單">
+                <group>
+                    <field name="material_product_id"/>
+                    <field name="machine_id"/>
+                    <field name="auto_nest"/>
+                </group>
+                <separator string="選擇待印項次（同捲材）"/>
+                <field name="line_ids" nolabel="1">
+                    <tree>
+                        <field name="make_order_id"/>
+                        <field name="sequence"/>
+                        <field name="product_id"/>
+                        <field name="print_material_id"/>
+                        <field name="product_width"/>
+                        <field name="product_height"/>
+                        <field name="quantity"/>
+                        <field name="print_placed_qty"/>
+                        <field name="print_state"/>
+                        <field name="machine_id"/>
+                    </tree>
+                </field>
+                <footer>
+                    <button name="action_create" type="object" string="建立印刷單" class="btn-primary"/>
+                    <button string="取消" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_create_print_order_wizard" model="ir.actions.act_window">
+        <field name="name">新建印刷單</field>
+        <field name="res_model">dtsc.print.order.create.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+</odoo>

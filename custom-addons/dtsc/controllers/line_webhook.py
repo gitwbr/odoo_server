@@ -440,7 +440,7 @@ class LineBotController(http.Controller):
         Attendance = request.env['dtsc.attendance']
         Calendar = request.env['dtsc.calendar']
         tz = pytz.timezone("Asia/Taipei")
-        now_date = datetime.now()
+        now = datetime.now(tz)
         # 以台北時區為準：業務日（凌晨4點前算前一天）；存入 Odoo 的時間用 UTC naive
         today = request.env['dtsc.attendance']._get_business_date(now)
         now_utc = now.astimezone(pytz.utc).replace(tzinfo=None)

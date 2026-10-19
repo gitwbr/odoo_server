@@ -1403,15 +1403,16 @@ class PurchaseOrder(models.Model):
         }    
         
 
-    @api.depends("partner_id")
+    @api.depends('partner_id', 'partner_id.name', 'partner_id.custom_id')
     def _compute_partner_display_name(self):
-        print("_compute_partner_display_name")
         for record in self:
-            print(record.partner_id.name)
-            print(record.partner_id.sell_user)
             if record.partner_id:
-                record.partner_display_name = f"{record.partner_id.custom_id}, {record.partner_id.name}"
-                
+                custom_id = record.partner_id.custom_id or ''
+                name = record.partner_id.name or ''
+                record.partner_display_name = f"{custom_id}, {name}"
+            else:
+                record.partner_display_name = False
+               
     def button_approve(self, force=False):
         res = super(PurchaseOrder, self).button_approve(force=force)
         self.write({'my_state': '2'})

@@ -196,39 +196,25 @@ class ResPartner(models.Model):
     
         # # 调用父类的 export_data 方法来完成导出
         # return super(ResPartner, sorted_data).export_data(fields_to_export)
-    @api.model
     def export_data(self, fields_to_export):
-        # 获取 fields_to_export 中的第一个字段名
+        """客户导出固定按编号 custom_id 排序：去掉首位英文后按数字升序。"""
         if not fields_to_export:
             raise ValueError("导出的字段列表不能为空。")
 
-        first_field_name = fields_to_export[0]  # 使用导出的字段列表中的第一个字段
+        def custom_id_sort_key(record):
+            custom_id = (record.custom_id or '').strip()
+            if not custom_id:
+                return (1, 0, '')
+            prefix = custom_id[0].upper() if custom_id[0].isalpha() else ''
+            num_part = custom_id[1:] if prefix else custom_id
+            try:
+                num = int(num_part)
+            except ValueError:
+                return (1, 0, custom_id)
+            # 同数字时再按前缀（C/S）稳定排序；无编号排最后
+            return (0, num, prefix)
 
-        # 打印用于排序的字段名称
-        print(f"用于排序的字段: {first_field_name}")
-
-        # 对现有的 self 进行排序，确保字段类型一致，避免类型比较错误
-        def safe_getattr(record, field_name):
-            value = getattr(record, field_name)
-            # 处理 Many2one 字段，使用其展示名称来进行排序
-            if hasattr(value, 'name'):
-                return value.name or ""
-            # 如果值是 None，返回空字符串
-            if value is None:
-                return ""
-            # 对于布尔类型，转换为字符串
-            if isinstance(value, bool):
-                return str(value)
-            # 对于其他类型，统一转换为字符串进行排序
-            return str(value)
-
-        # 对数据集进行排序
-        sorted_data = self.sorted(lambda r: safe_getattr(r, first_field_name))
-
-        # 打印导出的记录数量
-        print(f"导出记录数量: {len(sorted_data)}")
-    
-        # 调用父类的 export_data 方法来完成导出
+        sorted_data = self.sorted(key=custom_id_sort_key)
         return super(ResPartner, sorted_data).export_data(fields_to_export)
     
     def _compute_meeting_count(self):

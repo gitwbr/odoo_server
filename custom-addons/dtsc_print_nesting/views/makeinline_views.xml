@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_makein_form_print_nesting" model="ir.ui.view">
+        <field name="name">dtsc.makein.form.print.nesting</field>
+        <field name="model">dtsc.makein</field>
+        <field name="inherit_id" ref="dtsc.view_makein_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='order_ids']/tree" position="inside">
+                <field name="need_print_nesting" optional="hide"/>
+                <field name="print_material_id" optional="hide"/>
+                <field name="print_state" optional="show"/>
+                <field name="print_placed_qty" optional="hide"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_makeinline_tree_pending_print" model="ir.ui.view">
+        <field name="name">dtsc.makeinline.tree.pending.print</field>
+        <field name="model">dtsc.makeinline</field>
+        <field name="arch" type="xml">
+            <tree string="待印項次" create="0">
+                <field name="make_order_id"/>
+                <field name="sequence"/>
+                <field name="product_id"/>
+                <field name="print_material_id"/>
+                <field name="product_width"/>
+                <field name="product_height"/>
+                <field name="quantity"/>
+                <field name="print_placed_qty"/>
+                <field name="print_state"/>
+                <field name="machine_id"/>
+                <field name="need_print_nesting"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="action_pending_print_lines" model="ir.actions.act_window">
+        <field name="name">待印項次池</field>
+        <field name="res_model">dtsc.makeinline</field>
+        <field name="view_mode">tree,form</field>
+        <field name="view_id" ref="view_makeinline_tree_pending_print"/>
+        <field name="domain">[
+            ('need_print_nesting', '=', True),
+            ('print_state', 'in', ('none', 'partial')),
+            ('make_order_id.install_state', 'not in', ('stock_in', 'cancel'))
+        ]</field>
+    </record>
+</odoo>

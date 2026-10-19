@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <record id="seq_dtsc_print_order" model="ir.sequence">
+        <field name="name">印刷單</field>
+        <field name="code">dtsc.print.order</field>
+        <field name="prefix">P%(y)s%(month)s%(day)s-</field>
+        <field name="padding">3</field>
+        <field name="company_id" eval="False"/>
+    </record>
+</odoo>

@@ -1,0 +1,84 @@
+.o_print_nesting_preview {
+    overflow-x: auto;
+    max-width: 100%;
+}
+.o_print_nesting_preview svg {
+    max-width: 100%;
+    height: auto;
+}
+
+.o_print_pool {
+    background: #f8f9fa;
+    min-height: 70vh;
+}
+.o_print_pool_left {
+    width: 300px;
+    min-width: 260px;
+    background: #fff;
+}
+.o_print_pool_mat {
+    cursor: pointer;
+    border-bottom: 1px solid #eee;
+}
+.o_print_pool_mat:hover {
+    background: #f5f5f5;
+}
+.o_print_pool_mat.active {
+    background: #e8f0fe;
+    border-left: 3px solid #1a73e8;
+}
+.o_print_strip_card {
+    background: #fff;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    padding: 12px;
+}
+.o_print_strip_scroll {
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding-bottom: 4px;
+}
+.o_print_strip_box {
+    position: relative;
+    background: repeating-linear-gradient(
+        90deg,
+        #fafafa,
+        #fafafa 40px,
+        #f0f0f0 40px,
+        #f0f0f0 80px
+    );
+    border: 1px solid #bbb;
+    min-height: 40px;
+}
+.o_print_piece {
+    position: absolute;
+    box-sizing: border-box;
+    border: 1px solid #333;
+    overflow: hidden;
+    font-size: 10px;
+    line-height: 1.1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 1px;
+    word-break: break-all;
+}
+.o_print_piece.open {
+    background: rgba(158, 158, 158, 0.45);
+    color: #222;
+}
+.o_print_piece.locked {
+    background: rgba(76, 175, 80, 0.75);
+    color: #111;
+    font-weight: 600;
+}
+.o_print_cutoff {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: #e53935;
+    z-index: 5;
+    pointer-events: none;
+}

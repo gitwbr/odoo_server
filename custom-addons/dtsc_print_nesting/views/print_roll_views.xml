@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_print_roll_tree" model="ir.ui.view">
+        <field name="name">dtsc.print.roll.tree</field>
+        <field name="model">dtsc.print.roll</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="name"/>
+                <field name="order_id"/>
+                <field name="material_product_id"/>
+                <field name="stock_lot_id"/>
+                <field name="lot_barcode" optional="show"/>
+                <field name="lot_qty"/>
+                <field name="sequence"/>
+                <field name="roll_width_mm"/>
+                <field name="used_length_mm"/>
+                <field name="utilization_rate"/>
+                <field name="piece_count"/>
+                <field name="state"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_print_roll_form" model="ir.ui.view">
+        <field name="name">dtsc.print.roll.form</field>
+        <field name="model">dtsc.print.roll</field>
+        <field name="arch" type="xml">
+            <form string="印刷捲料">
+                <header>
+                    <button name="action_reserve_all" type="object" string="鎖定本捲可動圖塊"/>
+                    <button name="action_unlock_all_reserved" type="object" string="解除本捲鎖定"/>
+                    <button name="action_mark_printed" type="object" string="本捲標記已印刷"
+                            class="oe_highlight"
+                            confirm="本捲全部圖塊將永久鎖定，確定？"/>
+                    <field name="state" widget="statusbar"/>
+                </header>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="name"/>
+                            <field name="order_id"/>
+                            <field name="material_product_id"/>
+                            <field name="sequence"/>
+                        </group>
+                        <group>
+                            <field name="roll_width_mm"/>
+                            <field name="used_length_mm"/>
+                            <field name="utilization_rate"/>
+                            <field name="stock_lot_id"
+                                      options="{'no_create': True}"
+                                      context="{'default_product_id': material_product_id}"/>
+                            <field name="lot_barcode" readonly="1"/>
+                            <field name="lot_qty" readonly="1"/>
+                            <field name="piece_count"/>
+                        </group>
+                    </group>
+                    <separator string="排版預覽（綠=可動 / 橙=鎖定 / 灰=已印刷）"/>
+                    <field name="preview_svg" nolabel="1"/>
+                    <separator string="圖塊明細"/>
+                    <field name="piece_ids">
+                        <tree editable="bottom">
+                            <field name="label"/>
+                            <field name="makeinline_id"/>
+                            <field name="x_mm"/>
+                            <field name="y_mm"/>
+                            <field name="width_mm"/>
+                            <field name="height_mm"/>
+                            <field name="rotated"/>
+                            <field name="lock_state"/>
+                            <button name="action_reserve" type="object" string="鎖"/>
+                            <button name="action_unlock" type="object" string="解"/>
+                            <button name="action_mark_printed" type="object" string="已印"/>
+                        </tree>
+                    </field>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_print_roll" model="ir.actions.act_window">
+        <field name="name">印刷捲料</field>
+        <field name="res_model">dtsc.print.roll</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+</odoo>

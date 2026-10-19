@@ -3880,14 +3880,25 @@ class AccountMove(models.Model):
             record.report_month = month_record.id if month_record else False
     
     
-    @api.depends("partner_id",'partner_id.name','partner_id.sell_user.name')
+    @api.depends(
+        'is_online',
+        'partner_id',
+        'partner_id.name',
+        'partner_id.custom_id',
+        'partner_id.sell_user',
+        'partner_id.sell_user.name',
+    )
     def _compute_partner_display_name(self):
         for record in self:
-            if record.is_online == True:
-                store_string = "商城訂單"
-                record.partner_display_name = f"{store_string}, {record.partner_id.name}"
+            if record.is_online:
+                record.partner_display_name = f"商城訂單, {record.partner_id.name or ''}"
             elif record.partner_id:
-                record.partner_display_name = f"{record.partner_id.custom_id}, {record.partner_id.name}, {record.partner_id.sell_user.name}"
+                custom_id = record.partner_id.custom_id or ''
+                name = record.partner_id.name or ''
+                sell_user = record.partner_id.sell_user.name or ''
+                record.partner_display_name = f"{custom_id}, {name}, {sell_user}"
+            else:
+                record.partner_display_name = False
 
     @api.model
     def create(self, vals):

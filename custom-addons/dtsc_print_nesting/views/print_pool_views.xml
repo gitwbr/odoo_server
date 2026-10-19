@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="action_print_pool" model="ir.actions.client">
+        <field name="name">印刷池</field>
+        <field name="tag">dtsc_print_pool</field>
+    </record>
+</odoo>

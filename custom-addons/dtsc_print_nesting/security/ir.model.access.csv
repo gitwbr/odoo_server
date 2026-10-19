@@ -1,0 +1,15 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_dtsc_print_order_sc,dtsc.print.order sc,model_dtsc_print_order,dtsc.group_dtsc_sc,1,1,1,1
+access_dtsc_print_order_mg,dtsc.print.order mg,model_dtsc_print_order,dtsc.group_dtsc_mg,1,1,1,1
+access_dtsc_print_order_line_sc,dtsc.print.order.line sc,model_dtsc_print_order_line,dtsc.group_dtsc_sc,1,1,1,1
+access_dtsc_print_order_line_mg,dtsc.print.order.line mg,model_dtsc_print_order_line,dtsc.group_dtsc_mg,1,1,1,1
+access_dtsc_print_roll_sc,dtsc.print.roll sc,model_dtsc_print_roll,dtsc.group_dtsc_sc,1,1,1,1
+access_dtsc_print_roll_mg,dtsc.print.roll mg,model_dtsc_print_roll,dtsc.group_dtsc_mg,1,1,1,1
+access_dtsc_print_piece_sc,dtsc.print.piece sc,model_dtsc_print_piece,dtsc.group_dtsc_sc,1,1,1,1
+access_dtsc_print_piece_mg,dtsc.print.piece mg,model_dtsc_print_piece,dtsc.group_dtsc_mg,1,1,1,1
+access_dtsc_print_order_wizard_sc,dtsc.print.order.create.wizard sc,model_dtsc_print_order_create_wizard,dtsc.group_dtsc_sc,1,1,1,1
+access_dtsc_print_order_wizard_mg,dtsc.print.order.create.wizard mg,model_dtsc_print_order_create_wizard,dtsc.group_dtsc_mg,1,1,1,1
+access_dtsc_print_order_bs,dtsc.print.order bs,model_dtsc_print_order,dtsc.group_dtsc_bs,1,0,0,0
+access_dtsc_print_order_line_bs,dtsc.print.order.line bs,model_dtsc_print_order_line,dtsc.group_dtsc_bs,1,0,0,0
+access_dtsc_print_roll_bs,dtsc.print.roll bs,model_dtsc_print_roll,dtsc.group_dtsc_bs,1,0,0,0
+access_dtsc_print_piece_bs,dtsc.print.piece bs,model_dtsc_print_piece,dtsc.group_dtsc_bs,1,0,0,0
