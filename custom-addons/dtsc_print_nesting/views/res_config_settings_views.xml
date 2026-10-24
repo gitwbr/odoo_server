@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="res_config_settings_view_form_print_nesting" model="ir.ui.view">
+        <field name="name">res.config.settings.view.form.print.nesting</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="dtsc.view_my_module_config_settings"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[@data-key='my_module_settings']//div[contains(@class,'o_settings_container')]" position="inside">
+                <div class="col-12 col-lg-6 o_setting_box">
+                    <div class="o_setting_left_pane">
+                        <field name="enable_layout_tiff_check"/>
+                    </div>
+                    <div class="o_setting_right_pane">
+                        <label for="enable_layout_tiff_check"/>
+                        <div class="text-muted">
+                            開啟後，訂單確認時會檢查：內部工單/代工 + 捲料項次是否已上傳 TIFF、出血後寬高是否有值。
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12 col-lg-6 o_setting_box">
+                    <div class="o_setting_left_pane">
+                        <field name="print_pool_allow_rotate"/>
+                    </div>
+                    <div class="o_setting_right_pane">
+                        <label for="print_pool_allow_rotate"/>
+                        <div class="text-muted">
+                            印刷池排版高級設定：開啟後圖塊可橫豎互換，哪個省料就怎麼排（預設開啟）。
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12 col-lg-6 o_setting_box">
+                    <div class="o_setting_right_pane">
+                        <label for="print_pool_gap_cm"/>
+                        <div class="text-muted mb-2">
+                            印刷池高級設定：一般圖與圖最小間距（預設 0.5cm）。
+                        </div>
+                        <field name="print_pool_gap_cm" class="oe_inline"/>
+                        <span class="ms-1">cm</span>
+                    </div>
+                </div>
+                <div class="col-12 col-lg-6 o_setting_box">
+                    <div class="o_setting_right_pane">
+                        <label for="print_pool_gap_diff_film_cm"/>
+                        <div class="text-muted mb-2">
+                            冷裱膜不同（如亮膜 vs 霧膜）時，兩圖之間最小間距（預設 5cm）。
+                        </div>
+                        <field name="print_pool_gap_diff_film_cm" class="oe_inline"/>
+                        <span class="ms-1">cm</span>
+                    </div>
+                </div>
+                <div class="col-12 col-lg-6 o_setting_box">
+                    <div class="o_setting_right_pane">
+                        <label for="print_pool_margin_cm"/>
+                        <div class="text-muted mb-2">
+                            捲材邊距：門幅兩側與用料起止方向留白；0 表示貼邊不留空（預設 0）。
+                        </div>
+                        <field name="print_pool_margin_cm" class="oe_inline"/>
+                        <span class="ms-1">cm</span>
+                    </div>
+                </div>
+                <div class="col-12 col-lg-6 o_setting_box">
+                    <div class="o_setting_right_pane">
+                        <label for="print_cmyk_icc" string="印刷 CMYK ICC 描述檔"/>
+                        <div class="text-muted mb-2">
+                            合成排版 TIFF 時，RGB 來源用此 ICC 轉成 CMYK，並內嵌到輸出檔。
+                            請上傳印刷機/RIP 廠商提供、對應材料的 CMYK 描述檔（.icc / .icm）。
+                            未上傳時為軟體近似轉換；CMYK 來源一律原樣不轉。
+                        </div>
+                        <field name="print_cmyk_icc_filename" invisible="1"/>
+                        <field name="print_cmyk_icc" filename="print_cmyk_icc_filename"/>
+                        <div class="mt-2">
+                            <label for="print_cmyk_intent" class="me-2"/>
+                            <field name="print_cmyk_intent" class="oe_inline"/>
+                        </div>
+                    </div>
+                </div>
+            </xpath>
+        </field>
+    </record>
+</odoo>

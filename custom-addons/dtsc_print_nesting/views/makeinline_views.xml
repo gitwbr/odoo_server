@@ -7,7 +7,8 @@
         <field name="arch" type="xml">
             <xpath expr="//field[@name='order_ids']/tree" position="inside">
                 <field name="need_print_nesting" optional="hide"/>
-                <field name="print_material_id" optional="hide"/>
+                <field name="print_material_candidate_ids" widget="many2many_tags" optional="hide"/>
+                <field name="print_material_id" optional="show"/>
                 <field name="print_state" optional="show"/>
                 <field name="print_placed_qty" optional="hide"/>
             </xpath>
@@ -18,31 +19,68 @@
         <field name="name">dtsc.makeinline.tree.pending.print</field>
         <field name="model">dtsc.makeinline</field>
         <field name="arch" type="xml">
-            <tree string="待印項次" create="0">
-                <field name="make_order_id"/>
+            <tree string="印刷項次" create="0"
+                  decoration-muted="print_state == 'printed'"
+                  decoration-info="print_state in ('partial', 'full')">
+                <field name="print_preview" widget="image" options="{'size': [56, 56]}"/>
+                <field name="make_order_id" string="內部訂單號"/>
                 <field name="sequence"/>
                 <field name="product_id"/>
+                <field name="print_material_candidate_ids" widget="many2many_tags" optional="hide"/>
                 <field name="print_material_id"/>
-                <field name="product_width"/>
-                <field name="product_height"/>
+                <field name="print_size_text"/>
+                <field name="print_colorspace" optional="show"/>
+                <field name="product_width" string="訂單寬" optional="hide"/>
+                <field name="product_height" string="訂單高" optional="hide"/>
                 <field name="quantity"/>
                 <field name="print_placed_qty"/>
-                <field name="print_state"/>
-                <field name="machine_id"/>
-                <field name="need_print_nesting"/>
+                <field name="print_printed_qty"/>
+                <field name="print_state" widget="badge"
+                       decoration-warning="print_state == 'none'"
+                       decoration-info="print_state == 'partial'"
+                       decoration-primary="print_state == 'full'"
+                       decoration-success="print_state == 'printed'"/>
+                <field name="print_order_names"/>
+                <field name="machine_id" optional="hide"/>
+                <field name="need_print_nesting" optional="hide"/>
             </tree>
         </field>
     </record>
 
+    <record id="view_makeinline_search_print" model="ir.ui.view">
+        <field name="name">dtsc.makeinline.search.print</field>
+        <field name="model">dtsc.makeinline</field>
+        <field name="arch" type="xml">
+            <search string="印刷項次">
+                <field name="make_order_id" string="內部訂單號"/>
+                <field name="product_id"/>
+                <field name="print_material_id"/>
+                <filter name="f_none" string="未排" domain="[('print_state', '=', 'none')]"/>
+                <filter name="f_partial" string="部分已排" domain="[('print_state', '=', 'partial')]"/>
+                <filter name="f_full" string="已排滿" domain="[('print_state', '=', 'full')]"/>
+                <filter name="f_printed" string="已印刷" domain="[('print_state', '=', 'printed')]"/>
+                <separator/>
+                <filter name="f_unfinished" string="未印完" domain="[('print_state', '!=', 'printed')]"/>
+                <group expand="0" string="分組">
+                    <filter name="g_state" string="排版狀態" context="{'group_by': 'print_state'}"/>
+                    <filter name="g_material" string="捲材" context="{'group_by': 'print_material_id'}"/>
+                    <filter name="g_order" string="內部訂單號" context="{'group_by': 'make_order_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
     <record id="action_pending_print_lines" model="ir.actions.act_window">
-        <field name="name">待印項次池</field>
+        <field name="name">印刷項次總表</field>
         <field name="res_model">dtsc.makeinline</field>
         <field name="view_mode">tree,form</field>
         <field name="view_id" ref="view_makeinline_tree_pending_print"/>
+        <field name="search_view_id" ref="view_makeinline_search_print"/>
+        <!-- 新規則未上傳 TIFF 不能轉工單；沒有 TIFF 的都是舊資料，不列入 -->
         <field name="domain">[
             ('need_print_nesting', '=', True),
-            ('print_state', 'in', ('none', 'partial')),
-            ('make_order_id.install_state', 'not in', ('stock_in', 'cancel'))
+            ('make_order_id.install_state', '!=', 'cancel'),
+            ('checkout_line_id.layout_tiff_filename', '!=', False)
         ]</field>
     </record>
 </odoo>

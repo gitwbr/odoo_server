@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <record id="config_enable_layout_tiff_check" model="ir.config_parameter">
+        <field name="key">dtsc_print_nesting.enable_layout_tiff_check</field>
+        <field name="value">True</field>
+    </record>
+    <record id="config_print_pool_allow_rotate" model="ir.config_parameter">
+        <field name="key">dtsc_print_nesting.print_pool_allow_rotate</field>
+        <field name="value">True</field>
+    </record>
+    <record id="config_print_pool_gap_cm" model="ir.config_parameter">
+        <field name="key">dtsc_print_nesting.print_pool_gap_cm</field>
+        <field name="value">0.5</field>
+    </record>
+    <record id="config_print_pool_gap_diff_film_cm" model="ir.config_parameter">
+        <field name="key">dtsc_print_nesting.print_pool_gap_diff_film_cm</field>
+        <field name="value">5.0</field>
+    </record>
+    <record id="config_print_pool_margin_cm" model="ir.config_parameter">
+        <field name="key">dtsc_print_nesting.print_pool_margin_cm</field>
+        <field name="value">0.0</field>
+    </record>
+</odoo>

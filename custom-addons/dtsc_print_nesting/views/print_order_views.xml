@@ -6,6 +6,7 @@
         <field name="arch" type="xml">
             <tree decoration-danger="need_renest" decoration-muted="state == 'cancel'">
                 <field name="name"/>
+                <field name="effect_thumb_html" width="230px"/>
                 <field name="material_product_id"/>
                 <field name="machine_id"/>
                 <field name="roll_width_mm"/>
@@ -26,26 +27,33 @@
         <field name="arch" type="xml">
             <form string="印刷單">
                 <header>
+                    <!-- 僅草稿/已排版可改排版；印刷池生成後為「已確認」，順序已鎖定不可改 -->
                     <button name="action_auto_nest" type="object" string="自動排版"
                             class="oe_highlight"
-                            attrs="{'invisible': [('state', 'in', ['done', 'cancel'])]}"/>
+                            attrs="{'invisible': [('state', 'not in', ['draft', 'nested'])]}"/>
                     <button name="action_renest" type="object" string="重新最優排列"
                             class="oe_highlight"
-                            attrs="{'invisible': ['|', ('need_renest', '=', False), ('state', 'in', ['done', 'cancel'])]}"/>
+                            attrs="{'invisible': ['|', ('need_renest', '=', False), ('state', 'not in', ['draft', 'nested'])]}"/>
                     <button name="action_confirm" type="object" string="確認"
                             attrs="{'invisible': [('state', 'not in', ['nested'])]}"/>
                     <button name="action_reserve_selected_wizard" type="object" string="鎖定全部可動圖塊"
-                            attrs="{'invisible': [('state', 'in', ['done', 'cancel'])]}"/>
+                            attrs="{'invisible': [('state', 'not in', ['draft', 'nested'])]}"/>
                     <button name="action_unlock_reserved" type="object" string="解除全部鎖定"
-                            attrs="{'invisible': [('state', 'in', ['done', 'cancel'])]}"/>
+                            attrs="{'invisible': [('state', 'not in', ['draft', 'nested'])]}"/>
                     <button name="action_done" type="object" string="整單標記已印刷"
                             confirm="將本單所有圖塊標記為已印刷且不可再改，確定？"
                             attrs="{'invisible': [('state', 'not in', ['nested', 'confirmed'])]}"/>
+                    <button name="action_download_layout_tiffs" type="object"
+                            string="下載排版TIFF" class="oe_highlight"
+                            attrs="{'invisible': [('state', 'in', ['draft', 'cancel'])]}"/>
+                    <button name="action_compose_layout_tiffs" type="object"
+                            string="重新合成排版TIFF"
+                            attrs="{'invisible': [('state', 'in', ['draft', 'cancel'])]}"/>
                     <button name="action_cancel" type="object" string="作廢"
-                            confirm="作廢將清除未印刷排版，確定？"
+                            confirm="作廢將清除未印刷排版，項次回到印刷池，確定？"
                             attrs="{'invisible': [('state', 'in', ['done', 'cancel'])]}"/>
                     <button name="action_set_draft" type="object" string="回草稿"
-                            attrs="{'invisible': [('state', 'not in', ['nested', 'confirmed'])]}"/>
+                            attrs="{'invisible': [('state', 'not in', ['nested'])]}"/>
                     <field name="state" widget="statusbar" statusbar_visible="draft,nested,confirmed,done"/>
                 </header>
                 <sheet>
@@ -69,29 +77,33 @@
                         <group>
                             <field name="material_product_id" attrs="{'readonly': [('state', 'not in', ['draft'])]}"/>
                             <field name="machine_id"/>
-                            <field name="roll_width_mm" attrs="{'readonly': [('state', 'in', ['done', 'cancel'])]}"/>
+                            <field name="roll_width_mm" attrs="{'readonly': [('state', 'not in', ['draft', 'nested'])]}"/>
                         </group>
                         <group>
-                            <field name="gap_mm"/>
-                            <field name="margin_mm"/>
-                            <field name="allow_rotate"/>
+                            <field name="gap_mm" readonly="1"
+                                     string="一般圖間距(mm)"
+                                     help="鎖定時的系統設定值；異膜間距見印刷池高級設定。"/>
+                            <field name="margin_mm" readonly="1"
+                                     string="邊距(mm)"
+                                     help="鎖定時的捲材邊距（系統高級設定）。"/>
                             <field name="earliest_delivery" readonly="1"/>
                             <field name="total_used_length_mm" readonly="1"/>
                             <field name="utilization_rate" readonly="1"/>
                             <field name="company_id" groups="base.group_multi_company"/>
                         </group>
                     </group>
+                    <separator string="印刷效果圖"/>
+                    <field name="effect_preview_html" nolabel="1" readonly="1"/>
                     <field name="unplaced_info" readonly="1"
                              attrs="{'invisible': [('unplaced_info', 'in', [False, ''])]}"/>
                     <notebook>
                         <page string="需求項次">
                             <field name="line_ids"
-                                     attrs="{'readonly': [('state', 'in', ['done', 'cancel'])]}">
+                                     attrs="{'readonly': [('state', 'in', ['confirmed', 'done', 'cancel'])]}">
                                 <tree editable="bottom">
-                                    <field name="makeinline_id"
+                                    <field name="sequence" string="印刷項次"/>
+                                    <field name="makeinline_id" invisible="1"
                                              domain="[('need_print_nesting','=',True),('print_material_id','=',parent.material_product_id)]"/>
-                                    <field name="makein_name"/>
-                                    <field name="sequence_label"/>
                                     <field name="display_label"/>
                                     <field name="piece_w_mm"/>
                                     <field name="piece_h_mm"/>
@@ -102,7 +114,10 @@
                                 </tree>
                             </field>
                         </page>
-                        <page string="捲料排版">
+                        <page string="捲料明細">
+                            <div class="text-muted mb-2">
+                                本單用了哪些實體捲、用料長度與圖塊座標。下載排版圖請用左上角「下載排版TIFF」。
+                            </div>
                             <field name="roll_ids" mode="tree">
                                 <tree>
                                     <field name="sequence"/>
@@ -113,13 +128,18 @@
                                     <field name="used_length_mm"/>
                                     <field name="utilization_rate"/>
                                     <field name="piece_count"/>
+                                    <field name="layout_tiff_filename" string="TIFF檔名" optional="hide"/>
                                 </tree>
                                 <form>
                                     <header>
-                                        <button name="action_reserve_all" type="object" string="鎖定本捲可動圖塊"/>
-                                        <button name="action_unlock_all_reserved" type="object" string="解除本捲鎖定"/>
+                                        <field name="state" invisible="1"/>
+                                        <button name="action_reserve_all" type="object" string="鎖定本捲可動圖塊"
+                                                attrs="{'invisible': [('state', 'not in', ['draft', 'nested'])]}"/>
+                                        <button name="action_unlock_all_reserved" type="object" string="解除本捲鎖定"
+                                                attrs="{'invisible': [('state', 'not in', ['draft', 'nested'])]}"/>
                                         <button name="action_mark_printed" type="object" string="本捲標記已印刷"
-                                                confirm="本捲全部圖塊將永久鎖定，確定？"/>
+                                                confirm="本捲全部圖塊將永久鎖定，確定？"
+                                                attrs="{'invisible': [('state', 'in', ['done', 'cancel'])]}"/>
                                     </header>
                                     <sheet>
                                         <group>
@@ -131,23 +151,31 @@
                                             <field name="stock_lot_id" options="{'no_create': True}"/>
                                             <field name="lot_barcode" readonly="1"/>
                                             <field name="lot_qty" readonly="1"/>
+                                            <field name="layout_tiff_filename" readonly="1"/>
+                                            <field name="layout_tiff_note" readonly="1"
+                                                     attrs="{'invisible': [('layout_tiff_note', 'in', [False, ''])]}"/>
                                         </group>
                                         <separator string="排版預覽"/>
                                         <field name="preview_svg" nolabel="1"/>
-                                        <separator string="圖塊"/>
+                                        <separator string="圖塊座標"/>
                                         <field name="piece_ids">
-                                            <tree editable="bottom">
-                                                <field name="label"/>
-                                                <field name="makeinline_id"/>
-                                                <field name="x_mm"/>
-                                                <field name="y_mm"/>
-                                                <field name="width_mm"/>
-                                                <field name="height_mm"/>
-                                                <field name="rotated"/>
-                                                <field name="lock_state"/>
-                                                <button name="action_reserve" type="object" string="鎖" icon="fa-lock"/>
-                                                <button name="action_unlock" type="object" string="解" icon="fa-unlock"/>
-                                                <button name="action_mark_printed" type="object" string="已印" icon="fa-check"/>
+                                            <tree editable="bottom"
+                                                  decoration-muted="lock_state == 'printed'">
+                                                <field name="order_state" invisible="1"/>
+                                                <field name="label" readonly="1"/>
+                                                <field name="makeinline_id" invisible="1"/>
+                                                <field name="x_mm" readonly="1"/>
+                                                <field name="y_mm" readonly="1"/>
+                                                <field name="width_mm" readonly="1"/>
+                                                <field name="height_mm" readonly="1"/>
+                                                <field name="rotated" readonly="1"/>
+                                                <field name="lock_state" readonly="1"/>
+                                                <button name="action_reserve" type="object" string="鎖" icon="fa-lock"
+                                                        attrs="{'invisible': [('order_state', 'not in', ['draft', 'nested'])]}"/>
+                                                <button name="action_unlock" type="object" string="解" icon="fa-unlock"
+                                                        attrs="{'invisible': [('order_state', 'not in', ['draft', 'nested'])]}"/>
+                                                <button name="action_mark_printed" type="object" string="已印" icon="fa-check"
+                                                        attrs="{'invisible': ['|', ('lock_state', '=', 'printed'), ('order_state', 'in', ['done', 'cancel'])]}"/>
                                             </tree>
                                         </field>
                                     </sheet>
@@ -167,5 +195,30 @@
         <field name="name">印刷單</field>
         <field name="res_model">dtsc.print.order</field>
         <field name="view_mode">tree,form</field>
+    </record>
+
+    <!-- 動作選單：下載／重新合成排版 TIFF -->
+    <record id="action_server_download_layout_tiffs" model="ir.actions.server">
+        <field name="name">下載排版TIFF</field>
+        <field name="model_id" ref="model_dtsc_print_order"/>
+        <field name="binding_model_id" ref="model_dtsc_print_order"/>
+        <field name="binding_view_types">form</field>
+        <field name="state">code</field>
+        <field name="code">
+if records:
+    action = records[:1].action_download_layout_tiffs()
+        </field>
+    </record>
+
+    <record id="action_server_compose_layout_tiffs" model="ir.actions.server">
+        <field name="name">重新合成排版TIFF</field>
+        <field name="model_id" ref="model_dtsc_print_order"/>
+        <field name="binding_model_id" ref="model_dtsc_print_order"/>
+        <field name="binding_view_types">form</field>
+        <field name="state">code</field>
+        <field name="code">
+if records:
+    action = records.action_compose_layout_tiffs()
+        </field>
     </record>
 </odoo>

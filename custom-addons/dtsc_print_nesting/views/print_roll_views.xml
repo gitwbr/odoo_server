@@ -27,11 +27,17 @@
         <field name="arch" type="xml">
             <form string="印刷捲料">
                 <header>
-                    <button name="action_reserve_all" type="object" string="鎖定本捲可動圖塊"/>
-                    <button name="action_unlock_all_reserved" type="object" string="解除本捲鎖定"/>
+                    <button name="action_reserve_all" type="object" string="鎖定本捲可動圖塊"
+                            attrs="{'invisible': [('state', 'not in', ['draft', 'nested'])]}"/>
+                    <button name="action_unlock_all_reserved" type="object" string="解除本捲鎖定"
+                            attrs="{'invisible': [('state', 'not in', ['draft', 'nested'])]}"/>
                     <button name="action_mark_printed" type="object" string="本捲標記已印刷"
                             class="oe_highlight"
-                            confirm="本捲全部圖塊將永久鎖定，確定？"/>
+                            confirm="本捲全部圖塊將永久鎖定，確定？"
+                            attrs="{'invisible': [('state', 'in', ['done', 'cancel'])]}"/>
+                    <button name="action_compose_layout_tiff" type="object"
+                            string="重新合成排版TIFF" class="oe_highlight"
+                            attrs="{'invisible': [('state', '=', 'cancel')]}"/>
                     <field name="state" widget="statusbar"/>
                 </header>
                 <sheet>
@@ -54,22 +60,38 @@
                             <field name="piece_count"/>
                         </group>
                     </group>
+                    <group string="排版 TIFF（自動合成，下載印刷）">
+                        <div class="text-muted mb-1" colspan="2">
+                            由大圖訂單已上傳的 TIFF 依排版座標自動合成，無需再上傳。缺檔時點上方「重新合成排版TIFF」。
+                            畫面不載入大檔內容，請用下載按鈕取原檔。
+                        </div>
+                        <field name="layout_tiff_filename" readonly="1"/>
+                        <button name="action_download_layout_tiff" type="object"
+                                string="下載排版 TIFF" class="btn-primary"
+                                attrs="{'invisible': [('layout_tiff_filename', '=', False)]}"/>
+                        <field name="layout_tiff_note" readonly="1" nolabel="1"
+                                 attrs="{'invisible': [('layout_tiff_note', 'in', [False, ''])]}"/>
+                    </group>
                     <separator string="排版預覽（綠=可動 / 橙=鎖定 / 灰=已印刷）"/>
                     <field name="preview_svg" nolabel="1"/>
                     <separator string="圖塊明細"/>
                     <field name="piece_ids">
                         <tree editable="bottom">
-                            <field name="label"/>
-                            <field name="makeinline_id"/>
-                            <field name="x_mm"/>
-                            <field name="y_mm"/>
-                            <field name="width_mm"/>
-                            <field name="height_mm"/>
-                            <field name="rotated"/>
-                            <field name="lock_state"/>
-                            <button name="action_reserve" type="object" string="鎖"/>
-                            <button name="action_unlock" type="object" string="解"/>
-                            <button name="action_mark_printed" type="object" string="已印"/>
+                            <field name="order_state" invisible="1"/>
+                            <field name="label" readonly="1"/>
+                            <field name="makeinline_id" invisible="1"/>
+                            <field name="x_mm" readonly="1"/>
+                            <field name="y_mm" readonly="1"/>
+                            <field name="width_mm" readonly="1"/>
+                            <field name="height_mm" readonly="1"/>
+                            <field name="rotated" readonly="1"/>
+                            <field name="lock_state" readonly="1"/>
+                            <button name="action_reserve" type="object" string="鎖"
+                                    attrs="{'invisible': [('order_state', 'not in', ['draft', 'nested'])]}"/>
+                            <button name="action_unlock" type="object" string="解"
+                                    attrs="{'invisible': [('order_state', 'not in', ['draft', 'nested'])]}"/>
+                            <button name="action_mark_printed" type="object" string="已印"
+                                    attrs="{'invisible': ['|', ('lock_state', '=', 'printed'), ('order_state', 'in', ['done', 'cancel'])]}"/>
                         </tree>
                     </field>
                 </sheet>

@@ -272,7 +272,7 @@
 									<t t-if="SHOW_PRICE">
 										<div class="col text-center" style="flex: 1;">
 											<div class="cell-3 multi">
-												<span t-esc="'{:,.0f}'.format((order.units_price))" />
+												<span t-esc="'{:,.2f}'.format((order.units_price))" />
 											</div>
 										</div>
 										<div class="col text-center" style="flex: 1;">
@@ -930,7 +930,7 @@
 									<t t-if="0">
 										<div class="col text-center" style="flex: 1;">
 											<div class="cell-3 multi">
-												<span t-esc="'{:,.0f}'.format((order.units_price))" />
+												<span t-esc="'{:,.2f}'.format((order.units_price))" />
 											</div>
 										</div>
 										<div class="col text-center" style="flex: 1;">

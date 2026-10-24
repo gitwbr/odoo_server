@@ -19,10 +19,33 @@ import pytz
 import logging
 _logger = logging.getLogger(__name__)
 import uuid
-from urllib.parse import parse_qs, unquote
+from urllib.parse import parse_qs, unquote, quote
 import json
 import secrets
 class LineBotController(http.Controller):
+
+    @staticmethod
+    def _format_attendance_local(dt, tz):
+        """將 Odoo UTC naive datetime 轉台北時間字串；空值回傳「無」。"""
+        if not dt:
+            return "無"
+        if isinstance(dt, str):
+            dt = fields.Datetime.from_string(dt)
+        if getattr(dt, "tzinfo", None) is None:
+            dt = pytz.utc.localize(dt)
+        return dt.astimezone(tz).strftime('%Y-%m-%d %H:%M')
+
+    @staticmethod
+    def _parse_buka_local_to_utc(buka_time_str, tz):
+        """將 postback 裡的台北時間字串（YYYY-MM-DD HH:MM）轉成 Odoo UTC naive。"""
+        if not buka_time_str:
+            return None
+        try:
+            local_dt = datetime.strptime(buka_time_str.strip(), "%Y-%m-%d %H:%M")
+            return tz.localize(local_dt).astimezone(pytz.utc).replace(tzinfo=None)
+        except Exception:
+            _logger.warning("無法解析補卡時間: %s", buka_time_str)
+            return None
 
     def _validate_gps_checkin(self, linebot, latitude, longitude):
         if not latitude or not longitude:
@@ -168,23 +191,19 @@ class LineBotController(http.Controller):
         leave_id = data.get('leave_id')
         
         leave = request.env['dtsc.leave'].sudo().browse(int(leave_id))
-        leave.write({'reject_reason': reject_reason})
-        leave.write({'state': 'rejected'})
-        
-        # 發送通知給請假人
-        employee_name = leave.employee_id.name
-        leave_type_display = dict(leave._fields['leave_type'].selection).get(leave.leave_type)
-        tz = pytz.timezone("Asia/Taipei")
-        message = f"您的請假申請已被拒絕\n請假人員：{employee_name}\n請假類型：{leave_type_display}\n開始時間：{leave.start_time.astimezone(tz).strftime('%Y-%m-%d %H:%M')}\n結束時間：{leave.end_time.astimezone(tz).strftime('%Y-%m-%d %H:%M')}\n工時：{leave.leave_hours}\n拒絕理由：{reject_reason}"
-        self.reply_to_line(leave.employee_id.line_user_id, message)
-        
-        # self.reply_to_line(leave.line_user_id, f"您的請假已被拒絕，理由是：{reject_reason}")
-        self.reply_to_line(line_id, f"您已拒絕{leave.employee_id.name}的請假，理由是：{reject_reason}")
-        
-                 
-                      
-                        
-        
+        if not leave.exists():
+            return json.dumps({"success": False, "message": "無效的請假單"})
+        employee_name = leave.employee_id.name if leave.employee_id else ""
+        if leave.state == 'rejected':
+            self.reply_to_line(line_id, f"此請假單已拒絕，無需重複操作。（{employee_name}）")
+            return json.dumps({"success": False, "message": "已拒絕"})
+        if leave.state == 'approved':
+            self.reply_to_line(line_id, f"此請假單已批准，無法再拒絕。（{employee_name}）")
+            return json.dumps({"success": False, "message": "已批准"})
+        # 寫入 rejected：模型內統一推送請假人（含拒絕理由）
+        leave.write({'reject_reason': reject_reason, 'state': 'rejected'})
+        self.reply_to_line(line_id, f"您已拒絕{employee_name}的請假，理由是：{reject_reason}")
+
         return json.dumps({"success": True, "message": ""})
         
     @http.route('/apply_leave', type='http', methods=['POST'], auth='public', csrf=False)
@@ -241,10 +260,8 @@ class LineBotController(http.Controller):
         # 婚假 / 喪假：需管理員先發放額度與有效期，申請時校驗
         if leave_type in ('hj', 'saj'):
             label = '婚假' if leave_type == 'hj' else '喪假'
-            qfld = 'hj_days' if leave_type == 'hj' else 'saj_days'
             start_fld = 'hj_start_date' if leave_type == 'hj' else 'saj_start_date'
             end_fld = 'hj_end_date' if leave_type == 'hj' else 'saj_end_date'
-            remain = float(getattr(employee, qfld) or 0.0)
             q_start = getattr(employee, start_fld)
             q_end = getattr(employee, end_fld)
             if not q_start or not q_end:
@@ -256,12 +273,11 @@ class LineBotController(http.Controller):
                     'success': False,
                     'message': f"{label}僅可在 {q_start} ~ {q_end} 期間申請。",
                 })
-            if leave_hours > remain + 0.0001:
-                return json.dumps({
-                    'success': False,
-                    'message': f"{label}剩餘 {remain:g} 小時，不足申請 {leave_hours:g} 小時。",
-                })
 
+        try:
+            request.env['dtsc.leave'].sudo()._check_leave_quota(employee, leave_type, leave_hours)
+        except UserError as e:
+            return json.dumps({'success': False, 'message': e.args[0] if e.args else str(e)})
 
         leave = request.env['dtsc.leave'].sudo().create({
             "employee_id": employee.id,
@@ -279,6 +295,43 @@ class LineBotController(http.Controller):
         self.reply_to_line(line_id, f"✅ 請假單{leave.name}已經提交！等待主管審核！")
         self.notify_manager_for_leave(leave.id,line_id,leave_type,stime_raw,etime_raw,reason,new_name,leave_hours)
         return json.dumps({"success": True, "message": f"✅ 請假單建立成功，單號：{leave.name}"})
+
+    @http.route('/cancel_leave', type='http', methods=['POST'], auth='public', csrf=False)
+    def cancel_leave(self, **kwargs):
+        """員工對已批准假單發起銷假申請。"""
+        data = json.loads(request.httprequest.data)
+        line_id = data.get('line_id')
+        leave_id = data.get('leave_id')
+        reason = (data.get('reason') or '').strip()
+
+        if not line_id or not leave_id:
+            return json.dumps({'success': False, 'message': '缺少必要參數'})
+
+        employee = request.env['dtsc.workqrcode'].sudo().search([('line_user_id', '=', line_id)], limit=1)
+        if not employee:
+            return json.dumps({'success': False, 'message': '找不到對應員工！'})
+        if employee.out_company_date != False:
+            return json.dumps({'success': False, 'message': '您已離職，不能繼續操作！'})
+
+        leave = request.env['dtsc.leave'].sudo().browse(int(leave_id))
+        if not leave.exists() or leave.employee_id.id != employee.id:
+            return json.dumps({'success': False, 'message': '找不到對應請假單'})
+        if leave.state == 'cancel_to_approved':
+            return json.dumps({'success': False, 'message': '此請假單已在銷假簽核中，請勿重複申請'})
+        if leave.state == 'cancelled':
+            return json.dumps({'success': False, 'message': '此請假單已銷假'})
+        if leave.state != 'approved':
+            state_label = dict(leave._fields['state'].selection).get(leave.state, leave.state)
+            return json.dumps({'success': False, 'message': f'僅已批准的請假單可銷假（目前：{state_label}）'})
+
+        leave.write({
+            'state': 'cancel_to_approved',
+            'cancel_reason': reason or leave.cancel_reason,
+            'reject_reason': False,
+        })
+        self.reply_to_line(line_id, f"✅ 銷假申請已提交（{leave.name}）！等待主管審核！")
+        self.notify_manager_for_cancel_leave(leave.id, line_id)
+        return json.dumps({'success': True, 'message': f'✅ 銷假申請已送出，單號：{leave.name}'})
 
     #發起補卡
     @http.route('/action_buka', auth='public', type='http', methods=['POST'], csrf=False)
@@ -331,6 +384,9 @@ class LineBotController(http.Controller):
             }) 
         else:
             return json.dumps({"success": False, "message": "補卡類型錯誤"})
+
+        # 先落庫再發 LINE：通知已送出但請求超時/異常時，避免交易回滾導致庫裡沒時間、Flex 卻顯示有時間
+        request.env.cr.commit()
             
         self.reply_to_line(line_id, "✅ 補卡已成功提交！等待主管審核！")
         self.notify_manager_for_buka(record_id,line_id,fix_type,local_time,comment)
@@ -364,18 +420,25 @@ class LineBotController(http.Controller):
             ('end_time', '<=', end_dt)
         ], order="start_time asc")
         
+        # 簽核中同時包含銷假簽核中
+        effective_states = set(status_filter or [])
+        if 'to_approved' in effective_states:
+            effective_states.add('cancel_to_approved')
+
         result = []
         for rec in records:            
-            if status_filter and "all" not in status_filter:
-                if rec.state not in status_filter:
+            if effective_states and "all" not in effective_states:
+                if rec.state not in effective_states:
                     continue  # 跳過不符合的
             result.append({
                 'employee_name':rec.employee_id.name,
                 'start_time': rec.start_time.strftime('%Y-%m-%d %H:%M') if rec.start_time else '',
                 'end_time': rec.end_time.strftime('%Y-%m-%d %H:%M') if rec.end_time else '',
                 'state': dict(rec._fields['state'].selection).get(rec.state, ''),
+                'state_code': rec.state,
                 'reason': rec.reason,
                 'leave_id': rec.id,
+                'can_cancel': rec.state == 'approved',
             })
         # print(result)
         return json.dumps({'success': True, 'data': result}) #{'success': True, 'data': result} 
@@ -899,7 +962,8 @@ class LineBotController(http.Controller):
                 _logger.info(event)
                 user_id = event['source']['userId']
                 data_string = event['postback']['data']  # 例如：action=sign&order_id=123
-                params = dict(p.split('=') for p in data_string.split('&'))
+                # 用 parse_qs 正確解碼（含中文補卡類型），避免 split 破壞參數
+                params = {k: (v[0] if v else '') for k, v in parse_qs(data_string, keep_blank_values=True).items()}
 
                 if params.get("action") == "sign" and params.get("order_id"):
                     order_id = int(params["order_id"])
@@ -1290,139 +1354,169 @@ class LineBotController(http.Controller):
                     leave_id = params.get("leave_id")
                     leave = request.env['dtsc.leave'].sudo().browse(int(leave_id))
                     
-                    if leave.exists():
-                        # 更新請假狀態為批准
-                        leave.write({'state': 'approved'})
-                        tz = pytz.timezone("Asia/Taipei")
-                        
-                        # 發送通知給請假人
-                        employee_name = leave.employee_id.name
-                        leave_type_display = dict(leave._fields['leave_type'].selection).get(leave.leave_type)
-                        message = f"您的請假申請已經被批准\n請假人員：{employee_name}\n請假類型：{leave_type_display}\n開始時間：{leave.start_time.astimezone(tz).strftime('%Y-%m-%d %H:%M')}\n結束時間：{leave.end_time.astimezone(tz).strftime('%Y-%m-%d %H:%M')}\n工時：{leave.leave_hours}"
-                        employee = leave.employee_id
-                        
-                        # === 額度內/額度外切分（扣帳前快照） ===
-                        # 僅對有「年度額度」的假別切分，其它假別(公/婚/喪/產/產檢…)設為 0
-                        quota_field_map = {
-                            'tx': 'tx_days',     # 特休
-                            'bj': 'bj_days',     # 病假
-                            'sj': 'sj_days',     # 事假
-                            'slj': 'slj_days',   # 生理假
-                            'jtzgj': 'jtzgj_days',  # 家庭照顧假
-                            'hj': 'hj_days',     # 婚假（管理員發放）
-                            'saj': 'saj_days',   # 喪假（管理員發放）
-                        }
-                        hours = float(leave.leave_hours or 0.0)
-                        in_h = out_h = 0.0
-                        qfld = quota_field_map.get(leave.leave_type)
-                        if qfld:
-                            # 扣減前的剩餘額度（可能為負，負則視為 0 可用）
-                            before_remain = float(getattr(employee, qfld) or 0.0)
-                            usable = max(before_remain, 0.0)
-                            in_h = min(usable, hours)
-                            out_h = max(hours - in_h, 0.0)
-
-                        # 寫回本張請假單的快照
-                        leave.sudo().write({
-                            'in_quota_hours':  round(in_h, 2),
-                            'out_quota_hours': round(out_h, 2),
-                        })
-                        
-                        if qfld:
-                            new_remain = float(getattr(employee, qfld) or 0.0) - hours
-                            employee.with_context(
-                                leave_quota_source='leave',
-                                leave_quota_leave_id=leave.id,
-                                leave_quota_note=f'請假核准扣減 {hours} 小時',
-                            ).sudo().write({qfld: new_remain}) 
-                        
-                        self.reply_to_line(leave.employee_id.line_user_id, message)
-                        
-                        # 發送回覆給主管
-                        self.reply_to_line(user_id, f"您已批准 {employee_name} 的請假申請。")
-                    
-                    else:
+                    if not leave.exists():
                         self.reply_to_line(user_id, "無效的請假單，請重試。")
+                    elif leave.state == 'approved':
+                        employee_name = leave.employee_id.name if leave.employee_id else ""
+                        self.reply_to_line(user_id, f"此請假單已批准，無需重複操作。（{employee_name}）")
+                    elif leave.state == 'rejected':
+                        employee_name = leave.employee_id.name if leave.employee_id else ""
+                        self.reply_to_line(user_id, f"此請假單已拒絕，無法再批准。（{employee_name}）")
+                    elif leave.state == 'cancel_to_approved':
+                        employee_name = leave.employee_id.name if leave.employee_id else ""
+                        self.reply_to_line(user_id, f"此單為銷假簽核中，請使用銷假審核按鈕。（{employee_name}）")
+                    elif leave.state == 'cancelled':
+                        employee_name = leave.employee_id.name if leave.employee_id else ""
+                        self.reply_to_line(user_id, f"此請假單已銷假，無法再批准。（{employee_name}）")
+                    elif leave.state != 'to_approved':
+                        state_label = dict(leave._fields['state'].selection).get(leave.state, leave.state)
+                        self.reply_to_line(user_id, f"此請假單目前狀態為「{state_label}」，無法批准。")
+                    else:
+                        # 寫入 approved：模型內統一扣額度 + 推送請假人
+                        leave.write({'state': 'approved'})
+                        employee_name = leave.employee_id.name if leave.employee_id else ""
+                        self.reply_to_line(user_id, f"您已批准 {employee_name} 的請假申請。")
                 elif params.get("action") == "confirm_leave_yes":
                     leave_id = params.get("leave_id")
                     self.confirm_leave(leave_id,"yes",user_id)
                 elif params.get("action") == "confirm_leave_no":
                     leave_id = params.get("leave_id")
-                    self.confirm_leave(leave_id,"no",user_id)      
+                    self.confirm_leave(leave_id,"no",user_id)
+                elif params.get("action") == "confirm_cancel_leave_yes":
+                    leave_id = params.get("leave_id")
+                    self.confirm_cancel_leave(leave_id, "yes", user_id)
+                elif params.get("action") == "confirm_cancel_leave_no":
+                    leave_id = params.get("leave_id")
+                    self.confirm_cancel_leave(leave_id, "no", user_id)
+                elif params.get("action") == "approve_cancel_leave":
+                    leave_id = params.get("leave_id")
+                    leave = request.env['dtsc.leave'].sudo().browse(int(leave_id))
+                    if not leave.exists():
+                        self.reply_to_line(user_id, "無效的請假單，請重試。")
+                    elif leave.state == 'cancelled':
+                        employee_name = leave.employee_id.name if leave.employee_id else ""
+                        self.reply_to_line(user_id, f"此請假單已銷假，無需重複操作。（{employee_name}）")
+                    elif leave.state != 'cancel_to_approved':
+                        state_label = dict(leave._fields['state'].selection).get(leave.state, leave.state)
+                        self.reply_to_line(user_id, f"此請假單目前狀態為「{state_label}」，無法核准銷假。")
+                    else:
+                        leave.write({'state': 'cancelled'})
+                        employee_name = leave.employee_id.name if leave.employee_id else ""
+                        self.reply_to_line(user_id, f"您已批准 {employee_name} 的銷假申請，假期額度已返還。")
+                elif params.get("action") == "reject_cancel_leave":
+                    leave_id = params.get("leave_id")
+                    leave = request.env['dtsc.leave'].sudo().browse(int(leave_id))
+                    if not leave.exists():
+                        self.reply_to_line(user_id, "無效的請假單，請重試。")
+                    elif leave.state == 'approved':
+                        employee_name = leave.employee_id.name if leave.employee_id else ""
+                        self.reply_to_line(user_id, f"此銷假申請已處理（假單維持已批准）。（{employee_name}）")
+                    elif leave.state != 'cancel_to_approved':
+                        state_label = dict(leave._fields['state'].selection).get(leave.state, leave.state)
+                        self.reply_to_line(user_id, f"此請假單目前狀態為「{state_label}」，無法拒絕銷假。")
+                    else:
+                        leave.write({'state': 'approved'})
+                        employee_name = leave.employee_id.name if leave.employee_id else ""
+                        self.reply_to_line(user_id, f"您已拒絕 {employee_name} 的銷假申請。")
                 elif params.get("action") == "confirm_buka_yes":
                     attendance_id = params.get("attendance_id")
                     buka_type = params.get("buka_type")
-                    self.confirm_buka(attendance_id,"yes",user_id,buka_type)
+                    buka_time = params.get("buka_time") or ""
+                    self.confirm_buka(attendance_id,"yes",user_id,buka_type,buka_time)
                 elif params.get("action") == "confirm_buka_no":
                     attendance_id = params.get("attendance_id")
                     buka_type = params.get("buka_type")
-                    self.confirm_buka(attendance_id,"no",user_id,buka_type)                 
+                    buka_time = params.get("buka_time") or ""
+                    self.confirm_buka(attendance_id,"no",user_id,buka_type,buka_time)                 
                     
                 elif params.get("action") == "reject_leave":
                     leave_id = params.get("leave_id")
                     leave = request.env['dtsc.leave'].sudo().browse(int(leave_id))
                     
-                    if leave.exists():
-                        # 更新請假狀態為拒絕
+                    if not leave.exists():
+                        self.reply_to_line(user_id, "無效的請假單，請重試。")
+                    elif leave.state == 'rejected':
+                        employee_name = leave.employee_id.name if leave.employee_id else ""
+                        self.reply_to_line(user_id, f"此請假單已拒絕，無需重複操作。（{employee_name}）")
+                    elif leave.state == 'approved':
+                        employee_name = leave.employee_id.name if leave.employee_id else ""
+                        self.reply_to_line(user_id, f"此請假單已批准，無法再拒絕。（{employee_name}）")
+                    elif leave.state in ('cancel_to_approved', 'cancelled'):
+                        employee_name = leave.employee_id.name if leave.employee_id else ""
+                        self.reply_to_line(user_id, f"此單為銷假相關狀態，請使用銷假審核流程。（{employee_name}）")
+                    elif leave.state != 'to_approved':
+                        state_label = dict(leave._fields['state'].selection).get(leave.state, leave.state)
+                        self.reply_to_line(user_id, f"此請假單目前狀態為「{state_label}」，無法拒絕。")
+                    else:
+                        # 寫入 rejected：模型內統一推送請假人
                         leave.write({'state': 'rejected'})
-                        
-                        # 發送通知給請假人
-                        employee_name = leave.employee_id.name
-                        leave_type_display = dict(leave._fields['leave_type'].selection).get(leave.leave_type)
-                        tz = pytz.timezone("Asia/Taipei")
-                        message = f"您的請假申請已被拒絕\n請假人員：{employee_name}\n請假類型：{leave_type_display}\n開始時間：{leave.start_time.astimezone(tz).strftime('%Y-%m-%d %H:%M')}\n結束時間：{leave.end_time.astimezone(tz).strftime('%Y-%m-%d %H:%M')}\n工時：{leave.leave_hours}"
-                        self.reply_to_line(leave.employee_id.line_user_id, message)
-                        
-                        # 發送回覆給主管
+                        employee_name = leave.employee_id.name if leave.employee_id else ""
                         self.reply_to_line(user_id, f"您已拒絕 {employee_name} 的請假申請。")
                 elif params.get("action") == "approve_buka":
                     attendance_id = params.get("attendance_id")
-                    buka_type = params.get("buka_type")
+                    buka_type = unquote(params.get("buka_type") or "")
+                    buka_time = unquote(params.get("buka_time") or "")
                     attendance = request.env['dtsc.attendance'].sudo().browse(int(attendance_id))
                     
                     if attendance.exists():
-                        # 更新請假狀態為批准
                         employee_name = attendance.name.name
-                        _logger.info(f"buka_type={buka_type}")
+                        _logger.info(f"buka_type={buka_type} buka_time={buka_time}")
                         tz = pytz.timezone("Asia/Taipei")
-                        if buka_type == "上班補卡":
-                            message = f"您的補卡申請已經被批准\n補卡人員：{employee_name}\n補卡類型：上班\n時間：{attendance.in_time.astimezone(tz).strftime('%Y-%m-%d %H:%M')}"
-                            attendance.write({'is_buka_in': 'ybk'}) #同意補卡
+                        is_in_buka = buka_type in ("上班補卡", "in")
+                        punch_dt = attendance.in_time if is_in_buka else attendance.out_time
+                        # Flex 顯示的時間若因提交時交易回滾未寫入，用 postback 帶的時間補回
+                        if not punch_dt and buka_time:
+                            punch_dt = self._parse_buka_local_to_utc(buka_time, tz)
+                            if punch_dt:
+                                if is_in_buka:
+                                    attendance.write({'in_time': punch_dt, 'is_buka_in': 'bkz'})
+                                else:
+                                    attendance.write({'out_time': punch_dt, 'is_buka_out': 'bkz'})
+                        if not punch_dt:
+                            self.reply_to_line(
+                                user_id,
+                                f"無法批准：該筆打卡紀錄缺少{'上班' if is_in_buka else '下班'}時間，請請員工重新提交補卡。"
+                            )
                         else:
-                            message = f"您的補卡申請已經被批准\n補卡人員：{employee_name}\n補卡類型：下班\n時間：{attendance.out_time.astimezone(tz).strftime('%Y-%m-%d %H:%M')}"
-                            attendance.write({'is_buka_out': 'ybk'}) #同意補卡
-                            
-                        
-                        # 發送通知給請假人
-                        self.reply_to_line(attendance.name.line_user_id, message)
-                        
-                        # 發送回覆給主管
-                        self.reply_to_line(user_id, f"您已批准 {employee_name} 的補卡申請。")
+                            time_str = self._format_attendance_local(punch_dt, tz)
+                            type_label = "上班" if is_in_buka else "下班"
+                            message = (
+                                f"您的補卡申請已經被批准\n補卡人員：{employee_name}\n"
+                                f"補卡類型：{type_label}\n時間：{time_str}"
+                            )
+                            if is_in_buka:
+                                attendance.write({'is_buka_in': 'ybk'})
+                            else:
+                                attendance.write({'is_buka_out': 'ybk'})
+                            self.reply_to_line(attendance.name.line_user_id, message)
+                            self.reply_to_line(user_id, f"您已批准 {employee_name} 的補卡申請。")
                     
                     else:
                         self.reply_to_line(user_id, "無效的補卡，請重試。")
                 elif params.get("action") == "reject_buka":
                     attendance_id = params.get("attendance_id")
-                    buka_type = params.get("buka_type")
+                    buka_type = unquote(params.get("buka_type") or "")
+                    buka_time = unquote(params.get("buka_time") or "")
                     attendance = request.env['dtsc.attendance'].sudo().browse(int(attendance_id))
                     
                     if attendance.exists():
-                        # 更新請假狀態為批准
                         employee_name = attendance.name.name
-                        # print(buka_type) 
                         tz = pytz.timezone("Asia/Taipei")
-                        if buka_type == "上班補卡":
-                            message = f"您的補卡申請已經被拒絕\n補卡人員：{employee_name}\n補卡類型：上班\n時間：{attendance.in_time.astimezone(tz).strftime('%Y-%m-%d %H:%M')}"
-                            attendance.write({'is_buka_in': 'no'}) #同意補卡
+                        is_in_buka = buka_type in ("上班補卡", "in")
+                        punch_dt = attendance.in_time if is_in_buka else attendance.out_time
+                        if not punch_dt and buka_time:
+                            punch_dt = self._parse_buka_local_to_utc(buka_time, tz)
+                        time_str = self._format_attendance_local(punch_dt, tz) if punch_dt else (buka_time or "無")
+                        type_label = "上班" if is_in_buka else "下班"
+                        message = (
+                            f"您的補卡申請已經被拒絕\n補卡人員：{employee_name}\n"
+                            f"補卡類型：{type_label}\n時間：{time_str}"
+                        )
+                        if is_in_buka:
+                            attendance.write({'is_buka_in': 'no'})
                         else:
-                            message = f"您的補卡申請已經被拒絕\n補卡人員：{employee_name}\n補卡類型：下班\n時間：{attendance.out_time.astimezone(tz).strftime('%Y-%m-%d %H:%M')}"
-                            attendance.write({'is_buka_out': 'no'}) #同意補卡
-                            
-                        
-                        # 發送通知給請假人
+                            attendance.write({'is_buka_out': 'no'})
                         self.reply_to_line(attendance.name.line_user_id, message)
-                        
-                        # 發送回覆給主管
                         self.reply_to_line(user_id, f"您已拒絕 {employee_name} 的補卡申請。")
                     
                     else:
@@ -2126,8 +2220,20 @@ class LineBotController(http.Controller):
 
         if leave:
             if leave.start_time and leave.end_time and leave.leave_type:
+                tz = pytz.timezone("Asia/Taipei")
+                stime_local = pytz.utc.localize(leave.start_time).astimezone(tz).replace(tzinfo=None)
+                etime_local = pytz.utc.localize(leave.end_time).astimezone(tz).replace(tzinfo=None)
+                leave_hours = self._compute_leave_hours(stime_local, etime_local, leave.employee_id)
+                try:
+                    Leave._check_leave_quota(
+                        leave.employee_id, leave.leave_type, leave_hours, exclude_leave_ids=leave.ids
+                    )
+                except UserError as e:
+                    self.reply_to_line(user_id, f"❌ {e.args[0] if e.args else str(e)}")
+                    return
                 # 把請假單狀態改為 submit
                 leave.write({
+                    'leave_hours': leave_hours,
                     'state': 'to_approved',
                     # 'submit_date': fields.Datetime.now(),  # 如果你有這個欄位，可以記錄提交時間
                 })
@@ -2140,19 +2246,22 @@ class LineBotController(http.Controller):
             self.reply_to_line(user_id, "❌ 找不到可以提交的請假單，請重新申請。")
             _logger.warning(f"找不到符合條件的請假單: user_id={user_id}, leave_key={leave_key}")
             
-    def confirm_buka(self,buka_id,mode,user_id,buka_type):        
+    def confirm_buka(self,buka_id,mode,user_id,buka_type,buka_time=""):        
         lineObj = request.env["dtsc.linebot"].sudo().search([("linebot_type","=","for_worker")], limit=1)
         if not lineObj or not lineObj.line_access_token:
             return False
         LINE_ACCESS_TOKEN = lineObj.line_access_token
+        # postback 用 in/out，避免中文編碼問題；舊訊息仍可能帶「上班補卡/下班補卡」
+        buka_key = "in" if buka_type in ("上班補卡", "in") else "out"
+        time_q = f"&buka_time={quote(buka_time)}" if buka_time else ""
         if mode == "yes":
             alttext = "確認同意補卡"
             textmsg = "你確定要同意嗎？"
-            postdata = f"action=approve_buka&attendance_id={buka_id}&buka_type={buka_type}"
+            postdata = f"action=approve_buka&attendance_id={buka_id}&buka_type={buka_key}{time_q}"
         else:
             alttext = "確認拒絕補卡"
             textmsg = "你確定要拒絕嗎？"
-            postdata = f"action=reject_buka&attendance_id={buka_id}&buka_type={buka_type}"
+            postdata = f"action=reject_buka&attendance_id={buka_id}&buka_type={buka_key}{time_q}"
                
         headers = {
             "Authorization": f"Bearer {LINE_ACCESS_TOKEN}",
@@ -2206,7 +2315,27 @@ class LineBotController(http.Controller):
     #self.notify_manager_for_leave(record_id,line_id,leave_type,start_time,end_time,reason,name) 
     def confirm_leave(self,leave_id,mode,user_id):
         leave = request.env['dtsc.leave'].sudo().browse(int(leave_id))
-        
+        if not leave.exists():
+            self.reply_to_line(user_id, "無效的請假單，請重試。")
+            return False
+        employee_name = leave.employee_id.name if leave.employee_id else ""
+        if leave.state == 'approved':
+            self.reply_to_line(user_id, f"此請假單已批准，無需重複操作。（{employee_name}）")
+            return False
+        if leave.state == 'rejected':
+            self.reply_to_line(user_id, f"此請假單已拒絕，無法再審核。（{employee_name}）")
+            return False
+        if leave.state == 'cancel_to_approved':
+            self.reply_to_line(user_id, f"此單為銷假簽核中，請使用銷假審核按鈕。（{employee_name}）")
+            return False
+        if leave.state == 'cancelled':
+            self.reply_to_line(user_id, f"此請假單已銷假，無法再審核。（{employee_name}）")
+            return False
+        if leave.state != 'to_approved':
+            state_label = dict(leave._fields['state'].selection).get(leave.state, leave.state)
+            self.reply_to_line(user_id, f"此請假單目前狀態為「{state_label}」，無法審核。")
+            return False
+
         lineObj = request.env["dtsc.linebot"].sudo().search([("linebot_type","=","for_worker")], limit=1)
         if not lineObj or not lineObj.line_access_token:
             return False
@@ -2275,7 +2404,201 @@ class LineBotController(http.Controller):
             "messages": [flex_message]
         }
         response = requests.post("https://api.line.me/v2/bot/message/push", headers=headers, json=data)
-                
+
+    def confirm_cancel_leave(self, leave_id, mode, user_id):
+        """主管確認銷假同意/拒絕。"""
+        leave = request.env['dtsc.leave'].sudo().browse(int(leave_id))
+        if not leave.exists():
+            self.reply_to_line(user_id, "無效的請假單，請重試。")
+            return False
+        employee_name = leave.employee_id.name if leave.employee_id else ""
+        if leave.state == 'cancelled':
+            self.reply_to_line(user_id, f"此請假單已銷假，無需重複操作。（{employee_name}）")
+            return False
+        if leave.state == 'approved':
+            self.reply_to_line(user_id, f"此銷假申請已結束（假單維持已批准）。（{employee_name}）")
+            return False
+        if leave.state != 'cancel_to_approved':
+            state_label = dict(leave._fields['state'].selection).get(leave.state, leave.state)
+            self.reply_to_line(user_id, f"此請假單目前狀態為「{state_label}」，無法審核銷假。")
+            return False
+
+        lineObj = request.env["dtsc.linebot"].sudo().search([("linebot_type", "=", "for_worker")], limit=1)
+        if not lineObj or not lineObj.line_access_token:
+            return False
+        LINE_ACCESS_TOKEN = lineObj.line_access_token
+        if mode == "yes":
+            alttext = "確認同意銷假"
+            textmsg = "你確定要同意這張銷假申請嗎？同意後將返還假期額度。"
+            confirm_action = {
+                "type": "postback",
+                "label": "確定",
+                "data": f"action=approve_cancel_leave&leave_id={leave.id}",
+            }
+        else:
+            alttext = "確認拒絕銷假"
+            textmsg = "你確定要拒絕這張銷假申請嗎？拒絕後請假單維持已批准。"
+            confirm_action = {
+                "type": "postback",
+                "label": "確定",
+                "data": f"action=reject_cancel_leave&leave_id={leave.id}",
+            }
+        headers = {
+            "Authorization": f"Bearer {LINE_ACCESS_TOKEN}",
+            "Content-Type": "application/json",
+        }
+        flex_message = {
+            "type": "flex",
+            "altText": alttext,
+            "contents": {
+                "type": "bubble",
+                "body": {
+                    "type": "box",
+                    "layout": "vertical",
+                    "contents": [
+                        {"type": "text", "text": textmsg, "weight": "bold", "size": "md", "wrap": True},
+                        {
+                            "type": "box",
+                            "layout": "horizontal",
+                            "contents": [
+                                {
+                                    "type": "button",
+                                    "action": confirm_action,
+                                    "style": "primary",
+                                    "color": "#00C300",
+                                },
+                                {
+                                    "type": "button",
+                                    "action": {
+                                        "type": "postback",
+                                        "label": "取消",
+                                        "data": "action=cancel",
+                                    },
+                                    "style": "secondary",
+                                },
+                            ],
+                        },
+                    ],
+                },
+            },
+        }
+        requests.post(
+            "https://api.line.me/v2/bot/message/push",
+            headers=headers,
+            json={"to": user_id, "messages": [flex_message]},
+        )
+
+    def notify_manager_for_cancel_leave(self, record_id, line_id):
+        """推送銷假審核通知給主管。"""
+        userObj = request.env['dtsc.workqrcode'].sudo().search([('line_user_id', '=', line_id)], limit=1)
+        leave = request.env['dtsc.leave'].sudo().browse(int(record_id))
+        if not leave.exists():
+            return
+        managers = userObj.department.bmzg if userObj and userObj.department else False
+        if not managers:
+            _logger.warning("找不到主管群組，無法推送銷假審核通知")
+            return
+
+        employee_name = leave.employee_id.name or "未知"
+        lineObj = request.env["dtsc.linebot"].sudo().search([("linebot_type", "=", "for_worker")], limit=1)
+        if not lineObj or not lineObj.line_access_token:
+            return False
+        headers = {
+            "Authorization": f"Bearer {lineObj.line_access_token}",
+            "Content-Type": "application/json",
+        }
+        leave_type_display = dict(leave._fields['leave_type'].selection).get(leave.leave_type)
+        tz = pytz.timezone("Asia/Taipei")
+        start_s = end_s = ""
+        if leave.start_time:
+            st = leave.start_time if leave.start_time.tzinfo else pytz.utc.localize(leave.start_time)
+            start_s = st.astimezone(tz).strftime('%Y-%m-%d %H:%M')
+        if leave.end_time:
+            et = leave.end_time if leave.end_time.tzinfo else pytz.utc.localize(leave.end_time)
+            end_s = et.astimezone(tz).strftime('%Y-%m-%d %H:%M')
+        cancel_reason = leave.cancel_reason or ""
+        flex_message = {
+            "type": "flex",
+            "altText": "有新的銷假申請待審核",
+            "contents": {
+                "type": "bubble",
+                "body": {
+                    "type": "box",
+                    "layout": "vertical",
+                    "contents": [
+                        {"type": "text", "text": "📝 新的銷假申請", "weight": "bold", "size": "lg", "align": "center"},
+                        {"type": "text", "text": f"姓名: {employee_name}", "margin": "md"},
+                        {"type": "text", "text": f"單號: {leave.name or ''}", "margin": "md"},
+                        {"type": "text", "text": f"類型: {leave_type_display}", "margin": "md"},
+                        {"type": "text", "text": f"開始時間: {start_s}", "margin": "md"},
+                        {"type": "text", "text": f"結束時間: {end_s}", "margin": "md"},
+                        {"type": "text", "text": f"工時: {leave.leave_hours}", "margin": "md"},
+                        {"type": "text", "text": f"銷假說明: {cancel_reason}", "margin": "md"},
+                        {"type": "separator", "margin": "md"},
+                        {
+                            "type": "box",
+                            "layout": "horizontal",
+                            "contents": [
+                                {
+                                    "type": "button",
+                                    "action": {
+                                        "type": "postback",
+                                        "label": "同意銷假",
+                                        "data": f"action=confirm_cancel_leave_yes&leave_id={leave.id}",
+                                    },
+                                    "style": "primary",
+                                    "color": "#00C300",
+                                    "flex": 1,
+                                },
+                                {
+                                    "type": "button",
+                                    "action": {
+                                        "type": "postback",
+                                        "label": "拒絕銷假",
+                                        "data": f"action=confirm_cancel_leave_no&leave_id={leave.id}",
+                                    },
+                                    "style": "primary",
+                                    "color": "#C30000",
+                                    "flex": 1,
+                                },
+                            ],
+                        },
+                    ],
+                },
+            },
+        }
+        pushed = 0
+        for manager in managers:
+            if manager.line_user_id:
+                try:
+                    resp = requests.post(
+                        "https://api.line.me/v2/bot/message/push",
+                        headers=headers,
+                        json={"to": manager.line_user_id, "messages": [flex_message]},
+                        timeout=10,
+                    )
+                    if resp.status_code == 200:
+                        pushed += 1
+                        _logger.warning(
+                            "銷假審核推送成功 leave_id=%s manager=%s line=%s",
+                            leave.id, manager.name, manager.line_user_id,
+                        )
+                    else:
+                        _logger.warning(
+                            "銷假審核推送失敗 leave_id=%s manager=%s status=%s body=%s",
+                            leave.id, manager.name, resp.status_code, resp.text,
+                        )
+                except Exception as e:
+                    _logger.warning(
+                        "銷假審核推送異常 leave_id=%s manager=%s err=%s",
+                        leave.id, manager.name, e,
+                    )
+        if not pushed:
+            _logger.warning(
+                "銷假審核無人推送成功 leave_id=%s managers=%s",
+                leave.id, managers.mapped('name'),
+            )
+
     def notify_manager_for_leave(self, record_id,line_id,leave_type,start_time,end_time,reason,name,leave_hours):
         """推送請假單審核通知給主管"""
         userObj = request.env['dtsc.workqrcode'].sudo().search([('line_user_id', '=', line_id)],limit=1)
@@ -2403,7 +2726,10 @@ class LineBotController(http.Controller):
             buka_type = "上班補卡"
         else:
             buka_type = "下班補卡"
-            
+        buka_time_str = local_time.strftime('%Y-%m-%d %H:%M')
+        buka_key = 'in' if fix_type == 'in' else 'out'
+        # 把補卡時間塞進 postback，避免庫裡時間因交易回滾丟失後無法批准
+        postback_base = f"attendance_id={record_id}&buka_type={buka_key}&buka_time={quote(buka_time_str)}"
 
         lineObj = request.env["dtsc.linebot"].sudo().search([("linebot_type","=","for_worker")], limit=1)
         if not lineObj or not lineObj.line_access_token:
@@ -2428,7 +2754,7 @@ class LineBotController(http.Controller):
                         {"type": "text", "text": "📝 新的補卡提交", "weight": "bold", "size": "lg", "align": "center"},
                         {"type": "text", "text": f"姓名: {employee_name}", "margin": "md"},
                         {"type": "text", "text": f"類型: {buka_type}", "margin": "md"},
-                        {"type": "text", "text": f"時間: {local_time.strftime('%Y-%m-%d %H:%M')}", "margin": "md"},
+                        {"type": "text", "text": f"時間: {buka_time_str}", "margin": "md"},
                         {"type": "text", "text": f"説明: {comment}", "margin": "md"},
                         {"type": "separator", "margin": "md"},
                         {
@@ -2440,7 +2766,7 @@ class LineBotController(http.Controller):
                                     "action": {
                                         "type": "postback",
                                         "label": "同意",
-                                        "data": f"action=confirm_buka_yes&attendance_id={record_id}&buka_type={buka_type}"
+                                        "data": f"action=confirm_buka_yes&{postback_base}"
                                     },
                                     "style": "primary",
                                     "color": "#00C300",
@@ -2451,7 +2777,7 @@ class LineBotController(http.Controller):
                                     "action": {
                                         "type": "postback",
                                         "label": "拒絕",
-                                        "data": f"action=confirm_buka_no&attendance_id={record_id}&buka_type={buka_type}"
+                                        "data": f"action=confirm_buka_no&{postback_base}"
                                     },
                                     "style": "primary",
                                     "color": "#C30000",

@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="dtsc_print_nesting.ComposeProgressDialog" owl="1">
+        <Dialog title="props.title" size="'md'">
+            <div class="progress mb-2" style="height: 22px;">
+                <div t-att-class="barClass" t-att-style="barStyle" role="progressbar">
+                    <t t-esc="percentText"/>
+                </div>
+            </div>
+            <div class="mb-2" t-esc="state.message"/>
+            <div t-if="state.state === 'running'" class="text-muted small">
+                大圖合成可能需要一兩分鐘。可以先關閉視窗做別的事，完成時右上角會通知。
+            </div>
+            <div t-foreach="state.rolls" t-as="roll" t-key="roll_index"
+                 class="small border-top pt-2 mt-2">
+                <strong t-esc="roll.name"/>
+                <span t-if="roll.ok" class="text-success ms-1">已生成</span>
+                <span t-else="" class="text-danger ms-1">未生成</span>
+                <div class="text-muted" style="white-space: pre-wrap;" t-esc="roll.note"/>
+            </div>
+            <t t-set-slot="footer">
+                <button class="btn btn-secondary" t-on-click="props.close">
+                    <t t-if="state.state === 'running'">背景執行，關閉視窗</t>
+                    <t t-else="">關閉</t>
+                </button>
+            </t>
+        </Dialog>
+    </t>
+</templates>

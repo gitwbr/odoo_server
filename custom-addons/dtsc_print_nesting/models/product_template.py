@@ -26,6 +26,27 @@ class ProductTemplate(models.Model):
         compute='_compute_roll_width_mm',
         store=True,
     )
+    # 印刷池：本捲材專用間距／邊距（覆蓋系統預設）
+    print_nest_margin_override = fields.Boolean(
+        string='自訂排版間距',
+        default=False,
+        help='開啟後本捲材使用下方一般間距／異膜間距／邊距；關閉則跟隨系統設定。',
+    )
+    print_nest_gap_cm = fields.Float(
+        string='一般圖間距(cm)',
+        default=0.5,
+        help='同膜圖塊之間最小間距。僅在「自訂排版間距」開啟時生效。',
+    )
+    print_nest_gap_diff_film_cm = fields.Float(
+        string='異膜圖間距(cm)',
+        default=5.0,
+        help='冷裱膜不同時圖塊之間最小間距。僅在「自訂排版間距」開啟時生效。',
+    )
+    print_nest_margin_cm = fields.Float(
+        string='排版邊距(cm)',
+        default=0.0,
+        help='本捲材門幅兩側與用料起止留白。僅在「自訂排版間距」開啟時生效。',
+    )
 
     @api.depends('roll_width_cm')
     def _compute_roll_width_mm(self):

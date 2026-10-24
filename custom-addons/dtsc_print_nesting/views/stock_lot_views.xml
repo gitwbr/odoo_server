@@ -20,4 +20,28 @@
         <field name="state">code</field>
         <field name="code">action = model.action_open_available_print_lots()</field>
     </record>
+
+    <record id="view_stock_lot_tree_archived_print" model="ir.ui.view">
+        <field name="name">stock.lot.tree.archived.print</field>
+        <field name="model">stock.lot</field>
+        <field name="arch" type="xml">
+            <tree create="0" delete="0" string="已歸檔捲料">
+                <field name="name"/>
+                <field name="barcode"/>
+                <field name="product_id"/>
+                <field name="print_archived_date"/>
+                <field name="print_archived_uid"/>
+                <field name="print_available_qty"/>
+                <button name="action_print_unarchive" type="object" string="取消歸檔"
+                        confirm="確定將此捲料恢復到印刷池？"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="action_archived_print_lots" model="ir.actions.server">
+        <field name="name">已歸檔捲料</field>
+        <field name="model_id" ref="stock.model_stock_lot"/>
+        <field name="state">code</field>
+        <field name="code">action = model.action_open_archived_print_lots()</field>
+    </record>
 </odoo>

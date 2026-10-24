@@ -11,11 +11,23 @@ class MakeInLine(models.Model):
         store=True,
         readonly=False,
     )
+    print_material_candidate_ids = fields.Many2many(
+        'product.template',
+        'dtsc_makeinline_print_mat_cand_rel',
+        'line_id',
+        'material_id',
+        string='可選捲材',
+        compute='_compute_print_material_candidates',
+        store=True,
+        help='商品基礎扣料物中所有序號追蹤捲料（多門幅候選）。',
+    )
+    # 由印刷池優化器寫入；不再「永遠取第一筆」
     print_material_id = fields.Many2one(
         'product.template',
         string='排版捲材',
-        compute='_compute_print_material',
         store=True,
+        index=True,
+        help='當前分配的捲材門幅。印刷池刷新時會依出血尺寸在可選捲材中重算。',
     )
     print_state = fields.Selection(
         [
@@ -44,36 +56,79 @@ class MakeInLine(models.Model):
         compute='_compute_print_state',
         store=True,
     )
+    print_preview = fields.Binary(
+        string='預覽',
+        related='checkout_line_id.layout_tiff_preview',
+    )
+    print_colorspace = fields.Char(
+        string='色彩',
+        related='checkout_line_id.layout_tiff_colorspace',
+    )
+    print_size_text = fields.Char(
+        string='印刷尺寸(cm)',
+        compute='_compute_print_size_text',
+        help='排版實際使用的尺寸：上傳 TIFF 後依像素/DPI 抓到的出血後寬高；沒有才用訂單寬高。',
+    )
+    print_order_names = fields.Char(
+        string='印刷單',
+        compute='_compute_print_order_names',
+    )
 
-    def _resolve_roll_material(self):
-        """Return serial-tracked raw material template if any."""
+    def _compute_print_size_text(self):
+        for rec in self:
+            w_mm, h_mm = rec._parse_size_cm()
+            if w_mm and h_mm:
+                rec.print_size_text = '%s × %s' % (
+                    ('%.2f' % (w_mm / 10.0)).rstrip('0').rstrip('.'),
+                    ('%.2f' % (h_mm / 10.0)).rstrip('0').rstrip('.'),
+                )
+            else:
+                rec.print_size_text = ''
+
+    def _compute_print_order_names(self):
+        for rec in self:
+            orders = rec.print_piece_ids.mapped('order_id').filtered(
+                lambda o: o.state != 'cancel'
+            )
+            rec.print_order_names = ', '.join(orders.sorted('id').mapped('name'))
+
+    def _resolve_roll_materials(self):
+        """所有序號追蹤基礎扣料物（多門幅）。"""
         self.ensure_one()
-        if self.product_id and self.product_id.make_ori_product_id:
-            ori = self.product_id.make_ori_product_id
-            if ori.tracking == 'serial':
-                return ori
+        materials = self.env['product.template']
+        if self.product_id:
+            materials |= self.product_id.get_make_ori_products().filtered(
+                lambda p: p.tracking == 'serial'
+            )
         for att in self.product_atts:
             if att.make_ori_product_id and att.make_ori_product_id.tracking == 'serial':
-                return att.make_ori_product_id
-        return self.env['product.template']
+                materials |= att.make_ori_product_id
+        return materials
 
-    @api.depends('product_id', 'product_id.make_ori_product_id',
-                 'product_id.make_ori_product_id.tracking',
-                 'product_atts', 'product_atts.make_ori_product_id',
-                 'product_atts.make_ori_product_id.tracking')
-    def _compute_print_material(self):
+    def _resolve_roll_material(self):
+        """相容舊呼叫：取候選中第一筆。"""
+        return self._resolve_roll_materials()[:1]
+
+    @api.depends(
+        'product_id',
+        'product_id.make_ori_product_id',
+        'product_id.make_ori_product_id.tracking',
+        'product_id.make_ori_product_ids',
+        'product_id.make_ori_product_ids.tracking',
+        'product_atts',
+        'product_atts.make_ori_product_id',
+        'product_atts.make_ori_product_id.tracking',
+    )
+    def _compute_print_material_candidates(self):
         for rec in self:
-            rec.print_material_id = rec._resolve_roll_material()
+            rec.print_material_candidate_ids = rec._resolve_roll_materials()
 
-    @api.depends('print_material_id', 'print_material_id.tracking')
+    @api.depends('print_material_candidate_ids', 'print_material_id')
     def _compute_need_print_nesting(self):
         for rec in self:
-            # Only auto-set when field was never manually meaningful:
-            # store+readonly=False: recompute overwrites — keep simple:
-            # always default from material; user can still toggle in UI and
-            # we re-apply on material change only via this compute.
             rec.need_print_nesting = bool(
-                rec.print_material_id and rec.print_material_id.tracking == 'serial'
+                rec.print_material_candidate_ids
+                or (rec.print_material_id and rec.print_material_id.tracking == 'serial')
             )
 
     @api.depends(
@@ -102,8 +157,19 @@ class MakeInLine(models.Model):
             else:
                 rec.print_state = 'none'
 
+    def _print_film_gap_group(self):
+        """冷裱屬性值，供排版異膜間距分組。無冷裱則空字串（彼此視為同組）。"""
+        self.ensure_one()
+        for att in self.product_atts:
+            if att.attribute_id.name == '冷裱':
+                return (att.name or '').strip()
+        return ''
+
     def _parse_size_cm(self):
-        """Parse Char width/height as cm → return (w_mm, h_mm)."""
+        """Parse size as cm → (w_mm, h_mm).
+
+        印刷排版優先用大圖「自動排版」出血後寬高；沒有再回退產品寬高。
+        """
         self.ensure_one()
 
         def _to_float(val):
@@ -112,9 +178,46 @@ class MakeInLine(models.Model):
             except (TypeError, ValueError):
                 return 0.0
 
-        w_cm = _to_float(self.product_width)
-        h_cm = _to_float(self.product_height)
+        cl = self.checkout_line_id
+        if cl:
+            w_cm = (
+                _to_float(cl.layout_bleed_width)
+                or _to_float(cl.product_width)
+                or _to_float(self.product_width)
+            )
+            h_cm = (
+                _to_float(cl.layout_bleed_height)
+                or _to_float(cl.product_height)
+                or _to_float(self.product_height)
+            )
+        else:
+            w_cm = _to_float(self.product_width)
+            h_cm = _to_float(self.product_height)
         return w_cm * 10.0, h_cm * 10.0  # cm → mm
+
+    @api.model
+    def _piece_fits_roll_width(self, piece_w_mm, piece_h_mm, roll_width_mm, eps=1e-6):
+        """允許旋轉：任一邊 ≤ 門幅即可。"""
+        if not roll_width_mm or not piece_w_mm or not piece_h_mm:
+            return False
+        return (
+            piece_w_mm <= roll_width_mm + eps
+            or piece_h_mm <= roll_width_mm + eps
+        )
+
+    def _roll_width_mm_of(self, mat):
+        if not mat:
+            return 0.0
+        return float(mat.roll_width_mm or 0.0) or float(mat.roll_width_cm or 0.0) * 10.0
+
+    def _has_locked_print_pieces(self):
+        """已有 reserved/printed 圖塊則不可再改分配門幅。"""
+        self.ensure_one()
+        return bool(self.print_piece_ids.filtered(
+            lambda p: p.order_id
+            and p.order_id.state != 'cancel'
+            and p.lock_state in ('reserved', 'printed')
+        ))
 
     def action_open_print_pieces(self):
         self.ensure_one()
@@ -125,6 +228,17 @@ class MakeInLine(models.Model):
             'view_mode': 'tree,form',
             'domain': [('makeinline_id', '=', self.id)],
         }
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        records = super().create(vals_list)
+        # 新建後先給一個初始分配；印刷池刷新時會再優化
+        to_fix = records.filtered(
+            lambda r: not r.print_material_id and r.print_material_candidate_ids
+        )
+        if to_fix:
+            self.env['dtsc.print.pool']._assign_materials_for_lines(to_fix)
+        return records
 
     def write(self, vals):
         size_keys = {'product_width', 'product_height', 'quantity'}

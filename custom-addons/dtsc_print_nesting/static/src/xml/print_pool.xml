@@ -5,28 +5,66 @@
             <div class="o_print_pool_header d-flex align-items-center justify-content-between px-3 py-2 border-bottom bg-view">
                 <div>
                     <strong>印刷池</strong>
-                    <span class="text-muted ms-2">工單捲材項次 → 舊料優先排版 → 截斷鎖定成印刷單</span>
+                    <span class="text-muted ms-2">釘選保留位置 · 重新整理重算最優排版 · 拖動可暫改門幅</span>
                 </div>
                 <div>
-                    <button class="btn btn-secondary btn-sm me-2" t-on-click="reloadOverview" t-att-disabled="state.loading">重新整理</button>
-                    <button class="btn btn-primary btn-sm"
-                            t-on-click="lockSelected"
-                            t-att-disabled="state.locking or !state.layout">
-                        鎖定截斷範圍並生成印刷單
-                    </button>
+                    <button class="btn btn-secondary btn-sm"
+                            title="清除未釘選的手動門幅，按最合理方式重算分配與排版（已釘選不動）"
+                            t-on-click="() => this.reloadOverview(true)"
+                            t-att-disabled="state.loading">重新整理</button>
                 </div>
             </div>
 
             <div t-if="state.error" class="alert alert-danger m-2" t-esc="state.error"/>
 
+            <!-- 拖動時頂部門幅停靠區 -->
+            <div t-if="state.dragging" class="o_print_pool_dock px-3 py-2 border-bottom">
+                <div class="d-flex align-items-center flex-wrap gap-2">
+                    <span class="fw-bold me-1">
+                        拖放「<t t-esc="state.dragLabel"/>」到其他門幅：
+                    </span>
+                    <t t-if="!state.moveTargets.length">
+                        <span class="text-muted small">沒有其他可放門幅（或正在載入…）</span>
+                    </t>
+                    <t t-foreach="state.moveTargets" t-as="tgt" t-key="tgt.id">
+                        <div class="o_print_pool_dock_item"
+                             t-on-dragover="onDockDragOver"
+                             t-on-drop="(ev) => this.onDockDrop(tgt, ev)">
+                            <div class="fw-semibold" t-esc="tgt.name"/>
+                            <div class="small text-muted">
+                                寬 <t t-esc="tgt.width_cm"/> cm
+                                <t t-if="tgt.has_leftover"> · 有舊料</t>
+                                · 捲 <t t-esc="tgt.lot_count"/>
+                            </div>
+                        </div>
+                    </t>
+                </div>
+            </div>
+
             <div class="o_print_pool_body d-flex flex-grow-1 overflow-hidden">
                 <!-- 左：材料 -->
                 <div class="o_print_pool_left border-end overflow-auto">
-                    <div class="p-2 text-muted small">材料 / 門幅</div>
+                    <div class="o_print_pool_mat_search p-2 border-bottom sticky-top bg-view">
+                        <input type="search"
+                               class="form-control form-control-sm"
+                               placeholder="搜尋編號／名稱，如 PVC51in"
+                               t-att-value="state.materialFilter"
+                               t-on-input="onMaterialFilterInput"/>
+                        <div class="d-flex justify-content-between align-items-center mt-1">
+                            <span class="text-muted small">全部捲材類目</span>
+                            <button t-if="state.materialFilter"
+                                    type="button"
+                                    class="btn btn-link btn-sm p-0"
+                                    t-on-click="clearMaterialFilter">清除</button>
+                        </div>
+                    </div>
                     <t t-if="!state.materials.length">
-                        <div class="p-3 text-muted">目前沒有待排項次。只有「印刷池啟用之後」新產生、且未完成的捲材工單項次會進來。</div>
+                        <div class="p-3 text-muted">尚無捲材類目。請先在產品主檔設定捲材門幅（寬度 cm）。</div>
                     </t>
-                    <t t-foreach="state.materials" t-as="mat" t-key="mat.id">
+                    <t t-elif="!filteredMaterials().length">
+                        <div class="p-3 text-muted">沒有符合「<t t-esc="state.materialFilter"/>」的材料</div>
+                    </t>
+                    <t t-foreach="filteredMaterials()" t-as="mat" t-key="mat.id">
                         <div t-att-class="'o_print_pool_mat p-2 ' + (state.selectedId === mat.id ? 'active' : '')"
                              t-on-click="() => this.selectMaterial(mat.id)">
                             <div class="fw-bold" t-esc="mat.name"/>
@@ -35,9 +73,21 @@
                                 ／長 <t t-esc="mat.length_m"/> m
                             </div>
                             <div class="small">
-                                待排 <t t-esc="mat.pending_pieces"/> 塊
-                                · 項次 <t t-esc="mat.pending_lines"/>
-                                · 可用捲 <t t-esc="mat.lot_count"/>
+                                <t t-if="mat.pending_pieces">
+                                    待排 <t t-esc="mat.pending_pieces"/> 塊
+                                    · 項次 <t t-esc="mat.pending_lines"/>
+                                    ·
+                                </t>
+                                <t t-else="">
+                                    <span class="text-muted">無待排 · </span>
+                                </t>
+                                <t t-if="mat.has_leftover">
+                                    <span class="text-warning">有舊料</span>
+                                </t>
+                                <t t-else="">
+                                    <span class="text-muted">無舊料</span>
+                                </t>
+                                · 捲 <t t-esc="mat.lot_count"/>
                             </div>
                         </div>
                     </t>
@@ -49,48 +99,192 @@
                         <div class="text-muted">載入中…</div>
                     </t>
                     <t t-elif="state.layout">
-                        <div class="mb-2">
+                        <div class="mb-2 d-flex align-items-center flex-wrap gap-2">
                             <strong t-esc="state.layout.material.name"/>
-                            <span class="text-muted ms-2">
+                            <span class="text-muted">
                                 已排 <t t-esc="state.layout.placed_total"/> / <t t-esc="state.layout.pending_total"/>
                             </span>
+                            <t t-set="matRoll" t-value="materialRollUtil()"/>
+                            <span t-if="matRoll"
+                                  t-att-class="'badge rounded-pill ' + utilClass(matRoll.pct)"
+                                  title="整卷：各印刷單占用合計 ÷ (門幅×已用總長)。各單利用率見長條上方標籤。">
+                                整卷 <t t-esc="formatUtil(matRoll)"/>
+                            </span>
+                        </div>
+                        <div class="o_print_pool_nest_params mb-3">
+                            <div class="d-flex align-items-center flex-wrap gap-2 mb-1">
+                                <span class="small fw-semibold">本捲材排版間距</span>
+                                <span t-if="state.nestParamsOverride" class="badge text-bg-info">已自訂</span>
+                                <span t-else="" class="badge text-bg-secondary">跟隨系統</span>
+                            </div>
+                            <div class="d-flex align-items-center flex-wrap gap-2">
+                                <label class="small mb-0">一般</label>
+                                <input type="number" class="form-control form-control-sm"
+                                       style="width:72px" step="0.1" min="0"
+                                       t-att-value="state.nestGapCm"
+                                       t-on-input="(ev) => this.onNestParamInput('nestGapCm', ev)"
+                                       title="同膜圖間距(cm)"/>
+                                <span class="small text-muted me-1">cm</span>
+                                <label class="small mb-0">異膜</label>
+                                <input type="number" class="form-control form-control-sm"
+                                       style="width:72px" step="0.1" min="0"
+                                       t-att-value="state.nestGapDiffFilmCm"
+                                       t-on-input="(ev) => this.onNestParamInput('nestGapDiffFilmCm', ev)"
+                                       title="冷裱膜不同時圖間距(cm)"/>
+                                <span class="small text-muted me-1">cm</span>
+                                <label class="small mb-0">邊距</label>
+                                <input type="number" class="form-control form-control-sm"
+                                       style="width:72px" step="0.1" min="0"
+                                       t-att-value="state.nestMarginCm"
+                                       t-on-input="(ev) => this.onNestParamInput('nestMarginCm', ev)"
+                                       title="捲材邊距(cm)"/>
+                                <span class="small text-muted me-2">cm</span>
+                                <button class="btn btn-outline-primary btn-sm"
+                                        t-on-click="applyNestParams"
+                                        t-att-disabled="state.nestSaving or state.loading">
+                                    套用並重排
+                                </button>
+                                <button class="btn btn-link btn-sm"
+                                        t-on-click="resetNestParams"
+                                        t-att-disabled="state.nestSaving or state.loading or !state.nestParamsOverride"
+                                        title="改回系統預設間距／邊距">
+                                    恢復系統預設
+                                </button>
+                            </div>
                         </div>
 
                         <t t-foreach="state.layout.strips" t-as="strip" t-key="strip.key">
                             <div class="o_print_strip_card mb-4">
-                                <div class="d-flex align-items-center justify-content-between mb-1">
-                                    <div>
-                                        <span t-att-class="'badge me-2 ' + (strip.kind === 'new' ? 'bg-primary' : 'bg-warning text-dark')"
-                                              t-esc="strip.kind === 'new' ? '新料' : '舊料'"/>
+                                <div class="d-flex align-items-center justify-content-between mb-1 flex-wrap gap-2">
+                                    <div class="d-flex align-items-center flex-wrap gap-2">
+                                        <span t-att-class="'badge me-1 ' + (
+                                            strip.kind === 'new' ? 'bg-primary' :
+                                            strip.kind === 'empty' ? 'bg-secondary' :
+                                            'bg-warning text-dark')"
+                                              t-esc="strip.kind === 'new' ? '新料' : (strip.kind === 'empty' ? '空捲' : '舊料')"/>
                                         <strong t-esc="strip.label"/>
-                                    </div>
-                                    <div class="d-flex align-items-center gap-2">
-                                        <label class="small mb-0">截斷至 (mm)</label>
-                                        <input type="number" class="form-control form-control-sm"
-                                               style="width:110px"
-                                               t-att-value="state.cutoffs[strip.key]"
-                                               t-att-max="strip.capacity_mm"
-                                               t-on-input="(ev) => this.onCutoffInput(strip.key, ev)"/>
-                                        <span class="small text-muted">
-                                            ≈ <t t-esc="mmToM(state.cutoffs[strip.key])"/> m
-                                            ／容量 <t t-esc="mmToM(strip.capacity_mm)"/> m
+                                        <t t-set="rollU" t-value="stripRollUtil(strip)"/>
+                                        <span t-if="rollU"
+                                              t-att-class="'badge rounded-pill ' + utilClass(rollU.pct)"
+                                              title="整卷利用率；各單利用率見下方區間標籤（如 P261021-005 75%）">
+                                            整卷 <t t-esc="formatUtil(rollU)"/>
                                         </span>
+                                    </div>
+                                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                                        <t t-if="strip.packable !== false">
+                                            <button type="button"
+                                                    class="btn btn-outline-secondary btn-sm"
+                                                    t-att-disabled="state.packingStrip or state.locking"
+                                                    t-on-click="() => this.packToStrip(strip)"
+                                                    title="把本材料待排圖塊全部改排到這一捲（方便只在新料上印）">
+                                                圖塊排到此捲
+                                            </button>
+                                            <button type="button"
+                                                    class="btn btn-primary btn-sm"
+                                                    t-att-disabled="state.locking or state.packingStrip"
+                                                    t-on-click="() => this.lockStrip(strip)"
+                                                    title="只鎖定這一捲的截斷範圍並生成印刷單">
+                                                生成此捲印刷單
+                                            </button>
+                                            <label class="small mb-0">截斷至 (mm)</label>
+                                            <input type="number" class="form-control form-control-sm"
+                                                   style="width:110px"
+                                                   t-att-value="state.cutoffs[strip.key]"
+                                                   t-att-max="strip.capacity_mm"
+                                                   t-on-input="(ev) => this.onCutoffInput(strip.key, ev)"/>
+                                            <span class="small text-muted">
+                                                ≈ <t t-esc="mmToM(state.cutoffs[strip.key])"/> m
+                                                ／容量 <t t-esc="mmToM(strip.capacity_mm)"/> m
+                                            </span>
+                                        </t>
+                                        <button t-if="strip.lot_id"
+                                                type="button"
+                                                class="btn btn-outline-danger btn-sm"
+                                                t-att-disabled="state.archiving"
+                                                t-on-click="() => this.archiveStripLot(strip)"
+                                                title="材料耗盡：清殘量並歸檔；未歸檔的用過捲都算舊料">
+                                            材料耗盡
+                                        </button>
                                     </div>
                                 </div>
                                 <div class="o_print_strip_scroll">
-                                    <div class="o_print_strip_box" t-att-style="stripBoxStyle(strip)">
-                                        <t t-foreach="strip.pieces" t-as="piece" t-key="piece.key">
-                                            <div t-att-class="'o_print_piece ' + (isPieceLocked(strip, piece) ? 'locked' : 'open')"
-                                                 t-att-style="pieceStyle(strip, piece)"
-                                                 t-att-title="piece.label">
-                                                <span t-esc="piece.label"/>
-                                            </div>
-                                        </t>
-                                        <div class="o_print_cutoff" t-att-style="cutoffLineStyle(strip)"/>
+                                    <div class="o_print_strip_track">
+                                        <!-- 各印刷單區間上方：單號 + 該單利用率；綠區為「待生成」 -->
+                                        <div t-if="orderBands(strip).length"
+                                             class="o_print_history_labels"
+                                             t-att-style="historyLabelsRowStyle(strip)">
+                                            <t t-foreach="orderBands(strip)" t-as="band" t-key="band.order_name + '-' + band.y0">
+                                                <div t-att-class="'o_print_history_band' + (band.kind === 'pending' ? ' pending' : '')"
+                                                     t-att-style="historyBandStyle(strip, band)"
+                                                     t-att-title="band.kind === 'pending' ? '待生成：紅線內綠塊面積÷(門幅×截斷長)' : '該印刷單：圖塊面積÷(門幅×該單占用長)'">
+                                                    <t t-esc="band.text"/>
+                                                </div>
+                                            </t>
+                                        </div>
+                                        <div class="o_print_strip_box" t-att-style="stripBoxStyle(strip)">
+                                            <!-- 左側：本捲已占用（已印／已鎖定印刷單），灰塊不可動 -->
+                                            <t t-foreach="strip.history_pieces or []" t-as="hp" t-key="hp.key">
+                                                <div t-att-class="'o_print_piece history' + (hp.preview_url ? ' has-thumb' : '')"
+                                                     t-att-style="pieceStyle(strip, hp, true)"
+                                                     t-att-title="pieceTitle(hp)">
+                                                    <img t-if="hp.preview_url"
+                                                         class="o_print_piece_thumb"
+                                                         t-att-src="hp.preview_url"
+                                                         alt=""/>
+                                                    <span class="o_print_piece_label" t-esc="hp.label"/>
+                                                </div>
+                                            </t>
+                                            <div t-if="strip.y_offset_mm"
+                                                 class="o_print_history_divider"
+                                                 t-att-style="historyDividerStyle(strip)"
+                                                 title="左側已占用｜右側剩餘可排"/>
+                                            <!-- 右側剩餘區：待排圖塊 -->
+                                            <t t-foreach="strip.pieces" t-as="piece" t-key="piece.key">
+                                                <div t-att-class="pieceClass(strip, piece)"
+                                                     t-att-style="pieceStyle(strip, piece)"
+                                                     t-att-title="pieceTitle(piece)"
+                                                     draggable="true"
+                                                     t-on-pointerdown="onPiecePointerDown"
+                                                     t-on-dragstart="(ev) => this.onPieceDragStart(strip, piece, ev)"
+                                                     t-on-dragend="onPieceDragEnd"
+                                                     t-on-click="(ev) => this.onPieceClick(strip, piece, ev)">
+                                                    <img t-if="piece.preview_url"
+                                                         class="o_print_piece_thumb"
+                                                         t-att-style="pieceThumbStyle(piece)"
+                                                         t-att-src="piece.preview_url"
+                                                         alt=""/>
+                                                    <div class="o_print_piece_tools"
+                                                         t-att-style="pieceToolsStyle(strip, piece)"
+                                                         t-on-click="(ev) => ev.stopPropagation()"
+                                                         t-on-pointerdown="(ev) => ev.stopPropagation()"
+                                                         t-on-dragstart="(ev) => ev.preventDefault()">
+                                                        <button type="button" class="btn btn-sm"
+                                                                title="水平翻轉"
+                                                                t-on-click="(ev) => this.onPieceTransform(strip, piece, 'flip_h', ev)">⇄</button>
+                                                        <button type="button" class="btn btn-sm"
+                                                                title="左轉 90°"
+                                                                t-on-click="(ev) => this.onPieceTransform(strip, piece, 'rotate_ccw', ev)">↺</button>
+                                                        <button type="button" class="btn btn-sm"
+                                                                title="右轉 90°"
+                                                                t-on-click="(ev) => this.onPieceTransform(strip, piece, 'rotate_cw', ev)">↻</button>
+                                                        <button type="button"
+                                                                t-att-class="piece.pinned ? 'btn btn-sm active-pin' : 'btn btn-sm'"
+                                                                t-att-title="piece.pinned ? '解除釘選' : '釘選位置（鎖住不重排）'"
+                                                                t-on-click="(ev) => this.onPiecePinToggle(strip, piece, ev)">
+                                                            <t t-if="piece.pinned">🔓</t>
+                                                            <t t-else="">🔒</t>
+                                                        </button>
+                                                    </div>
+                                                    <span t-if="piece.pinned" class="o_print_piece_pin">釘</span>
+                                                    <span class="o_print_piece_label" t-esc="piece.label"/>
+                                                </div>
+                                            </t>
+                                            <div class="o_print_cutoff" t-att-style="cutoffLineStyle(strip)"/>
+                                        </div>
                                     </div>
                                 </div>
                                 <div class="small text-muted mt-1">
-                                    綠=截斷內將鎖定　灰=暫不印　紅線=截斷位置　長條方向=捲長
+                                    上方標籤=各印刷單號+該單利用率（待生成=紅線內綠塊）　深灰=已占用　綠=將印　紅線=截斷　右側徽章=整卷利用率
                                 </div>
                             </div>
                         </t>

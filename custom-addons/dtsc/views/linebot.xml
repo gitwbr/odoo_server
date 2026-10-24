@@ -241,6 +241,18 @@
 			.line-green-td-btn:hover {
 				background-color: #00a800;
 			}
+			.line-orange-td-btn {
+				background-color: #ff9800;
+				color: white;
+				border: none;
+				padding: 10px 16px;
+				font-size: 16px;
+				border-radius: 12px;
+				cursor: pointer;
+			}
+			.line-orange-td-btn:hover {
+				background-color: #f57c00;
+			}
 
 			table {
 				width: 100%;
@@ -329,6 +341,7 @@
 					<label><input type="checkbox" class="status-checkbox" value="to_approved"/> 簽核中</label>
 					<label><input type="checkbox" class="status-checkbox" value="approved"/> 已通過</label>
 					<label><input type="checkbox" class="status-checkbox" value="rejected"/> 未通過</label>
+					<label><input type="checkbox" class="status-checkbox" value="cancelled"/> 已銷假</label>
 				</div>
 			</div>
 			<!-- 查詢按鈕 -->
@@ -464,6 +477,38 @@
 					alert("❌ 提交失敗，請稍後再試");
 				});
 			}
+
+			function submitCancelLeave(lineId, leaveId) {
+				if (!confirm("確定要申請銷假嗎？需主管同意後才會返還假期額度。")) {
+					return;
+				}
+				const reason = prompt("請輸入銷假原因（可留空）：") || "";
+				fetch('/cancel_leave', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({
+						line_id: lineId,
+						leave_id: leaveId,
+						reason: reason
+					})
+				})
+				.then(response => response.json())
+				.then(data => {
+					alert(data.message || (data.success ? "✅ 銷假申請已送出！" : "❌ 銷假申請失敗"));
+					if (data.success) {
+						const sDate = document.getElementById("start_date").value;
+						const eDate = document.getElementById("end_date").value;
+						const checkedStatuses = Array.from(document.querySelectorAll(".status-checkbox"))
+							.filter(cb => cb.checked)
+							.map(cb => cb.value);
+						searchLeaveData(sDate, eDate, lineId, checkedStatuses);
+					}
+				})
+				.catch(err => {
+					console.error(err);
+					alert("❌ 銷假申請失敗，請稍後再試");
+				});
+			}
 			
 			function searchLeaveData(stime, etime, lineId, statusFilters = []) {
 				fetch('/searchleave', {
@@ -483,20 +528,25 @@
 									<tr>
 										<th>開始時間</th>
 										<th>結束時間</th>
-										<th>類型</th>
+										<th>狀態</th>
 										<th>原因</th>
+										<th>操作</th>
 									</tr>
 								</thead>
 								<tbody>
 						`;
 
 						data.data.forEach((rec, index) => {
+							const actionHtml = rec.can_cancel
+								? `<button class="line-orange-td-btn" onclick="submitCancelLeave('${lineId}', ${rec.leave_id})">銷假</button>`
+								: '';
 							html += `
 								<tr>
 									<td>${convertUTCToLocal(rec.start_time) || ''}</td>
 									<td>${convertUTCToLocal(rec.end_time) || ''}</td>
 									<td>${rec.state || ''}</td>
-									<td>${rec.reason || ''}</td>								
+									<td>${rec.reason || ''}</td>
+									<td>${actionHtml}</td>
 								</tr>
 							`;
 						});
@@ -1571,11 +1621,12 @@
         <field name="arch" type="xml">
             <tree editable="bottom" default_order="start_time desc">
 				<field name="employee_id" readonly="1" />
-				<field name="start_time"  attrs="{'readonly':[('state','=','approved')]}" />
-				<field name="end_time"  attrs="{'readonly':[('state','=','approved')]}"/>
+				<field name="start_time"  attrs="{'readonly':[('state','in',['approved','cancel_to_approved','cancelled'])]}" />
+				<field name="end_time"  attrs="{'readonly':[('state','in',['approved','cancel_to_approved','cancelled'])]}"/>
 				<field name="leave_hours" />
 				<field name="leave_type" />				
 				<field name="reason" />
+				<field name="cancel_reason" />
 				<field name="reject_reason" />
 				<field name="leave_file" widget="image" class="w200"  />
 				<field name="state" />
@@ -1589,7 +1640,7 @@
         <field name="arch" type="xml">
             <form>
 				<head>
-					<field name="state" widget="statusbar" statusbar_visible="draft,to_approved,approved,rejected"/>				
+					<field name="state" widget="statusbar" statusbar_visible="draft,to_approved,approved,cancel_to_approved,cancelled,rejected"/>				
 				</head>
 				<sheet>
 					<group>
@@ -1597,6 +1648,7 @@
 						<field name="start_time" />
 						<field name="end_time" />
 						<field name="leave_type" />
+						<field name="cancel_reason" />
 					</group>
 				</sheet>
             </form>

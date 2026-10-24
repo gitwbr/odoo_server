@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_product_template_form_make_ori_multi" model="ir.ui.view">
+        <field name="name">product.template.form.make.ori.multi</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="dtsc.product_template_form_view_inherit"/>
+        <field name="arch" type="xml">
+            <!-- 隱藏 dtsc 原單選，改顯示本模組多選；資料會同步回原欄位 -->
+            <xpath expr="//field[@name='make_ori_product_id']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            <xpath expr="//field[@name='make_ori_product_id']" position="after">
+                <field name="make_ori_product_ids" widget="many2many_tags"
+                         options="{'no_create': True, 'no_create_edit': True}"
+                         attrs="{'invisible':[('is_open_full_checkoutorder', '=', False)]}"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

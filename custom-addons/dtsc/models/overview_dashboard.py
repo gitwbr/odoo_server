@@ -1468,7 +1468,9 @@ class DtscOverviewDashboard(models.Model):
         attendance_leave_count = Attendance.search_count(leave_attendance_domain)
         out_of_range_count = Attendance.search_count(out_of_range_domain)
         pending_buka_count = Attendance.search_count(pending_buka_domain)
-        pending_leave_records = leave_records.filtered(lambda leave: leave.state == 'to_approved')
+        pending_leave_records = leave_records.filtered(
+            lambda leave: leave.state in ('to_approved', 'cancel_to_approved')
+        )
         salary_metrics = self._get_salary_metrics(month_key)
 
         return {

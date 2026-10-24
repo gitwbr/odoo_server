@@ -109,9 +109,15 @@ class DtscLeave(models.Model):
         ('to_approved', '申請中'),
         ('approved', '已批准'),
         ('rejected', '已拒絕'),
+        ('cancel_to_approved', '銷假簽核中'),
+        ('cancelled', '已銷假'),
     ], default='draft', string='狀態')
+    cancel_reason = fields.Text('銷假原因')
     in_quota_hours  = fields.Float("額度內(小時)", readonly=True, copy=False)
     out_quota_hours = fields.Float("額度外(小時)", readonly=True, copy=False)
+
+    # 仍視為有效請假（出勤覆蓋、生理假月上限佔用）
+    ACTIVE_LEAVE_STATES = ('approved', 'cancel_to_approved')
 
     # 生理假：年度 96 小時，對應每月上限 8 小時
     SLJ_MONTHLY_LIMIT = 8.0
@@ -138,7 +144,7 @@ class DtscLeave(models.Model):
         domain = [
             ('employee_id', '=', employee.id),
             ('leave_type', '=', 'slj'),
-            ('state', 'in', ['to_approved', 'approved']),
+            ('state', 'in', ['to_approved', 'approved', 'cancel_to_approved']),
             ('start_time', '>=', month_start_utc),
             ('start_time', '<', month_end_utc),
         ]
@@ -166,6 +172,33 @@ class DtscLeave(models.Model):
                 f"剩餘可申請 {remain:g} 小時。"
             )
 
+    @api.model
+    def _check_leave_quota(self, employee, leave_type, leave_hours, exclude_leave_ids=None):
+        """有額度的假別：剩餘額度扣掉簽核中時數後不足，則不允許申請。"""
+        qfld = self.LEAVE_QUOTA_FIELD_MAP.get(leave_type)
+        if not qfld or not employee:
+            return
+        hours = float(leave_hours or 0.0)
+        if hours <= 0:
+            return
+        remain = float(getattr(employee, qfld) or 0.0)
+        domain = [
+            ('employee_id', '=', employee.id),
+            ('leave_type', '=', leave_type),
+            ('state', '=', 'to_approved'),
+        ]
+        if exclude_leave_ids:
+            domain.append(('id', 'not in', list(exclude_leave_ids)))
+        pending = sum(self.search(domain).mapped('leave_hours')) or 0.0
+        available = remain - pending
+        if hours > available + 0.0001:
+            label = dict(self._fields['leave_type'].selection).get(leave_type, leave_type)
+            msg = f"{label}額度不足：剩餘 {remain:g} 小時"
+            if pending:
+                msg += f"，另有 {pending:g} 小時簽核中"
+            msg += f"，可申請 {max(available, 0.0):g} 小時，不足申請 {hours:g} 小時。"
+            raise UserError(msg)
+
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -181,6 +214,172 @@ class DtscLeave(models.Model):
                 )
         return super().create(vals_list)
 
+    LEAVE_QUOTA_FIELD_MAP = {
+        'tx': 'tx_days',
+        'bj': 'bj_days',
+        'sj': 'sj_days',
+        'slj': 'slj_days',
+        'jtzgj': 'jtzgj_days',
+        'hj': 'hj_days',
+        'saj': 'saj_days',
+    }
+
+    def _push_line_to_employee(self, message):
+        """推送文字訊息給請假員工（員工端 LINE Bot）。"""
+        self.ensure_one()
+        line_user_id = self.employee_id.line_user_id if self.employee_id else False
+        if not line_user_id or not message:
+            return False
+        lineObj = self.env['dtsc.linebot'].sudo().search(
+            [('linebot_type', '=', 'for_worker')], limit=1
+        )
+        if not lineObj or not lineObj.line_access_token:
+            return False
+        try:
+            requests.post(
+                "https://api.line.me/v2/bot/message/push",
+                headers={
+                    "Authorization": f"Bearer {lineObj.line_access_token}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "to": line_user_id,
+                    "messages": [{"type": "text", "text": message}],
+                },
+                timeout=10,
+            )
+            return True
+        except Exception as e:
+            _logger.warning("請假 LINE 推送失敗 leave_id=%s: %s", self.id, e)
+            return False
+
+    def _format_leave_notify_times(self):
+        """回傳 (開始, 結束) 台北時間字串。"""
+        self.ensure_one()
+        tz = pytz.timezone("Asia/Taipei")
+
+        def _to_local_str(dt):
+            if not dt:
+                return ""
+            if getattr(dt, 'tzinfo', None) is None:
+                dt = pytz.utc.localize(dt)
+            return dt.astimezone(tz).strftime('%Y-%m-%d %H:%M')
+
+        return _to_local_str(self.start_time), _to_local_str(self.end_time)
+
+    def _on_leave_approved(self):
+        """首次進入已批准：扣假期額度並推送 LINE（後台/LINE 共用）。"""
+        for leave in self:
+            employee = leave.employee_id
+            if not employee:
+                continue
+            hours = float(leave.leave_hours or 0.0)
+            in_h = out_h = 0.0
+            qfld = leave.LEAVE_QUOTA_FIELD_MAP.get(leave.leave_type)
+            if qfld:
+                before_remain = float(getattr(employee, qfld) or 0.0)
+                usable = max(before_remain, 0.0)
+                in_h = min(usable, hours)
+                out_h = max(hours - in_h, 0.0)
+
+            leave.sudo().write({
+                'in_quota_hours': round(in_h, 2),
+                'out_quota_hours': round(out_h, 2),
+            })
+
+            if qfld:
+                new_remain = float(getattr(employee, qfld) or 0.0) - hours
+                employee.with_context(
+                    leave_quota_source='leave',
+                    leave_quota_leave_id=leave.id,
+                    leave_quota_note=f'請假核准扣減 {hours} 小時',
+                ).sudo().write({qfld: new_remain})
+
+            employee_name = employee.name or ""
+            leave_type_display = dict(leave._fields['leave_type'].selection).get(leave.leave_type) or ""
+            start_s, end_s = leave._format_leave_notify_times()
+            message = (
+                f"您的請假申請已經被批准\n"
+                f"請假人員：{employee_name}\n"
+                f"請假類型：{leave_type_display}\n"
+                f"開始時間：{start_s}\n"
+                f"結束時間：{end_s}\n"
+                f"工時：{leave.leave_hours}"
+            )
+            leave._push_line_to_employee(message)
+
+    def _on_leave_rejected(self):
+        """首次進入已拒絕：推送 LINE 給請假人。"""
+        for leave in self:
+            employee = leave.employee_id
+            if not employee:
+                continue
+            employee_name = employee.name or ""
+            leave_type_display = dict(leave._fields['leave_type'].selection).get(leave.leave_type) or ""
+            start_s, end_s = leave._format_leave_notify_times()
+            message = (
+                f"您的請假申請已被拒絕\n"
+                f"請假人員：{employee_name}\n"
+                f"請假類型：{leave_type_display}\n"
+                f"開始時間：{start_s}\n"
+                f"結束時間：{end_s}\n"
+                f"工時：{leave.leave_hours}"
+            )
+            if leave.reject_reason:
+                message += f"\n拒絕理由：{leave.reject_reason}"
+            leave._push_line_to_employee(message)
+
+    def _on_leave_cancelled(self):
+        """銷假核准：返還假期額度並推送 LINE。"""
+        for leave in self:
+            employee = leave.employee_id
+            if not employee:
+                continue
+            hours = float(leave.leave_hours or 0.0)
+            qfld = leave.LEAVE_QUOTA_FIELD_MAP.get(leave.leave_type)
+            if qfld and hours:
+                new_remain = float(getattr(employee, qfld) or 0.0) + hours
+                employee.with_context(
+                    leave_quota_source='cancel',
+                    leave_quota_leave_id=leave.id,
+                    leave_quota_note=f'銷假核准返還 {hours} 小時',
+                    leave_quota_threshold='cancel',
+                ).sudo().write({qfld: new_remain})
+
+            employee_name = employee.name or ""
+            leave_type_display = dict(leave._fields['leave_type'].selection).get(leave.leave_type) or ""
+            start_s, end_s = leave._format_leave_notify_times()
+            message = (
+                f"您的銷假申請已經被批准，假期額度已返還\n"
+                f"請假人員：{employee_name}\n"
+                f"請假類型：{leave_type_display}\n"
+                f"開始時間：{start_s}\n"
+                f"結束時間：{end_s}\n"
+                f"工時：{leave.leave_hours}"
+            )
+            leave._push_line_to_employee(message)
+
+    def _on_cancel_leave_rejected(self):
+        """銷假被拒：假單回到已批准，通知員工。"""
+        for leave in self:
+            employee = leave.employee_id
+            if not employee:
+                continue
+            employee_name = employee.name or ""
+            leave_type_display = dict(leave._fields['leave_type'].selection).get(leave.leave_type) or ""
+            start_s, end_s = leave._format_leave_notify_times()
+            message = (
+                f"您的銷假申請已被拒絕，請假單維持已批准\n"
+                f"請假人員：{employee_name}\n"
+                f"請假類型：{leave_type_display}\n"
+                f"開始時間：{start_s}\n"
+                f"結束時間：{end_s}\n"
+                f"工時：{leave.leave_hours}"
+            )
+            if leave.reject_reason:
+                message += f"\n拒絕理由：{leave.reject_reason}"
+            leave._push_line_to_employee(message)
+
     def write(self, vals):
         need_slj_check = any(k in vals for k in ('leave_type', 'employee_id', 'start_time', 'end_time', 'leave_hours', 'state'))
         if need_slj_check:
@@ -194,20 +393,32 @@ class DtscLeave(models.Model):
                     start_time = vals.get('start_time', rec.start_time)
                     leave_hours = vals.get('leave_hours', rec.leave_hours)
                     state = vals.get('state', rec.state)
-                    # 僅對申請中/已核准檢查；拒絕或草稿不佔用月上限
-                    if state in ('to_approved', 'approved'):
+                    # 申請中/已核准/銷假簽核中仍佔用月上限
+                    if state in ('to_approved', 'approved', 'cancel_to_approved'):
                         self._check_slj_monthly_limit(
                             employee, start_time, leave_hours, exclude_leave_ids=rec.ids
                         )
+        old_states = {rec.id: rec.state for rec in self} if 'state' in vals else {}
         res = super().write(vals)
-        if 'state' in vals:  # 只要這次確實寫入了 state，就重算
+        if 'state' in vals:  # 只要這次確實寫入了 state，就重算 + 副作用
             for leave in self:
                 self._refresh_attendance_for_leave(leave)
+                old = old_states.get(leave.id)
+                new = leave.state
+                # 僅「請假核准」路徑扣額度；銷假駁回回到 approved 不可再扣
+                if new == 'approved' and old in ('to_approved', 'draft'):
+                    leave._on_leave_approved()
+                elif new == 'approved' and old == 'cancel_to_approved':
+                    leave._on_cancel_leave_rejected()
+                elif new == 'rejected' and old in ('to_approved', 'draft'):
+                    leave._on_leave_rejected()
+                elif new == 'cancelled' and old != 'cancelled':
+                    leave._on_leave_cancelled()
         return res
         
     # ------ 極簡刷新邏輯：依目前所有 approved 假單重算 ------
     def _refresh_attendance_for_leave(self, leave):
-        """根據目前系統中的 approved 假單，重算這張假單涵蓋到的日期的出勤狀態。"""
+        """根據目前系統中的有效假單，重算這張假單涵蓋到的日期的出勤狀態。"""
         if not (leave.employee_id and leave.start_time and leave.end_time):
             return
 
@@ -215,6 +426,7 @@ class DtscLeave(models.Model):
         setting = self.env['dtsc.linebot'].search([("linebot_type","=","for_worker")], limit=1)
         Attendance = self.env['dtsc.attendance']
         emp = leave.employee_id
+        active_states = list(self.ACTIVE_LEAVE_STATES)
 
         # 取得標準上/下班時間（員工個人 > 系統設定 > 預設）；跨日班下班落次日
         std_in = Attendance._std_time(emp, setting, 'in')
@@ -225,10 +437,10 @@ class DtscLeave(models.Model):
             return tz.localize(datetime.combine(d, t)).astimezone(pytz.utc).replace(tzinfo=None)
 
         def covers(a_utc, b_utc):
-            """是否存在 state=approved 的請假完整覆蓋 [a,b]（全局查詢，已含本次新狀態）。"""
+            """是否存在有效請假完整覆蓋 [a,b]（含銷假簽核中）。"""
             return bool(self.env['dtsc.leave'].search([
                 ('employee_id', '=', emp.id),
-                ('state', '=', 'approved'),
+                ('state', 'in', active_states),
                 ('start_time', '<=', a_utc),
                 ('end_time', '>=', b_utc),
             ], limit=1))
@@ -308,6 +520,7 @@ class LeaveQuotaLog(models.Model):
     source = fields.Selection([
         ('grant', '分發'),
         ('leave', '請假'),
+        ('cancel', '銷假'),
         ('manual', '手改'),
     ], string='來源', required=True, index=True)
     hours_before = fields.Float('變更前(小時)')
@@ -329,6 +542,8 @@ class LeaveQuotaLog(models.Model):
                     label = '手動'
                 elif rec.source == 'leave':
                     label = '請假'
+                elif rec.source == 'cancel':
+                    label = '銷假'
             rec.threshold_label = label or ''
 
     @api.model
@@ -343,6 +558,8 @@ class LeaveQuotaLog(models.Model):
             return '手動'
         if text.lower() in ('leave', '請假'):
             return '請假'
+        if text.lower() in ('cancel', '銷假', '销假'):
+            return '銷假'
 
         # year_8 → 8年；year_8_slj → 8年(生理假)
         if text.lower().startswith('year_'):
@@ -560,19 +777,19 @@ class Attendance(models.Model):
         return tz.localize(datetime.combine(local_date, local_time)).astimezone(pytz.utc).replace(tzinfo=None)
     
     def _is_on_leave_at(self, emp_id, when_utc_naive):
-        """該時點是否有核准請假"""
+        """該時點是否有核准請假（含銷假簽核中）"""
         return bool(self.env['dtsc.leave'].search([
             ('employee_id', '=', emp_id),
-            ('state', '=', 'approved'),
+            ('state', 'in', list(self.env['dtsc.leave'].ACTIVE_LEAVE_STATES)),
             ('start_time', '<=', when_utc_naive),
             ('end_time', '>=', when_utc_naive),
         ], limit=1))
     
     def _leave_covers_interval(self, emp_id, start_utc_naive, end_utc_naive):
-        """核准請假是否完整覆蓋 [start, end]（單筆即可覆蓋）；要拼多筆可再擴充"""
+        """核准請假是否完整覆蓋 [start, end]（含銷假簽核中）"""
         return bool(self.env['dtsc.leave'].search([
             ('employee_id', '=', emp_id),
-            ('state', '=', 'approved'),
+            ('state', 'in', list(self.env['dtsc.leave'].ACTIVE_LEAVE_STATES)),
             ('start_time', '<=', start_utc_naive),
             ('end_time', '>=', end_utc_naive),
         ], limit=1))
@@ -974,7 +1191,7 @@ class Attendance(models.Model):
             return None
         leave = self.env['dtsc.leave'].search([
             ('employee_id', '=', emp_id),
-            ('state', '=', 'approved'),
+            ('state', 'in', list(self.env['dtsc.leave'].ACTIVE_LEAVE_STATES)),
             ('start_time', '<=', start_utc_naive),
             ('end_time', '>=', end_utc_naive),
         ], limit=1)
@@ -1225,6 +1442,7 @@ class Attendance(models.Model):
 
                 # 先標記為 UTC，再轉成當地時間
                 # 凌晨下班存成同日 00:xx 時，校正到業務日次日再算工時
+                start_local = pytz.utc.localize(start_utc).astimezone(tz)
                 end_utc = self._normalize_out_utc(tz, record.work_date, end_utc)
                 end_local = pytz.utc.localize(end_utc).astimezone(tz)
 

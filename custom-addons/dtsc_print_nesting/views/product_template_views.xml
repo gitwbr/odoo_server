@@ -15,6 +15,20 @@
                 <field name="roll_length_m"
                          string="長度(m)"
                          attrs="{'invisible': [('tracking', '!=', 'serial')]}"/>
+                <field name="print_nest_margin_override"
+                         attrs="{'invisible': [('tracking', '!=', 'serial')]}"/>
+                <field name="print_nest_gap_cm"
+                         attrs="{
+                            'invisible': ['|', ('tracking', '!=', 'serial'), ('print_nest_margin_override', '=', False)]
+                         }"/>
+                <field name="print_nest_gap_diff_film_cm"
+                         attrs="{
+                            'invisible': ['|', ('tracking', '!=', 'serial'), ('print_nest_margin_override', '=', False)]
+                         }"/>
+                <field name="print_nest_margin_cm"
+                         attrs="{
+                            'invisible': ['|', ('tracking', '!=', 'serial'), ('print_nest_margin_override', '=', False)]
+                         }"/>
             </xpath>
         </field>
     </record>

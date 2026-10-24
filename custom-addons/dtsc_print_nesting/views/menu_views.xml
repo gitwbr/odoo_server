@@ -22,10 +22,11 @@
               name="新建印刷單"
               parent="menu_print_nesting_root"
               action="action_create_print_order_wizard"
-              sequence="3"/>
+              sequence="3"
+              active="False"/>
 
     <menuitem id="menu_pending_print_lines"
-              name="待印項次列表"
+              name="印刷項次總表"
               parent="menu_print_nesting_root"
               action="action_pending_print_lines"
               sequence="4"/>
@@ -41,4 +42,10 @@
               parent="menu_print_nesting_root"
               action="action_available_print_lots"
               sequence="6"/>
+
+    <menuitem id="menu_archived_print_lots"
+              name="已歸檔捲料"
+              parent="menu_print_nesting_root"
+              action="action_archived_print_lots"
+              sequence="7"/>
 </odoo>

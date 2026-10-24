@@ -31,9 +31,11 @@ class PrintOrder(models.Model):
     )
     machine_id = fields.Many2one('dtsc.machineprice', string='機台')
     roll_width_mm = fields.Float(string='門幅(mm)')
-    gap_mm = fields.Float(string='圖間距(mm)', default=2.0)
+    # 鎖定時寫入當下系統設定，僅備查；實際排版讀印刷池高級設定
+    gap_mm = fields.Float(string='圖間距(mm)', default=5.0)
     margin_mm = fields.Float(string='邊距(mm)', default=0.0)
-    allow_rotate = fields.Boolean(string='允許90°旋轉', default=True)
+    # 僅留存欄位；實際排版讀系統設定，表單不顯示
+    allow_rotate = fields.Boolean(string='允許90°旋轉', default=True, copy=False)
     need_renest = fields.Boolean(string='需重排', default=False)
     company_id = fields.Many2one(
         'res.company', string='公司', default=lambda self: self.env.company
@@ -50,6 +52,57 @@ class PrintOrder(models.Model):
     utilization_rate = fields.Float(string='平均利用率%', compute='_compute_totals')
     unplaced_info = fields.Text(string='未排提示', readonly=True)
     earliest_delivery = fields.Datetime(string='最早交期', compute='_compute_totals')
+    effect_preview_html = fields.Html(
+        string='印刷效果圖', compute='_compute_effect_preview', sanitize=False,
+    )
+    effect_thumb_html = fields.Html(
+        string='效果圖', compute='_compute_effect_preview', sanitize=False,
+    )
+
+    @api.depends(
+        'roll_ids.roll_width_mm',
+        'roll_ids.used_length_mm',
+        'roll_ids.piece_ids.x_mm',
+        'roll_ids.piece_ids.y_mm',
+        'roll_ids.piece_ids.width_mm',
+        'roll_ids.piece_ids.height_mm',
+        'roll_ids.piece_ids.rotation',
+        'roll_ids.piece_ids.flip_h',
+        'roll_ids.piece_ids.lock_state',
+    )
+    def _compute_effect_preview(self):
+        for rec in self:
+            rolls = rec.roll_ids.filtered('piece_ids')
+            if not rolls:
+                rec.effect_preview_html = '<div class="text-muted">尚無排版</div>'
+                rec.effect_thumb_html = ''
+                continue
+            big, small = [], []
+            for roll in rolls:
+                caption = html.escape('%s　%s' % (
+                    roll.name or '',
+                    roll.stock_lot_id.name or '',
+                ))
+                big.append(
+                    '<div style="margin-bottom:10px;">'
+                    '<div style="font-size:12px;color:#666;margin-bottom:2px;">%s'
+                    '　用料 %.0f mm／門幅 %.0f mm</div>'
+                    '<div style="overflow-x:auto;max-width:100%%;">%s</div></div>'
+                    % (
+                        caption,
+                        roll.used_length_mm or 0.0,
+                        roll.roll_width_mm or 0.0,
+                        roll._build_effect_html(max_w=1100.0, max_h=320.0, min_h=160.0),
+                    )
+                )
+                small.append(
+                    '<div style="margin:1px 0;">%s</div>'
+                    % roll._build_effect_html(
+                        max_w=220.0, max_h=60.0, img_size=128, show_label=False,
+                    )
+                )
+            rec.effect_preview_html = ''.join(big)
+            rec.effect_thumb_html = ''.join(small)
 
     @api.depends(
         'line_ids.qty',
@@ -86,19 +139,161 @@ class PrintOrder(models.Model):
 
     def action_set_draft(self):
         for rec in self:
+            if rec.state == 'confirmed':
+                raise UserError(_('已確認的印刷單不可回草稿（排版已鎖定）。若要重排請作廢後回印刷池再生成。'))
             if rec.piece_ids.filtered(lambda p: p.lock_state == 'printed'):
                 raise UserError(_('已有圖塊標記為已印刷，無法回到草稿。請作廢後另開新單。'))
             rec.state = 'draft'
 
+    def _ensure_layout_editable(self):
+        """已確認／完成／作廢不可再改排版順序。"""
+        locked = self.filtered(lambda r: r.state in ('confirmed', 'done', 'cancel'))
+        if locked:
+            raise UserError(
+                _('印刷單 %s 已鎖定排版，不可再自動排版／解鎖／改座標。若要重排請作廢後回印刷池。')
+                % ', '.join(locked.mapped('name'))
+            )
+
     def action_cancel(self):
+        """作廢未印刷單：返還扣料、刪除排版圖塊，項次回到印刷池待排。"""
         for rec in self:
             if rec.piece_ids.filtered(lambda p: p.lock_state == 'printed'):
                 raise UserError(_('已有已印刷圖塊，不可作廢。'))
+            rec._print_nesting_reverse_deduct()
+            mls = rec.piece_ids.mapped('makeinline_id')
+            # 池鎖定產生的 reserved 也要釋放，否則無法刪除圖塊
+            rec.piece_ids.with_context(force_print_piece_unlink=True).unlink()
             rec.roll_ids.unlink()
             rec.state = 'cancel'
             rec.need_renest = False
             rec.line_ids._sync_placed_qty()
+            if mls:
+                mls._compute_print_state()
         return True
+
+    def unlink(self):
+        """刪除印刷單：返還扣料；未印刷則釋放圖塊回印刷池；已印刷不可刪。"""
+        for rec in self:
+            if rec.piece_ids.filtered(lambda p: p.lock_state == 'printed'):
+                raise UserError(_('「%s」已有已印刷圖塊，不可刪除。請保留作廢單備查。') % rec.name)
+            rec._print_nesting_reverse_deduct()
+        mls_all = self.mapped('piece_ids.makeinline_id') | self.mapped('line_ids.makeinline_id')
+        self.mapped('piece_ids').with_context(force_print_piece_unlink=True).unlink()
+        res = super().unlink()
+        if mls_all:
+            mls_all.exists()._compute_print_state()
+        return res
+
+    def _print_nesting_auto_deduct(self):
+        """生成印刷單後：寫入 dtsc.lotmpr / lotmprline 並扣才數。"""
+        LotMpr = self.env['dtsc.lotmpr']
+        LotMprLine = self.env['dtsc.lotmprline']
+        for order in self:
+            for roll in order.roll_ids.filtered('stock_lot_id'):
+                lotmpr = LotMpr._print_nesting_find_or_create(roll.stock_lot_id)
+                if lotmpr.state == 'succ':
+                    raise UserError(_(
+                        '捲料「%s」扣料表已材料耗盡，無法再生成印刷單扣料。'
+                    ) % (roll.stock_lot_id.display_name,))
+                barcodes = []
+                for piece in roll.piece_ids:
+                    ml = piece.makeinline_id
+                    if ml and ml.barcode and ml.barcode not in barcodes:
+                        barcodes.append(ml.barcode)
+                new_lines = LotMprLine
+                for barcode in barcodes:
+                    existing = LotMprLine.search([
+                        ('lotmpr_id', '=', lotmpr.id),
+                        ('name', '=', barcode),
+                    ], limit=1)
+                    if existing:
+                        if existing.state == 'succ':
+                            # 已扣過（可能掃碼先扣）：不再重扣；扣料表 state=succ 時不可改行
+                            continue
+                        existing.write({
+                            'print_order_id': order.id,
+                            'print_roll_id': roll.id,
+                        })
+                        new_lines |= existing
+                    else:
+                        new_lines |= LotMprLine.create({
+                            'lotmpr_id': lotmpr.id,
+                            'name': barcode,
+                            'print_order_id': order.id,
+                            'print_roll_id': roll.id,
+                        })
+                if new_lines:
+                    lotmpr._print_nesting_deduct_lines(new_lines)
+        return True
+
+    def _print_nesting_reverse_deduct(self):
+        """刪除／作廢印刷單：返還本單產生的扣料行。"""
+        LotMprLine = self.env['dtsc.lotmprline']
+        for order in self:
+            lines = LotMprLine.search([('print_order_id', '=', order.id)])
+            for line in lines:
+                if line.name == '邊料損耗':
+                    continue
+                try:
+                    if line.state == 'succ':
+                        line.delete_btn()
+                    elif line.exists():
+                        line.unlink()
+                except Exception as err:  # noqa: BLE001
+                    raise UserError(_(
+                        '印刷單「%s」返還扣料失敗（項次 %s）：%s'
+                    ) % (order.name, line.name, err)) from err
+        return True
+
+    def action_compose_layout_tiffs(self):
+        """重新合成本單所有捲的排版 TIFF（前端顯示進度條）。"""
+        for rec in self:
+            if not rec.roll_ids:
+                raise UserError(_('尚無捲料排版，無法合成 TIFF。'))
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'dtsc_print_nesting.compose_tiffs',
+            'params': {
+                'order_ids': self.ids,
+                'title': '、'.join(self.mapped('name')),
+            },
+        }
+
+    def compose_layout_tiffs_with_progress(self, job_key=None):
+        Job = self.env['dtsc.print.compose.job']
+        rolls = self.mapped('roll_ids')
+        if not rolls:
+            raise UserError(_('尚無捲料排版，無法合成 TIFF。'))
+        try:
+            rolls.with_context(print_compose_job=job_key).action_compose_layout_tiff()
+        except Exception as err:
+            Job._report(job_key, state='error', message=str(err))
+            raise
+        results = [{
+            'name': '%s %s' % (roll.order_id.name or '', roll.name or ''),
+            'ok': bool(roll.layout_tiff_filename),
+            'note': roll.layout_tiff_note or '',
+        } for roll in rolls]
+        ok = all(r['ok'] for r in results)
+        Job._report(
+            job_key, percent=100.0, state='done' if ok else 'error',
+            message=_('合成完成') if ok else _('部分捲料未生成 TIFF'),
+        )
+        return {'ok': ok, 'rolls': results}
+
+    def action_download_layout_tiffs(self):
+        """下載本單排版 TIFF（每捲一個檔）。"""
+        self.ensure_one()
+        rolls = self.roll_ids.filtered(lambda r: r._has_layout_tiff_file())
+        if not rolls:
+            # 嘗試自動合成一次再下
+            if self.roll_ids:
+                self.roll_ids.action_compose_layout_tiff()
+                rolls = self.roll_ids.filtered(lambda r: r._has_layout_tiff_file())
+            if not rolls:
+                raise UserError(_('尚無可用的排版 TIFF，請確認已鎖定排版後再試。'))
+        # 排版 TIFF 動輒數百 MB，不在伺服器打 zip；每捲各自串流下載
+        return rolls._layout_tiff_download_action()
 
     def action_confirm(self):
         for rec in self:
@@ -106,6 +301,8 @@ class PrintOrder(models.Model):
                 raise UserError(_('請先執行自動排版。'))
             rec.state = 'confirmed'
             rec.need_renest = False
+            # 若尚未由印刷池自動扣過，確認時補扣
+            rec._print_nesting_auto_deduct()
         return True
 
     def action_done(self):
@@ -119,6 +316,7 @@ class PrintOrder(models.Model):
         return True
 
     def action_auto_nest(self):
+        self._ensure_layout_editable()
         for rec in self:
             rec._auto_nest()
         return True
@@ -151,6 +349,10 @@ class PrintOrder(models.Model):
                 continue
             if not w_mm or not h_mm:
                 raise UserError(_('項次 %s 寬高無效，無法排版。') % (line.display_label or line.id))
+            film_group = (
+                line.makeinline_id._print_film_gap_group()
+                if line.makeinline_id else ''
+            )
             for i in range(need):
                 demands.append(
                     PieceDemand(
@@ -161,6 +363,7 @@ class PrintOrder(models.Model):
                             'line_id': line.id,
                             'makeinline_id': line.makeinline_id.id,
                             'label': line.display_label,
+                            'gap_group': film_group,
                         },
                     )
                 )
@@ -174,7 +377,15 @@ class PrintOrder(models.Model):
         for roll in roll_records_ordered:
             obstacles = []
             for p in roll.piece_ids.filtered(lambda x: x.lock_state in ('reserved', 'printed')):
-                obstacles.append(Obstacle(x=p.x_mm, y=p.y_mm, width=p.width_mm, height=p.height_mm))
+                g = (
+                    p.makeinline_id._print_film_gap_group()
+                    if p.makeinline_id else ''
+                )
+                obstacles.append(Obstacle(
+                    x=p.x_mm, y=p.y_mm,
+                    width=p.width_mm, height=p.height_mm,
+                    gap_group=g,
+                ))
             used = roll.used_length_mm or 0.0
             if obstacles:
                 used = max(used, max(o.y + o.height for o in obstacles) + self.margin_mm)
@@ -182,11 +393,21 @@ class PrintOrder(models.Model):
                 RollResult(width=width, used_length=used, placements=[], obstacles=obstacles)
             )
 
+        # 間距／邊距優先用本單捲材自訂，否則系統設定
+        pool = self.env['dtsc.print.pool']
+        mat = self.material_product_id
+        gap = pool._nest_gap_mm_for_material(mat)
+        gap_diff = pool._nest_gap_diff_film_mm_for_material(mat)
+        margin = pool._nest_margin_mm_for_material(mat)
+        allow_rotate = pool._print_pool_allow_rotate()
+        self.gap_mm = gap
+        self.margin_mm = margin
         engine = NestingEngine(
             roll_width=width,
-            gap=self.gap_mm,
-            margin=self.margin_mm,
-            allow_rotate=self.allow_rotate,
+            gap=gap,
+            margin=margin,
+            allow_rotate=allow_rotate,
+            gap_diff_group=gap_diff,
         )
         roll_results, unplaced = engine.pack(demands, seed_rolls=seed_rolls_engine or None)
 
@@ -279,12 +500,14 @@ class PrintOrder(models.Model):
     def action_reserve_selected_wizard(self):
         """UI helper: reserve all open pieces on this order (bulk)."""
         self.ensure_one()
+        self._ensure_layout_editable()
         opens = self.piece_ids.filtered(lambda p: p.lock_state == 'open')
         opens.write({'lock_state': 'reserved'})
         return True
 
     def action_unlock_reserved(self):
         self.ensure_one()
+        self._ensure_layout_editable()
         reserved = self.piece_ids.filtered(lambda p: p.lock_state == 'reserved')
         reserved.write({'lock_state': 'open'})
         return True
@@ -293,12 +516,14 @@ class PrintOrder(models.Model):
 class PrintOrderLine(models.Model):
     _name = 'dtsc.print.order.line'
     _description = '印刷單需求行'
+    _order = 'sequence, id'
 
     order_id = fields.Many2one('dtsc.print.order', required=True, ondelete='cascade')
+    sequence = fields.Integer(string='印刷項次', default=10, index=True)
     makeinline_id = fields.Many2one('dtsc.makeinline', string='工單項次', required=True, ondelete='restrict')
     makein_id = fields.Many2one(related='makeinline_id.make_order_id', store=True, string='內部工單')
     makein_name = fields.Char(related='makein_id.name', store=True, string='工單號')
-    sequence_label = fields.Char(string='項次', compute='_compute_label', store=True)
+    sequence_label = fields.Char(string='工單項次號', compute='_compute_label', store=True)
     display_label = fields.Char(string='標籤', compute='_compute_label', store=True)
     piece_w_mm = fields.Float(string='寬(mm)')
     piece_h_mm = fields.Float(string='高(mm)')
@@ -346,7 +571,16 @@ class PrintOrderLine(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
+        # 同一印刷單內自動編印刷項次：10, 20, 30...
+        next_seq_by_order = {}
         for vals in vals_list:
+            order_id = vals.get('order_id')
+            if order_id and not vals.get('sequence'):
+                if order_id not in next_seq_by_order:
+                    last = self.search([('order_id', '=', order_id)], order='sequence desc', limit=1)
+                    next_seq_by_order[order_id] = (last.sequence if last else 0) + 10
+                vals['sequence'] = next_seq_by_order[order_id]
+                next_seq_by_order[order_id] += 10
             ml = self.env['dtsc.makeinline'].browse(vals.get('makeinline_id'))
             if ml and not vals.get('piece_w_mm'):
                 w, h = ml._parse_size_cm()
@@ -357,7 +591,9 @@ class PrintOrderLine(models.Model):
             if ml and not vals.get('delivery_date') and ml.make_order_id:
                 vals['delivery_date'] = ml.make_order_id.delivery_date
         lines = super().create(vals_list)
-        lines.mapped('order_id').write({'need_renest': True})
+        lines.mapped('order_id').filtered(lambda o: o.state not in ('done', 'cancel')).write(
+            {'need_renest': True}
+        )
         return lines
 
     def write(self, vals):
