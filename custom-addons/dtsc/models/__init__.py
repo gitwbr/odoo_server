@@ -38,6 +38,7 @@ from . import website_sale
 from . import order_preview 
 from . import ir_ui_menu
 from . import linebot
+from . import holiday
 from . import pettycash
 from . import calendar
 from . import performance

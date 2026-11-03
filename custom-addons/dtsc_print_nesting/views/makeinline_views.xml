@@ -5,7 +5,12 @@
         <field name="model">dtsc.makein</field>
         <field name="inherit_id" ref="dtsc.view_makein_form"/>
         <field name="arch" type="xml">
+            <xpath expr="//field[@name='order_ids']/tree" position="attributes">
+                <attribute name="decoration-info">print_done_ok</attribute>
+            </xpath>
             <xpath expr="//field[@name='order_ids']/tree" position="inside">
+                <field name="print_done_ok" invisible="1"/>
+                <field name="print_flow" invisible="1"/>
                 <field name="need_print_nesting" optional="hide"/>
                 <field name="print_material_candidate_ids" widget="many2many_tags" optional="hide"/>
                 <field name="print_material_id" optional="show"/>

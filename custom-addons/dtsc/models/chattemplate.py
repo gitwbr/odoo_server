@@ -341,6 +341,38 @@ class CheckOut(models.Model):
     ye_ji = fields.Float("業績小計",compute="_compute_yeji",store=True)
     report_year = fields.Many2one("dtsc.year",string="年",compute="_compute_year_month",store=True)
     report_month = fields.Many2one("dtsc.month",string="月",compute="_compute_year_month",store=True)
+    # 不存储：每次搜索按当天日期 + 账单日动态换算账期
+    bill_period = fields.Selection([('current', '當月'), ('previous', '前月')], string="快捷賬期",
+                                   compute="_compute_bill_period", search="_search_bill_period")
+    
+    @api.model
+    def _get_bill_period_year_month(self, period):
+        invoice_due_date = self.env['ir.config_parameter'].sudo().get_param('dtsc.invoice_due_date')
+        today = datetime.now(pytz.timezone("Asia/Taipei")).date()
+        bill_date = today.replace(day=1)
+        if today.day > int(invoice_due_date):
+            bill_date += relativedelta(months=1)
+        if period == 'previous':
+            bill_date -= relativedelta(months=1)
+        return bill_date.strftime('%Y'), bill_date.strftime('%m')
+    
+    def _compute_bill_period(self):
+        current = self._get_bill_period_year_month('current')
+        previous = self._get_bill_period_year_month('previous')
+        for record in self:
+            year_month = (record.report_year.name, record.report_month.name)
+            if year_month == current:
+                record.bill_period = 'current'
+            elif year_month == previous:
+                record.bill_period = 'previous'
+            else:
+                record.bill_period = False
+    
+    def _search_bill_period(self, operator, value):
+        if operator != '=' or value not in ('current', 'previous'):
+            raise UserError('快捷賬期只支援選擇「當月」或「前月」。')
+        year, month = self._get_bill_period_year_month(value)
+        return [('report_year.name', '=', year), ('report_month.name', '=', month)]
     
     @api.model
     def read_group(self, domain, fields, groupby, offset=0, limit=None, orderby=False, lazy=True):
@@ -360,9 +392,14 @@ class CheckOut(models.Model):
     @api.depends("estimated_date")
     def _compute_year_month(self):
         invoice_due_date = self.env['ir.config_parameter'].sudo().get_param('dtsc.invoice_due_date')
+        tz = pytz.timezone("Asia/Taipei")
         for record in self:
-            # print(record.estimated_date)
-            current_date = record.estimated_date           
+            if not record.estimated_date:
+                record.report_year = False
+                record.report_month = False
+                continue
+            # estimated_date 存的是 naive UTC，需转成台湾时间再判断账期
+            current_date = pytz.UTC.localize(fields.Datetime.to_datetime(record.estimated_date)).astimezone(tz)
             if current_date.day > int(invoice_due_date):
                 if current_date.month == 12:
                     next_date = current_date.replace(year=current_date.year + 1, month=1 ,day=1)

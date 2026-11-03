@@ -483,7 +483,6 @@ class Performance(models.Model):
         
     def get_should_work_days(self, year, month):
 
-        calendar = Taiwan()
         start_day = date(year, month, 1)
         end_day = date(year, month, monthrange(year, month)[1])
         
@@ -492,7 +491,7 @@ class Performance(models.Model):
         workday_count = 0
 
         while current_day <= end_day:
-            if calendar.is_working_day(current_day):
+            if self.env['dtsc.holiday'].sudo().is_working_day(current_day):
                 workday_count += 1
             current_day += timedelta(days=1)
 

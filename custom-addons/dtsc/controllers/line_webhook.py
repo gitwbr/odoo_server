@@ -131,7 +131,6 @@ class LineBotController(http.Controller):
         return json.dumps({"success": True, "data": data})
     
     def _compute_leave_hours(self,start_dt, end_dt,employee):
-        calendar = Taiwan()
         tz = pytz.timezone("Asia/Taipei")
         start = tz.localize(start_dt)
         end = tz.localize(end_dt)
@@ -154,8 +153,9 @@ class LineBotController(http.Controller):
         lunch_start = time(hour=12)
         lunch_end = time(hour=13)
         day = start.date()
+        holiday_model = request.env['dtsc.holiday'].sudo()
         while day <= end.date():
-            if calendar.is_working_day(day):
+            if holiday_model.is_working_day(day):
                 day_start_dt = datetime.combine(day, work_start).replace(tzinfo=tz)
                 day_end_dt = datetime.combine(day, work_end).replace(tzinfo=tz)
 

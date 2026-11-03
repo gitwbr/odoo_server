@@ -180,8 +180,8 @@ class CheckOutLineLayout(models.Model):
             domain=domain, fields=fields, offset=offset, limit=limit, order=order, **read_kwargs
         )
 
-    @api.model
     def onchange(self, values, field_name, field_onchange):
+        # 不可加 @api.model：Odoo 前端 onchange 會帶 ids，由 _call_kw_multi 解析
         result = super(CheckOutLineLayout, self._rpc_safe_bin_size()).onchange(
             values, field_name, field_onchange
         )

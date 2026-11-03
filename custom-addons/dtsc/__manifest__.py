@@ -33,6 +33,7 @@
         'views/stock_lot.xml',
         'security/res_group.xml',
         'security/ir.model.access.csv',
+        'views/holiday.xml',
         'data/ai_blur_check_config.xml',
         'data/customer_upload_notice_config.xml',
         'data/customer_upload_notice_channel.xml',

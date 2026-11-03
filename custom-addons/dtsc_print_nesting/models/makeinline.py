@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from odoo import api, fields, models, _
+from odoo.exceptions import UserError
 
 
 class MakeInLine(models.Model):
@@ -73,6 +74,27 @@ class MakeInLine(models.Model):
         string='印刷單',
         compute='_compute_print_order_names',
     )
+    print_flow = fields.Boolean(
+        string='走印刷排版',
+        compute='_compute_print_done_ok',
+        help='捲料項次且大圖訂單已上傳 TIFF：以「印刷完成」為準；舊資料仍以掃碼扣料為準。',
+    )
+    print_done_ok = fields.Boolean(
+        string='項次已完成',
+        compute='_compute_print_done_ok',
+    )
+
+    @api.depends('need_print_nesting', 'checkout_line_id.layout_tiff_filename',
+                 'print_state', 'is_stock_off')
+    def _compute_print_done_ok(self):
+        for rec in self:
+            flow = bool(
+                rec.need_print_nesting
+                and rec.checkout_line_id
+                and rec.checkout_line_id.layout_tiff_filename
+            )
+            rec.print_flow = flow
+            rec.print_done_ok = rec.print_state == 'printed' if flow else bool(rec.is_stock_off)
 
     def _compute_print_size_text(self):
         for rec in self:
@@ -278,3 +300,25 @@ class MakeInLine(models.Model):
                 if orders:
                     orders.write({'need_renest': True})
         return res
+
+
+class MakeIn(models.Model):
+    _inherit = 'dtsc.makein'
+
+    def stock_in(self):
+        """走印刷排版的捲料項次：全部數量印刷完成才可完成製作。"""
+        for rec in self:
+            pending = rec.order_ids.filtered(
+                lambda l: l.print_flow and l.print_state != 'printed'
+            )
+            if pending:
+                rows = [
+                    _('項次 %s：已印 %s / 數量 %s') % (
+                        l.barcode or l.sequence, l.print_printed_qty or 0, l.quantity or 0,
+                    )
+                    for l in pending.sorted('sequence')
+                ]
+                raise UserError(_(
+                    '以下捲料項次尚未印刷完成，請先到印刷單「標記已印刷」：\n%s'
+                ) % '\n'.join(rows))
+        return super().stock_in()

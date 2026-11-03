@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_dtsc_holiday_tree" model="ir.ui.view">
+        <field name="name">dtsc.holiday.tree</field>
+        <field name="model">dtsc.holiday</field>
+        <field name="arch" type="xml">
+            <tree create="true" editable="bottom" default_order="day_date desc" decoration-muted="is_working == True">
+                <header>
+                    <button name="action_sync_now" type="object" string="立即同步行事曆" class="oe_highlight"/>
+                </header>
+                <field name="day_date"/>
+                <field name="year" optional="show"/>
+                <field name="is_working"/>
+                <field name="description"/>
+                <field name="source" readonly="1"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_dtsc_holiday_form" model="ir.ui.view">
+        <field name="name">dtsc.holiday.form</field>
+        <field name="model">dtsc.holiday</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_sync_now" type="object" string="立即同步行事曆" class="oe_highlight"/>
+                </header>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="day_date"/>
+                            <field name="is_working"/>
+                        </group>
+                        <group>
+                            <field name="description"/>
+                            <field name="source"/>
+                            <field name="year"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_dtsc_holiday_search" model="ir.ui.view">
+        <field name="name">dtsc.holiday.search</field>
+        <field name="model">dtsc.holiday</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="day_date"/>
+                <field name="year"/>
+                <field name="description"/>
+                <filter string="不需上班" name="off" domain="[('is_working', '=', False)]"/>
+                <filter string="需上班（補班）" name="on" domain="[('is_working', '=', True)]"/>
+                <group expand="0" string="分組">
+                    <filter string="年份" name="group_year" context="{'group_by': 'year'}"/>
+                    <filter string="來源" name="group_source" context="{'group_by': 'source'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_dtsc_holiday" model="ir.actions.act_window">
+        <field name="name">公司行事曆</field>
+        <field name="res_model">dtsc.holiday</field>
+        <field name="view_mode">tree,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">建立第一筆行事曆資料</p>
+            <p>可手動新增公司自訂假日，或按「立即同步行事曆」抓取當年與次年資料。</p>
+        </field>
+    </record>
+
+    <menuitem id="menu_dtsc_holiday"
+              name="公司行事曆"
+              parent="dtsc.menu_setting"
+              action="action_dtsc_holiday"
+              sequence="90"
+              groups="dtsc.group_dtsc_mg,dtsc.group_dtsc_rsgl"/>
+
+    <record id="cron_sync_holiday_calendar" model="ir.cron">
+        <field name="name">行事曆自動同步（每年補假／補班）</field>
+        <field name="model_id" ref="model_dtsc_holiday"/>
+        <field name="state">code</field>
+        <field name="code">model._cron_sync_holidays()</field>
+        <field name="interval_number">1</field>
+        <field name="interval_type">months</field>
+        <field name="numbercall">-1</field>
+        <field name="active">True</field>
+        <field name="doall">True</field>
+        <field name="nextcall" eval="(datetime.utcnow() + relativedelta(months=1, day=1, hour=1, minute=0, second=0)).strftime('%Y-%m-%d %H:%M:%S')"/>
+    </record>
+</odoo>

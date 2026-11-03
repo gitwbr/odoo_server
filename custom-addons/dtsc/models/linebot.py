@@ -818,50 +818,14 @@ class Attendance(models.Model):
         self.sudo()._auto_check_missing_attendance()
         return True
     
-    def _is_company_working_day(self, target_date, calendar):
+    def _is_company_working_day(self, target_date, calendar=None):
         """
         回傳 True = 需要上班
         回傳 False = 放假、不檢查缺卡
+        以公司行事曆為準（含補假、補班、公司自訂假），查無資料時回退內建日曆。
         """
+        return self.env['dtsc.holiday'].sudo().is_working_day(target_date)
 
-        # 1. 先用 workalendar 判斷 (已含週末+官方國定假日)
-        if not calendar.is_working_day(target_date):
-            return False
-
-        # 2. 我們公司自己多加的「固定每年都放」的日子 (用月/日判斷)
-        FIXED_EXTRA_OFF_DAYS = {
-            (5, 1),    # 勞動節
-            (9, 28),   # 教師節
-            (10, 25),  # 光復節/古寧頭勝利紀念
-            (12, 25),  # 行憲紀念日
-        }
-        if (target_date.month, target_date.day) in FIXED_EXTRA_OFF_DAYS:
-            return False
-
-        # 3. 非固定日子（每年不同的，像小年夜）
-        #    這裡請你把今年/明年要放假的特別日子手動列出來
-        EXTRA_OFF_DATES = {
-            # 举例：小年夜、公司額外調休等等
-            # date(2025, 1, 28),
-            date(2026, 2, 15),
-            date(2027, 2, 4),
-            date(2028, 1, 24),
-            date(2029, 2, 11),
-            date(2030, 2, 1),
-            date(2031, 1, 21),
-            date(2032, 2, 11),
-            date(2033, 1, 29),
-            date(2034, 2, 17),
-            date(2035, 2, 6),
-            date(2036, 1, 26),
-            date(2037, 2, 13),
-        }
-        if target_date in EXTRA_OFF_DATES:
-            return False
-
-        # 以上都沒命中 => 這天算"要上班"
-        return True
-        
     def _auto_check_missing_attendance(self):
         tz = pytz.timezone("Asia/Taipei")
         now = datetime.now(tz)
@@ -874,13 +838,12 @@ class Attendance(models.Model):
             ("out_company_date", "=", False),
             ("out_company_date", ">=", today),  # 離職日當天仍檢測，隔天起不再處理
         ]) 
-        calendar = Taiwan()        
         settingObj = self.env['dtsc.linebot'].search([("linebot_type","=","for_worker")], limit=1)
         # specialleave_model = self.env['dtsc.specialleave']
         # grantlog_model = self.env['dtsc.leavegrantlog']        
 
-        # 用我們自己的判斷，而不是直接 calendar.is_working_day
-        if not self._is_company_working_day(today, calendar):
+        # 以公司行事曆判斷（含補假／補班／公司自訂假）
+        if not self._is_company_working_day(today):
             _logger.info(f"今天 {today} 被視為公休/公司假，不處理缺卡。")
             return
             
@@ -1206,8 +1169,16 @@ class Attendance(models.Model):
     def _compute_in_status_show(self):
         settingObj = self.env['dtsc.linebot'].search([("linebot_type","=","for_worker")], limit=1)
         tz = pytz.timezone("Asia/Taipei")
+        holiday_model = self.env['dtsc.holiday'].sudo()
+        workday_cache = {}
         for record in self:
             record.in_status_show = ""
+            # 非工作日（假日／週末）只做打卡記錄，不顯示任何狀態
+            if record.work_date:
+                if record.work_date not in workday_cache:
+                    workday_cache[record.work_date] = holiday_model.is_working_day(record.work_date)
+                if not workday_cache[record.work_date]:
+                    continue
             if record.in_status == 'cd' and record.in_time and settingObj and settingObj.start_time:
                 try:
                     # 將 in_time 轉為台灣時區（naive UTC → aware）
@@ -1268,8 +1239,16 @@ class Attendance(models.Model):
     def _compute_out_status_show(self):
         settingObj = self.env['dtsc.linebot'].search([("linebot_type","=","for_worker")], limit=1)
         tz = pytz.timezone("Asia/Taipei")
+        holiday_model = self.env['dtsc.holiday'].sudo()
+        workday_cache = {}
         for record in self:
             record.out_status_show = ""
+            # 非工作日（假日／週末）只做打卡記錄，不顯示任何狀態
+            if record.work_date:
+                if record.work_date not in workday_cache:
+                    workday_cache[record.work_date] = holiday_model.is_working_day(record.work_date)
+                if not workday_cache[record.work_date]:
+                    continue
             if record.out_status == 'zt' and record.out_time and settingObj and settingObj.end_time:
                 try:
                     # 轉為台灣時區；凌晨同日下班校正為次日
@@ -1477,10 +1456,18 @@ class Attendance(models.Model):
     def _compute_in_status(self):  
         local_tz = pytz.timezone('Asia/Taipei')
         setting = self.env['dtsc.linebot'].search([("linebot_type","=","for_worker")], limit=1)
+        holiday_model = self.env['dtsc.holiday'].sudo()
+        workday_cache = {}
         for rec in self:  
             if not rec.work_date:
                 rec.in_status = 'qk' if not rec.in_time else 'zc'
-                continue            
+                continue
+            # 非工作日（假日／週末）：只做打卡記錄，不計算上班狀態
+            if rec.work_date not in workday_cache:
+                workday_cache[rec.work_date] = holiday_model.is_working_day(rec.work_date)
+            if not workday_cache[rec.work_date]:
+                rec.in_status = False
+                continue
             std_in = self._std_time(rec.name, setting, 'in')
             expected_in_utc = self._to_utc_naive(local_tz, rec.work_date, std_in)
             
@@ -1503,10 +1490,19 @@ class Attendance(models.Model):
     def _compute_out_status(self):
         local_tz = pytz.timezone('Asia/Taipei')
         setting = self.env['dtsc.linebot'].search([("linebot_type","=","for_worker")], limit=1)
+        holiday_model = self.env['dtsc.holiday'].sudo()
+        workday_cache = {}
 
         for rec in self:
             if not rec.work_date:
                 rec.out_status = 'qk' if not rec.out_time else 'zc'
+                continue
+            # 非工作日（假日／週末）：只做打卡記錄，不計算下班狀態
+            if rec.work_date not in workday_cache:
+                workday_cache[rec.work_date] = holiday_model.is_working_day(rec.work_date)
+            if not workday_cache[rec.work_date]:
+                rec.out_status = False
+                continue
                 continue            
             _std_in, _std_out, _ein, expected_out_utc = self._expected_in_out_utc(
                 local_tz, rec.work_date, rec.name, setting)

@@ -67,11 +67,14 @@ Thumbs.db
 client*/data/
 client*/logs/
 client*/postgresql/
+ai2tif_test
 
 # 其他文件
 *.log
 *.pyc
 *.pyo
+*.ai
+*.tif
 
 # PostgreSQL数据目录
 pgdata/

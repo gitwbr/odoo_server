@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'DTSC 印刷單捲材排版',
-    'version': '16.0.1.24.2',
+    'version': '16.0.1.25.1',
     'category': 'Manufacturing',
     'summary': '印刷池可視化排版：舊料優先、新料預留、截斷鎖定成印刷單',
     'description': """
