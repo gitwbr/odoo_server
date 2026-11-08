@@ -1,0 +1,205 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_prepress_wizard_form" model="ir.ui.view">
+        <field name="name">dtsc.prepress.wizard.form</field>
+        <field name="model">dtsc.prepress.wizard</field>
+        <field name="arch" type="xml">
+            <form string="印前處理">
+                <field name="line_id" invisible="1"/>
+                <field name="step" invisible="1"/>
+                <field name="job_type_supported" invisible="1"/>
+                <field name="cwc_type_supported" invisible="1"/>
+                <field name="save_format_supported" invisible="1"/>
+                <field name="layout_ai_pdf_compatible" invisible="1"/>
+
+                <div class="alert alert-info mb-3" role="status">
+                    <strong><field name="step_title" nolabel="1"/></strong>
+                    <span> — 請依序選擇後按「下一步」</span>
+                </div>
+
+                <!-- Step 1: 案件類別 -->
+                <group attrs="{'invisible': [('step', '!=', 'job')]}">
+                    <group string="請選擇案件類別 (Type of Production?)">
+                        <field name="job_type"/>
+                        <div colspan="2" class="text-muted">
+                            目前僅「一般裁切」可執行；其餘類別會先列出，後續再逐一開放。
+                        </div>
+                        <div colspan="2" class="text-danger"
+                             attrs="{'invisible': [('job_type_supported', '=', True)]}">
+                            此案件類別尚未開放，請改選「一般裁切」。
+                        </div>
+                    </group>
+                    <group string="來源檔">
+                        <field name="checkout_id" readonly="1"/>
+                        <field name="sequence" readonly="1"/>
+                        <field name="layout_ai_filename" readonly="1"/>
+                        <field name="layout_ai_width_cm" readonly="1"/>
+                        <field name="layout_ai_height_cm" readonly="1"/>
+                        <field name="layout_ai_message" readonly="1"/>
+                    </group>
+                </group>
+
+                <!-- Step 2: 彩白彩 / 圖層（原軟體第二層） -->
+                <group attrs="{'invisible': [('step', '!=', 'cwc')]}">
+                    <group string="彩白彩 限用AI完稿 (CWC only AI)">
+                        <field name="cwc_type"/>
+                        <div colspan="2" class="text-muted">
+                            選擇「一般案件」或「彩白彩」類型（圖層數）。<br/>
+                            多層次：圖層名稱起始為[特]時，視為特別色。<br/>
+                            特別色參考：CMYK 100,0,0,0　/　RGB 0,0,200
+                        </div>
+                        <div colspan="2" class="text-danger"
+                             attrs="{'invisible': [('cwc_type_supported', '=', True)]}">
+                            此類型尚未開放（需分層輸出白墨 / 彩白彩），請先選「一般案件」。
+                        </div>
+                    </group>
+                </group>
+
+                <!-- Step 3: 裁切方式（原軟體 Cutter Way） -->
+                <group attrs="{'invisible': [('step', '!=', 'marks')]}">
+                    <group string="請選擇 裁切方式 (Cutter Way)？">
+                        <field name="cut_mark_mode"/>
+                        <div colspan="2" class="text-muted">
+                            裁切標記＝對位圓點；檔名標記＝↑單號文字；檔名+裁切＝兩者都加（常用，對應原輸出樣式）。
+                        </div>
+                    </group>
+                </group>
+
+                <!-- Step 4: 出血尺寸（原軟體 Bleed Size） -->
+                <group attrs="{'invisible': [('step', '!=', 'bleed')]}">
+                    <group string="AI 檔案的出血為單邊 cm？ (AI Bleed cm?)">
+                        <field name="bleed_choice"/>
+                        <field name="bleed_cm" invisible="1"/>
+                        <div colspan="2" class="text-muted">
+                            單邊出血（cm）。0.0＝不出血；常見 0.1 / 0.3 / 0.5。
+                        </div>
+                    </group>
+                </group>
+
+                <!-- Step 5: 對位點位置（原軟體 Regmark Side） -->
+                <group attrs="{'invisible': [('step', '!=', 'regside')]}">
+                    <group string="繪製 (裁切對位點) 位置？ Draw Regmark Side?">
+                        <field name="regmark_side"/>
+                        <div colspan="2" class="text-muted">
+                            自動判斷：長度+(點徑x2) ≤ 240cm 用短邊，否則長邊。<br/>
+                            長邊/短邊依畫面方向；上下/左右為固定邊。<br/>
+                            材料接片請先指定上下或左右。
+                        </div>
+                    </group>
+                </group>
+
+                <!-- Step 6: 存檔格式（原軟體 Save Format） -->
+                <group attrs="{'invisible': [('step', '!=', 'fmt')]}">
+                    <group string="請選擇存檔格式？ (Save Format)">
+                        <field name="save_format"/>
+                        <div colspan="2" class="text-muted">
+                            TIFF＝印刷用（自動排版目前僅此格式寫回項次）。<br/>
+                            PDF＝才有「圖文分離」；JPG＝經 TIFF 轉存；EPS＝LDP 特別色用；PNG＝只轉 RGB。
+                        </div>
+                        <div colspan="2" class="text-danger"
+                             attrs="{'invisible': [('save_format_supported', '=', True)]}">
+                            此格式尚未寫回自動排版，請先選 TIFF。
+                        </div>
+                    </group>
+                </group>
+
+                <!-- Step 7: 轉檔解析度（原軟體「輸入轉檔 解析度 (dpi)」） -->
+                <group attrs="{'invisible': [('step', '!=', 'output')]}">
+                    <group string="輸入轉檔 解析度 (dpi)">
+                        <field name="dpi"/>
+                        <field name="dpi_mode"/>
+                        <div colspan="2" class="text-muted">
+                            <strong>手動, 拼檔：</strong>所有檔案依輸入的解析度 (dpi) 轉檔。（拼檔必用）<br/>
+                            <strong>自動判斷：</strong>依頁面尺寸分析適合的解析度；若尺寸或檔案過大，則改用上方輸入值。<br/>
+                            PS：原軟體建議限 100dpi 以內；過大像素或檔案過大時轉檔會失敗。伺服器端另有像素上限保護。
+                        </div>
+                    </group>
+                </group>
+
+                <!-- Step 8: 消除鋸齒（原軟體 Optimized） -->
+                <group attrs="{'invisible': [('step', '!=', 'aa')]}">
+                    <group string="消除鋸齒 (Optimized)">
+                        <field name="aa_mode"/>
+                        <div colspan="2" class="text-muted">
+                            <strong>1. 最佳化線條圖 (ARTOPTIMIZED)：</strong>線條、向量較優雅柔和（插圖、平面設計）。轉檔慢，高解析易失敗。<br/>
+                            <strong>2. 最佳化文字 (TYPEOPTIMIZED)：</strong>字體較清晰、向量較銳利（印刷品）。轉檔適中，圖片可能輕微格狀。<br/>
+                            <strong>3. 不處理鋸齒 (None)：</strong>保持原圖品質（攝影、藝術）。轉檔較快。<br/>
+                            伺服器以 MuPDF 抗鋸齒等級近似（無法完全等同 Illustrator ART/TYPE）。
+                        </div>
+                    </group>
+                </group>
+
+                <!-- Step 9: 拍攝縮圖（原軟體 Take Layout） -->
+                <group attrs="{'invisible': [('step', '!=', 'thumb')]}">
+                    <group string="請選擇拍攝縮圖的方式？ (Take Layout?)">
+                        <field name="thumb_mode"/>
+                        <div colspan="2" class="text-muted">
+                            <strong>螢幕局部（預設）：</strong>生成 TIFF 時一併產生列表預覽圖（原軟體為螢幕截圖；伺服器改從 TIFF 縮圖）。<br/>
+                            <strong>不拍縮圖：</strong>仍寫入印刷 TIFF，但不產預覽（列表會沒有縮圖）。
+                        </div>
+                    </group>
+                </group>
+
+                <!-- Step 10: 延伸AI頁面尺寸（原軟體 Expand Artboard） -->
+                <group attrs="{'invisible': [('step', '!=', 'size')]}">
+                    <group string="延伸AI頁面尺寸">
+                        <div colspan="2">
+                            請依序輸入「左,上,右,下」(cm) 尺寸來修改頁面。<br/>
+                            Input 「left,top,right,bottom」(cm) for Expand the Artboard.
+                        </div>
+                        <field name="expand_ltrb"/>
+                        <div colspan="2" class="text-muted">
+                            Don't change Artboard：<code>0,0,0,0</code> 或（空值 null）<br/>
+                            Expand Bounds by 0.3cm：<code>0.3,0.3,0.3,0.3</code> 或 <code>0.3</code>（1 個值也可）
+                        </div>
+                    </group>
+                </group>
+
+                <!-- Step 11: 其他功能（原軟體 other function） -->
+                <group attrs="{'invisible': [('step', '!=', 'other')]}">
+                    <group string="其他功能 (other function)">
+                        <div colspan="2">
+                            ----&gt; 可「複選」功能項目（網頁用勾選；原軟體為 command+點選）&lt;----
+                        </div>
+                        <field name="make_cut_layer"
+                                 attrs="{'readonly': [('other_skip', '=', True)]}"/>
+                        <field name="expand_stroke"
+                                 attrs="{'readonly': [('other_skip', '=', True)]}"/>
+                        <field name="mirror_h"
+                                 attrs="{'readonly': [('other_skip', '=', True)]}"/>
+                        <field name="white_mark"
+                                 attrs="{'readonly': [('other_skip', '=', True)]}"/>
+                        <field name="hand_cut_frame"
+                                 attrs="{'readonly': [('other_skip', '=', True)]}"/>
+                        <field name="other_skip"/>
+                        <div colspan="2" class="text-muted">
+                            預設略過。鏡射／手切黑框會寫入 TIFF；裁切圖層、白墨對位暫為預留標記；
+                            展開填色筆畫需 Illustrator，勾選後執行會提示。
+                        </div>
+                    </group>
+                </group>
+
+                <!-- Step 12: 確認 -->
+                <group attrs="{'invisible': [('step', '!=', 'confirm')]}">
+                    <group string="標記 / 輸出檔名（可改）">
+                        <field name="label_name"/>
+                        <field name="label_seq"/>
+                        <field name="output_filename"/>
+                    </group>
+                    <field name="summary_html" nolabel="1" colspan="2"/>
+                </group>
+
+                <footer>
+                    <button name="action_back" type="object" string="上一步" class="btn-secondary"
+                            attrs="{'invisible': [('step', '=', 'job')]}"/>
+                    <button name="action_next" type="object" string="下一步" class="btn-primary"
+                            attrs="{'invisible': [('step', '=', 'confirm')]}"/>
+                    <button name="action_run_prepress" type="object" string="開始生成 TIFF"
+                            class="btn-primary"
+                            attrs="{'invisible': ['|', ('step', '!=', 'confirm'), ('layout_ai_pdf_compatible', '=', False)]}"/>
+                    <button string="取消" special="cancel" class="btn-secondary"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>

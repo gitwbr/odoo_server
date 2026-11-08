@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_expense_tree_cashflow" model="ir.ui.view">
+        <field name="name">dtsc.expense.tree.cashflow</field>
+        <field name="model">dtsc.expense</field>
+        <field name="inherit_id" ref="dtsc.view_expense_tree"/>
+        <field name="arch" type="xml">
+            <field name="payment_method" position="after">
+                <field name="cash_bank_id" optional="show"/>
+            </field>
+        </field>
+    </record>
+
+    <record id="view_expense_form_cashflow" model="ir.ui.view">
+        <field name="name">dtsc.expense.form.cashflow</field>
+        <field name="model">dtsc.expense</field>
+        <field name="inherit_id" ref="dtsc.view_expense_form"/>
+        <field name="arch" type="xml">
+            <field name="payment_method" position="after">
+                <field name="cash_bank_id" attrs="{'invisible':[('cash_bank_id','=',False)]}"/>
+                <field name="cash_transaction_id" attrs="{'invisible':[('cash_transaction_id','=',False)]}"/>
+            </field>
+        </field>
+    </record>
+</odoo>

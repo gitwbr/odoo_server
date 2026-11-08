@@ -188,10 +188,16 @@
 					<style>
 					  .my-table {
 						width: 100%;
+						max-width: 100%;
+						overflow: hidden;
+						box-sizing: border-box;
 						border-collapse: collapse;
 					  }
 					  .table-header, .table-row, .subtotal-row, .table-footer {
 						display: flex;
+						width: 100%;
+						max-width: 100%;
+						box-sizing: border-box;
 						border: 1px solid black;
 						page-break-inside: avoid;
 					  }
@@ -206,11 +212,19 @@
 						padding: 5px;
 						font-size: 12px;
 						font-weight: bold; /* 仅标题部分加粗 */
+						min-width: 0;
+						box-sizing: border-box;
+						overflow-wrap: anywhere;
+						word-break: break-word;
 					  }
 					  .table-row > div, .subtotal-row > div {
 						border-right: 1px solid black;
 						padding: 5px;
 						font-size: 12px;
+						min-width: 0;
+						box-sizing: border-box;
+						overflow-wrap: anywhere;
+						word-break: break-word;
 					  }
 					  .table-header > div:last-child, .table-row > div:last-child, .subtotal-row > div:last-child {
 						border-right: none;
@@ -325,14 +339,14 @@
 									<t t-if="o['move_type'] == 'out_invoice'">
 										<div class="my-table">
 										  <div class="table-header">
-											 <div style="flex: 1 0 10%; text-align: center;">出貨日期</div>
-											<div style="flex: 1 0 12%; text-align: center;">大圖訂單</div>
-											<div style="flex: 1 0 33%; text-align: left;">檔名/輸出材質/加工方式</div>
-											<div style="flex: 1 0 12%; text-align: center;">尺寸(才)</div>
-											<div style="flex: 1 0 6%; text-align: center;">數量</div>
-											<div style="flex: 1 0 6%; text-align: center;">單價</div>
-											<div style="flex: 1 0 6%; text-align: center;">加工</div>
-											<div style="flex: 1 0 6%; text-align: center;">小計</div>
+											<div style="flex: 1 1 10%; text-align: center;">出貨日期</div>
+											<div style="flex: 1 1 12%; text-align: center;">大圖訂單</div>
+											<div style="flex: 1 1 33%; text-align: left;">檔名/輸出材質/加工方式</div>
+											<div style="flex: 1 1 12%; text-align: center;">尺寸(才)</div>
+											<div style="flex: 1 1 6%; text-align: center;">數量</div>
+											<div style="flex: 1 1 6%; text-align: center;">單價</div>
+											<div style="flex: 1 1 6%; text-align: center;">加工</div>
+											<div style="flex: 1 1 6%; text-align: center;">小計</div>
 										  </div>
 										  <t t-set="current_date" t-value="False"/>
 										  <t t-set="day_total" t-value="0"/>
@@ -345,28 +359,28 @@
 												<div style="width: 10%; text-align: right;"><span t-esc="'{:,.0f}'.format(day_total)"/></div>
 											  </div> -->
 											  <div class="subtotal-row" style="display: flex;">  
-													<div style="flex: 1 0 15%; border-right:0 ;text-align: left; ">小計(<t t-esc="current_date"/>):</div>
-													<div style="flex: 1 0 7%;  border-right:0 ;text-align: center;"></div>
-													<div style="flex: 1 0 33%; border-right:0 ;text-align: center;"></div>
-													<div style="flex: 1 0 12%; border-right:0 ;text-align: center;"></div>
-													<div style="flex: 1 0 6%;  border-right:0 ;text-align: center;"></div>
-													<div style="flex: 1 0 6%;  border-right:0 ;text-align: center;"></div>
-													<div style="flex: 1 0 6%; border-right: 1px solid black; text-align: center;"></div>
-													<div style="flex: 1 0 6%; text-align: center;"><span t-esc="'{:,.0f}'.format(day_total)"/></div>
+													<div style="flex: 1 1 15%; border-right:0 ;text-align: left; ">小計(<t t-esc="current_date"/>):</div>
+													<div style="flex: 1 1 7%;  border-right:0 ;text-align: center;"></div>
+													<div style="flex: 1 1 33%; border-right:0 ;text-align: center;"></div>
+													<div style="flex: 1 1 12%; border-right:0 ;text-align: center;"></div>
+													<div style="flex: 1 1 6%;  border-right:0 ;text-align: center;"></div>
+													<div style="flex: 1 1 6%;  border-right:0 ;text-align: center;"></div>
+													<div style="flex: 1 1 6%; border-right: 1px solid black; text-align: center;"></div>
+													<div style="flex: 1 1 6%; text-align: center;"><span t-esc="'{:,.0f}'.format(day_total)"/></div>
 													<!-- <div style="width: 90%;border-right: 0;">小計(<t t-esc="current_date"/>):</div>
 													<div style="width: 10%; text-align: right;"><span t-esc="'{:,.0f}'.format(day_total)"/></div> -->
 												</div>
 											  <t t-set="day_total" t-value="0"/>
 											</t>
 											<div class="table-row">
-											  <div style="flex: 1 0 10%; text-align: center;"><span t-esc="order['delivery_date']"/></div>
-											  <div style="flex: 1 0 12%; text-align: center;">
+											  <div style="flex: 1 1 10%; text-align: center;"><span t-esc="order['delivery_date']"/></div>
+											  <div style="flex: 1 1 12%; text-align: center; overflow-wrap: anywhere; word-break: break-all;">
 												<div><span t-esc="order['in_out_id']"/></div>
 												<div><span t-esc="order['project_name']"/></div>
 											  </div>
-											  <div style="flex: 1 0 33%; text-align: left; word-break: break-all; word-wrap: break-word;"><span t-esc="order['ys_name']"/></div>
-											  <!--  <div style="flex: 1 0 12%; text-align: center;"><span t-esc="order['size_value']"/></div> -->
-											<div style="flex: 1 0 12%; text-align: center;">
+											  <div style="flex: 1 1 33%; text-align: left; overflow-wrap: anywhere; word-break: break-all;"><span t-esc="order['ys_name']"/></div>
+											  <!--  <div style="flex: 1 1 12%; text-align: center;"><span t-esc="order['size_value']"/></div> -->
+											<div style="flex: 1 1 12%; text-align: center;">
 												<t t-if="order['size_value'] and '(' in order['size_value']">
 													<t t-esc="order['size_value'].split('(')[0]"/>
 													<br/>
@@ -376,10 +390,10 @@
 													<span t-esc="order['size_value'] or ''"/>
 												</t>
 											</div>
-											  <div style="flex: 1 0 6%; text-align: center;"><span t-esc="round(order['quantity_show'])"/></div>
-											  <div style="flex: 1 0 6%; text-align: center;"><span t-esc="order['price_unit_show']"/></div>
-											  <div style="flex: 1 0 6%; text-align: center;"><span t-esc="'{:,.0f}'.format(order['make_price'])"/></div>
-											  <div style="flex: 1 0 6%; text-align: center;"><span t-esc="'{:,.0f}'.format(order['price_subtotal'])"/></div>
+											  <div style="flex: 1 1 6%; text-align: center;"><span t-esc="round(order['quantity_show'])"/></div>
+											  <div style="flex: 1 1 6%; text-align: center;"><span t-esc="order['price_unit_show']"/></div>
+											  <div style="flex: 1 1 6%; text-align: center;"><span t-esc="'{:,.0f}'.format(order['make_price'])"/></div>
+											  <div style="flex: 1 1 6%; text-align: center;"><span t-esc="'{:,.0f}'.format(order['price_subtotal'])"/></div>
 											</div>
 											<t t-set="current_date" t-value="order['delivery_date']"/>
 											<t t-set="day_total" t-value="day_total + order['price_subtotal']"/>
@@ -387,14 +401,14 @@
 											
 											<t t-if="order_last">
 											   <div class="subtotal-row" style="display: flex;">   
-													<div style="flex: 1 0 15%; border-right:0 ;text-align: left; ">小計(<t t-esc="current_date"/>):</div>
-													<div style="flex: 1 0 7%;  border-right:0 ;text-align: center;"></div>
-													<div style="flex: 1 0 33%; border-right:0 ;text-align: center;"></div>
-													<div style="flex: 1 0 12%; border-right:0 ;text-align: center;"></div>
-													<div style="flex: 1 0 6%;  border-right:0 ;text-align: center;"></div>
-													<div style="flex: 1 0 6%;  border-right:0 ;text-align: center;"></div>
-													<div style="flex: 1 0 6%; border-right: 1px solid black; text-align: center;"></div>
-													<div style="flex: 1 0 6%; text-align: center;"><span t-esc="'{:,.0f}'.format(day_total)"/></div>
+													<div style="flex: 1 1 15%; border-right:0 ;text-align: left; ">小計(<t t-esc="current_date"/>):</div>
+													<div style="flex: 1 1 7%;  border-right:0 ;text-align: center;"></div>
+													<div style="flex: 1 1 33%; border-right:0 ;text-align: center;"></div>
+													<div style="flex: 1 1 12%; border-right:0 ;text-align: center;"></div>
+													<div style="flex: 1 1 6%;  border-right:0 ;text-align: center;"></div>
+													<div style="flex: 1 1 6%;  border-right:0 ;text-align: center;"></div>
+													<div style="flex: 1 1 6%; border-right: 1px solid black; text-align: center;"></div>
+													<div style="flex: 1 1 6%; text-align: center;"><span t-esc="'{:,.0f}'.format(day_total)"/></div>
 													<!-- <div style="width: 90%;border-right: 0;">小計(<t t-esc="current_date"/>):</div>
 													<div style="width: 10%; text-align: right;"><span t-esc="'{:,.0f}'.format(day_total)"/></div> -->
 												</div>

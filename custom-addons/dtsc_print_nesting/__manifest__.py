@@ -1,11 +1,12 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'DTSC 印刷單捲材排版',
-    'version': '16.0.1.25.1',
+    'version': '16.0.1.28.14',
     'category': 'Manufacturing',
     'summary': '印刷池可視化排版：舊料優先、新料預留、截斷鎖定成印刷單',
     'description': """
-大圖訂單「自動排版」標籤：內部工單捲料項次上傳 TIFF、維護出血後尺寸；
+大圖訂單「自動排版」標籤：內部工單捲料項次可上傳 AI/PDF 做印前處理生成 TIFF，
+也可直接上傳 TIFF、維護出血後尺寸；
 功能開啟時，訂單確認轉工單前強制檢查。
 大圖轉工單後，捲材項次進入印刷池。
 左側選材料，右側長條可視化（舊料優先 + 新料預留），截斷鎖定生成印刷單；
@@ -28,6 +29,7 @@
         'views/lotmpr_views.xml',
         'views/print_pool_views.xml',
         'wizard/create_print_order_wizard_views.xml',
+        'wizard/prepress_wizard_views.xml',
         'report/report_print_order.xml',
         'views/res_config_settings_views.xml',
         'views/menu_views.xml',
@@ -37,16 +39,20 @@
             'dtsc_print_nesting/static/src/css/print_nesting.css',
             'dtsc_print_nesting/static/src/xml/print_pool.xml',
             'dtsc_print_nesting/static/src/xml/layout_tiff_upload.xml',
+            'dtsc_print_nesting/static/src/xml/layout_ai_upload.xml',
+            'dtsc_print_nesting/static/src/xml/layout_prepress_action.xml',
             'dtsc_print_nesting/static/src/xml/compose_progress.xml',
             'dtsc_print_nesting/static/src/js/print_pool.js',
             'dtsc_print_nesting/static/src/js/layout_tiff_upload.js',
+            'dtsc_print_nesting/static/src/js/layout_ai_upload.js',
+            'dtsc_print_nesting/static/src/js/layout_prepress_action.js',
             'dtsc_print_nesting/static/src/js/download_url_action.js',
             'dtsc_print_nesting/static/src/js/compose_progress_action.js',
         ],
     },
     'post_init_hook': 'post_init_hook',
     'external_dependencies': {
-        'python': ['PIL'],
+        'python': ['PIL', 'fitz'],
     },
     'installable': True,
     'application': False,

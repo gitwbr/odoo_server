@@ -13,6 +13,9 @@ from odoo.exceptions import UserError
 from pprint import pprint
 import json
 import hashlib
+import hmac
+import time as time_module
+import mimetypes
 _logger = logging.getLogger(__name__)
 from odoo.http import request
 import base64
@@ -102,8 +105,12 @@ class DtscLeave(models.Model):
     ], string='請假類型')
     reason = fields.Text('請假原因')
     reject_reason = fields.Text('拒絕原因')
-    leave_file = fields.Binary(string='上傳檔案')
+    leave_file = fields.Binary(string='上傳檔案', attachment=True)
+    leave_filename = fields.Char(string='附件檔名')
+    leave_mimetype = fields.Char(string='附件類型')
     leave_hours = fields.Float("請假工時")
+    # 簽核附件連結有效期（秒）：7 天
+    LEAVE_FILE_TOKEN_TTL = 7 * 24 * 3600
     state = fields.Selection([
         ('draft', '草稿'),    
         ('to_approved', '申請中'),
@@ -121,7 +128,88 @@ class DtscLeave(models.Model):
 
     # 生理假：年度 96 小時，對應每月上限 8 小時
     SLJ_MONTHLY_LIMIT = 8.0
-    
+
+    def _leave_file_token_secret(self):
+        return self.env['ir.config_parameter'].sudo().get_param('database.secret') or 'dtsc-leave-file'
+
+    def _make_leave_file_token(self, expires_ts=None):
+        """產生請假附件預覽用短時 token。"""
+        self.ensure_one()
+        if expires_ts is None:
+            expires_ts = int(time_module.time()) + self.LEAVE_FILE_TOKEN_TTL
+        msg = f"{self.id}:{expires_ts}"
+        sig = hmac.new(
+            self._leave_file_token_secret().encode(),
+            msg.encode(),
+            hashlib.sha256,
+        ).hexdigest()[:32]
+        return f"{expires_ts}.{sig}"
+
+    def _verify_leave_file_token(self, token):
+        self.ensure_one()
+        if not token or '.' not in token:
+            return False
+        try:
+            expires_ts_str, sig = token.split('.', 1)
+            expires_ts = int(expires_ts_str)
+        except Exception:
+            return False
+        if expires_ts < int(time_module.time()):
+            return False
+        msg = f"{self.id}:{expires_ts}"
+        expected = hmac.new(
+            self._leave_file_token_secret().encode(),
+            msg.encode(),
+            hashlib.sha256,
+        ).hexdigest()[:32]
+        return hmac.compare_digest(expected, sig)
+
+    def _guess_leave_file_meta(self):
+        """舊單缺檔名/MIME 時依內容推斷。"""
+        self.ensure_one()
+        filename = self.leave_filename or 'leave_attachment'
+        mimetype = self.leave_mimetype
+        raw = None
+        if self.leave_file:
+            try:
+                raw = base64.b64decode(self.leave_file)
+            except Exception:
+                raw = None
+        if not mimetype and raw:
+            if raw.startswith(b'\xff\xd8\xff'):
+                mimetype = 'image/jpeg'
+                if not self.leave_filename:
+                    filename = 'leave_attachment.jpg'
+            elif raw.startswith(b'\x89PNG\r\n\x1a\n'):
+                mimetype = 'image/png'
+                if not self.leave_filename:
+                    filename = 'leave_attachment.png'
+            elif raw.startswith(b'%PDF'):
+                mimetype = 'application/pdf'
+                if not self.leave_filename:
+                    filename = 'leave_attachment.pdf'
+            elif raw.startswith(b'GIF8'):
+                mimetype = 'image/gif'
+                if not self.leave_filename:
+                    filename = 'leave_attachment.gif'
+            elif raw.startswith(b'RIFF') and raw[8:12] == b'WEBP':
+                mimetype = 'image/webp'
+                if not self.leave_filename:
+                    filename = 'leave_attachment.webp'
+        if not mimetype and self.leave_filename:
+            mimetype = mimetypes.guess_type(self.leave_filename)[0]
+        return filename, mimetype or 'application/octet-stream'
+
+    def get_leave_file_url(self, base_url=None):
+        """產生可供 LINE Flex 開啟的附件預覽 URL；無附件回傳 False。"""
+        self.ensure_one()
+        if not self.leave_file:
+            return False
+        if not base_url:
+            base_url = self.env['ir.config_parameter'].sudo().get_param('web.base.url') or ''
+        token = self._make_leave_file_token()
+        return f"{base_url.rstrip('/')}/leave/file/{self.id}?token={token}"
+
     def _check_slj_gender(self, employee, leave_type):
         if leave_type == 'slj' and employee and employee.gender != 'female':
             raise UserError("生理假僅限女性員工申請，請先確認員工性別設定。")
@@ -1760,6 +1848,8 @@ class LineBot(models.Model):
     liff_leave = fields.Char("LIFF ID 請假")  
     liff_sys = fields.Char("LIFF ID 後臺")  
     liff_leave_confirm = fields.Char("LIFF 請假確認")
+    liff_app_id = fields.Char("LIFF ID 通用入口", readonly=True, copy=False)
+    liff_app_url = fields.Char("通用入口網址", compute="_compute_liff_app_url")
     liff_channel_id = fields.Char("LIFF channel ID")  # 存儲 LIFF ID
     liff_secret = fields.Char("LIFF secret")  # 存儲 LIFF 網址
     liff_access_token = fields.Char("LIFF Access Token")
@@ -2125,6 +2215,109 @@ class LineBot(models.Model):
                 return {"status": "error", "message": create_response.text}
         else:
             return {"status": "error", "message": response.text}
+
+    LIFF_APP_PATH = 'liff_app'
+
+    @api.depends('liff_app_id')
+    def _compute_liff_app_url(self):
+        for rec in self:
+            rec.liff_app_url = f"https://liff.line.me/{rec.liff_app_id}" if rec.liff_app_id else False
+
+    def _fetch_liff_access_token(self):
+        self.ensure_one()
+        if not self.liff_channel_id or not self.liff_secret:
+            raise UserError("需要填寫liff channel和id")
+        response = requests.post(
+            "https://api.line.me/v2/oauth/accessToken",
+            data={
+                'grant_type': 'client_credentials',
+                'client_id': self.liff_channel_id,
+                'client_secret': self.liff_secret,
+            },
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
+            timeout=15,
+        )
+        if response.status_code != 200:
+            raise UserError(f"取得 LIFF Access Token 失敗：{response.text}")
+        token = response.json().get("access_token")
+        self.write({'liff_access_token': token})
+        return token
+
+    def create_app_liff(self):
+        """建立（或更新）通用入口 LIFF；新功能以子路徑掛在 /liff_app 下。"""
+        self.ensure_one()
+        token = self._fetch_liff_access_token()
+        domain = request.httprequest.host
+        data = {
+            "view": {
+                "type": "tall",
+                "url": f"https://{domain}/{self.LIFF_APP_PATH}",
+            },
+            "description": "Odoo 通用入口",
+            "features": {"qrCode": True},
+            # concat：https://liff.line.me/{id}/xxx 會開啟 /liff_app/xxx
+            "permanentLinkPattern": "concat",
+            # openid：供後端驗證 ID Token，確認是本人
+            "scope": ["openid", "profile", "chat_message.write"],
+            "botPrompt": "none",
+        }
+        headers = {
+            "Authorization": f"Bearer {token}",
+            "Content-Type": "application/json",
+        }
+
+        if self.liff_app_id:
+            resp = requests.put(
+                f"https://api.line.me/liff/v1/apps/{self.liff_app_id}",
+                headers=headers, json=data, timeout=15,
+            )
+            if resp.status_code == 200:
+                message = f"通用入口已更新：{self.liff_app_url}"
+                return self._liff_app_notify(message)
+            if resp.status_code != 404:
+                raise UserError(f"更新通用入口失敗：{resp.text}")
+            # LINE 端已被刪除時重新建立
+
+        resp = requests.post(
+            "https://api.line.me/liff/v1/apps",
+            headers=headers, json=data, timeout=15,
+        )
+        if resp.status_code != 200:
+            raise UserError(f"建立通用入口失敗：{resp.text}")
+        self.write({'liff_app_id': resp.json().get("liffId")})
+        return self._liff_app_notify(f"通用入口已建立：{self.liff_app_url}")
+
+    def verify_liff_id_token(self, id_token):
+        """向 LINE 驗證 LIFF ID Token，成功回傳 LINE userId，失敗回傳 False。"""
+        self.ensure_one()
+        if not id_token or not self.liff_channel_id:
+            return False
+        try:
+            resp = requests.post(
+                "https://api.line.me/oauth2/v2.1/verify",
+                data={'id_token': id_token, 'client_id': self.liff_channel_id},
+                timeout=10,
+            )
+        except Exception as e:
+            _logger.warning("LIFF ID Token 驗證異常：%s", e)
+            return False
+        if resp.status_code != 200:
+            _logger.warning("LIFF ID Token 驗證失敗：%s", resp.text)
+            return False
+        return resp.json().get('sub') or False
+
+    def _liff_app_notify(self, message):
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {
+                'title': "LIFF 通用入口",
+                'message': message,
+                'type': 'success',
+                'sticky': False,
+                'next': {'type': 'ir.actions.client', 'tag': 'reload'},
+            },
+        }
     
     def update_menu(self):
         self.delete_all_richmenus()

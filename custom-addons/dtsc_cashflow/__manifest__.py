@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'DTSC 金流管理',
-    'version': '16.0.1.3.0',
+    'version': '16.0.1.4.0',
     'category': 'Accounting',
     'summary': '公司銀行帳戶、金流水帳、應收已收 / 應付已付、零用金劃撥',
     'description': """
@@ -21,6 +21,7 @@
         'views/cash_dashboard_views.xml',
         'views/account_move_views.xml',
         'views/pettycash_views.xml',
+        'views/expense_views.xml',
         'wizard/cash_settle_wizard_views.xml',
         'views/menu_views.xml',
     ],

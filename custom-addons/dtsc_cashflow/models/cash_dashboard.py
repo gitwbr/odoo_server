@@ -24,6 +24,7 @@ class DtscCashDashboard(models.AbstractModel):
                 {'value': 'receive', 'label': '應收已收'},
                 {'value': 'pay', 'label': '應付已付'},
                 {'value': 'petty_in', 'label': '零用金預存'},
+                {'value': 'expense', 'label': '報支已付'},
                 {'value': 'adjust', 'label': '手動調整'},
                 {'value': 'opening', 'label': '期初'},
             ],

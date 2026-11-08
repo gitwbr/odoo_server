@@ -299,3 +299,42 @@
     background: #ffebee !important;
     color: #c62828 !important;
 }
+
+/* 自動排版：捲材原料欄縮窄，避免擠占 AI / 印前欄 */
+.o_checkout_layout_page .o_checkout_layout_tree th[data-name="layout_material_ids"],
+.o_checkout_layout_page .o_checkout_layout_tree td[data-name="layout_material_ids"],
+.o_checkout_layout_lines .o_list_table th[data-name="layout_material_ids"],
+.o_checkout_layout_lines .o_list_table td[data-name="layout_material_ids"] {
+    width: 500px !important;
+    max-width: 500px !important;
+    min-width: 320px !important;
+}
+.o_checkout_layout_page .o_checkout_layout_tree td[data-name="layout_material_ids"] .o_field_tags,
+.o_checkout_layout_lines .o_list_table td[data-name="layout_material_ids"] .o_field_tags {
+    max-width: 480px;
+    flex-wrap: wrap;
+}
+.o_checkout_layout_page .o_checkout_layout_tree td[data-name="layout_material_ids"] .o_tag,
+.o_checkout_layout_lines .o_list_table td[data-name="layout_material_ids"] .o_tag {
+    max-width: 460px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.o_checkout_layout_page .o_checkout_layout_tree th[data-name="layout_prepress_state"],
+.o_checkout_layout_page .o_checkout_layout_tree td[data-name="layout_prepress_state"],
+.o_checkout_layout_lines .o_list_table th[data-name="layout_prepress_state"],
+.o_checkout_layout_lines .o_list_table td[data-name="layout_prepress_state"] {
+    width: 120px !important;
+    min-width: 110px !important;
+    vertical-align: middle !important;
+}
+.o_layout_prepress_action {
+    min-width: 5.5rem;
+}
+.o_layout_prepress_action .btn {
+    white-space: nowrap;
+}
+.o_layout_ai_upload {
+    max-width: 16rem;
+}

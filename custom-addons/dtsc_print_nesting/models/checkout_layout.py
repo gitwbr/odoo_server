@@ -88,7 +88,11 @@ class CheckOutLineLayout(models.Model):
         'is_roll_material', 'layout_material_id', 'layout_material_ids',
         'layout_bleed_width', 'layout_bleed_height',
         'layout_tiff', 'layout_tiff_filename',
-        'layout_tiff_preview',
+        'layout_tiff_preview', 'layout_tiff_colorspace',
+        'layout_ai', 'layout_ai_filename',
+        'layout_ai_pdf_compatible', 'layout_ai_page_count',
+        'layout_ai_width_cm', 'layout_ai_height_cm', 'layout_ai_message',
+        'layout_prepress_state', 'layout_prepress_message',
     })
 
     is_roll_material = fields.Boolean(
@@ -138,6 +142,31 @@ class CheckOutLineLayout(models.Model):
         copy=False,
         help='由 TIFF 自動產生的 JPEG 縮圖，僅供瀏覽，不參與印刷。',
     )
+
+    # ---- AI 來源檔（印前處理後寫入 layout_tiff；也可不經 AI 直接上傳 TIFF）----
+    layout_ai = fields.Binary(string='排版 AI', attachment=True, copy=False)
+    layout_ai_filename = fields.Char(string='AI 檔名', copy=False)
+    layout_ai_pdf_compatible = fields.Boolean(
+        string='PDF 相容', copy=False, readonly=True,
+        help='是否含 PDF 相容內容，可被伺服器直接轉 TIFF。',
+    )
+    layout_ai_page_count = fields.Integer(string='AI 頁數', copy=False, readonly=True)
+    layout_ai_width_cm = fields.Char(string='AI 寬(cm)', copy=False, readonly=True)
+    layout_ai_height_cm = fields.Char(string='AI 高(cm)', copy=False, readonly=True)
+    layout_ai_message = fields.Char(string='AI 檢查訊息', copy=False, readonly=True)
+    layout_prepress_state = fields.Selection(
+        [
+            ('none', '未處理'),
+            ('ready', '可處理'),
+            ('done', '已生成 TIFF'),
+            ('error', '失敗'),
+        ],
+        string='印前狀態',
+        default='none',
+        copy=False,
+        readonly=True,
+    )
+    layout_prepress_message = fields.Char(string='印前訊息', copy=False, readonly=True)
 
     @api.model
     def _layout_tiff_colorspace_label(self, mode):
@@ -417,10 +446,11 @@ class CheckOutLineLayout(models.Model):
                 '檔案不是有效的 TIFF（檔頭不符）。請重新匯出印刷用 TIFF 後再上傳。'
             ))
 
-    def _store_layout_tiff_raw(self, raw, filename):
+    def _store_layout_tiff_raw(self, raw, filename, need_preview=True):
         """由 HTTP multipart 寫入 filestore，並回填出血尺寸 / 預覽。
 
         先解析再落盤：解析失敗時不會清掉舊檔或留下半成品附件。
+        need_preview=False 對應印前「不拍縮圖」。
         """
         self.ensure_one()
         self._validate_layout_tiff_filename(filename)
@@ -431,7 +461,7 @@ class CheckOutLineLayout(models.Model):
         info = self._process_layout_tiff(
             raw,
             need_size=True,
-            need_preview=True,
+            need_preview=bool(need_preview),
         )
         if not info.get('bleed_width') or not info.get('bleed_height'):
             raise UserError(_('無法從 TIFF 取得出血後尺寸，請確認檔案含 DPI 資訊。'))
@@ -465,11 +495,12 @@ class CheckOutLineLayout(models.Model):
             updates['layout_tiff_preview'] = info['preview']
         else:
             updates['layout_tiff_preview'] = False
-            _logger.warning(
-                'line %s TIFF 預覽未產生%s',
-                self.id,
-                (': ' + info['preview_error']) if info.get('preview_error') else '',
-            )
+            if need_preview:
+                _logger.warning(
+                    'line %s TIFF 預覽未產生%s',
+                    self.id,
+                    (': ' + info['preview_error']) if info.get('preview_error') else '',
+                )
         models.Model.write(self, updates)
 
         preview = info.get('preview') or False
@@ -504,6 +535,144 @@ class CheckOutLineLayout(models.Model):
             })
             rec.invalidate_recordset(['layout_tiff'])
         return True
+
+    # ------------------------------------------------------------------
+    # AI 來源檔
+    # ------------------------------------------------------------------
+    def _has_layout_ai_file(self):
+        self.ensure_one()
+        if self.layout_ai_filename:
+            return True
+        return bool(self.env['ir.attachment'].sudo().search([
+            ('res_model', '=', self._name),
+            ('res_id', '=', self.id),
+            ('res_field', '=', 'layout_ai'),
+            ('file_size', '>', 0),
+        ], limit=1))
+
+    def _read_layout_ai_raw(self):
+        """讀取 AI/PDF 原位元組（不經 base64 膨脹）。"""
+        self.ensure_one()
+        att = self.env['ir.attachment'].sudo().search([
+            ('res_model', '=', self._name),
+            ('res_id', '=', self.id),
+            ('res_field', '=', 'layout_ai'),
+        ], limit=1)
+        if not att:
+            raise UserError(_('尚未上傳 AI / PDF 檔案。'))
+        raw = att.raw
+        if not raw:
+            raise UserError(_('AI 檔案內容為空。'))
+        return raw
+
+    @api.model
+    def _validate_layout_ai_filename(self, filename):
+        if not filename:
+            return
+        ext = os.path.splitext(filename)[1].lower()
+        if ext not in ('.ai', '.pdf'):
+            raise UserError(
+                _('印前處理僅允許上傳 AI / PDF（.ai / .pdf），目前檔名：%s') % filename
+            )
+
+    def _store_layout_ai_raw(self, raw, filename):
+        """multipart 寫入 AI/PDF，並檢查 PDF 相容性。"""
+        self.ensure_one()
+        self._validate_layout_ai_filename(filename)
+        if not raw:
+            raise UserError(_('檔案內容為空。'))
+
+        from odoo.addons.dtsc_print_nesting.utils import ai_to_tiff
+        info = ai_to_tiff.inspect_ai_bytes(raw)
+
+        Attachment = self.env['ir.attachment'].with_context(image_no_postprocess=True)
+        old = Attachment.search([
+            ('res_model', '=', self._name),
+            ('res_id', '=', self.id),
+            ('res_field', '=', 'layout_ai'),
+        ])
+        old.unlink()
+        ext = os.path.splitext(filename)[1].lower()
+        mimetype = 'application/pdf' if ext == '.pdf' else 'application/postscript'
+        Attachment.create({
+            'name': filename,
+            'res_model': self._name,
+            'res_id': self.id,
+            'res_field': 'layout_ai',
+            'type': 'binary',
+            'raw': raw,
+            'mimetype': mimetype,
+        })
+        self.invalidate_recordset(['layout_ai'])
+
+        updates = {
+            'layout_ai_filename': filename,
+            'layout_ai_pdf_compatible': bool(info.pdf_compatible),
+            'layout_ai_page_count': info.page_count or 0,
+            'layout_ai_width_cm': self._format_layout_cm(info.width_cm) if info.width_cm else False,
+            'layout_ai_height_cm': self._format_layout_cm(info.height_cm) if info.height_cm else False,
+            'layout_ai_message': info.message or False,
+            'layout_prepress_state': 'ready' if info.pdf_compatible else 'error',
+            'layout_prepress_message': info.message or False,
+        }
+        models.Model.write(self, updates)
+        return {
+            'ok': True,
+            'filename': filename,
+            'pdf_compatible': bool(info.pdf_compatible),
+            'page_count': info.page_count or 0,
+            'width_cm': updates.get('layout_ai_width_cm') or '',
+            'height_cm': updates.get('layout_ai_height_cm') or '',
+            'message': info.message or '',
+            'prepress_state': updates['layout_prepress_state'],
+            'ai_size': human_size(len(raw)),
+        }
+
+    def clear_layout_ai(self):
+        Attachment = self.env['ir.attachment']
+        for rec in self:
+            Attachment.search([
+                ('res_model', '=', rec._name),
+                ('res_id', '=', rec.id),
+                ('res_field', '=', 'layout_ai'),
+            ]).unlink()
+            models.Model.write(rec, {
+                'layout_ai_filename': False,
+                'layout_ai_pdf_compatible': False,
+                'layout_ai_page_count': 0,
+                'layout_ai_width_cm': False,
+                'layout_ai_height_cm': False,
+                'layout_ai_message': False,
+                'layout_prepress_state': 'none',
+                'layout_prepress_message': False,
+            })
+            rec.invalidate_recordset(['layout_ai'])
+        return True
+
+    def action_open_prepress_wizard(self):
+        """打開印前處理選項視窗（先建立 wizard 再開，避免前端載入失敗）。"""
+        self.ensure_one()
+        if not self._has_layout_ai_file():
+            raise UserError(_('請先上傳 AI / PDF 檔案。'))
+        wiz = self.env['dtsc.prepress.wizard'].with_context(
+            default_line_id=self.id,
+            active_id=self.id,
+            active_model=self._name,
+        ).create({'line_id': self.id})
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('印前處理'),
+            'res_model': 'dtsc.prepress.wizard',
+            'res_id': wiz.id,
+            'view_mode': 'form',
+            'views': [(False, 'form')],
+            'target': 'new',
+            'context': {
+                'default_line_id': self.id,
+                'active_id': self.id,
+                'active_model': self._name,
+            },
+        }
 
     @api.model_create_multi
     def create(self, vals_list):

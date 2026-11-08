@@ -1,0 +1,569 @@
+<odoo>
+	<!-- 通用入口版型：統一載入 LIFF SDK 並初始化；子頁用 window.dtscLiffReady.then(...) 取得 LIFF -->
+	<template id="liff_app_layout" name="LINE 通用入口版型">
+		<html lang="zh-Hant">
+			<head>
+				<meta charset="utf-8"/>
+				<meta name="viewport" content="width=device-width, initial-scale=1"/>
+				<title t-esc="page_title or '員工服務'"/>
+				<script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+				<style>
+					body {
+						margin: 0;
+						padding: 16px;
+						font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+						background-color: #f9f9f9;
+						color: #333;
+						font-size: 18px;
+						line-height: 1.6;
+					}
+					h2 {
+						color: #00C300;
+						font-size: 26px;
+						text-align: center;
+						margin: 8px 0 24px;
+					}
+					.dtsc-loading {
+						text-align: center;
+						color: #00C300;
+						margin-top: 40vh;
+						font-weight: bold;
+					}
+					.dtsc-field {
+						margin-bottom: 16px;
+					}
+					.dtsc-field label {
+						display: block;
+						font-weight: bold;
+						margin-bottom: 6px;
+					}
+					.dtsc-field input,
+					.dtsc-field select,
+					.dtsc-field textarea {
+						width: 100%;
+						box-sizing: border-box;
+						padding: 12px;
+						font-size: 18px;
+						border: 1px solid #ccc;
+						border-radius: 10px;
+						background-color: #fff;
+					}
+					.dtsc-btn {
+						width: 100%;
+						padding: 16px;
+						font-size: 20px;
+						font-weight: bold;
+						color: #fff;
+						background-color: #00C300;
+						border: none;
+						border-radius: 12px;
+					}
+					.dtsc-btn.danger {
+						background-color: #C30000;
+					}
+					.dtsc-btn:disabled {
+						opacity: 0.5;
+					}
+					.dtsc-card {
+						background-color: #fff;
+						border: 1px solid #ddd;
+						border-radius: 12px;
+						padding: 12px 14px;
+						margin-bottom: 12px;
+					}
+					.dtsc-muted {
+						color: #777;
+						font-size: 15px;
+						word-break: break-all;
+					}
+					.dtsc-error {
+						display: none;
+						background-color: #F8D7DA;
+						color: #A71D2A;
+						padding: 12px;
+						border-radius: 10px;
+						margin-bottom: 16px;
+					}
+				</style>
+			</head>
+			<body t-att-data-liff-id="liff_id">
+				<script>
+					window.dtscLiffReady = liff.init({ liffId: document.body.dataset.liffId });
+					window.dtscLiffReady.catch(function (err) {
+						console.error(err);
+						alert("LIFF 初始化失敗：" + err.message);
+					});
+				</script>
+				<t t-out="0"/>
+			</body>
+		</html>
+	</template>
+
+	<template id="liff_app_home" name="LINE 通用入口首頁">
+		<t t-call="dtsc.liff_app_layout">
+			<t t-if="is_redirecting">
+				<div class="dtsc-loading">載入中，請稍候...</div>
+			</t>
+			<t t-else="">
+				<style>
+					.dtsc-tiles {
+						display: grid;
+						grid-template-columns: 1fr 1fr;
+						gap: 14px;
+					}
+					.dtsc-tile {
+						display: flex;
+						align-items: center;
+						justify-content: center;
+						min-height: 96px;
+						padding: 12px;
+						border-radius: 14px;
+						background-color: #00C300;
+						color: #fff;
+						font-size: 20px;
+						font-weight: bold;
+						text-align: center;
+						text-decoration: none;
+					}
+				</style>
+				<h2>員工服務</h2>
+				<div class="dtsc-tiles">
+					<t t-foreach="entries" t-as="entry">
+						<a class="dtsc-tile" t-att-href="entry[1]"><t t-esc="entry[0]"/></a>
+					</t>
+				</div>
+			</t>
+		</t>
+	</template>
+
+	<template id="liff_expense_page" name="LINE 報支申請">
+		<t t-call="dtsc.liff_app_layout">
+			<t t-set="page_title" t-value="'報支'"/>
+			<style>
+				.dtsc-tabs {
+					display: flex;
+					gap: 8px;
+					margin-bottom: 16px;
+				}
+				.dtsc-tab {
+					flex: 1;
+					padding: 12px;
+					font-size: 18px;
+					border: none;
+					border-radius: 10px;
+					background-color: #e8e8e8;
+					color: #333;
+				}
+				.dtsc-tab.active {
+					background-color: #00C300;
+					color: #fff;
+					font-weight: bold;
+				}
+				.dtsc-file-list {
+					list-style: none;
+					padding: 0;
+					margin: 8px 0 0;
+				}
+				.dtsc-file-list li {
+					display: flex;
+					justify-content: space-between;
+					align-items: center;
+					gap: 8px;
+					padding: 8px 10px;
+					margin-bottom: 6px;
+					font-size: 15px;
+					background-color: #fff;
+					border: 1px solid #ddd;
+					border-radius: 8px;
+					word-break: break-all;
+				}
+				.dtsc-file-list button {
+					flex-shrink: 0;
+					border: none;
+					background: none;
+					color: #C30000;
+					font-size: 15px;
+				}
+				.dtsc-card-head {
+					display: flex;
+					justify-content: space-between;
+					gap: 8px;
+					font-weight: bold;
+				}
+				.dtsc-badge {
+					flex-shrink: 0;
+					padding: 0 10px;
+					font-size: 14px;
+					border-radius: 999px;
+				}
+				.dtsc-badge.to_approved { background-color: #FFF3CD; color: #8A6D00; }
+				.dtsc-badge.approved { background-color: #D4EDDA; color: #1E7E34; }
+				.dtsc-badge.rejected { background-color: #F8D7DA; color: #A71D2A; }
+			</style>
+			<h2>報支</h2>
+			<div id="error_box" class="dtsc-error"></div>
+			<div class="dtsc-tabs">
+				<button type="button" class="dtsc-tab active" data-tab="apply">申請報支</button>
+				<button type="button" class="dtsc-tab" data-tab="list">我的報支</button>
+			</div>
+			<div id="tab_apply">
+				<div class="dtsc-field">
+					<label for="expense_date">日期</label>
+					<input type="date" id="expense_date"/>
+				</div>
+				<div class="dtsc-field">
+					<label for="category">類別</label>
+					<select id="category">
+						<option value="">請選擇</option>
+						<t t-foreach="categories" t-as="cat">
+							<option t-att-value="cat[0]"><t t-esc="cat[1]"/></option>
+						</t>
+					</select>
+				</div>
+				<div class="dtsc-field">
+					<label for="amount">金額（元）</label>
+					<input type="number" id="amount" min="1" step="1" inputmode="numeric" placeholder="例如 350"/>
+				</div>
+				<div class="dtsc-field">
+					<label for="description">說明</label>
+					<textarea id="description" rows="3" placeholder="用途、地點、對象等"></textarea>
+				</div>
+				<div class="dtsc-field">
+					<label for="files">附件（收據照片或 PDF，最多 <t t-esc="max_files"/> 個）</label>
+					<input type="file" id="files" accept="image/*,application/pdf" multiple="multiple" t-att-data-max="max_files"/>
+					<ul id="file_list" class="dtsc-file-list"></ul>
+				</div>
+				<button type="button" id="submit_btn" class="dtsc-btn">送出</button>
+			</div>
+			<div id="tab_list" style="display:none">
+				<div id="list_box" class="dtsc-muted">載入中...</div>
+			</div>
+			<script>
+				<![CDATA[
+				(function () {
+					const fileInput = document.getElementById("files");
+					const MAX_FILES = parseInt(fileInput.dataset.max, 10) || 5;
+					const MAX_PDF_BYTES = 10 * 1024 * 1024;
+					let idToken = null;
+					let selectedFiles = [];
+
+					function showError(msg) {
+						const box = document.getElementById("error_box");
+						box.textContent = msg || "";
+						box.style.display = msg ? "block" : "none";
+					}
+
+					function today() {
+						const d = new Date();
+						d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+						return d.toISOString().slice(0, 10);
+					}
+
+					function postJSON(url, payload) {
+						return fetch(url, {
+							method: "POST",
+							headers: { "Content-Type": "application/json" },
+							body: JSON.stringify(Object.assign({ id_token: idToken }, payload)),
+						}).then(function (resp) { return resp.json(); });
+					}
+
+					function switchTab(name) {
+						document.querySelectorAll(".dtsc-tab").forEach(function (btn) {
+							btn.classList.toggle("active", btn.dataset.tab === name);
+						});
+						document.getElementById("tab_apply").style.display = name === "apply" ? "" : "none";
+						document.getElementById("tab_list").style.display = name === "list" ? "" : "none";
+						if (name === "list") {
+							loadList();
+						}
+					}
+
+					function renderFiles() {
+						const list = document.getElementById("file_list");
+						list.innerHTML = "";
+						selectedFiles.forEach(function (file, index) {
+							const li = document.createElement("li");
+							const name = document.createElement("span");
+							name.textContent = file.name;
+							const remove = document.createElement("button");
+							remove.type = "button";
+							remove.textContent = "移除";
+							remove.addEventListener("click", function () {
+								selectedFiles.splice(index, 1);
+								renderFiles();
+							});
+							li.appendChild(name);
+							li.appendChild(remove);
+							list.appendChild(li);
+						});
+					}
+
+					function readAsDataURL(blob) {
+						return new Promise(function (resolve, reject) {
+							const reader = new FileReader();
+							reader.onload = function () { resolve(reader.result); };
+							reader.onerror = reject;
+							reader.readAsDataURL(blob);
+						});
+					}
+
+					// 手機照片動輒數 MB，先縮成長邊 1600px 的 JPEG 再上傳
+					function compressImage(file) {
+						return new Promise(function (resolve, reject) {
+							const url = URL.createObjectURL(file);
+							const img = new Image();
+							img.onload = function () {
+								const scale = Math.min(1, 1600 / Math.max(img.width, img.height));
+								const canvas = document.createElement("canvas");
+								canvas.width = Math.round(img.width * scale);
+								canvas.height = Math.round(img.height * scale);
+								canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
+								URL.revokeObjectURL(url);
+								resolve(canvas.toDataURL("image/jpeg", 0.8));
+							};
+							img.onerror = function () {
+								URL.revokeObjectURL(url);
+								reject(new Error("無法讀取圖片：" + file.name));
+							};
+							img.src = url;
+						});
+					}
+
+					async function encodeFile(file) {
+						if (file.type === "application/pdf") {
+							if (file.size > MAX_PDF_BYTES) {
+								throw new Error(file.name + " 超過 10MB");
+							}
+							const pdfData = await readAsDataURL(file);
+							return { name: file.name, type: "application/pdf", data: pdfData.split(",")[1] };
+						}
+						const imageData = await compressImage(file);
+						const name = file.name.replace(/\.[^.]+$/, "") + ".jpg";
+						return { name: name, type: "image/jpeg", data: imageData.split(",")[1] };
+					}
+
+					function loadList() {
+						const box = document.getElementById("list_box");
+						box.textContent = "載入中...";
+						postJSON("/liff_app/api/expense/list", {}).then(function (result) {
+							if (!result.success) {
+								box.textContent = result.message;
+								return;
+							}
+							if (!result.data.length) {
+								box.textContent = "目前沒有報支記錄";
+								return;
+							}
+							box.innerHTML = "";
+							result.data.forEach(function (row) {
+								const card = document.createElement("div");
+								card.className = "dtsc-card";
+								const head = document.createElement("div");
+								head.className = "dtsc-card-head";
+								const title = document.createElement("span");
+								title.textContent = row.name + "｜" + row.amount;
+								const badge = document.createElement("span");
+								badge.className = "dtsc-badge " + row.state;
+								badge.textContent = row.state_label;
+								head.appendChild(title);
+								head.appendChild(badge);
+								card.appendChild(head);
+								const lines = [row.date + "｜" + row.category];
+								if (row.description) { lines.push(row.description); }
+								if (row.payment_method) { lines.push("付款方式：" + row.payment_method); }
+								if (row.reject_reason) { lines.push("拒絕理由：" + row.reject_reason); }
+								lines.forEach(function (text) {
+									const line = document.createElement("div");
+									line.className = "dtsc-muted";
+									line.textContent = text;
+									card.appendChild(line);
+								});
+								box.appendChild(card);
+							});
+						}).catch(function () {
+							box.textContent = "查詢失敗，請稍後再試";
+						});
+					}
+
+					async function submit() {
+						showError("");
+						const payload = {
+							expense_date: document.getElementById("expense_date").value,
+							category: document.getElementById("category").value,
+							amount: document.getElementById("amount").value,
+							description: document.getElementById("description").value.trim(),
+						};
+						if (!payload.expense_date) { return showError("請選擇日期"); }
+						if (!payload.category) { return showError("請選擇類別"); }
+						if (!(parseInt(payload.amount, 10) > 0)) { return showError("請輸入正確金額"); }
+
+						const btn = document.getElementById("submit_btn");
+						btn.disabled = true;
+						btn.textContent = "送出中...";
+						try {
+							payload.files = [];
+							for (const file of selectedFiles) {
+								payload.files.push(await encodeFile(file));
+							}
+							const result = await postJSON("/liff_app/api/expense/submit", payload);
+							if (!result.success) {
+								showError(result.message);
+								return;
+							}
+							alert(result.message);
+							document.getElementById("category").value = "";
+							document.getElementById("amount").value = "";
+							document.getElementById("description").value = "";
+							selectedFiles = [];
+							renderFiles();
+							switchTab("list");
+						} catch (err) {
+							showError(err.message || "送出失敗，請稍後再試");
+						} finally {
+							btn.disabled = false;
+							btn.textContent = "送出";
+						}
+					}
+
+					document.getElementById("expense_date").value = today();
+					document.querySelectorAll(".dtsc-tab").forEach(function (btn) {
+						btn.addEventListener("click", function () { switchTab(btn.dataset.tab); });
+					});
+					fileInput.addEventListener("change", function () {
+						const incoming = Array.from(fileInput.files);
+						fileInput.value = "";
+						showError("");
+						for (const file of incoming) {
+							if (selectedFiles.length >= MAX_FILES) {
+								showError("附件最多 " + MAX_FILES + " 個");
+								break;
+							}
+							if (file.type.indexOf("image/") !== 0 && file.type !== "application/pdf") {
+								showError(file.name + " 不是圖片或 PDF");
+								continue;
+							}
+							selectedFiles.push(file);
+						}
+						renderFiles();
+					});
+					document.getElementById("submit_btn").addEventListener("click", submit);
+
+					window.dtscLiffReady.then(function () {
+						if (!liff.isLoggedIn()) {
+							liff.login();
+							return;
+						}
+						idToken = liff.getIDToken();
+						if (!idToken) {
+							showError("通用入口缺少身分驗證權限，請管理員在 Line 設定再按一次「自動創建通用入口」。");
+							document.getElementById("submit_btn").disabled = true;
+							return;
+						}
+						if (new URLSearchParams(location.search).get("tab") === "list") {
+							switchTab("list");
+						}
+					});
+				})();
+				]]>
+			</script>
+		</t>
+	</template>
+
+	<template id="liff_expense_reject_page" name="LINE 報支拒絕">
+		<t t-call="dtsc.liff_app_layout">
+			<t t-set="page_title" t-value="'拒絕報支'"/>
+			<h2 style="color:#C30000">拒絕報支</h2>
+			<div id="error_box" class="dtsc-error"></div>
+			<div id="summary" class="dtsc-card dtsc-muted">載入中...</div>
+			<div class="dtsc-field">
+				<label for="reason">拒絕理由</label>
+				<textarea id="reason" rows="4" placeholder="請輸入拒絕原因"></textarea>
+			</div>
+			<button type="button" id="submit_btn" class="dtsc-btn danger" disabled="disabled">確定拒絕</button>
+			<script>
+				<![CDATA[
+				(function () {
+					const expenseId = new URLSearchParams(location.search).get("expense_id");
+					const btn = document.getElementById("submit_btn");
+					let idToken = null;
+
+					function showError(msg) {
+						const box = document.getElementById("error_box");
+						box.textContent = msg || "";
+						box.style.display = msg ? "block" : "none";
+					}
+
+					function postJSON(url, payload) {
+						return fetch(url, {
+							method: "POST",
+							headers: { "Content-Type": "application/json" },
+							body: JSON.stringify(Object.assign({ id_token: idToken, expense_id: expenseId }, payload)),
+						}).then(function (resp) { return resp.json(); });
+					}
+
+					function renderSummary(data) {
+						const box = document.getElementById("summary");
+						box.innerHTML = "";
+						[
+							data.name + "｜" + data.state_label,
+							"申請人：" + data.employee,
+							"日期：" + data.date + "｜" + data.category,
+							"金額：" + data.amount,
+							"說明：" + (data.description || "（無）"),
+						].forEach(function (text) {
+							const line = document.createElement("div");
+							line.textContent = text;
+							box.appendChild(line);
+						});
+					}
+
+					btn.addEventListener("click", function () {
+						const reason = document.getElementById("reason").value.trim();
+						if (!reason) {
+							return showError("請填寫拒絕理由");
+						}
+						showError("");
+						btn.disabled = true;
+						postJSON("/liff_app/api/expense/reject", { reason: reason }).then(function (result) {
+							if (!result.success) {
+								showError(result.message);
+								btn.disabled = false;
+								return;
+							}
+							alert(result.message);
+							liff.closeWindow();
+						}).catch(function () {
+							showError("送出失敗，請稍後再試");
+							btn.disabled = false;
+						});
+					});
+
+					window.dtscLiffReady.then(function () {
+						if (!liff.isLoggedIn()) {
+							liff.login();
+							return;
+						}
+						idToken = liff.getIDToken();
+						if (!idToken) {
+							showError("通用入口缺少身分驗證權限，請管理員在 Line 設定再按一次「自動創建通用入口」。");
+							return;
+						}
+						postJSON("/liff_app/api/expense/detail", {}).then(function (result) {
+							if (!result.success) {
+								document.getElementById("summary").textContent = result.message;
+								return;
+							}
+							renderSummary(result.data);
+							if (result.data.state === "to_approved") {
+								btn.disabled = false;
+							} else {
+								showError("這張報支單已經簽核過了");
+							}
+						});
+					});
+				})();
+				]]>
+			</script>
+		</t>
+	</template>
+</odoo>

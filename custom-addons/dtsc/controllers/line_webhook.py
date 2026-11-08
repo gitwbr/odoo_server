@@ -4,7 +4,7 @@ import hmac
 import hashlib
 import base64
 from odoo import http, fields
-from odoo.http import request
+from odoo.http import request, Response, content_disposition
 from odoo.exceptions import UserError
 from datetime import datetime, timedelta, date, timezone, time
 from odoo.fields import Datetime
@@ -206,6 +206,39 @@ class LineBotController(http.Controller):
 
         return json.dumps({"success": True, "message": ""})
         
+    @http.route('/leave/file/<int:leave_id>', type='http', auth='public', methods=['GET'], csrf=False)
+    def leave_file_preview(self, leave_id, **kwargs):
+        """簽核用：以短時 token 預覽/下載請假附件（圖片 inline、PDF inline）。"""
+        token = kwargs.get('token') or ''
+        leave = request.env['dtsc.leave'].sudo().browse(leave_id)
+        if not leave.exists() or not leave.leave_file:
+            return request.not_found()
+        if not leave._verify_leave_file_token(token):
+            return Response('連結無效或已過期', status=403, content_type='text/plain; charset=utf-8')
+
+        filename, mimetype = leave._guess_leave_file_meta()
+        try:
+            raw = base64.b64decode(leave.leave_file)
+        except Exception:
+            return Response('附件讀取失敗', status=500, content_type='text/plain; charset=utf-8')
+
+        # 圖片 / PDF 直接預覽；其餘改為下載
+        inline = (
+            (mimetype or '').startswith('image/')
+            or mimetype == 'application/pdf'
+        )
+        cd = content_disposition(filename)
+        if inline:
+            cd = cd.replace('attachment;', 'inline;', 1)
+        headers = [
+            ('Content-Type', mimetype or 'application/octet-stream'),
+            ('Content-Length', str(len(raw))),
+            ('Content-Disposition', cd),
+            ('X-Content-Type-Options', 'nosniff'),
+            ('Cache-Control', 'private, max-age=300'),
+        ]
+        return request.make_response(raw, headers=headers)
+
     @http.route('/apply_leave', type='http', methods=['POST'], auth='public', csrf=False)
     def apply_leave(self, **kwargs):
         data = json.loads(request.httprequest.data)
@@ -215,6 +248,8 @@ class LineBotController(http.Controller):
         leave_type = data.get('leave_type')
         reason = data.get('reason')
         file_data = data.get('file')  # base64 字串
+        file_name = (data.get('file_name') or '').strip() or False
+        file_mimetype = (data.get('file_mimetype') or '').strip() or False
 
         employee = request.env['dtsc.workqrcode'].sudo().search([('line_user_id', '=', line_id)], limit=1)
         if not employee:
@@ -279,7 +314,7 @@ class LineBotController(http.Controller):
         except UserError as e:
             return json.dumps({'success': False, 'message': e.args[0] if e.args else str(e)})
 
-        leave = request.env['dtsc.leave'].sudo().create({
+        leave_vals = {
             "employee_id": employee.id,
             "line_user_id": line_id,
             "name": new_name,
@@ -290,7 +325,11 @@ class LineBotController(http.Controller):
             "leave_file": file_data,
             "state": "to_approved",
             "leave_hours": leave_hours,
-        })
+        }
+        if file_data:
+            leave_vals["leave_filename"] = file_name or "leave_attachment"
+            leave_vals["leave_mimetype"] = file_mimetype or False
+        leave = request.env['dtsc.leave'].sudo().create(leave_vals)
         
         self.reply_to_line(line_id, f"✅ 請假單{leave.name}已經提交！等待主管審核！")
         self.notify_manager_for_leave(leave.id,line_id,leave_type,stime_raw,etime_raw,reason,new_name,leave_hours)
@@ -674,6 +713,54 @@ class LineBotController(http.Controller):
     @http.route('/liff_leave_confirm_page', type='http', auth="public", website=True)
     def liff_leave_confirm_page(self, **kw):
         return request.render("dtsc.liff_leave_confirm_page")
+
+    # 通用入口子頁：路徑名 -> QWeb 模板（模板需 t-call dtsc.liff_app_layout）
+    LIFF_APP_PAGES = {
+        'expense': 'dtsc.liff_expense_page',
+        'expense_reject': 'dtsc.liff_expense_reject_page',
+    }
+
+    def _liff_app_page_values(self, page):
+        if page == 'expense':
+            Expense = request.env['dtsc.expense']
+            return {'categories': Expense.CATEGORY_SELECTION, 'max_files': Expense.MAX_ATTACHMENTS}
+        return {}
+
+    def _liff_app_entries(self, lineObj):
+        entries = [("報支", "/liff_app/expense")]
+        if lineObj.liff_id:
+            base = f"https://liff.line.me/{lineObj.liff_id}?liffid={lineObj.liff_id}"
+            entries.append(("上班打卡", f"{base}&daka_type=in"))
+            entries.append(("下班打卡", f"{base}&daka_type=out"))
+        if lineObj.liff_url:
+            entries.append(("考勤查詢 / 補卡", lineObj.liff_url))
+        if lineObj.liff_leave:
+            entries.append(("請假", lineObj.liff_leave))
+        return entries
+
+    #通用入口
+    @http.route(['/liff_app', '/liff_app/<string:page>'], type='http', auth="public", website=True)
+    def liff_app(self, page=None, **kw):
+        lineObj = request.env["dtsc.linebot"].sudo().search([("linebot_type", "=", "for_worker")], limit=1)
+        if not lineObj or not lineObj.liff_app_id:
+            return request.make_response(
+                "尚未建立通用入口，請先在 Line 設定按「自動創建通用入口」。",
+                headers=[('Content-Type', 'text/plain; charset=utf-8')],
+            )
+        values = {'liff_id': lineObj.liff_app_id}
+        if page:
+            template = self.LIFF_APP_PAGES.get(page)
+            if not template:
+                return request.not_found()
+            values.update(self._liff_app_page_values(page))
+            return request.render(template, values)
+
+        # 從 liff.line.me/{id}/xxx 開啟時，LINE 會先載入入口並帶 liff.state，由 liff.init 轉到子頁
+        values.update({
+            'is_redirecting': bool(kw.get('liff.state')),
+            'entries': self._liff_app_entries(lineObj),
+        })
+        return request.render("dtsc.liff_app_home", values)
     
     
     def get_user_display_name(self,user_id, access_token):
@@ -932,6 +1019,8 @@ class LineBotController(http.Controller):
                         self.reply_to_line(user_id, "❌ 找不到你的綁定資料，請先綁定。")
                 elif text.strip() in ("資產使用", "资产使用"):
                     self.handle_asset_usage_entry(user_id)
+                elif text.strip() in ("報支", "报支"):
+                    self.handle_expense_keyword(user_id, event.get('replyToken'))
                 elif text.startswith("綁定"):
                     print("in bangding")
                     employee_raw = text.split("綁定")[1].strip()
@@ -1350,6 +1439,10 @@ class LineBotController(http.Controller):
                     leave_key = params.get("leave_key")
                     self.submit_leave(user_id, leave_key)
                     
+                elif params.get("action") == "expense_confirm":
+                    self.handle_expense_confirm(params, user_id, event.get('replyToken'))
+                elif params.get("action") == "expense_approve":
+                    self.handle_expense_approve(params, user_id, event.get('replyToken'))
                 elif params.get("action") == "approve_leave":
                     leave_id = params.get("leave_id")
                     leave = request.env['dtsc.leave'].sudo().browse(int(leave_id))
@@ -1627,6 +1720,187 @@ class LineBotController(http.Controller):
             json={"to": user_id, "messages": messages},
         )
         return True
+
+    def _reply_line_messages(self, reply_token, messages, fallback_user_id=None):
+        """用 reply API 回覆（不佔推播額度）；replyToken 失效時改用 push。"""
+        lineObj = request.env["dtsc.linebot"].sudo().search([("linebot_type", "=", "for_worker")], limit=1)
+        if not lineObj or not lineObj.line_access_token:
+            return False
+        if reply_token:
+            try:
+                resp = requests.post(
+                    "https://api.line.me/v2/bot/message/reply",
+                    headers={
+                        "Authorization": f"Bearer {lineObj.line_access_token}",
+                        "Content-Type": "application/json",
+                    },
+                    json={"replyToken": reply_token, "messages": messages},
+                    timeout=10,
+                )
+                if resp.status_code == 200:
+                    return True
+                _logger.warning("LINE reply 失敗 status=%s body=%s", resp.status_code, resp.text)
+            except Exception as e:
+                _logger.warning("LINE reply 異常：%s", e)
+        if fallback_user_id:
+            return self._push_line_messages(fallback_user_id, messages)
+        return False
+
+    def _reply_text(self, reply_token, user_id, text):
+        return self._reply_line_messages(reply_token, [{"type": "text", "text": text}], fallback_user_id=user_id)
+
+    def handle_expense_keyword(self, user_id, reply_token):
+        employee = self._get_bound_employee(user_id)
+        if not employee:
+            return self._reply_text(reply_token, user_id, "❌ 找不到你的綁定資料，請先輸入「綁定+員工姓名」。")
+        if employee.out_company_date:
+            return self._reply_text(reply_token, user_id, "您已離職，無法申請報支。")
+        lineObj = request.env["dtsc.linebot"].sudo().search([("linebot_type", "=", "for_worker")], limit=1)
+        if not lineObj.liff_app_id:
+            return self._reply_text(reply_token, user_id, "尚未建立通用入口，請聯絡管理員在 Line 設定按「自動創建通用入口」。")
+        page_url = f"https://liff.line.me/{lineObj.liff_app_id}/expense"
+        flex = {
+            "type": "flex",
+            "altText": "報支",
+            "contents": {
+                "type": "bubble",
+                "body": {
+                    "type": "box",
+                    "layout": "vertical",
+                    "spacing": "md",
+                    "contents": [
+                        {"type": "text", "text": "🧾 報支", "weight": "bold", "size": "lg", "align": "center"},
+                        {
+                            "type": "text",
+                            "text": "填寫日期、類別、金額、說明並上傳收據，送出後由主管簽核。",
+                            "wrap": True,
+                            "size": "sm",
+                            "color": "#666666",
+                        },
+                        {
+                            "type": "button",
+                            "style": "primary",
+                            "color": "#00C300",
+                            "action": {"type": "uri", "label": "申請報支", "uri": page_url},
+                        },
+                        {
+                            "type": "button",
+                            "style": "secondary",
+                            "action": {"type": "uri", "label": "我的報支記錄", "uri": f"{page_url}?tab=list"},
+                        },
+                    ],
+                },
+            },
+        }
+        return self._reply_line_messages(reply_token, [flex], fallback_user_id=user_id)
+
+    def _expense_for_approver(self, params, user_id, reply_token):
+        """取出待簽核報支單並確認簽核權限；不通過時已回覆原因並回傳 (None, None)。"""
+        try:
+            expense_id = int(params.get("expense_id") or 0)
+        except ValueError:
+            expense_id = 0
+        expense = request.env["dtsc.expense"].sudo().browse(expense_id).exists()
+        if not expense:
+            self._reply_text(reply_token, user_id, "找不到這張報支單。")
+            return None, None
+        worker = self._get_bound_employee(user_id)
+        if not expense.is_approver(worker):
+            self._reply_text(reply_token, user_id, "您不是這張報支單的簽核人。")
+            return None, None
+        if expense.state != "to_approved":
+            by = f"（{expense.approver_id.name}）" if expense.approver_id else ""
+            self._reply_text(reply_token, user_id, f"報支單 {expense.name} 目前狀態為「{expense._state_label()}」{by}，無需再簽核。")
+            return None, None
+        return expense, worker
+
+    def handle_expense_confirm(self, params, user_id, reply_token):
+        expense, worker = self._expense_for_approver(params, user_id, reply_token)
+        if not expense:
+            return
+        method = params.get("method")
+        approve_data = f"action=expense_approve&method={method}&expense_id={expense.id}"
+        cancel_button = {
+            "type": "button",
+            "style": "secondary",
+            "action": {"type": "postback", "label": "取消", "data": "action=cancel"},
+        }
+        if method == "reject":
+            lineObj = request.env["dtsc.linebot"].sudo().search([("linebot_type", "=", "for_worker")], limit=1)
+            if not lineObj.liff_app_id:
+                return self._reply_text(reply_token, user_id, "尚未建立通用入口，無法填寫拒絕理由，請聯絡管理員。")
+            question = "要拒絕這張報支單嗎？確定後請填寫拒絕理由。"
+            buttons = [{"type": "button", "style": "primary", "color": "#C30000", "action": {
+                "type": "uri",
+                "label": "填寫理由",
+                "uri": f"https://liff.line.me/{lineObj.liff_app_id}/expense_reject?expense_id={expense.id}",
+            }}]
+        elif method == "petty":
+            question = "確定以「零用金」支付並同意這張報支單嗎？核准後會記入當月零用金支出。"
+            buttons = [{"type": "button", "style": "primary", "color": "#00C300",
+                        "action": {"type": "postback", "label": "確定", "data": approve_data}}]
+        elif method == "bank":
+            bank_options = expense._bank_options()
+            if bank_options is None:
+                question = "確定以「銀行」支付並同意這張報支單嗎？"
+                buttons = [{"type": "button", "style": "primary", "color": "#00C300",
+                            "action": {"type": "postback", "label": "確定", "data": approve_data}}]
+            elif not bank_options:
+                return self._reply_text(reply_token, user_id, "尚未建立公司銀行帳戶，請先到後台「金流管理 → 銀行帳戶」建立。")
+            else:
+                question = "以「銀行」支付並同意這張報支單，請點選付款銀行（點選即核准）："
+                buttons = [{"type": "button", "style": "primary", "color": "#1E88E5", "height": "sm", "action": {
+                    "type": "postback",
+                    "label": label[:20],
+                    "data": f"{approve_data}&bank_id={bank_id}",
+                }} for bank_id, label in bank_options[:10]]
+        else:
+            return self._reply_text(reply_token, user_id, "操作錯誤，請重新點選。")
+
+        if len(buttons) == 1:
+            button_box = {"type": "box", "layout": "horizontal", "spacing": "sm", "contents": buttons + [cancel_button]}
+        else:
+            button_box = {"type": "box", "layout": "vertical", "spacing": "sm", "contents": buttons + [cancel_button]}
+
+        flex = {
+            "type": "flex",
+            "altText": "確認報支簽核",
+            "contents": {
+                "type": "bubble",
+                "body": {
+                    "type": "box",
+                    "layout": "vertical",
+                    "spacing": "md",
+                    "contents": [
+                        {"type": "text", "text": question, "weight": "bold", "size": "md", "wrap": True},
+                        {
+                            "type": "text",
+                            "text": f"{expense.name}｜{expense.employee_id.name}｜{expense._amount_display()}",
+                            "size": "sm",
+                            "color": "#666666",
+                            "wrap": True,
+                        },
+                        button_box,
+                    ],
+                },
+            },
+        }
+        self._reply_line_messages(reply_token, [flex], fallback_user_id=user_id)
+
+    def handle_expense_approve(self, params, user_id, reply_token):
+        expense, worker = self._expense_for_approver(params, user_id, reply_token)
+        if not expense:
+            return
+        try:
+            with request.env.cr.savepoint():
+                expense.action_approve(params.get("method"), worker, params.get("bank_id"))
+        except UserError as e:
+            return self._reply_text(reply_token, user_id, f"無法核准：{e.args[0]}")
+        self._reply_text(
+            reply_token, user_id,
+            f"您已核准 {expense.employee_id.name} 的報支單 {expense.name}（{expense._amount_display()}）。\n"
+            f"{expense._approve_record_text()}",
+        )
 
     def handle_asset_usage_entry(self, user_id):
         employee = self._get_bound_employee(user_id)
@@ -2629,6 +2903,74 @@ class LineBotController(http.Controller):
             "Content-Type": "application/json"
         }
         leave_type_display = dict(recordObj._fields['leave_type'].selection).get(recordObj.leave_type)
+        reason_text = (reason or '').strip() or '（無）'
+        if len(reason_text) > 200:
+            reason_text = reason_text[:200] + '…'
+
+        body_contents = [
+            {"type": "text", "text": "📝 新的請假單提交", "weight": "bold", "size": "lg", "align": "center"},
+            {"type": "text", "text": f"姓名: {employee_name}", "margin": "md"},
+            {"type": "text", "text": f"單號: {name}", "margin": "md"},
+            {"type": "text", "text": f"類型: {leave_type_display}", "margin": "md"},
+            {"type": "text", "text": f"開始時間: {start_time.strftime('%Y-%m-%d %H:%M')}", "margin": "md"},
+            {"type": "text", "text": f"結束時間: {end_time.strftime('%Y-%m-%d %H:%M')}", "margin": "md"},
+            {"type": "text", "text": f"工時: {leave_hours}", "margin": "md"},
+            {"type": "text", "text": f"説明: {reason_text}", "margin": "md", "wrap": True},
+        ]
+
+        # 有附件時加預覽按鈕（圖片/PDF 可直接開啟）
+        file_url = recordObj.get_leave_file_url(
+            base_url=f"https://{request.httprequest.host}"
+        )
+        if file_url:
+            filename, mimetype = recordObj._guess_leave_file_meta()
+            if (mimetype or '').startswith('image/'):
+                btn_label = "查看圖片附件"
+            elif mimetype == 'application/pdf':
+                btn_label = "查看PDF附件"
+            else:
+                btn_label = "下載附件"
+            body_contents.append({
+                "type": "button",
+                "action": {
+                    "type": "uri",
+                    "label": btn_label,
+                    "uri": file_url,
+                },
+                "style": "secondary",
+                "margin": "md",
+            })
+
+        body_contents.append({"type": "separator", "margin": "md"})
+        body_contents.append({
+            "type": "box",
+            "layout": "horizontal",
+            "contents": [
+                {
+                    "type": "button",
+                    "action": {
+                        "type": "postback",
+                        "label": "同意",
+                        "data": f"action=confirm_leave_yes&leave_id={record_id}"
+                    },
+                    "style": "primary",
+                    "color": "#00C300",
+                    "flex": 1
+                },
+                {
+                    "type": "button",
+                    "action": {
+                        "type": "postback",
+                        "label": "拒絕",
+                        "data": f"action=confirm_leave_no&leave_id={record_id}"
+                    },
+                    "style": "primary",
+                    "color": "#C30000",
+                    "flex": 1
+                }
+            ]
+        })
+
         # 要跳出的審核按鈕（可以接後續簽核 postback）
         flex_message = {
             "type": "flex",
@@ -2638,47 +2980,7 @@ class LineBotController(http.Controller):
                 "body": {
                     "type": "box",
                     "layout": "vertical",
-                    "contents": [
-                        {"type": "text", "text": "📝 新的請假單提交", "weight": "bold", "size": "lg", "align": "center"},
-                        {"type": "text", "text": f"姓名: {employee_name}", "margin": "md"},
-                        {"type": "text", "text": f"單號: {name}", "margin": "md"},
-                        {"type": "text", "text": f"類型: {leave_type_display}", "margin": "md"},
-                        {"type": "text", "text": f"開始時間: {start_time.strftime('%Y-%m-%d %H:%M')}", "margin": "md"},
-                        {"type": "text", "text": f"結束時間: {end_time.strftime('%Y-%m-%d %H:%M')}", "margin": "md"},
-                        {"type": "text", "text": f"工時: {leave_hours}", "margin": "md"},
-                        {"type": "text", "text": f"説明: {reason}", "margin": "md"},
-                        {"type": "separator", "margin": "md"},
-                        {
-                            "type": "box",
-                            "layout": "horizontal",
-                            "contents": [
-                                {
-                                    "type": "button",
-                                    "action": {
-                                        "type": "postback",
-                                        "label": "同意",
-                                        # "data": f"action=approve_leave&leave_id={record_id}"
-                                        "data": f"action=confirm_leave_yes&leave_id={record_id}"
-                                    },
-                                    "style": "primary",
-                                    "color": "#00C300",
-                                    "flex": 1
-                                },
-                                {
-                                    "type": "button",
-                                    "action": {
-                                        "type": "postback",
-                                        "label": "拒絕",
-                                        # "data": f"action=reject_leave&leave_id={record_id}"
-                                        "data": f"action=confirm_leave_no&leave_id={record_id}"
-                                    },
-                                    "style": "primary",
-                                    "color": "#C30000",
-                                    "flex": 1
-                                }
-                            ]
-                        }
-                    ]
+                    "contents": body_contents,
                 }
             }
         }

@@ -33,6 +33,7 @@ class DtscCashTransaction(models.Model):
             ('receive', '應收已收'),
             ('pay', '應付已付'),
             ('petty_in', '零用金預存'),
+            ('expense', '報支已付'),
             ('adjust', '手動調整'),
         ],
         string='類型',
@@ -41,6 +42,7 @@ class DtscCashTransaction(models.Model):
     )
     move_id = fields.Many2one('account.move', string='關聯帳單', ondelete='set null')
     pettycash_id = fields.Many2one('dtsc.pettycash', string='零用金明細', ondelete='set null')
+    expense_id = fields.Many2one('dtsc.expense', string='報支單', ondelete='set null')
     operator_id = fields.Many2one(
         'res.users',
         string='操作人員',
@@ -78,18 +80,18 @@ class DtscCashTransaction(models.Model):
     def unlink(self):
         banks = self.mapped('bank_id')
         protected = self.filtered(
-            lambda t: t.transaction_type in ('receive', 'pay', 'petty_in')
+            lambda t: t.transaction_type in ('receive', 'pay', 'petty_in', 'expense')
             and t.state == 'done'
         )
         if protected and not self.env.context.get('cashflow_force_unlink'):
-            raise UserError('業務產生的流水不可直接刪除，請先在帳單/零用金反沖。')
+            raise UserError('業務產生的流水不可直接刪除，請先在帳單/零用金/報支單反沖。')
         res = super().unlink()
         banks._compute_balance()
         return res
 
     def action_cancel(self):
         for tx in self:
-            if tx.transaction_type in ('receive', 'pay', 'petty_in'):
-                raise UserError('請從對應帳單或零用金反沖，勿直接作廢此流水。')
+            if tx.transaction_type in ('receive', 'pay', 'petty_in', 'expense'):
+                raise UserError('請從對應帳單、零用金或報支單反沖，勿直接作廢此流水。')
             tx.state = 'cancel'
         self.mapped('bank_id')._compute_balance()

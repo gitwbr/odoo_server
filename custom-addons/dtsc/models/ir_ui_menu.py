@@ -21,7 +21,7 @@ class IrUiMenu(models.Model):
                 'dtsc.menu_chart_dashboard_root',
             ]
         if self.env.user.has_group('dtsc.group_dtsc_disable_cg'):
-            hidden_xmlids += ['dtsc.purchase']
+            hidden_xmlids += ['dtsc.purchase', 'purchase.menu_purchase_root']
         if self.env.user.has_group('dtsc.group_dtsc_disable_bb'):
             # SaaS 報表根菜單是 menu_chart_dashboard_root，企業版對應 root1
             hidden_xmlids += ['dtsc.menu_chart_dashboard_root']

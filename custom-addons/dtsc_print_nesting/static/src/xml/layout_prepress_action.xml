@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="dtsc_print_nesting.LayoutPrepressActionField" owl="1">
+        <div class="o_layout_prepress_action d-inline-flex flex-column align-items-stretch gap-1">
+            <span t-att-class="stateBadgeClass" t-esc="stateLabel"/>
+            <button
+                t-if="showButton"
+                type="button"
+                t-att-class="canRun ? 'btn btn-primary btn-sm' : 'btn btn-outline-secondary btn-sm'"
+                title="印前處理：選擇案件類別並生成 TIFF"
+                t-on-click="onPrepressClick"
+            >印前處理</button>
+            <span t-if="!hasAi" class="text-muted small">請先上傳 AI</span>
+        </div>
+    </t>
+</templates>

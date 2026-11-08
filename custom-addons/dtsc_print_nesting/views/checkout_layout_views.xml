@@ -6,22 +6,31 @@
         <field name="inherit_id" ref="dtsc.view_checkout_form"/>
         <field name="arch" type="xml">
             <xpath expr="//page[.//field[@name='cut_svg_line_ids']]" position="after">
-                <page string="自動排版">
+                <page string="自動排版" class="o_checkout_layout_page">
                     <p class="text-muted">
-                        僅顯示「內部工單/代工」且原料為捲料的項次。請上傳 TIFF（.tif / .tiff）；
-                        出血後寬高與預覽圖會依檔案自動帶入（寬高單位 cm，可再手動調整）。
+                        僅顯示「內部工單/代工」且原料為捲料的項次。
+                        可先上傳 AI / PDF；上傳成功且顯示「相容」後，到「印前」欄點「印前處理」，
+                        依序選擇案件類別等選項後生成印刷 TIFF。也可直接上傳 TIFF（.tif / .tiff）。
+                        出血後寬高與預覽圖會依 TIFF 自動帶入（寬高單位 cm，可再手動調整）。
                         功能開啟時，訂單確認轉工單前會檢查此處圖檔與尺寸是否齊全。
                         大檔僅存伺服器，畫面不載入原檔內容，避免記憶體不足。
                     </p>
-                    <field name="layout_line_ids" mode="tree,form">
-                        <tree create="false" delete="false" editable="bottom" default_order="sequence">
-                            <field name="sequence" readonly="1" string="項次"/>
+                    <field name="layout_line_ids" mode="tree,form" class="o_checkout_layout_lines">
+                        <tree create="false" delete="false" editable="bottom" default_order="sequence"
+                              class="o_checkout_layout_tree">
+                            <field name="sequence" readonly="1" string="項次" width="50px"/>
                             <field name="project_product_name" readonly="1" string="檔名"/>
                             <field name="layout_material_ids" widget="many2many_tags" readonly="1"
-                                    string="捲材原料" optional="show"/>
+                                    string="捲材原料" optional="show" width="500px"
+                                    class="o_layout_material_col"/>
                             <field name="layout_material_id" invisible="1"/>
                             <field name="product_width" readonly="1" string="產品寬" optional="hide"/>
                             <field name="product_height" readonly="1" string="產品高" optional="hide"/>
+                            <field name="layout_ai_filename" widget="layout_ai_upload" string="AI 檔"/>
+                            <field name="layout_ai_pdf_compatible" invisible="1"/>
+                            <field name="layout_ai_message" invisible="1"/>
+                            <field name="layout_prepress_state" widget="layout_prepress_action"
+                                    string="印前" width="120px"/>
                             <field name="layout_bleed_width" string="出血後寬"/>
                             <field name="layout_bleed_height" string="出血後高"/>
                             <field name="layout_tiff_colorspace" string="色彩" readonly="1" optional="show"/>
@@ -29,6 +38,7 @@
                                     options="{'size': [64, 64]}"/>
                             <!-- 綁定檔名字段，勿放 Binary layout_tiff，否則大檔會塞進 JSON 爆記憶體 -->
                             <field name="layout_tiff_filename" widget="layout_tiff_upload" string="TIFF 圖檔"/>
+                            <field name="layout_prepress_message" string="印前訊息" optional="hide" readonly="1"/>
                             <field name="is_roll_material" invisible="1"/>
                         </tree>
                         <form string="自動排版項次">
@@ -46,9 +56,18 @@
                                         <field name="layout_bleed_width"/>
                                         <field name="layout_bleed_height"/>
                                         <field name="layout_tiff_colorspace" readonly="1"/>
+                                        <field name="layout_prepress_state" widget="layout_prepress_action"/>
+                                        <field name="layout_prepress_message" readonly="1"/>
                                     </group>
                                 </group>
-                                <group string="TIFF 圖檔">
+                                <group string="AI 來源（可選）">
+                                    <field name="layout_ai_filename" widget="layout_ai_upload" string="AI / PDF"/>
+                                    <field name="layout_ai_pdf_compatible" readonly="1"/>
+                                    <field name="layout_ai_width_cm" readonly="1"/>
+                                    <field name="layout_ai_height_cm" readonly="1"/>
+                                    <field name="layout_ai_message" readonly="1"/>
+                                </group>
+                                <group string="TIFF 圖檔（印刷用）">
                                     <field name="layout_tiff_filename" widget="layout_tiff_upload" string="TIFF 圖檔"/>
                                     <field name="layout_tiff_preview" widget="image" string="預覽圖" readonly="1"
                                               options="{'size': [256, 256]}"/>

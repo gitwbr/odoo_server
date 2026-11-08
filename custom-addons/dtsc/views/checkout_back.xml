@@ -574,8 +574,8 @@
 									<tree  create="false" delete="false" editable="bottom">									
 										<field name="sequence" readonly="1"/>								
 										<field name="project_product_name" readonly="1"/>										
-										<field name="crm_chengben"/>										
-										<field name="crm_chengben_comment"/>										
+										<field name="crm_chengben" widget="float" digits="[16, 2]"/>
+										<field name="crm_chengben_comment"/>
 									</tree>									 
 								</field>
 							</page>

@@ -1,0 +1,173 @@
+<odoo>
+	<record id="view_expense_tree" model="ir.ui.view">
+		<field name="name">dtsc.expense.tree</field>
+		<field name="model">dtsc.expense</field>
+		<field name="arch" type="xml">
+			<tree create="false" decoration-warning="state == 'to_approved'" decoration-muted="state == 'rejected'">
+				<field name="name"/>
+				<field name="expense_date"/>
+				<field name="employee_id"/>
+				<field name="category"/>
+				<field name="amount" sum="合計"/>
+				<field name="description" optional="show"/>
+				<field name="payment_method"/>
+				<field name="approver_id" optional="show"/>
+				<field name="state" widget="badge" decoration-warning="state == 'to_approved'" decoration-success="state == 'approved'" decoration-danger="state == 'rejected'"/>
+			</tree>
+		</field>
+	</record>
+
+	<record id="view_expense_form" model="ir.ui.view">
+		<field name="name">dtsc.expense.form</field>
+		<field name="model">dtsc.expense</field>
+		<field name="arch" type="xml">
+			<form create="false">
+				<header>
+					<field name="state" widget="statusbar" statusbar_visible="to_approved,approved"/>
+				</header>
+				<sheet>
+					<div class="oe_title">
+						<h1><field name="name"/></h1>
+					</div>
+					<group>
+						<group>
+							<field name="employee_id" readonly="1"/>
+							<field name="expense_date" attrs="{'readonly':[('state','!=','to_approved')]}"/>
+							<field name="category" attrs="{'readonly':[('state','!=','to_approved')]}"/>
+							<field name="amount" attrs="{'readonly':[('state','!=','to_approved')]}"/>
+						</group>
+						<group>
+							<field name="payment_method"/>
+							<field name="approver_id"/>
+							<field name="approve_time"/>
+							<field name="pettycash_id" attrs="{'invisible':[('pettycash_id','=',False)]}"/>
+						</group>
+					</group>
+					<group>
+						<field name="description" attrs="{'readonly':[('state','!=','to_approved')]}"/>
+						<field name="reject_reason" readonly="1" attrs="{'invisible':[('state','!=','rejected')]}"/>
+						<field name="attachment_ids" widget="many2many_binary" attrs="{'readonly':[('state','!=','to_approved')]}"/>
+					</group>
+				</sheet>
+			</form>
+		</field>
+	</record>
+
+	<record id="view_expense_search" model="ir.ui.view">
+		<field name="name">dtsc.expense.search</field>
+		<field name="model">dtsc.expense</field>
+		<field name="arch" type="xml">
+			<search>
+				<field name="name"/>
+				<field name="employee_id"/>
+				<filter name="filter_to_approved" string="申請中" domain="[('state','=','to_approved')]"/>
+				<filter name="filter_approved" string="已核准" domain="[('state','=','approved')]"/>
+				<filter name="filter_rejected" string="已拒絕" domain="[('state','=','rejected')]"/>
+				<separator/>
+				<filter name="filter_petty" string="零用金" domain="[('payment_method','=','petty')]"/>
+				<filter name="filter_bank" string="銀行" domain="[('payment_method','=','bank')]"/>
+				<group expand="0" string="分組">
+					<filter name="group_employee" string="申請人" context="{'group_by':'employee_id'}"/>
+					<filter name="group_category" string="類別" context="{'group_by':'category'}"/>
+					<filter name="group_payment" string="付款方式" context="{'group_by':'payment_method'}"/>
+					<filter name="group_month" string="月份" context="{'group_by':'expense_date:month'}"/>
+				</group>
+			</search>
+		</field>
+	</record>
+
+	<record id="action_expense" model="ir.actions.act_window">
+		<field name="name">報支單</field>
+		<field name="res_model">dtsc.expense</field>
+		<field name="view_mode">tree,form</field>
+		<field name="search_view_id" ref="view_expense_search"/>
+	</record>
+
+	<!-- 主管從 LINE 簽核卡片開啟的明細頁（免登入，靠短時 token） -->
+	<template id="expense_view_page" name="報支單明細">
+		<html lang="zh-Hant">
+			<head>
+				<meta charset="utf-8"/>
+				<meta name="viewport" content="width=device-width, initial-scale=1"/>
+				<title t-esc="title"/>
+				<style>
+					body {
+						margin: 0;
+						padding: 16px;
+						font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+						background-color: #f9f9f9;
+						color: #333;
+						font-size: 17px;
+						line-height: 1.6;
+					}
+					h2 {
+						color: #00C300;
+						font-size: 24px;
+						text-align: center;
+						margin: 8px 0 16px;
+					}
+					h3 {
+						font-size: 19px;
+						margin: 24px 0 10px;
+					}
+					table {
+						width: 100%;
+						border-collapse: collapse;
+						background-color: #fff;
+					}
+					th, td {
+						border: 1px solid #ddd;
+						padding: 10px;
+						text-align: left;
+						vertical-align: top;
+					}
+					th {
+						width: 90px;
+						background-color: #f0f0f0;
+						white-space: nowrap;
+					}
+					td {
+						white-space: pre-wrap;
+						word-break: break-all;
+					}
+					.file {
+						background-color: #fff;
+						border: 1px solid #ddd;
+						border-radius: 10px;
+						padding: 10px;
+						margin-bottom: 12px;
+					}
+					.file img {
+						display: block;
+						max-width: 100%;
+						margin-top: 8px;
+						border-radius: 6px;
+					}
+					.file a {
+						color: #1E88E5;
+						word-break: break-all;
+					}
+				</style>
+			</head>
+			<body>
+				<h2 t-esc="title"/>
+				<table>
+					<t t-foreach="rows" t-as="row">
+						<tr>
+							<th t-esc="row[0]"/>
+							<td t-esc="row[1]"/>
+						</tr>
+					</t>
+				</table>
+				<h3>附件（<t t-esc="len(files)"/>）</h3>
+				<p t-if="not files">沒有附件</p>
+				<t t-foreach="files" t-as="file">
+					<div class="file">
+						<a t-att-href="file['url']" target="_blank"><t t-esc="file['name']"/></a>
+						<img t-if="file['is_image']" t-att-src="file['url']" t-att-alt="file['name']"/>
+					</div>
+				</t>
+			</body>
+		</html>
+	</template>
+</odoo>

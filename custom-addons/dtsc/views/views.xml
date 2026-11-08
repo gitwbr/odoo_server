@@ -698,6 +698,7 @@
 	<menuitem id="menu_daka" name="考勤記錄" parent="menu_chart_dashboard_root" action="action_kaoqing" sequence="90" groups="dtsc.group_dtsc_gly"/>
 	<menuitem id="menu_leave1" name="請假表" parent="menu_chart_dashboard_root" action="action_leave" sequence="100" />
 	<menuitem id="menu_pettycash" name="零用金" parent="menu_chart_dashboard_root" action="action_pettycash1" sequence="110" groups="dtsc.group_dtsc_gly"/>
+	<menuitem id="menu_expense" name="報支單" parent="menu_chart_dashboard_root" action="action_expense" sequence="111" groups="dtsc.group_dtsc_gly"/>
 	<menuitem id="menu_calendar" name="日曆" parent="menu_chart_dashboard_root" action="action_calendar_dtsc" sequence="120" groups="dtsc.group_dtsc_gly"/>
 	<!-- <menuitem id="menu_calendar" name="日曆" parent="menu_chart_dashboard_root" action="action_calendar" sequence="12" groups="dtsc.group_dtsc_gly"/> -->
 	<menuitem id="menu_performance" name="薪資總表" parent="menu_chart_dashboard_root" action="action_performance_dtsc" sequence="13" groups="dtsc.group_dtsc_gly"/>

@@ -129,6 +129,7 @@ class WorkerQRcode(models.Model):
     is_zg = fields.Boolean("請購單確認")
     is_qh = fields.Boolean("請購單簽核")
     is_daka_qh = fields.Boolean("打卡簽核")
+    is_expense_qh = fields.Boolean("報支簽核")
     in_company_date = fields.Date("入職日期")
     out_company_date = fields.Date("離職日期") 
     gender = fields.Selection([

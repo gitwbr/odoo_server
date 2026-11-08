@@ -137,6 +137,7 @@
 						<field name="is_zhuguan_crm_sign" attrs="{'readonly': [('non_rsgl_readonly', '=', True)]}"/>
 						<field name="is_manager_crm_sign" attrs="{'readonly': [('non_rsgl_readonly', '=', True)]}"/>
 						<field name="is_daka_qh" attrs="{'readonly': [('non_rsgl_readonly', '=', True)]}"/>
+						<field name="is_expense_qh" attrs="{'readonly': [('non_rsgl_readonly', '=', True)]}"/>
 						<field name="in_company_date" />
 						<field name="out_company_date" />
 						<field name="gender" /> 

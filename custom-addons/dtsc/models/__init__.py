@@ -40,6 +40,7 @@ from . import ir_ui_menu
 from . import linebot
 from . import holiday
 from . import pettycash
+from . import expense
 from . import calendar
 from . import performance
 from . import interoperate

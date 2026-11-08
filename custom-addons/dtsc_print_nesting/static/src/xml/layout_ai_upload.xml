@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="dtsc_print_nesting.LayoutAiUploadField" owl="1">
+        <div class="o_layout_ai_upload d-inline-flex align-items-center gap-1 flex-wrap" style="min-width: 10rem;">
+            <input
+                type="file"
+                class="d-none"
+                t-ref="fileInput"
+                accept=".ai,.pdf,application/pdf"
+                t-on-change="onFileChange"
+            />
+            <t t-if="state.uploading">
+                <div class="d-flex flex-column" style="min-width: 9rem;">
+                    <span class="text-muted small" t-esc="progressText"/>
+                    <div class="progress" style="height: 6px;">
+                        <div
+                            class="progress-bar progress-bar-striped progress-bar-animated"
+                            role="progressbar"
+                            t-att-style="state.phase === 'processing' ? 'width: 100%' : ('width: ' + state.progress + '%')"
+                        />
+                    </div>
+                </div>
+            </t>
+            <t t-elif="hasFile">
+                <span class="text-truncate" style="max-width: 10rem;" t-esc="displayName"
+                      t-att-title="compatTitle"/>
+                <span t-if="state.pdfCompatible === true" class="badge text-bg-success" title="PDF 相容">相容</span>
+                <span t-if="state.pdfCompatible === false" class="badge text-bg-danger" title="未建立 PDF 相容">不相容</span>
+                <button
+                    t-if="!props.readonly"
+                    type="button"
+                    class="btn btn-secondary btn-sm fa fa-pencil"
+                    title="重新上傳"
+                    t-on-click="onSelectClick"
+                />
+                <button
+                    t-if="props.record.resId"
+                    type="button"
+                    class="btn btn-secondary btn-sm fa fa-download"
+                    title="下載"
+                    t-on-click="onDownloadClick"
+                />
+                <button
+                    t-if="!props.readonly"
+                    type="button"
+                    class="btn btn-secondary btn-sm fa fa-trash"
+                    title="清除"
+                    t-on-click="onClearClick"
+                />
+            </t>
+            <t t-else="">
+                <button
+                    t-if="!props.readonly"
+                    type="button"
+                    class="btn btn-primary btn-sm"
+                    t-on-click="onSelectClick"
+                >上傳 AI</button>
+                <span t-else="" class="text-muted">—</span>
+            </t>
+        </div>
+    </t>
+</templates>

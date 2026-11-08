@@ -454,7 +454,7 @@
 					hour12: false
 				});
 			}
-			function submitLeaveRequest(lineId, leaveType, start, end, reason, fileData) {
+			function submitLeaveRequest(lineId, leaveType, start, end, reason, fileData, fileName, fileMime) {
 				fetch('/apply_leave', {
 					method: 'POST',
 					headers: { 'Content-Type': 'application/json' },
@@ -464,7 +464,9 @@
 						start_time: start,
 						end_time: end,
 						reason: reason,
-						file: fileData
+						file: fileData,
+						file_name: fileName || null,
+						file_mimetype: fileMime || null
 					})
 				})
 				.then(response => response.json())
@@ -670,11 +672,11 @@
 								reader.onload = function () {
 									const base64file = reader.result.split(',')[1];  // 去除 data:xxx;base64, 前綴
 
-									submitLeaveRequest(lineId, leaveType, leaveStart, leaveEnd, note, base64file);
+									submitLeaveRequest(lineId, leaveType, leaveStart, leaveEnd, note, base64file, file.name, file.type);
 								};
 								reader.readAsDataURL(file);
 							} else {
-								submitLeaveRequest(lineId, leaveType, leaveStart, leaveEnd, note, null);
+								submitLeaveRequest(lineId, leaveType, leaveStart, leaveEnd, note, null, null, null);
 							}
 						});
 					});					
@@ -1478,6 +1480,7 @@
 					<button name="create_search_liff" type="object" class="oe_highlight" string="自動創建查詢考勤頁面" confirm="是否確認需要創建查詢考勤頁面？"  />
 					<button name="create_leave_liff" type="object" class="oe_highlight" string="自動創建請假頁面" confirm="是否確認需要創建請假頁面？"  />
 					<button name="create_sys_liff" type="object" class="oe_highlight" string="自動創建後臺頁面" confirm="是否確認需要創建後臺頁面？"  />
+					<button name="create_app_liff" type="object" class="oe_highlight" string="自動創建通用入口" confirm="已建立過會更新設定、不會重建，是否繼續？" attrs="{'invisible':[('linebot_type','=','for_customer')]}"/>
 				</header>
 				<sheet class="w3000">
 					<div class="oe_title">
@@ -1498,6 +1501,8 @@
 							<field name="liff_leave" readonly="1" attrs="{'invisible':[('linebot_type','=','for_customer')]}"/>
 							<field name="liff_sys" readonly="1" attrs="{'invisible':[('linebot_type','=','for_customer')]}"/>
 							<field name="liff_leave_confirm" readonly="1" attrs="{'invisible':[('linebot_type','=','for_customer')]}"/>
+							<field name="liff_app_id" attrs="{'invisible':[('linebot_type','=','for_customer')]}"/>
+							<field name="liff_app_url" widget="url" attrs="{'invisible':['|',('linebot_type','=','for_customer'),('liff_app_id','=',False)]}"/>
 							<field name="liff_access_token" readonly="1" attrs="{'invisible':[('linebot_type','=','for_customer')]}"/>
 							<field name="liff_channel_id" attrs="{'invisible':[('linebot_type','=','for_customer')]}"/>
 							<field name="liff_secret" attrs="{'invisible':[('linebot_type','=','for_customer')]}"/>
@@ -1628,7 +1633,8 @@
 				<field name="reason" />
 				<field name="cancel_reason" />
 				<field name="reject_reason" />
-				<field name="leave_file" widget="image" class="w200"  />
+				<field name="leave_filename" optional="show"/>
+				<field name="leave_file" filename="leave_filename" widget="binary"/>
 				<field name="state" />
             </tree>
         </field>
@@ -1648,7 +1654,11 @@
 						<field name="start_time" />
 						<field name="end_time" />
 						<field name="leave_type" />
+						<field name="reason" />
 						<field name="cancel_reason" />
+						<field name="leave_filename" invisible="1"/>
+						<field name="leave_mimetype" invisible="1"/>
+						<field name="leave_file" filename="leave_filename" widget="binary"/>
 					</group>
 				</sheet>
             </form>

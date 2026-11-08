@@ -1680,6 +1680,7 @@ class IrUiMenu(models.Model):
         self._get_visibility_on_config_parameter('dtsc.menu_performance', 'is_open_linebot')#薪资表
         self._get_visibility_on_config_parameter('dtsc.menu_salary_setting', 'is_open_linebot')#薪资表 
         self._get_visibility_on_config_parameter('dtsc.menu_jl_setting', 'is_open_linebot')#薪资表 
+        self._get_visibility_on_config_parameter('dtsc.menu_expense', 'is_open_linebot')#報支單
         self._get_visibility_on_config_parameter('', 'is_des')#设计公司单独 
         # print("Custom logic applied")
         return menus

@@ -42,6 +42,7 @@
                             <field name="operator_id"/>
                             <field name="move_id" readonly="1"/>
                             <field name="pettycash_id" readonly="1"/>
+                            <field name="expense_id" readonly="1" attrs="{'invisible':[('expense_id','=',False)]}"/>
                             <field name="note"/>
                         </group>
                     </group>
@@ -86,6 +87,7 @@
                 <filter string="應收已收" name="receive" domain="[('transaction_type','=','receive')]"/>
                 <filter string="應付已付" name="pay" domain="[('transaction_type','=','pay')]"/>
                 <filter string="零用金預存" name="petty" domain="[('transaction_type','=','petty_in')]"/>
+                <filter string="報支已付" name="expense" domain="[('transaction_type','=','expense')]"/>
                 <group expand="0" string="分組">
                     <filter string="銀行" name="group_bank" context="{'group_by': 'bank_id'}"/>
                     <filter string="類型" name="group_type" context="{'group_by': 'transaction_type'}"/>

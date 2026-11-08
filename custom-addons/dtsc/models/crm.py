@@ -1147,7 +1147,7 @@ class CrmReport(models.AbstractModel):
 class CheckoutLineCrm(models.Model):
     _inherit = 'dtsc.checkoutline'
     
-    crm_chengben = fields.Integer("成本")
+    crm_chengben = fields.Float("成本", digits=(16, 2))
     crm_chengben_comment = fields.Char("備註")
     
     def write(self, vals):
