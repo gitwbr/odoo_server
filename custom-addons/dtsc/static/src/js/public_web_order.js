@@ -151,6 +151,7 @@ odoo.define('dtsc.public_web_order', function (require) {
       this.customer_class_id = 0;
       this.custom_init_name = '';
       this.nop = false;
+      this.isSubAccount = false;
       this.isSubmitting = false; // 添加订单提交状态标志位
       this.previewRecordId = null; // 预览记录ID
       this.isFixedCustomerMode = false; // 是否为固定客户模式
@@ -354,6 +355,7 @@ odoo.define('dtsc.public_web_order', function (require) {
             self.custom_init_name = userInfo.custom_init_name;
             console.log('[dtsc] custom_init_name:', self.custom_init_name);
             self.nop = userInfo.nop;
+            self.isSubAccount = userInfo.is_sub_account === true;
             console.log('[dtsc] nop:', self.nop);
             // 新增逻辑：如果 customer_class_id 无效，则判定为内部用户
             if (!userInfo.customclass_id || userInfo.customclass_id === 0 || userInfo.customclass_id === false || userInfo.customclass_id === null) {
@@ -1082,6 +1084,8 @@ if (mismatchMessages.length > 0) {
       var self = this;
       var customerClassId = self.customer_class_id;
       var totalPriceAll = 0;
+      // 子帳號先隱藏預估價格，其餘身份沿用原 nop 條件。
+      var showEstimatedPrice = !self.isSubAccount && self.nop === false;
       var tableContent = `
                 <table class="table table-striped table-borderless table-responsive-lg">
                     <thead>
@@ -1090,7 +1094,7 @@ if (mismatchMessages.length > 0) {
                             <th scope="col">產品名稱</th>
                             <th scope="col">製作尺寸</th>
                             <th scope="col">數量</th>
-                            ${self.nop === false ? '<th scope="col">預估價錢</th>' : ''}
+                            ${showEstimatedPrice ? '<th scope="col">預估價錢</th>' : ''}
                         </tr>
                     </thead>
                     <tbody>
@@ -1268,7 +1272,7 @@ if (mismatchMessages.length > 0) {
                                 <td>檔名：${fileName}<br>${productSelection}</td>
                                 <td>${productSize}</td>
                                 <td>${quantity}</td>
-                                ${self.nop === false ? `<td>${totalPrice}</td>` : ''}
+                                ${showEstimatedPrice ? `<td>${totalPrice}</td>` : ''}
                             </tr>
                         `;
           }).catch(error => {
@@ -1298,7 +1302,7 @@ if (mismatchMessages.length > 0) {
         rowContents.forEach(rowContent => {
           tableContent += rowContent;
         });
-        if (self.nop === false) {
+        if (showEstimatedPrice) {
           tableContent += `
                         <tr>
                             <td colspan="3"></td>

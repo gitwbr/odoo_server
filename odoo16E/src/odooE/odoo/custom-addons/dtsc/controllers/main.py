@@ -8,6 +8,7 @@ from odoo import http
 from odoo.http import content_disposition
 from collections import defaultdict
 from odoo import SUPERUSER_ID
+from odoo.exceptions import ValidationError
 from datetime import datetime, timedelta
 import os
 import logging
@@ -16,6 +17,16 @@ from werkzeug.urls import url_encode
 _logger = logging.getLogger(__name__)
 
 class CheckoutPortalMixin:
+    def _clear_custom_login_session(self):
+        for key in ('partner_id', 'vat_login_id', 'vat_login_role'):
+            request.session.pop(key, None)
+
+    def _get_custom_login_role(self):
+        if not request.session.get('partner_id'):
+            return False
+        # Existing sessions predate subaccounts and therefore belong to main.
+        return 'sub' if request.session.get('vat_login_role') == 'sub' else 'main'
+
     def _get_checkout_search_domain(self, partner_id, order_prefix=None, recent_only=True, search_term=None):
         domain = [
             ('customer_id', '=', partner_id),
@@ -341,6 +352,7 @@ class Checkout(CheckoutPortalMixin, http.Controller):
             'line_cards': line_cards,
             'customer_name': partner.name or '',
             'is_custom_login': self._is_custom_login_session(),
+            'custom_login_role': self._get_custom_login_role(),
         })
 
     @http.route(['/my/checkout-entry'], type='http', auth="public", website=True, sitemap=False)
@@ -353,7 +365,7 @@ class Checkout(CheckoutPortalMixin, http.Controller):
     @http.route('/custom/logout', type='http', auth='public', website=True)
     def custom_logout(self, **kwargs):
         redirect_url = kwargs.get('redirect') or '/custom/login'
-        request.session.pop('partner_id', None)
+        self._clear_custom_login_session()
         request.session.logout(keep_db=True)
         return request.redirect(redirect_url)
 
@@ -395,6 +407,7 @@ class Checkout(CheckoutPortalMixin, http.Controller):
             'order_cards': order_cards,
             'search_query': search_query,
             'is_custom_login': self._is_custom_login_session(),
+            'custom_login_role': self._get_custom_login_role(),
             'order_prefix': order_prefix,
             'a_only_url': a_only_url,
             'all_orders_url': all_orders_url,
@@ -425,6 +438,7 @@ class Checkout(CheckoutPortalMixin, http.Controller):
             'order_progress': order_progress,
             'line_cards': line_cards,
             'is_custom_login': self._is_custom_login_session(),
+            'custom_login_role': self._get_custom_login_role(),
         })
     
     @http.route(['/hello', '/hello/<string:name>'], type='http', auth="public")
@@ -809,8 +823,9 @@ class MakeInController(CheckoutPortalMixin, http.Controller):
         return request.redirect('/custom/login')
     
     
-    @http.route('/custom/loginconfirm', type='http', auth='public', csrf=False, methods=['POST'], website=True)
+    @http.route('/custom/loginconfirm', type='http', auth='public', methods=['POST'], website=True)
     def custom_login(self, **kwargs):
+        self._clear_custom_login_session()
         login = kwargs.get('login')
         password = kwargs.get('password')
         redirect_url = kwargs.get('redirect')
@@ -833,23 +848,27 @@ class MakeInController(CheckoutPortalMixin, http.Controller):
             })
         
         # 判断密码是否匹配
-        partner_password = partner.vat_password or partner.vat  # 如果 vat_password 为空，则使用 vat 作为密码
-        if password != partner_password:
+        role = partner._get_password_role(password)
+        if not role:
             return request.render('dtsc.custom_login_page', {
                 'error': '登錄失敗，密碼錯誤',
                 'redirect_url': redirect_url,
             })        
         
-        if login == password:
+        if role == 'main' and login == password:
             return request.render('dtsc.reset_password_page', {
                 'error': '第一次登陸，請修改密碼！',
             })
         
         
-        request.session['partner_id'] = partner.partner_id.id  # 将登录的 partner_id 存入 session
-        
-        # 保存 partner_id 以便在认证后恢复
-        partner_id = request.session['partner_id']
+        # Keep identity local until the shared Odoo user is fully authenticated.
+        partner_id = partner.partner_id.id
+        vat_login_id = partner.id
+        if not partner_id:
+            return request.render('dtsc.custom_login_page', {
+                'error': '此帳號尚未綁定客戶，請聯繫管理員。',
+                'redirect_url': redirect_url,
+            })
 
         # 认证默认用户
         default_user_login = os.getenv('DEFAULT_USER_LOGIN', '111111')
@@ -858,10 +877,13 @@ class MakeInController(CheckoutPortalMixin, http.Controller):
 
         try:
             # 使用 session.authenticate 方法认证默认用户
-            request.session.authenticate(db, default_user_login, default_user_password)
+            uid = request.session.authenticate(db, default_user_login, default_user_password)
+            if not uid or request.session.uid != uid:
+                raise ValueError('Default user authentication is incomplete')
             _logger.info(f"Authenticated as default user: {default_user_login}")
         except Exception as e:
-            _logger.error(f"Default user authentication failed: {e}")
+            self._clear_custom_login_session()
+            _logger.error('Default user authentication failed: %s', type(e).__name__)
             return request.render('dtsc.custom_login_page', {
                 'error': '系統內部錯誤，請聯繫管理員。',
                 'redirect_url': redirect_url,
@@ -869,6 +891,8 @@ class MakeInController(CheckoutPortalMixin, http.Controller):
 
         # 恢复 partner_id
         request.session['partner_id'] = partner_id
+        request.session['vat_login_id'] = vat_login_id
+        request.session['vat_login_role'] = role
         _logger.info(f"Custom partner ID restored to: {partner_id}")
 
         if redirect_url and redirect_url.startswith('/'):
@@ -881,7 +905,7 @@ class MakeInController(CheckoutPortalMixin, http.Controller):
         # 渲染重置密码页面
         return request.render('dtsc.reset_password_page', {})
 
-    @http.route('/reset/passwordconfirm', type='http', auth='public', csrf=False, methods=['POST'], website=True)
+    @http.route('/reset/passwordconfirm', type='http', auth='public', methods=['POST'], website=True)
     def reset_password_confirm(self, **kwargs):
         # 获取用户输入
         account = kwargs.get('account')
@@ -908,14 +932,14 @@ class MakeInController(CheckoutPortalMixin, http.Controller):
                 'error': '該統編不存在，請確認後再試！',
             })
 
-        # 验证旧密码是否正确
-        if partner.vat_password and partner.vat_password != old_password:
+        # The verified old password selects the credential to change.
+        try:
+            with request.env.cr.savepoint():
+                partner._change_login_password(old_password, new_password)
+        except ValidationError as error:
             return request.render('dtsc.reset_password_page', {
-                'error': '舊密碼不正確，請重新輸入！',
+                'error': str(error),
             })
-
-        # 更新密码
-        partner.vat_password = new_password
         
         return request.render('dtsc.reset_password_page', {
                 'success': '密碼修改成功！請返回登錄頁面.',

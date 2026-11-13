@@ -32,6 +32,7 @@ from . import lotmpr
 from . import delivery_carrier 
 from . import chattemplate 
 from . import worker_qrcode 
+from . import vat_login
 from . import crm 
 from . import res_groups
 from . import website_sale 

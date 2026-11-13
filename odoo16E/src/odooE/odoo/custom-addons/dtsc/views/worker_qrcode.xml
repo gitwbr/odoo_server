@@ -23,12 +23,45 @@
 				<field name="partner_id"/>
 				<field name="custom_id" />
 				<field name="vat"/>
-				<field name="vat_password"/>
+				<field name="vat_password" string="主密碼"/>
+				<field name="has_sub_password"/>
 
 			</tree>
 		</field>	
 	</record>
-	<record id="search_vatlogin" model="ir.ui.view">
+    <record id="view_vatlogin_form" model="ir.ui.view">
+        <field name="name">dtsc.vatlogin.form</field>
+        <field name="model">dtsc.vatlogin</field>
+        <field name="arch" type="xml">
+            <form string="統編帳號密碼">
+                <header>
+                    <button name="action_disable_sub_account" type="object" string="停用子帳號"
+                            groups="dtsc.group_dtsc_gly"
+                            attrs="{'invisible': [('has_sub_password', '=', False)]}"
+                            confirm="確定停用這個統編的子密碼登入？"/>
+                </header>
+                <sheet>
+                    <group>
+                        <group string="統編主帳號">
+                            <field name="partner_id" required="1"/>
+                            <field name="custom_id"/>
+                            <field name="vat" required="1"/>
+                            <field name="vat_password" string="主密碼" password="True"/>
+                        </group>
+                        <group string="子帳號">
+                            <field name="has_sub_password"/>
+                            <field name="vat_sub_password" password="True" placeholder="輸入新子密碼；留空不變更"/>
+                            <div colspan="2" class="text-muted">
+                                主子帳號使用相同統編及客戶資料，業務操作權限相同。
+                                設定子密碼後即可登入；子密碼須與主密碼、統編不同。
+                            </div>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    <record id="search_vatlogin" model="ir.ui.view">
 		<field name="name">dtsc.vatlogin.search</field>
 		<field name="model">dtsc.vatlogin</field>
 		<field name="arch" type="xml">
@@ -396,22 +429,30 @@
 				</div>
 			</t>
 			<form action="/custom/loginconfirm" method="post">
+                    <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
 				<input type="hidden" name="redirect" t-att-value="redirect_url or ''"/>
 				<div>
 					<label for="login">統編</label>
 					<input type="text" name="login" id="login" placeholder="請輸入統編"  />
 				</div>
 				<div>
-					<label for="password">密碼(第一次登錄使用統編)</label>
+					<label for="password">密碼（主帳號首次登入使用統編）</label>
 					<input type="password" name="password" id="password" placeholder="請輸入密碼"  />
 				</div>
-				<button type="submit">登錄</button>
+				<p>主、子帳號皆輸入相同統編，系統依密碼辨識登入身分。</p>
+                    <button type="submit">登錄</button>
 			</form>
 			<p>重置密碼<a href="/reset/password">點擊這裡重置</a></p>
 		</div>
 	</template>
 
-	<template id="my_checkout_login_entry" name="My Checkout Login Entry">
+    <template id="frontend_customer_login_label" name="Frontend Customer Login Label">
+        <t t-if="is_custom_login">
+            統編客戶登入（<t t-esc="'子帳號' if custom_login_role == 'sub' else '主帳號'"/>）｜<t t-esc="partner.name or '未命名客戶'"/>
+        </t>
+        <t t-else="">商城會員登入｜<t t-esc="partner.name or '未命名會員'"/></t>
+    </template>
+    <template id="my_checkout_login_entry" name="My Checkout Login Entry">
 		<t t-call="website.layout">
 			<div class="container" style="max-width: 560px; margin: 60px auto; border: 3px solid #007bff; border-radius: 10px; padding: 30px; background-color: #f9f9f9;">
 				<h2 style="text-align: center; color: #007bff; margin-bottom: 16px;">我的大圖訂單</h2>
@@ -948,7 +989,7 @@
 					<div class="o_my_checkout_hero">
 						<div>
 							<div class="o_my_checkout_eyebrow">
-								<t t-esc="'統編客戶登入｜%s' % (partner.name or '未命名客戶') if is_custom_login else '商城會員登入｜%s' % (partner.name or '未命名會員')"/>
+								<t t-call="dtsc.frontend_customer_login_label"/>
 							</div>
 							<h1 class="o_my_checkout_title">我的大圖訂單</h1>
 						</div>
@@ -1424,7 +1465,7 @@
 						<div class="o_my_checkout_detail_top">
 							<div>
 								<div class="o_my_checkout_detail_login">
-									<t t-esc="'統編客戶登入｜%s' % (partner.name or '未命名客戶') if is_custom_login else '商城會員登入｜%s' % (partner.name or '未命名會員')"/>
+									<t t-call="dtsc.frontend_customer_login_label"/>
 								</div>
 								<div class="o_my_checkout_detail_no"><t t-esc="order.name"/></div>
 								<h1 class="o_my_checkout_detail_title"><t t-esc="order.project_name or '未命名案件'"/></h1>
@@ -1713,7 +1754,9 @@
 					<t t-esc="error"/>
 				</div>
 			</t>
-			<form action="/reset/passwordconfirm" method="post">
+			<p>請輸入要修改的主密碼或子密碼作為舊密碼；另一組密碼不會變更。</p>
+                <form action="/reset/passwordconfirm" method="post">
+                    <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
 				<div>
 					<label for="account">統編</label>
 					<input type="text" name="account" id="account" placeholder="請輸入統編"  />

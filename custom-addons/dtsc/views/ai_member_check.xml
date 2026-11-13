@@ -742,7 +742,7 @@
                         <div class="o_ai_member_hero">
                             <div>
                                 <div class="o_ai_member_eyebrow">
-                                    <t t-esc="'統編客戶登入｜%s' % (partner.name or '未命名客戶') if is_custom_login else '商城會員登入｜%s' % (partner.name or '未命名會員')"/>
+                                    <t t-call="dtsc.frontend_customer_login_label"/>
                                 </div>
                             </div>
                             <div class="o_ai_member_actions">

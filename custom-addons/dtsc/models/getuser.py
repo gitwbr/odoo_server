@@ -65,6 +65,7 @@ class UserInfoController(http.Controller):
             'customclass_id': partner.customclass_id.id if partner.customclass_id else False,
             'nop': partner.nop,
             'is_internal_user': is_internal_user,
+            'is_sub_account': bool(partner_id and request.session.get('vat_login_role') == 'sub'),
         }
 
         return user_info_client

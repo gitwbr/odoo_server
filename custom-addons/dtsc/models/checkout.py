@@ -1462,14 +1462,6 @@ class Checkout(models.Model):
         target_record.hebing_type = "1"
         name_list = []
         
-        # 廠區備註合併到主單（去重，以 / 串接）
-        factory_parts = []
-        for src in [target_record] + list(other_records):
-            text = (src.comment_factory or '').strip()
-            if text and text not in factory_parts:
-                factory_parts.append(text)
-        
-        
         for record in other_records:
             record.hebing_type = "2"
             record.hebing_comment = "合併至:" + target_record.name
@@ -1486,9 +1478,18 @@ class Checkout(models.Model):
             original_comment = target_record.hebing_comment or ""
             target_record.hebing_comment = original_comment + '-'.join(name_list)      
 
+        # 廠區備註合併到主單：每段前標示原單號，備註相同的單號合併在同一段
+        factory_parts = {}
+        for src in [target_record] + list(other_records):
+            text = (src.comment_factory or '').strip()
+            if text:
+                factory_parts.setdefault(text, []).append(src.name)
+
         if factory_parts:
             # 寫入合併後的廠區備註（inverse 為空，會直接存到主單）
-            target_record.comment_factory = ' / '.join(factory_parts)
+            target_record.comment_factory = '\n'.join(
+                ' / '.join(names) + '\n' + text for text, names in factory_parts.items()
+            )
 
             
         return {
@@ -1524,7 +1525,8 @@ class Checkout(models.Model):
                         only_expensed = False  
                     make_in_flag = 1
                 elif line.is_purchse == "make_out":
-                    make_out_flag = 1
+                    if line.product_id.can_be_expensed != True:
+                        make_out_flag = 1
             
             if make_in_flag == 1:
                 if only_expensed == False:#含有非服务项次才会检查工单
@@ -1600,7 +1602,8 @@ class Checkout(models.Model):
                     only_expensed = False  
                 make_in_flag = 1
             elif line.is_purchse == "make_out":
-                make_out_flag = 1
+                if line.product_id.can_be_expensed != True:
+                    make_out_flag = 1
         
         if make_in_flag == 1:
             if only_expensed == False:#含有非服务项次才会检查工单
@@ -2333,7 +2336,8 @@ class Checkout(models.Model):
                     only_expensed = False 
                 make_in_flag = 1
             elif record.is_purchse == "make_out":
-                make_out_flag = 1
+                if record.product_id.can_be_expensed != True:
+                    make_out_flag = 1
         
         if make_in_flag == 1:
             if only_expensed == False:#含有非服务项次才会检查工单
