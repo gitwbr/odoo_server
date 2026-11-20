@@ -22,3 +22,6 @@ access_dtsc_print_compose_job_bs,dtsc.print.compose.job bs,model_dtsc_print_comp
 access_dtsc_prepress_wizard_sc,dtsc.prepress.wizard sc,model_dtsc_prepress_wizard,dtsc.group_dtsc_sc,1,1,1,1
 access_dtsc_prepress_wizard_mg,dtsc.prepress.wizard mg,model_dtsc_prepress_wizard,dtsc.group_dtsc_mg,1,1,1,1
 access_dtsc_prepress_wizard_yw,dtsc.prepress.wizard yw,model_dtsc_prepress_wizard,dtsc.group_dtsc_yw,1,1,1,1
+access_dtsc_print_roll_segment_sc,dtsc.print.roll.segment sc,model_dtsc_print_roll_segment,dtsc.group_dtsc_sc,1,1,1,1
+access_dtsc_print_roll_segment_mg,dtsc.print.roll.segment mg,model_dtsc_print_roll_segment,dtsc.group_dtsc_mg,1,1,1,1
+access_dtsc_print_roll_segment_bs,dtsc.print.roll.segment bs,model_dtsc_print_roll_segment,dtsc.group_dtsc_bs,1,0,0,0

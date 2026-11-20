@@ -9,9 +9,9 @@
                 <page string="自動排版" class="o_checkout_layout_page">
                     <p class="text-muted">
                         僅顯示「內部工單/代工」且原料為捲料的項次。
-                        可先上傳 AI / PDF；上傳成功且顯示「相容」後，到「印前」欄點「印前處理」，
-                        依序選擇案件類別等選項後生成印刷 TIFF。也可直接上傳 TIFF（.tif / .tiff）。
-                        出血後寬高與預覽圖會依 TIFF 自動帶入（寬高單位 cm，可再手動調整）。
+                        「印刷圖檔」可上傳 TIFF／PDF／AI／JPG／PNG，系統會統一轉成印刷 TIFF 並產生預覽與出血尺寸（單位 cm，可再手動調整）。
+                        AI 須為 PDF 相容；JPG／PNG 有 DPI 則依 DPI 換算，沒有則依產品寬高或暫用 150 DPI。
+                        進階印前（加套準等）仍可用左側 AI／PDF＋「印前處理」。
                         功能開啟時，訂單確認轉工單前會檢查此處圖檔與尺寸是否齊全。
                         大檔僅存伺服器，畫面不載入原檔內容，避免記憶體不足。
                     </p>
@@ -37,7 +37,7 @@
                             <field name="layout_tiff_preview" widget="image" string="預覽" readonly="1"
                                     options="{'size': [64, 64]}"/>
                             <!-- 綁定檔名字段，勿放 Binary layout_tiff，否則大檔會塞進 JSON 爆記憶體 -->
-                            <field name="layout_tiff_filename" widget="layout_tiff_upload" string="TIFF 圖檔"/>
+                            <field name="layout_tiff_filename" widget="layout_tiff_upload" string="印刷圖檔"/>
                             <field name="layout_prepress_message" string="印前訊息" optional="hide" readonly="1"/>
                             <field name="is_roll_material" invisible="1"/>
                         </tree>
@@ -60,15 +60,15 @@
                                         <field name="layout_prepress_message" readonly="1"/>
                                     </group>
                                 </group>
-                                <group string="AI 來源（可選）">
+                                <group string="AI 來源（可選／進階印前）">
                                     <field name="layout_ai_filename" widget="layout_ai_upload" string="AI / PDF"/>
                                     <field name="layout_ai_pdf_compatible" readonly="1"/>
                                     <field name="layout_ai_width_cm" readonly="1"/>
                                     <field name="layout_ai_height_cm" readonly="1"/>
                                     <field name="layout_ai_message" readonly="1"/>
                                 </group>
-                                <group string="TIFF 圖檔（印刷用）">
-                                    <field name="layout_tiff_filename" widget="layout_tiff_upload" string="TIFF 圖檔"/>
+                                <group string="印刷圖檔（統一轉 TIFF 進印刷池）">
+                                    <field name="layout_tiff_filename" widget="layout_tiff_upload" string="印刷圖檔"/>
                                     <field name="layout_tiff_preview" widget="image" string="預覽圖" readonly="1"
                                               options="{'size': [256, 256]}"/>
                                 </group>

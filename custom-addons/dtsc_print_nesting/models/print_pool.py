@@ -3,6 +3,7 @@
 
 圖塊可釘選（位置不動）與拖到其他可放門幅。
 """
+import math
 from collections import defaultdict
 
 from odoo import api, fields, models, _
@@ -144,10 +145,12 @@ class PrintPool(models.AbstractModel):
         """刪除未釘選、且無翻轉／旋轉偏好的 pin（僅清手動拖門幅）。
 
         翻轉／旋轉會寫在 pin 上但不一定釘選，重新整理時要保留朝向。
+        含 orient_locked（手動轉過，即使仍是 0°）也要保留。
         """
         pins = self.env['dtsc.print.pool.pin'].search([
             ('pinned', '=', False),
             ('flip_h', '=', False),
+            ('orient_locked', '=', False),
             ('rotation', 'in', [0, False]),
         ])
         if pins:
@@ -346,7 +349,14 @@ class PrintPool(models.AbstractModel):
                 rotation = 90 if p.rotated else 0
                 flip_h = False
                 if pin:
-                    rotation = self._normalize_rotation(pin.rotation, pin.rotated or p.rotated)
+                    # 手動鎖定朝向時只用 pin，避免「引擎自動轉了、pin 仍是 0」被顯示成 90
+                    # 再點左轉回到 0 時又被引擎轉回去 → 看起來沒反應
+                    if pin.orient_locked or pin.flip_h or pin.rotation:
+                        rotation = self._normalize_rotation(pin.rotation, pin.rotated)
+                    else:
+                        rotation = self._normalize_rotation(
+                            pin.rotation, pin.rotated or p.rotated,
+                        )
                     flip_h = bool(pin.flip_h)
                 pieces_out.append({
                     'key': p.key,
@@ -379,7 +389,8 @@ class PrintPool(models.AbstractModel):
                 'capacity_mm': capacity,
                 'y_offset_mm': y_offset,
                 'used_mm': used_free,
-                'default_cutoff_mm': used_free,
+                # 整毫米且向上取整，避免 481.161→481 導致最後一塊落在截斷外
+                'default_cutoff_mm': float(math.ceil(used_free - 1e-9)) if used_free else 0.0,
                 'pieces': pieces_out,
                 'history_pieces': history_pieces,
                 'packable': True,
@@ -575,6 +586,8 @@ class PrintPool(models.AbstractModel):
             'rotated': rotation in (90, 270),
             'rotation': rotation,
             'flip_h': flip_h,
+            # 手動轉過：0° 也要鎖定，否則排版會為省料再自動轉回原朝向
+            'orient_locked': True,
         }
         if pin:
             pin.write(vals)
@@ -689,14 +702,16 @@ class PrintPool(models.AbstractModel):
         }
 
     @api.model
-    def lock_cutoff_to_print_order(self, material_id, strip_cutoffs):
+    def lock_cutoff_to_print_order(self, material_id, strip_cutoffs, print_output_mode='single'):
         """
         截斷鎖定生成印刷單。
         strip_cutoffs: [{'key': 'lot:12'|'new:0', 'cutoff_mm': 1234}, ...]
+        print_output_mode: 'single' 单面 TIFF / 'multi' 多面 PDF（按遍数整合）
         只鎖定各條 y+h <= cutoff 的圖塊。
         """
         if not strip_cutoffs:
             raise UserError(_('請至少指定一條捲的截斷位置。'))
+        mode = print_output_mode if print_output_mode in ('single', 'multi') else 'single'
         mat = self.env['product.template'].browse(material_id)
         layout = self.get_material_layout(material_id)
         cutoff_map = {c['key']: float(c['cutoff_mm']) for c in strip_cutoffs if c.get('key')}
@@ -707,11 +722,16 @@ class PrintPool(models.AbstractModel):
             if cut is None:
                 continue
             for p in strip['pieces']:
-                if p['y'] + p['h'] <= cut + 1e-6:
+                # 截斷以整毫米操作時留 1mm 容差，避免取整把貼齊紅線的塊踢掉
+                if p['y'] + p['h'] <= cut + 1.0:
                     selected.append({**p, 'strip': strip})
 
         if not selected:
             raise UserError(_('截斷範圍內沒有可鎖定的圖塊。'))
+
+        pass_count = 1
+        if mode == 'multi':
+            pass_count = self._validate_multi_pass_selection(selected)
 
         qty_by_ml = defaultdict(int)
         for p in selected:
@@ -725,7 +745,11 @@ class PrintPool(models.AbstractModel):
             'gap_mm': self._nest_gap_mm_for_material(mat),
             'margin_mm': self._nest_margin_mm_for_material(mat),
             'allow_rotate': self._print_pool_allow_rotate(),
-            'note': _('由印刷池截斷鎖定產生'),
+            'print_output_mode': mode,
+            'print_pass_count': pass_count if mode == 'multi' else 1,
+            'note': _(
+                '由印刷池截斷鎖定產生（%s）'
+            ) % (_('多面 PDF') if mode == 'multi' else _('單面 TIFF')),
         })
         Line = self.env['dtsc.print.order.line']
         line_by_ml = {}
@@ -752,7 +776,7 @@ class PrintPool(models.AbstractModel):
                 continue
             strip_pieces = [
                 p for p in strip['pieces']
-                if p['y'] + p['h'] <= cut + 1e-6
+                if p['y'] + p['h'] <= cut + 1.0
             ]
             if not strip_pieces:
                 continue
@@ -802,18 +826,30 @@ class PrintPool(models.AbstractModel):
                         ('piece_idx', '=', int(idx)),
                     ]).unlink()
             roll._refresh_preview_svg()
-            # 依大圖項次已上傳 TIFF 自動合成整版（含留白）；失敗不擋出單
-            try:
-                roll._compose_layout_tiff()
-            except Exception as err:  # noqa: BLE001
-                roll.write({
-                    'layout_tiff': False,
-                    'layout_tiff_filename': False,
-                    'layout_tiff_note': _(
-                        '排版 TIFF 自動合成失敗：%s\n'
-                        '大圖訂單裡的 TIFF 仍在，請打開本捲點「重新合成排版TIFF」（無需再上傳）。'
-                    ) % err,
-                })
+            if mode == 'multi':
+                try:
+                    roll._compose_layout_pdf()
+                except Exception as err:  # noqa: BLE001
+                    roll.write({
+                        'layout_pdf': False,
+                        'layout_pdf_filename': False,
+                        'layout_pdf_note': _(
+                            '排版 PDF 自動合成失敗：%s\n請打開本捲點「重新合成排版PDF」。'
+                        ) % err,
+                    })
+            else:
+                # 依大圖項次已上傳 TIFF 自動合成整版（含留白）；失敗不擋出單
+                try:
+                    roll._compose_layout_tiff()
+                except Exception as err:  # noqa: BLE001
+                    roll.write({
+                        'layout_tiff': False,
+                        'layout_tiff_filename': False,
+                        'layout_tiff_note': _(
+                            '排版 TIFF 自動合成失敗：%s\n'
+                            '大圖訂單裡的 TIFF 仍在，請打開本捲點「重新合成排版TIFF」（無需再上傳）。'
+                        ) % err,
+                    })
 
         order.state = 'confirmed'
         order.need_renest = False
@@ -825,7 +861,16 @@ class PrintPool(models.AbstractModel):
             'order_id': order.id,
             'order_name': order.name,
             'piece_count': len(selected),
-            'tiff_ok': all(r._has_layout_tiff_file() for r in order.roll_ids),
+            'print_output_mode': mode,
+            'print_pass_count': order.print_pass_count,
+            'tiff_ok': (
+                False if mode == 'multi'
+                else all(r._has_layout_tiff_file() for r in order.roll_ids)
+            ),
+            'pdf_ok': (
+                all(r._has_layout_pdf_file() for r in order.roll_ids)
+                if mode == 'multi' else False
+            ),
             'action': {
                 'type': 'ir.actions.act_window',
                 'name': _('印刷單 %s') % order.name,
@@ -837,6 +882,32 @@ class PrintPool(models.AbstractModel):
                 'context': {'form_view_initial_mode': 'readonly'},
             },
         }
+
+    @api.model
+    def _validate_multi_pass_selection(self, selected):
+        """多面打印：各塊須有源 PDF，且遍數≥2 且一致。回傳遍數。"""
+        counts = set()
+        for p in selected:
+            ml_id = p.get('makeinline_id')
+            if not ml_id:
+                raise UserError(_('多面打印的圖塊必須對應工單項次。'))
+            ml = self.env['dtsc.makeinline'].browse(ml_id)
+            cl = ml.checkout_line_id
+            if not cl or not cl._has_layout_source_pdf():
+                raise UserError(_(
+                    '項次 %s 沒有多面源 PDF。請上傳多頁 PDF／相容 AI 後再選「多面打印」。'
+                ) % (p.get('label') or ml.barcode or ml_id))
+            n = int(cl.layout_pass_count or 1)
+            if n < 2:
+                raise UserError(_(
+                    '項次 %s 只有 %s 頁，不能做多面打印（需 ≥2 頁）。'
+                ) % (p.get('label') or ml.barcode or ml_id, n))
+            counts.add(n)
+        if len(counts) != 1:
+            raise UserError(_(
+                '截斷範圍內圖塊的打印遍數不一致（%s），多面印刷單要求遍數相同。'
+            ) % ', '.join(str(c) for c in sorted(counts)))
+        return counts.pop()
 
     @api.model
     def pack_all_pending_to_strip(self, material_id, strip_key):
@@ -1121,9 +1192,11 @@ class PrintPool(models.AbstractModel):
             'gap_group': ml._print_film_gap_group() if ml else '',
         }
         if pin:
-            rot = self._normalize_rotation(pin.rotation, pin.rotated)
-            if rot:
-                meta['force_rotation'] = rot
+            # orient_locked / 非 0° / 翻轉：都要鎖定朝向（含明確的 0°）
+            if pin.orient_locked or pin.flip_h or pin.rotation:
+                meta['force_rotation'] = self._normalize_rotation(
+                    pin.rotation, pin.rotated,
+                )
             if pin.flip_h:
                 meta['flip_h'] = True
         return PieceDemand(

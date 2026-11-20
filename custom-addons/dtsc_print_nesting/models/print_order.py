@@ -1,5 +1,8 @@
 # -*- coding: utf-8 -*-
 import html
+import math
+import re
+
 from odoo import api, fields, models, _
 from odoo.exceptions import UserError
 
@@ -41,10 +44,46 @@ class PrintOrder(models.Model):
         'res.company', string='公司', default=lambda self: self.env.company
     )
     note = fields.Text(string='備註')
+    print_output_mode = fields.Selection(
+        [
+            ('single', '單面打印'),
+            ('multi', '多面打印'),
+        ],
+        string='打印模式',
+        default='single',
+        copy=False,
+        help='單面：导出排版 TIFF。多面：按遍數整合源 PDF（第1頁=各圖第1面…）。',
+    )
+    print_pass_count = fields.Integer(
+        string='遍數',
+        default=1,
+        copy=False,
+        help='多面打印時，成稿 PDF 的頁數（各源 PDF 頁數須一致）。',
+    )
+    layout_split_mm = fields.Integer(
+        string='每段出圖(mm)',
+        default=0,
+        copy=False,
+        help='例如填 100：482mm 的單會切成 100+100+100+100+82 共 5 張圖。0=整卷一張。',
+    )
+    layout_split_plan = fields.Char(
+        string='自訂分段(mm)',
+        copy=False,
+        help='例如 100,150,232；有填則優先於「每段出圖」。單位整毫米，合計應覆蓋用料長。',
+    )
+    segment_ids = fields.One2many(
+        'dtsc.print.roll.segment', 'order_id', string='出圖分段明細', readonly=True,
+    )
+    segment_count = fields.Integer(string='分段數', compute='_compute_segment_count')
 
     line_ids = fields.One2many('dtsc.print.order.line', 'order_id', string='需求項次')
     roll_ids = fields.One2many('dtsc.print.roll', 'order_id', string='捲料排版')
     piece_ids = fields.One2many('dtsc.print.piece', 'order_id', string='全部圖塊')
+
+    @api.depends('segment_ids')
+    def _compute_segment_count(self):
+        for rec in self:
+            rec.segment_count = len(rec.segment_ids)
 
     total_demand_qty = fields.Integer(string='需求總數', compute='_compute_totals')
     total_placed_qty = fields.Integer(string='已排總數', compute='_compute_totals')
@@ -245,11 +284,71 @@ class PrintOrder(models.Model):
                     ) % (order.name, line.name, err)) from err
         return True
 
+    def _layout_split_enabled(self):
+        self.ensure_one()
+        plan = (self.layout_split_plan or '').strip()
+        return bool(plan) or int(self.layout_split_mm or 0) > 0
+
+    def _parse_layout_split_ranges(self, total_mm):
+        """回傳相對內容起點的 [(start, end), ...]，單位整毫米，覆蓋 [0, total]。"""
+        self.ensure_one()
+        total = max(int(math.ceil(float(total_mm or 0) - 1e-9)), 0)
+        if total <= 0:
+            return []
+        plan = (self.layout_split_plan or '').strip()
+        parts = []
+        if plan:
+            for tok in re.split(r'[,，\s]+', plan):
+                if not tok:
+                    continue
+                try:
+                    n = int(round(float(tok)))
+                except ValueError as err:
+                    raise UserError(_('自訂分段格式錯誤：「%s」。請用如 100,100,82') % plan) from err
+                if n <= 0:
+                    raise UserError(_('自訂分段每段必須 > 0 mm。'))
+                parts.append(n)
+        elif int(self.layout_split_mm or 0) > 0:
+            step = int(self.layout_split_mm)
+            remain = total
+            while remain > 0:
+                take = min(step, remain)
+                parts.append(take)
+                remain -= take
+        else:
+            parts = [total]
+
+        ranges = []
+        cur = 0
+        for length in parts:
+            ranges.append((cur, cur + length))
+            cur += length
+        if cur < total:
+            ranges.append((cur, total))
+        elif cur > total:
+            # 超出：最後一段縮到 total
+            s, _e = ranges[-1]
+            if s >= total:
+                ranges = [r for r in ranges if r[0] < total]
+                if ranges:
+                    s0, _ = ranges[-1]
+                    ranges[-1] = (s0, total)
+                else:
+                    ranges = [(0, total)]
+            else:
+                ranges[-1] = (s, total)
+        return ranges
+
     def action_compose_layout_tiffs(self):
         """重新合成本單所有捲的排版 TIFF（前端顯示進度條）。"""
         for rec in self:
             if not rec.roll_ids:
                 raise UserError(_('尚無捲料排版，無法合成 TIFF。'))
+        # 有分段設定時走同步分段合成（每段較小，不必進度條大畫布）
+        if any(rec._layout_split_enabled() for rec in self):
+            for rec in self:
+                rec.roll_ids.action_compose_layout_with_splits()
+            return True
         return {
             'type': 'ir.actions.client',
             'tag': 'dtsc_print_nesting.compose_tiffs',
@@ -281,9 +380,38 @@ class PrintOrder(models.Model):
         )
         return {'ok': ok, 'rolls': results}
 
-    def action_download_layout_tiffs(self):
-        """下載本單排版 TIFF（每捲一個檔）。"""
+    def _segments_multi_download_action(self, kind='tiff'):
+        """多段出圖：依序連下各段檔（不打包 ZIP）。"""
         self.ensure_one()
+        segs = self.segment_ids.sorted(lambda s: (s.roll_id.id, s.sequence, s.id))
+        if kind == 'pdf':
+            segs = segs.filtered(lambda s: s._has_layout_pdf_file())
+            urls = [s._layout_pdf_download_url() for s in segs]
+        else:
+            segs = segs.filtered(lambda s: s._has_layout_tiff_file())
+            urls = [s._layout_tiff_download_url() for s in segs]
+        if not urls:
+            raise UserError(_('沒有可下載的分段檔。'))
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'dtsc_print_nesting.download_urls',
+            'params': {
+                'urls': urls,
+                'message': _('開始連下 %s 個分段檔…') % len(urls),
+            },
+        }
+
+    def action_download_layout_tiffs(self):
+        """下載本單排版 TIFF（每捲一個檔；有分段則連下多段）。多面單請用下載排版 PDF。"""
+        self.ensure_one()
+        if self.print_output_mode == 'multi':
+            return self.action_download_layout_pdfs()
+        if self._layout_split_enabled():
+            self.roll_ids.action_compose_layout_with_splits()
+            segs = self.roll_ids.mapped('segment_ids').filtered(lambda s: s._has_layout_tiff_file())
+            if not segs:
+                raise UserError(_('分段 TIFF 未生成，請檢查出圖分段設定後重試。'))
+            return self._segments_multi_download_action('tiff')
         rolls = self.roll_ids.filtered(lambda r: r._has_layout_tiff_file())
         if not rolls:
             # 嘗試自動合成一次再下
@@ -294,6 +422,39 @@ class PrintOrder(models.Model):
                 raise UserError(_('尚無可用的排版 TIFF，請確認已鎖定排版後再試。'))
         # 排版 TIFF 動輒數百 MB，不在伺服器打 zip；每捲各自串流下載
         return rolls._layout_tiff_download_action()
+
+    def action_compose_layout_pdfs(self):
+        """重新合成本單多面排版 PDF。"""
+        for rec in self:
+            if rec.print_output_mode != 'multi':
+                raise UserError(_('本單不是多面打印，請用「重新合成排版TIFF」。'))
+            if not rec.roll_ids:
+                raise UserError(_('尚無捲料排版，無法合成 PDF。'))
+            if rec._layout_split_enabled():
+                rec.roll_ids.action_compose_layout_with_splits()
+            else:
+                rec.roll_ids.action_compose_layout_pdf()
+        return True
+
+    def action_download_layout_pdfs(self):
+        """下載本單多面排版 PDF（有分段則連下多段）。"""
+        self.ensure_one()
+        if self.print_output_mode != 'multi':
+            raise UserError(_('本單不是多面打印。'))
+        if self._layout_split_enabled():
+            self.roll_ids.action_compose_layout_with_splits()
+            segs = self.roll_ids.mapped('segment_ids').filtered(lambda s: s._has_layout_pdf_file())
+            if not segs:
+                raise UserError(_('分段 PDF 未生成，請檢查出圖分段設定後重試。'))
+            return self._segments_multi_download_action('pdf')
+        rolls = self.roll_ids.filtered(lambda r: r._has_layout_pdf_file())
+        if not rolls:
+            if self.roll_ids:
+                self.roll_ids.action_compose_layout_pdf()
+                rolls = self.roll_ids.filtered(lambda r: r._has_layout_pdf_file())
+            if not rolls:
+                raise UserError(_('尚無可用的排版 PDF，請先合成。'))
+        return rolls._layout_pdf_download_action()
 
     def action_confirm(self):
         for rec in self:

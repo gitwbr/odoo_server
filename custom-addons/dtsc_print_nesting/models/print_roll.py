@@ -154,6 +154,25 @@ class PrintRoll(models.Model):
         copy=False,
         help='合成時缺圖、降採樣等提示。',
     )
+    layout_pdf = fields.Binary(
+        string='排版 PDF',
+        attachment=True,
+        copy=False,
+        help='多面打印：按遍數整合的成稿 PDF（第 N 頁=各圖第 N 面，座標同印刷池）。',
+    )
+    layout_pdf_filename = fields.Char(string='PDF 檔名', copy=False)
+    layout_pdf_note = fields.Text(string='PDF 合成說明', copy=False)
+    print_output_mode = fields.Selection(
+        related='order_id.print_output_mode', string='打印模式', readonly=True,
+    )
+    segment_ids = fields.One2many(
+        'dtsc.print.roll.segment', 'roll_id', string='出圖分段', copy=False,
+    )
+    segment_count = fields.Integer(string='分段數', compute='_compute_segment_count')
+
+    def _compute_segment_count(self):
+        for rec in self:
+            rec.segment_count = len(rec.segment_ids)
 
     def _has_layout_tiff_file(self):
         self.ensure_one()
@@ -163,6 +182,17 @@ class PrintRoll(models.Model):
             ('res_model', '=', self._name),
             ('res_id', '=', self.id),
             ('res_field', '=', 'layout_tiff'),
+            ('file_size', '>', 0),
+        ], limit=1))
+
+    def _has_layout_pdf_file(self):
+        self.ensure_one()
+        if self.layout_pdf_filename:
+            return True
+        return bool(self.env['ir.attachment'].sudo().search([
+            ('res_model', '=', self._name),
+            ('res_id', '=', self.id),
+            ('res_field', '=', 'layout_pdf'),
             ('file_size', '>', 0),
         ], limit=1))
 
@@ -456,6 +486,249 @@ class PrintRoll(models.Model):
             'params': {'urls': [roll._layout_tiff_download_url() for roll in self]},
         }
 
+    def action_compose_layout_pdf(self):
+        """手動重新合成多面排版 PDF。"""
+        for rec in self:
+            rec._compose_layout_pdf()
+        return True
+
+    def action_download_layout_pdf(self):
+        self.ensure_one()
+        if not self._has_layout_pdf_file():
+            raise UserError(_('尚無排版 PDF，請先合成。'))
+        return self._layout_pdf_download_action()
+
+    def _layout_pdf_download_url(self):
+        self.ensure_one()
+        return (
+            '/web/content?model=dtsc.print.roll&id=%s&field=layout_pdf'
+            '&filename_field=layout_pdf_filename&download=true' % self.id
+        )
+
+    def _layout_pdf_download_action(self):
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'dtsc_print_nesting.download_urls',
+            'params': {'urls': [roll._layout_pdf_download_url() for roll in self]},
+        }
+
+    def _content_y_span_mm(self):
+        """本捲圖塊內容在捲長方向的 [y_min, y_max)。"""
+        self.ensure_one()
+        pieces = self.piece_ids
+        if not pieces:
+            return 0.0, 0.0
+        y0 = min(p.y_mm for p in pieces)
+        y1 = max(p.y_mm + p.height_mm for p in pieces)
+        return float(y0), float(y1)
+
+    def action_compose_layout_with_splits(self):
+        """依印刷單分段設定合成：無分段=整卷；有分段=多個 segment 檔。"""
+        for rec in self:
+            order = rec.order_id
+            if not order:
+                continue
+            mode = order.print_output_mode or 'single'
+            y0, y1 = rec._content_y_span_mm()
+            total = max(y1 - y0, 0.0)
+            ranges = order._parse_layout_split_ranges(total)
+            # 清舊分段
+            rec.segment_ids.unlink()
+            if not ranges or (len(ranges) == 1 and ranges[0][0] == 0 and not order._layout_split_enabled()):
+                if mode == 'multi':
+                    rec._compose_layout_pdf()
+                else:
+                    rec._compose_layout_tiff()
+                continue
+            Seg = self.env['dtsc.print.roll.segment']
+            for idx, (rel_s, rel_e) in enumerate(ranges, start=1):
+                seg = Seg.create({
+                    'roll_id': rec.id,
+                    'sequence': idx,
+                    'start_mm': int(rel_s),
+                    'end_mm': int(rel_e),
+                })
+                abs_s = y0 + rel_s
+                abs_e = y0 + rel_e
+                if mode == 'multi':
+                    rec._compose_layout_pdf_one(None, y_start_mm=abs_s, y_end_mm=abs_e, segment=seg)
+                else:
+                    rec._compose_layout_tiff_one(None, y_start_mm=abs_s, y_end_mm=abs_e, segment=seg)
+            # 分段時清掉整卷大檔，避免誤下整卷
+            if mode == 'multi':
+                rec.write({
+                    'layout_pdf': False,
+                    'layout_pdf_filename': False,
+                    'layout_pdf_note': _('已按分段出圖（%s 段），請下載各分段 PDF。') % len(ranges),
+                })
+            else:
+                rec.write({
+                    'layout_tiff': False,
+                    'layout_tiff_filename': False,
+                    'layout_tiff_note': _('已按分段出圖（%s 段），請下載各分段 TIFF。') % len(ranges),
+                })
+        return True
+
+    def _compose_layout_pdf(self):
+        """多面打印：第 N 頁 = 各圖塊源 PDF 第 N 面，座標同印刷池。"""
+        try:
+            import fitz
+        except ImportError as err:
+            raise UserError(_('伺服器未安裝 PyMuPDF（fitz），無法合成排版 PDF。')) from err
+
+        for rec in self:
+            rec._compose_layout_pdf_one(fitz)
+
+    def _compose_layout_pdf_one(self, fitz, y_start_mm=None, y_end_mm=None, segment=None):
+        self.ensure_one()
+        if fitz is None:
+            try:
+                import fitz as fitz_mod
+            except ImportError as err:
+                raise UserError(_('伺服器未安裝 PyMuPDF（fitz），無法合成排版 PDF。')) from err
+            fitz = fitz_mod
+        pieces = self.piece_ids.sorted(lambda p: (p.y_mm, p.x_mm, p.id))
+        if not pieces:
+            vals = {
+                'layout_pdf': False,
+                'layout_pdf_filename': False,
+                'layout_pdf_note': _('無圖塊，未生成 PDF。'),
+            }
+            if segment:
+                segment.write({'layout_pdf': False, 'layout_pdf_filename': False, 'note': vals['layout_pdf_note']})
+            else:
+                self.write(vals)
+            return
+
+        pass_count = int(self.order_id.print_pass_count or 0)
+        if pass_count < 2:
+            # 從項次推一遍數
+            counts = set()
+            for p in pieces:
+                cl = p.makeinline_id.checkout_line_id if p.makeinline_id else False
+                counts.add(int(cl.layout_pass_count or 1) if cl else 1)
+            if len(counts) == 1:
+                pass_count = counts.pop()
+            else:
+                raise UserError(_('各圖塊打印遍數不一致，無法合成多面 PDF。'))
+        if pass_count < 2:
+            raise UserError(_('遍數少於 2，請改用單面 TIFF 流程。'))
+
+        # 校驗源 PDF
+        src_cache = {}
+        notes = []
+        for p in pieces:
+            ml = p.makeinline_id
+            if not ml or not ml.checkout_line_id:
+                raise UserError(_('圖塊 %s 無對應大圖項次，無法取源 PDF。') % (p.label or p.id))
+            cl = ml.checkout_line_id
+            if not cl._has_layout_source_pdf():
+                raise UserError(_(
+                    '項次 %s 沒有多面源 PDF。請重新上傳 PDF／相容 AI 後再生成多面印刷單。'
+                ) % (p.label or cl.sequence))
+            n = int(cl.layout_pass_count or 1)
+            if n != pass_count:
+                raise UserError(_(
+                    '項次 %s 遍數為 %s，與本單遍數 %s 不一致。'
+                ) % (p.label or cl.sequence, n, pass_count))
+            if cl.id not in src_cache:
+                src_cache[cl.id] = cl._read_layout_source_pdf_raw()
+
+        content_y0 = min(p.y_mm for p in pieces)
+        content_y1 = max(p.y_mm + p.height_mm for p in pieces)
+        y0 = float(content_y0 if y_start_mm is None else y_start_mm)
+        y1 = float(content_y1 if y_end_mm is None else y_end_mm)
+        if y1 <= y0:
+            raise UserError(_('分段長度無效。'))
+        y_extent = y1 - y0
+        roll_w = float(self.roll_width_mm or 0) or max(p.x_mm + p.width_mm for p in pieces)
+        pt_per_mm = 72.0 / 25.4
+        page_w = max(roll_w * pt_per_mm, 1.0)
+        page_h = max(y_extent * pt_per_mm, 1.0)
+        # 與本段相交的圖塊
+        win_pieces = pieces.filtered(
+            lambda p: p.y_mm < y1 - 1e-6 and (p.y_mm + p.height_mm) > y0 + 1e-6
+        )
+
+        out = fitz.open()
+        try:
+            for pass_i in range(pass_count):
+                page = out.new_page(width=page_w, height=page_h)
+                # 裁切視窗：只顯示本段
+                page.set_cropbox(fitz.Rect(0, 0, page_w, page_h))
+                for p in win_pieces:
+                    cl = p.makeinline_id.checkout_line_id
+                    raw = src_cache[cl.id]
+                    src = fitz.open(stream=raw, filetype='pdf')
+                    try:
+                        if pass_i >= src.page_count:
+                            raise UserError(_(
+                                '項次 %s 源 PDF 只有 %s 頁，無法取第 %s 面。'
+                            ) % (p.label or cl.sequence, src.page_count, pass_i + 1))
+                        x0 = float(p.x_mm) * pt_per_mm
+                        y0p = (float(p.y_mm) - y0) * pt_per_mm
+                        x1 = x0 + float(p.width_mm) * pt_per_mm
+                        y1p = y0p + float(p.height_mm) * pt_per_mm
+                        dest = fitz.Rect(x0, y0p, x1, y1p)
+                        rot = int(p.rotation or (90 if p.rotated else 0)) % 360
+                        page_rect = fitz.Rect(0, 0, page_w, page_h)
+                        if not (dest & page_rect).is_empty:
+                            page.show_pdf_page(
+                                dest, src, pass_i,
+                                keep_proportion=False,
+                                rotate=rot,
+                            )
+                        if p.flip_h:
+                            notes.append(_(
+                                '圖塊 %s 有水平翻轉：PDF 整合已旋轉，翻轉請核對機台／檔案。'
+                            ) % (p.label or p.id))
+                    finally:
+                        src.close()
+            pdf_bytes = out.tobytes(deflate=True, garbage=3)
+        finally:
+            out.close()
+
+        if segment:
+            fname = '%s-%s-S%02d-%s-%smm-multi.pdf' % (
+                self.order_id.name or 'P',
+                self.name or ('R%s' % self.sequence),
+                segment.sequence,
+                int(segment.start_mm or 0),
+                int(segment.end_mm or 0),
+            )
+            note = _('分段多面 PDF：第%s段 %s–%s mm／%s 遍') % (
+                segment.sequence, int(y0 - content_y0), int(y1 - content_y0), pass_count,
+            )
+            segment.with_context(image_no_postprocess=True).write({
+                'layout_pdf': base64.b64encode(pdf_bytes),
+                'layout_pdf_filename': fname,
+                'note': note,
+            })
+        else:
+            fname = '%s-%s-multi.pdf' % (
+                self.order_id.name or 'P',
+                self.name or ('R%s' % self.sequence),
+            )
+            note = _('多面排版 PDF：%s 遍／%s 塊／門幅 %.0f mm／用料 %.0f mm') % (
+                pass_count, len(pieces), roll_w, y_extent,
+            )
+            if notes:
+                uniq = []
+                for n in notes:
+                    if n not in uniq:
+                        uniq.append(n)
+                note = note + '\n' + '\n'.join(uniq)
+
+            self.with_context(image_no_postprocess=True).write({
+                'layout_pdf': base64.b64encode(pdf_bytes),
+                'layout_pdf_filename': fname,
+                'layout_pdf_note': note,
+            })
+        _logger.info(
+            'print roll %s composed layout pdf %s bytes (%s)',
+            self.id, len(pdf_bytes), fname,
+        )
+
     def _compose_layout_tiff(self):
         """依本捲圖塊座標，把各項次 TIFF 貼到白底畫布（含間隙留白），寫入 layout_tiff。"""
         try:
@@ -526,15 +799,29 @@ class PrintRoll(models.Model):
                 return None
         return None
 
-    def _compose_layout_tiff_one(self, Image):
+    def _compose_layout_tiff_one(self, Image, y_start_mm=None, y_end_mm=None, segment=None):
         self.ensure_one()
+        if Image is None:
+            try:
+                from PIL import Image as ImageMod
+            except ImportError as err:
+                raise UserError(_('伺服器未安裝 Pillow，無法合成排版 TIFF。')) from err
+            Image = ImageMod
         pieces = self.piece_ids.sorted(lambda p: (p.y_mm, p.x_mm, p.id))
         if not pieces:
-            self.write({
+            vals = {
                 'layout_tiff': False,
                 'layout_tiff_filename': False,
                 'layout_tiff_note': _('無圖塊，未生成 TIFF。'),
-            })
+            }
+            if segment:
+                segment.write({
+                    'layout_tiff': False,
+                    'layout_tiff_filename': False,
+                    'note': vals['layout_tiff_note'],
+                })
+            else:
+                self.write(vals)
             return
 
         notes = []
@@ -606,11 +893,28 @@ class PrintRoll(models.Model):
             dpi = _COMPOSE_DPI_FALLBACK
             notes.append(_('未從來源讀到 DPI，暫用 %.0f（請確認來源 TIFF 含解析度）') % dpi)
 
-        # 本單相對座標：去掉本捲歷史偏移，只輸出本印刷單這一段
-        y0 = min(p.y_mm for p in pieces)
-        y_extent = max(p.y_mm + p.height_mm for p in pieces) - y0
+        # 本單相對座標：去掉本捲歷史偏移，只輸出本印刷單這一段（或指定分段視窗）
+        content_y0 = min(p.y_mm for p in pieces)
+        content_y1 = max(p.y_mm + p.height_mm for p in pieces)
+        y0 = float(content_y0 if y_start_mm is None else y_start_mm)
+        y1 = float(content_y1 if y_end_mm is None else y_end_mm)
+        if y1 <= y0:
+            msg = _('分段長度無效。')
+            if segment:
+                segment.write({'note': msg})
+            else:
+                self.write({
+                    'layout_tiff': False,
+                    'layout_tiff_filename': False,
+                    'layout_tiff_note': msg,
+                })
+            return
+        y_extent = y1 - y0
         x_extent = max(p.x_mm + p.width_mm for p in pieces)
         roll_w = float(self.roll_width_mm or 0) or x_extent
+        win_pieces = pieces.filtered(
+            lambda p: p.y_mm < y1 - 1e-6 and (p.y_mm + p.height_mm) > y0 + 1e-6
+        )
 
         def mm_to_px(mm, d):
             return max(1, int(round(float(mm or 0) / 25.4 * d)))
@@ -619,25 +923,34 @@ class PrintRoll(models.Model):
         canvas_h = mm_to_px(y_extent, dpi)
         est_bytes = canvas_w * canvas_h * 4  # CMYK
         if est_bytes > _COMPOSE_MAX_CANVAS_BYTES:
-            self.write({
-                'layout_tiff': False,
-                'layout_tiff_filename': False,
-                'layout_tiff_note': _(
-                    '排版 TIFF 未生成：畫布約 %sx%s px（DPI %.0f，約 %.1f GB），超過伺服器安全上限。'
-                    '請勿降解析度印刷；請聯絡管理員提高記憶體或改分段輸出。'
-                ) % (canvas_w, canvas_h, dpi, est_bytes / (1024 ** 3)),
-            })
+            msg = _(
+                '排版 TIFF 未生成：畫布約 %sx%s px（DPI %.0f，約 %.1f GB），超過伺服器安全上限。'
+                '請勿降解析度印刷；請聯絡管理員提高記憶體或改分段輸出。'
+            ) % (canvas_w, canvas_h, dpi, est_bytes / (1024 ** 3))
+            if segment:
+                segment.write({'layout_tiff': False, 'layout_tiff_filename': False, 'note': msg})
+            else:
+                self.write({
+                    'layout_tiff': False,
+                    'layout_tiff_filename': False,
+                    'layout_tiff_note': msg,
+                })
             return
 
         # 任一來源無效則整卷不輸出模糊替代檔
-        if any(load_source(p.makeinline_id)[0] is None for p in pieces):
-            self.write({
-                'layout_tiff': False,
-                'layout_tiff_filename': False,
-                'layout_tiff_note': _(
-                    '排版 TIFF 未生成：來源大圖不是可用的原解析度 TIFF。\n%s'
-                ) % '\n'.join(dict.fromkeys(notes)),
-            })
+        check_pieces = win_pieces or pieces
+        if any(load_source(p.makeinline_id)[0] is None for p in check_pieces):
+            msg = _(
+                '排版 TIFF 未生成：來源大圖不是可用的原解析度 TIFF。\n%s'
+            ) % '\n'.join(dict.fromkeys(notes))
+            if segment:
+                segment.write({'layout_tiff': False, 'layout_tiff_filename': False, 'note': msg})
+            else:
+                self.write({
+                    'layout_tiff': False,
+                    'layout_tiff_filename': False,
+                    'layout_tiff_note': msg,
+                })
             return
 
         self._compose_progress(32, _('建立畫布 %sx%s px…') % (canvas_w, canvas_h))
@@ -645,14 +958,18 @@ class PrintRoll(models.Model):
             # 印刷輸出固定 CMYK；白紙 = (0,0,0,0)
             canvas = Image.new('CMYK', (canvas_w, canvas_h), (0, 0, 0, 0))
         except Exception as err:  # noqa: BLE001
-            self.write({
-                'layout_tiff': False,
-                'layout_tiff_filename': False,
-                'layout_tiff_note': _(
-                    '排版 TIFF 合成失敗（記憶體不足：%s）。'
-                    '不會降解析度輸出；請提高 worker 記憶體後重試。'
-                ) % err,
-            })
+            msg = _(
+                '排版 TIFF 合成失敗（記憶體不足：%s）。'
+                '不會降解析度輸出；請提高 worker 記憶體後重試。'
+            ) % err
+            if segment:
+                segment.write({'layout_tiff': False, 'layout_tiff_filename': False, 'note': msg})
+            else:
+                self.write({
+                    'layout_tiff': False,
+                    'layout_tiff_filename': False,
+                    'layout_tiff_note': msg,
+                })
             return
 
         placed = 0
@@ -693,8 +1010,9 @@ class PrintRoll(models.Model):
         # 僅在毫米換算有 1px 級誤差時微調，避免大幅縮放變糊
         resample = getattr(getattr(Image, 'Resampling', Image), 'LANCZOS', Image.LANCZOS)
         rot = getattr(getattr(Image, 'Transpose', Image), 'ROTATE_90', Image.ROTATE_90)
-        for i, p in enumerate(pieces):
-            self._compose_progress(35.0 + 35.0 * i / n_pieces, _('貼圖（%s/%s）') % (i + 1, n_pieces))
+        n_paste = max(len(win_pieces), 1)
+        for i, p in enumerate(win_pieces):
+            self._compose_progress(35.0 + 35.0 * i / n_paste, _('貼圖（%s/%s）') % (i + 1, n_paste))
             src, _src_dpi, _warn, src_mode = load_source(p.makeinline_id)
             tw = mm_to_px(p.width_mm, dpi)
             th = mm_to_px(p.height_mm, dpi)
@@ -746,14 +1064,19 @@ class PrintRoll(models.Model):
                     except Exception as err:  # noqa: BLE001
                         notes.append(_('ICC 色彩轉換失敗，改用軟體近似轉換：%s') % err)
                 tile = _pil_to_cmyk(Image, tile, transform)
-                if left + tw > canvas_w or top + th > canvas_h:
-                    tile = tile.crop((
-                        0, 0,
-                        min(tw, max(0, canvas_w - left)),
-                        min(th, max(0, canvas_h - top)),
-                    ))
+                # 跨段圖塊：裁掉落在本段窗外的部分
+                crop_l = max(0, -left)
+                crop_t = max(0, -top)
+                crop_r = min(tw, canvas_w - left)
+                crop_b = min(th, canvas_h - top)
+                if crop_r <= crop_l or crop_b <= crop_t:
+                    continue
+                if crop_l or crop_t or crop_r < tw or crop_b < th:
+                    tile = tile.crop((crop_l, crop_t, crop_r, crop_b))
+                    left = max(0, left)
+                    top = max(0, top)
                 if left < canvas_w and top < canvas_h and tile.size[0] > 0 and tile.size[1] > 0:
-                    canvas.paste(tile, (max(0, left), max(0, top)))
+                    canvas.paste(tile, (left, top))
                     placed += 1
             except Exception as err:  # noqa: BLE001
                 notes.append(_('圖塊 %s 貼圖失敗：%s') % (p.label or p.id, err))
@@ -772,13 +1095,15 @@ class PrintRoll(models.Model):
             )
             raw_out = buf.getvalue()
         except Exception as err:  # noqa: BLE001
-            self.write({
-                'layout_tiff': False,
-                'layout_tiff_filename': False,
-                'layout_tiff_note': _(
-                    '排版 TIFF 寫入失敗：%s。請點「重新合成排版TIFF」。'
-                ) % err,
-            })
+            msg = _('排版 TIFF 寫入失敗：%s。請點「重新合成排版TIFF」。') % err
+            if segment:
+                segment.write({'layout_tiff': False, 'layout_tiff_filename': False, 'note': msg})
+            else:
+                self.write({
+                    'layout_tiff': False,
+                    'layout_tiff_filename': False,
+                    'layout_tiff_note': msg,
+                })
             return
         finally:
             try:
@@ -794,14 +1119,27 @@ class PrintRoll(models.Model):
                     pass
                 tiff_cache[mid] = (None, None, None, None)
 
-        fname = '%s-%s.tif' % (
-            self.order_id.name or 'P',
-            self.name or ('R%s' % self.sequence),
-        )
+        if segment:
+            fname = '%s-%s-S%02d-%s-%smm.tif' % (
+                self.order_id.name or 'P',
+                self.name or ('R%s' % self.sequence),
+                segment.sequence,
+                int(segment.start_mm or 0),
+                int(segment.end_mm or 0),
+            )
+        else:
+            fname = '%s-%s.tif' % (
+                self.order_id.name or 'P',
+                self.name or ('R%s' % self.sequence),
+            )
         mode_txt = ','.join(sorted(src_modes)) or '?'
         note = _(
             '已按來源原解析度合成 CMYK：%s 塊 / %sx%s px / DPI %.0f；來源模式 %s'
         ) % (placed, canvas_w, canvas_h, dpi, mode_txt)
+        if segment:
+            note = _('分段 %s（%s–%s mm）：') % (
+                segment.sequence, int(segment.start_mm or 0), int(segment.end_mm or 0),
+            ) + note
         if converted_from_rgb:
             if icc_bytes and icc_transforms:
                 notes.append(_('RGB 來源已用 ICC「%s」轉成 CMYK（%s）。') % (
@@ -823,11 +1161,18 @@ class PrintRoll(models.Model):
 
         self._compose_progress(88, _('寫入檔案（%.0f MB）…') % (len(raw_out) / 1048576.0))
         # 禁止 Odoo 自動把合成 TIFF 壓成 1920 JPEG
-        self.with_context(image_no_postprocess=True).write({
-            'layout_tiff': base64.b64encode(raw_out),
-            'layout_tiff_filename': fname,
-            'layout_tiff_note': note,
-        })
+        if segment:
+            segment.with_context(image_no_postprocess=True).write({
+                'layout_tiff': base64.b64encode(raw_out),
+                'layout_tiff_filename': fname,
+                'note': note,
+            })
+        else:
+            self.with_context(image_no_postprocess=True).write({
+                'layout_tiff': base64.b64encode(raw_out),
+                'layout_tiff_filename': fname,
+                'layout_tiff_note': note,
+            })
         _logger.info(
             'print roll %s composed layout tiff %s bytes (%s)',
             self.id, len(raw_out), fname,

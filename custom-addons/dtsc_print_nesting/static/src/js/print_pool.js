@@ -85,7 +85,8 @@ export class PrintPoolAction extends Component {
         this.state.layout = layout;
         const cutoffs = {};
         for (const s of layout.strips || []) {
-            cutoffs[s.key] = s.default_cutoff_mm || s.used_mm || 0;
+            // 整毫米顯示：向上取整，避免 481.161→481 把最後一塊踢出截斷範圍
+            cutoffs[s.key] = Math.ceil(Number(s.default_cutoff_mm || s.used_mm || 0) - 1e-9);
         }
         this.state.cutoffs = cutoffs;
         const np = layout.nest_params || {};
@@ -97,7 +98,7 @@ export class PrintPoolAction extends Component {
 
     onCutoffInput(stripKey, ev) {
         const val = parseFloat(ev.target.value);
-        this.state.cutoffs[stripKey] = Number.isFinite(val) ? val : 0;
+        this.state.cutoffs[stripKey] = Number.isFinite(val) ? Math.round(val) : 0;
     }
 
     onMaterialFilterInput(ev) {
@@ -804,7 +805,7 @@ export class PrintPoolAction extends Component {
         }
     }
 
-    async lockStrip(strip) {
+    async lockStrip(strip, printOutputMode = "single") {
         if (!strip || !this.state.selectedId || !this.state.layout) {
             return;
         }
@@ -817,8 +818,17 @@ export class PrintPoolAction extends Component {
             this.notification.add("請先設定此捲的截斷位置（mm）", { type: "warning" });
             return;
         }
+        const mode = printOutputMode === "multi" ? "multi" : "single";
+        const modeLabel = mode === "multi" ? "多面PDF" : "單面TIFF";
         const label = strip.lot_name || strip.label || strip.key;
-        if (!window.confirm(`只對「${label}」生成印刷單？（其他捲不受影響）`)) {
+        if (
+            !window.confirm(
+                `只對「${label}」生成「${modeLabel}」印刷單？（其他捲不受影響）\n` +
+                    (mode === "multi"
+                        ? "多面：各圖源 PDF 遍數須一致；成稿為 ABC1／ABC2／ABC3 結構的 PDF。"
+                        : "單面：合成排版 TIFF 供下載印刷。")
+            )
+        ) {
             return;
         }
         this.state.locking = true;
@@ -826,13 +836,22 @@ export class PrintPoolAction extends Component {
             const res = await this.orm.call("dtsc.print.pool", "lock_cutoff_to_print_order", [
                 this.state.selectedId,
                 [{ key: strip.key, cutoff_mm: cutoff }],
+                mode,
             ]);
-            const tiffHint =
-                res.tiff_ok === false
-                    ? "（排版 TIFF 合成失敗，可在印刷單捲料上「重新合成」）"
-                    : "（已附排版 TIFF）";
+            let fileHint = "";
+            if (mode === "multi") {
+                fileHint =
+                    res.pdf_ok === false
+                        ? "（排版 PDF 合成失敗，可在印刷單上重新合成）"
+                        : `（已附 ${res.print_pass_count || "?"} 遍排版 PDF）`;
+            } else {
+                fileHint =
+                    res.tiff_ok === false
+                        ? "（排版 TIFF 合成失敗，可在印刷單捲料上「重新合成」）"
+                        : "（已附排版 TIFF）";
+            }
             this.notification.add(
-                `「${label}」已鎖定 ${res.piece_count} 塊，印刷單 ${res.order_name}${tiffHint}`,
+                `「${label}」已鎖定 ${res.piece_count} 塊，印刷單 ${res.order_name}${fileHint}`,
                 { type: "success" }
             );
             this.state.locking = false;

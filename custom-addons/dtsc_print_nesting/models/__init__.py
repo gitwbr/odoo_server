@@ -6,6 +6,7 @@ from . import makeinline
 from . import checkout_layout
 from . import print_order
 from . import print_roll
+from . import print_roll_segment
 from . import compose_job
 from . import stock_lot
 from . import lotmpr

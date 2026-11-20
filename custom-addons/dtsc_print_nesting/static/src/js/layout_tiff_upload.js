@@ -57,7 +57,7 @@ export class LayoutTiffUploadField extends Component {
 
     get progressText() {
         if (this.state.phase === "processing") {
-            return _t("處理中（尺寸/預覽）...");
+            return _t("處理中（轉 TIFF／尺寸／預覽）...");
         }
         if (this.state.phase === "uploading") {
             return `${_t("上傳中")} ${this.state.progress}%`;
@@ -102,8 +102,9 @@ export class LayoutTiffUploadField extends Component {
             return;
         }
         const lower = (file.name || "").toLowerCase();
-        if (!lower.endsWith(".tif") && !lower.endsWith(".tiff")) {
-            this.notification.add(_t("僅允許上傳 TIFF（.tif / .tiff）"), { type: "danger" });
+        const allowed = [".tif", ".tiff", ".jpg", ".jpeg", ".png", ".pdf", ".ai"];
+        if (!allowed.some((ext) => lower.endsWith(ext))) {
+            this.notification.add(_t("僅允許上傳 TIFF／PDF／AI／JPG／PNG"), { type: "danger" });
             return;
         }
         if (file.size > this.maxUploadSize) {
@@ -118,7 +119,7 @@ export class LayoutTiffUploadField extends Component {
         }
         const lineId = this.props.record.resId;
         if (!lineId) {
-            this.notification.add(_t("請先保存訂單後再上傳 TIFF。"), { type: "warning" });
+            this.notification.add(_t("請先保存訂單後再上傳圖檔。"), { type: "warning" });
             return;
         }
 
@@ -150,16 +151,21 @@ export class LayoutTiffUploadField extends Component {
             this.state.fileName = result.filename || file.name;
             // 先寫回當前列，預覽圖才會立刻顯示（僅 root.load 時 list 圖片常不刷新）
             await this._applyUploadResultToRecord(result);
+            const note = result.convert_note ? `（${result.convert_note}）` : "";
             if (result.has_preview === false) {
                 const reason = result.preview_error
                     ? ` (${result.preview_error})`
                     : "";
                 this.notification.add(
-                    _t("TIFF 已上傳並帶入尺寸，但預覽圖產生失敗。") + reason,
+                    _t("圖檔已轉成印刷 TIFF 並帶入尺寸，但預覽圖產生失敗。") + reason + note,
                     { type: "warning" }
                 );
+            } else if (result.converted) {
+                this.notification.add(_t("已轉成印刷 TIFF，可進印刷池") + note, {
+                    type: "success",
+                });
             } else {
-                this.notification.add(_t("TIFF 上傳成功"), { type: "success" });
+                this.notification.add(_t("TIFF 上傳成功") + note, { type: "success" });
             }
         } catch (err) {
             console.error(err);

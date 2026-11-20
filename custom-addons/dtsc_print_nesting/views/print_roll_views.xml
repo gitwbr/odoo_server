@@ -35,9 +35,13 @@
                             class="oe_highlight"
                             confirm="本捲全部圖塊將永久鎖定，確定？"
                             attrs="{'invisible': [('state', 'in', ['done', 'cancel'])]}"/>
+                    <field name="print_output_mode" invisible="1"/>
                     <button name="action_compose_layout_tiff" type="object"
                             string="重新合成排版TIFF" class="oe_highlight"
-                            attrs="{'invisible': [('state', '=', 'cancel')]}"/>
+                            attrs="{'invisible': ['|', ('state', '=', 'cancel'), ('print_output_mode', '=', 'multi')]}"/>
+                    <button name="action_compose_layout_pdf" type="object"
+                            string="重新合成排版PDF" class="oe_highlight"
+                            attrs="{'invisible': ['|', ('state', '=', 'cancel'), ('print_output_mode', '!=', 'multi')]}"/>
                     <field name="state" widget="statusbar"/>
                 </header>
                 <sheet>
@@ -47,6 +51,7 @@
                             <field name="order_id"/>
                             <field name="material_product_id"/>
                             <field name="sequence"/>
+                            <field name="print_output_mode" readonly="1"/>
                         </group>
                         <group>
                             <field name="roll_width_mm"/>
@@ -60,17 +65,44 @@
                             <field name="piece_count"/>
                         </group>
                     </group>
-                    <group string="排版 TIFF（自動合成，下載印刷）">
+                    <group string="排版 TIFF（單面）"
+                           attrs="{'invisible': [('print_output_mode', '=', 'multi')]}">
                         <div class="text-muted mb-1" colspan="2">
                             由大圖訂單已上傳的 TIFF 依排版座標自動合成，無需再上傳。缺檔時點上方「重新合成排版TIFF」。
-                            畫面不載入大檔內容，請用下載按鈕取原檔。
+                            畫面不載入大檔內容，請用下載按鈕取原檔。若印刷單設了出圖分段，請到印刷單下載各分段檔。
                         </div>
                         <field name="layout_tiff_filename" readonly="1"/>
+                        <field name="segment_count" readonly="1"/>
                         <button name="action_download_layout_tiff" type="object"
                                 string="下載排版 TIFF" class="btn-primary"
                                 attrs="{'invisible': [('layout_tiff_filename', '=', False)]}"/>
                         <field name="layout_tiff_note" readonly="1" nolabel="1"
                                  attrs="{'invisible': [('layout_tiff_note', 'in', [False, ''])]}"/>
+                    </group>
+                    <group string="出圖分段明細" attrs="{'invisible': [('segment_count', '=', 0)]}">
+                        <field name="segment_ids" nolabel="1">
+                            <tree create="false" delete="false">
+                                <field name="sequence"/>
+                                <field name="start_mm"/>
+                                <field name="end_mm"/>
+                                <field name="length_mm"/>
+                                <field name="layout_tiff_filename"/>
+                                <field name="layout_pdf_filename"/>
+                                <field name="note"/>
+                            </tree>
+                        </field>
+                    </group>
+                    <group string="排版 PDF（多面：第N頁=各圖第N面）"
+                           attrs="{'invisible': [('print_output_mode', '!=', 'multi')]}">
+                        <div class="text-muted mb-1" colspan="2">
+                            依印刷池座標，把各項次源 PDF 的第 1／2／3… 面分別拼成成稿 PDF 的第 1／2／3… 頁。
+                        </div>
+                        <field name="layout_pdf_filename" readonly="1"/>
+                        <button name="action_download_layout_pdf" type="object"
+                                string="下載排版 PDF" class="btn-primary"
+                                attrs="{'invisible': [('layout_pdf_filename', '=', False)]}"/>
+                        <field name="layout_pdf_note" readonly="1" nolabel="1"
+                                 attrs="{'invisible': [('layout_pdf_note', 'in', [False, ''])]}"/>
                     </group>
                     <separator string="排版預覽（綠=可動 / 橙=鎖定 / 灰=已印刷）"/>
                     <field name="preview_svg" nolabel="1"/>

@@ -50,6 +50,11 @@ class PrintPoolPin(models.Model):
         default=False,
         help='合成 TIFF 時水平鏡像。',
     )
+    orient_locked = fields.Boolean(
+        string='鎖定朝向',
+        default=False,
+        help='使用者手動旋轉／翻轉後為 True；即使角度為 0° 也禁止排版引擎再自動轉回去。',
+    )
 
     _sql_constraints = [
         (

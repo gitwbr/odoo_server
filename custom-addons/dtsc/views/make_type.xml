@@ -8,7 +8,8 @@
             <field name="sequence" widget="handle"/>
 			<field name="name"/> 
 			<!-- <field name="unit_char"/>		   -->
-			<field name="price" groups="dtsc.group_dtsc_yw,dtsc.group_dtsc_kj"/>				  
+			<field name="price" groups="dtsc.group_dtsc_yw,dtsc.group_dtsc_kj"/>	
+			<field name="qty_calc_mode"/>			  
 		</tree>
       </field>
     </record>

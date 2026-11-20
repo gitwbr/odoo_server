@@ -6,6 +6,8 @@
         <field name="arch" type="xml">
             <tree decoration-danger="need_renest" decoration-muted="state == 'cancel'">
                 <field name="name"/>
+                <field name="print_output_mode"/>
+                <field name="print_pass_count" optional="hide"/>
                 <field name="effect_thumb_html" width="230px"/>
                 <field name="material_product_id"/>
                 <field name="machine_id"/>
@@ -45,10 +47,16 @@
                             attrs="{'invisible': [('state', 'not in', ['nested', 'confirmed'])]}"/>
                     <button name="action_download_layout_tiffs" type="object"
                             string="下載排版TIFF" class="oe_highlight"
-                            attrs="{'invisible': [('state', 'in', ['draft', 'cancel'])]}"/>
+                            attrs="{'invisible': ['|', ('state', 'in', ['draft', 'cancel']), ('print_output_mode', '=', 'multi')]}"/>
                     <button name="action_compose_layout_tiffs" type="object"
                             string="重新合成排版TIFF"
-                            attrs="{'invisible': [('state', 'in', ['draft', 'cancel'])]}"/>
+                            attrs="{'invisible': ['|', ('state', 'in', ['draft', 'cancel']), ('print_output_mode', '=', 'multi')]}"/>
+                    <button name="action_download_layout_pdfs" type="object"
+                            string="下載排版PDF" class="oe_highlight"
+                            attrs="{'invisible': ['|', ('state', 'in', ['draft', 'cancel']), ('print_output_mode', '!=', 'multi')]}"/>
+                    <button name="action_compose_layout_pdfs" type="object"
+                            string="重新合成排版PDF"
+                            attrs="{'invisible': ['|', ('state', 'in', ['draft', 'cancel']), ('print_output_mode', '!=', 'multi')]}"/>
                     <button name="action_cancel" type="object" string="作廢"
                             confirm="作廢將清除未印刷排版，項次回到印刷池，確定？"
                             attrs="{'invisible': [('state', 'in', ['done', 'cancel'])]}"/>
@@ -78,6 +86,9 @@
                             <field name="material_product_id" attrs="{'readonly': [('state', 'not in', ['draft'])]}"/>
                             <field name="machine_id"/>
                             <field name="roll_width_mm" attrs="{'readonly': [('state', 'not in', ['draft', 'nested'])]}"/>
+                            <field name="print_output_mode" readonly="1"/>
+                            <field name="print_pass_count" readonly="1"
+                                      attrs="{'invisible': [('print_output_mode', '!=', 'multi')]}"/>
                         </group>
                         <group>
                             <field name="gap_mm" readonly="1"
@@ -91,6 +102,41 @@
                             <field name="utilization_rate" readonly="1"/>
                             <field name="company_id" groups="base.group_multi_company"/>
                         </group>
+                    </group>
+                    <group string="出圖分段（可選）"
+                           attrs="{'invisible': [('state', 'in', ['draft', 'cancel'])]}">
+                        <group>
+                            <field name="layout_split_mm"
+                                     attrs="{'readonly': [('state', 'in', ['done', 'cancel'])]}"/>
+                            <field name="layout_split_plan"
+                                     placeholder="例如 100,100,282"
+                                     attrs="{'readonly': [('state', 'in', ['done', 'cancel'])]}"/>
+                            <field name="segment_count" readonly="1"/>
+                        </group>
+                        <group>
+                            <div class="text-muted" colspan="2">
+                                印刷單仍是一張；出圖時按長度切段。例如用料 482mm、每段填 100 → 連下 5 個檔（100×4 + 82）。
+                                下方明細也可單段下載。上方「印刷效果圖」仍是整卷預覽。
+                            </div>
+                        </group>
+                        <field name="segment_ids" nolabel="1" colspan="2"
+                                attrs="{'invisible': [('segment_count', '=', 0)]}">
+                            <tree create="false" delete="false">
+                                <field name="sequence" string="段"/>
+                                <field name="start_mm"/>
+                                <field name="end_mm"/>
+                                <field name="length_mm"/>
+                                <field name="layout_tiff_filename" optional="hide"/>
+                                <field name="layout_pdf_filename"/>
+                                <field name="note" optional="show"/>
+                                <button name="action_download_layout_pdf" type="object"
+                                        string="下PDF" icon="fa-download"
+                                        attrs="{'invisible': [('layout_pdf_filename', '=', False)]}"/>
+                                <button name="action_download_layout_tiff" type="object"
+                                        string="下TIFF" icon="fa-download"
+                                        attrs="{'invisible': [('layout_tiff_filename', '=', False)]}"/>
+                            </tree>
+                        </field>
                     </group>
                     <separator string="印刷效果圖"/>
                     <field name="effect_preview_html" nolabel="1" readonly="1"/>

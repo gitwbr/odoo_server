@@ -6,7 +6,7 @@
                 type="file"
                 class="d-none"
                 t-ref="fileInput"
-                accept=".tif,.tiff,image/tiff"
+                accept=".pdf,.ai,.jpg,.jpeg,.png,.tif,.tiff,application/pdf,image/jpeg,image/png,image/tiff"
                 t-on-change="onFileChange"
             />
             <t t-if="state.uploading">
@@ -34,7 +34,7 @@
                     t-if="props.record.resId"
                     type="button"
                     class="btn btn-secondary btn-sm fa fa-download"
-                    title="下載"
+                    title="下載印刷 TIFF（上傳 PDF 後也會轉成 TIFF）"
                     t-on-click="onDownloadClick"
                 />
                 <button
@@ -50,8 +50,9 @@
                     t-if="!props.readonly"
                     type="button"
                     class="btn btn-primary btn-sm"
+                    title="可選 PDF／AI／JPG／PNG／TIFF，系統會轉成印刷 TIFF"
                     t-on-click="onSelectClick"
-                >上傳 TIFF</button>
+                >上傳圖檔</button>
                 <span t-else="" class="text-muted">—</span>
             </t>
         </div>

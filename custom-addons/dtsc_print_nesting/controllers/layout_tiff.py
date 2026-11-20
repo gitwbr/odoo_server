@@ -37,9 +37,10 @@ class LayoutTiffController(http.Controller):
 
             filename = ufile.filename or 'upload.tif'
             ext = os.path.splitext(filename)[1].lower()
-            if ext not in ('.tif', '.tiff'):
+            allowed = ('.tif', '.tiff', '.jpg', '.jpeg', '.png', '.pdf', '.ai')
+            if ext not in allowed:
                 return self._json_error(
-                    _('僅允許上傳 TIFF（.tif / .tiff），目前檔名：%s') % filename
+                    _('僅允許上傳 TIFF／PDF／AI／JPG／PNG，目前檔名：%s') % filename
                 )
 
             line = request.env['dtsc.checkoutline'].browse(line_id)

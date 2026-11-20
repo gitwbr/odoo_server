@@ -18,6 +18,16 @@ except ImportError:  # pragma: no cover
 
 _LAYOUT_PREVIEW_MAX = 800  # 預覽最長邊像素
 _BIN_SIZE_RE = re.compile(r'^\d+(\.\d*)? [^0-9]+$')
+# 上傳後統一轉成印刷 TIFF 再進印刷池
+_LAYOUT_SOURCE_EXTS = (
+    '.tif', '.tiff',
+    '.jpg', '.jpeg',
+    '.png',
+    '.pdf', '.ai',
+)
+_LAYOUT_RASTER_EXTS = ('.jpg', '.jpeg', '.png')
+_LAYOUT_VECTOR_EXTS = ('.pdf', '.ai')
+_LAYOUT_FALLBACK_DPI = 150.0
 
 
 class CheckoutLayout(models.Model):
@@ -62,8 +72,9 @@ class CheckoutLayout(models.Model):
             if missing:
                 seqs = ', '.join(str(l.sequence) for l in missing.sorted('sequence'))
                 raise UserError(
-                    _('自動排版：以下內部工單捲料項次尚未上傳 TIFF 圖檔，無法轉工單。'
-                      '請至「自動排版」標籤上傳後再確認：%s') % seqs
+                    _('自動排版：以下內部工單捲料項次尚未上傳印刷圖檔，無法轉工單。'
+                      '請至「自動排版」上傳 TIFF／PDF／AI／JPG／PNG（會自動轉成印刷 TIFF）後再確認：%s')
+                    % seqs
                 )
             bad_size = targets.filtered(
                 lambda l: (
@@ -89,6 +100,7 @@ class CheckOutLineLayout(models.Model):
         'layout_bleed_width', 'layout_bleed_height',
         'layout_tiff', 'layout_tiff_filename',
         'layout_tiff_preview', 'layout_tiff_colorspace',
+        'layout_source_pdf', 'layout_source_pdf_filename', 'layout_pass_count',
         'layout_ai', 'layout_ai_filename',
         'layout_ai_pdf_compatible', 'layout_ai_page_count',
         'layout_ai_width_cm', 'layout_ai_height_cm', 'layout_ai_message',
@@ -129,7 +141,7 @@ class CheckOutLineLayout(models.Model):
         copy=False,
     )
     layout_tiff = fields.Binary(string='排版 TIFF', attachment=True, copy=False)
-    layout_tiff_filename = fields.Char(string='TIFF 檔名', copy=False)
+    layout_tiff_filename = fields.Char(string='印刷圖檔', copy=False)
     layout_tiff_colorspace = fields.Char(
         string='色彩模式',
         copy=False,
@@ -141,6 +153,15 @@ class CheckOutLineLayout(models.Model):
         attachment=True,
         copy=False,
         help='由 TIFF 自動產生的 JPEG 縮圖，僅供瀏覽，不參與印刷。',
+    )
+    # 多面打印：保留上傳的完整 PDF／相容 AI，供印刷單按遍數整合导出
+    layout_source_pdf = fields.Binary(
+        string='多面源 PDF', attachment=True, copy=False,
+    )
+    layout_source_pdf_filename = fields.Char(string='多面源檔名', copy=False)
+    layout_pass_count = fields.Integer(
+        string='打印遍數', default=1, copy=False,
+        help='源 PDF 頁數。>1 時可選多面打印，印刷池仍只顯示一塊。',
     )
 
     # ---- AI 來源檔（印前處理後寫入 layout_tiff；也可不經 AI 直接上傳 TIFF）----
@@ -447,24 +468,30 @@ class CheckOutLineLayout(models.Model):
             ))
 
     def _store_layout_tiff_raw(self, raw, filename, need_preview=True):
-        """由 HTTP multipart 寫入 filestore，並回填出血尺寸 / 預覽。
+        """multipart 上傳任意支援圖檔 → 統一轉印刷 TIFF → 寫入 filestore／尺寸／預覽。
 
-        先解析再落盤：解析失敗時不會清掉舊檔或留下半成品附件。
+        先轉換與解析再落盤：失敗時不會清掉舊檔或留下半成品附件。
         need_preview=False 對應印前「不拍縮圖」。
         """
         self.ensure_one()
-        self._validate_layout_tiff_filename(filename)
-        self._assert_raw_is_tiff(raw)
+        converted = self._convert_upload_to_print_tiff(raw, filename)
+        tiff_raw = converted['tiff_bytes']
+        store_name = converted['store_filename']
 
         # 先解析（失敗直接拋錯；預覽失敗不阻斷上傳）
-        # 直接傳原始 bytes，避免再 base64 膨脹佔記憶體
         info = self._process_layout_tiff(
-            raw,
+            tiff_raw,
             need_size=True,
             need_preview=bool(need_preview),
         )
         if not info.get('bleed_width') or not info.get('bleed_height'):
-            raise UserError(_('無法從 TIFF 取得出血後尺寸，請確認檔案含 DPI 資訊。'))
+            # 轉換階段已盡力寫入 DPI；仍失敗則用轉換 meta／訂單尺寸補
+            bw, bh = converted.get('bleed_width'), converted.get('bleed_height')
+            if bw and bh:
+                info['bleed_width'] = bw
+                info['bleed_height'] = bh
+            else:
+                raise UserError(_('無法取得出血後尺寸，請確認檔案含 DPI，或先填寫產品寬高。'))
 
         # 必須跳過 base.image_autoresize：否則 TIFF 會被壓成 ≤1920 JPEG，印刷檔毀損
         Attachment = self.env['ir.attachment'].with_context(image_no_postprocess=True)
@@ -475,21 +502,22 @@ class CheckOutLineLayout(models.Model):
         ])
         old.unlink()
         Attachment.create({
-            'name': filename,
+            'name': store_name,
             'res_model': self._name,
             'res_id': self.id,
             'res_field': 'layout_tiff',
             'type': 'binary',
-            'raw': raw,
+            'raw': tiff_raw,
             'mimetype': 'image/tiff',
         })
         self.invalidate_recordset(['layout_tiff'])
 
         updates = {
-            'layout_tiff_filename': filename,
+            'layout_tiff_filename': store_name,
             'layout_bleed_width': info['bleed_width'],
             'layout_bleed_height': info['bleed_height'],
             'layout_tiff_colorspace': info.get('colorspace') or False,
+            'layout_pass_count': int(converted.get('pass_count') or 1) or 1,
         }
         if info.get('preview'):
             updates['layout_tiff_preview'] = info['preview']
@@ -503,21 +531,307 @@ class CheckOutLineLayout(models.Model):
                 )
         models.Model.write(self, updates)
 
+        # 多面源：保留完整 PDF／相容 AI，供多面印刷單按遍數整合
+        src_ext = self._layout_source_ext(filename)
+        if src_ext in _LAYOUT_VECTOR_EXTS and converted.get('pass_count', 1) >= 1:
+            self._store_layout_source_pdf_raw(raw, filename)
+        else:
+            self._clear_layout_source_pdf()
+
         preview = info.get('preview') or False
         if isinstance(preview, bytes):
             preview = preview.decode('ascii')
 
         return {
             'ok': True,
-            'filename': filename,
+            'filename': store_name,
+            'source_filename': filename,
+            'converted': converted.get('converted', False),
+            'convert_note': converted.get('note') or '',
+            'pass_count': updates['layout_pass_count'],
             'bleed_width': updates.get('layout_bleed_width'),
             'bleed_height': updates.get('layout_bleed_height'),
             'colorspace': updates.get('layout_tiff_colorspace') or '',
             'preview': preview,
             'has_preview': bool(preview),
             'preview_error': info.get('preview_error') or '',
-            'tiff_size': human_size(len(raw)),
+            'tiff_size': human_size(len(tiff_raw)),
         }
+
+    # ------------------------------------------------------------------
+    # 多格式 → 印刷 TIFF
+    # ------------------------------------------------------------------
+    @api.model
+    def _layout_source_ext(self, filename):
+        return os.path.splitext(filename or '')[1].lower()
+
+    @api.model
+    def _layout_store_tiff_name(self, filename):
+        stem = os.path.splitext(filename or 'upload')[0] or 'upload'
+        return '%s.tif' % stem
+
+    def _line_fallback_size_cm(self):
+        """無 DPI 時：優先已填出血，其次產品寬高。"""
+        self.ensure_one()
+
+        def _to_float(val):
+            try:
+                return float(str(val).strip().replace(',', '.'))
+            except (TypeError, ValueError):
+                return 0.0
+
+        w = _to_float(self.layout_bleed_width) or _to_float(self.product_width)
+        h = _to_float(self.layout_bleed_height) or _to_float(self.product_height)
+        return w, h
+
+    def _convert_upload_to_print_tiff(self, raw, filename):
+        """任意支援格式 → CMYK(或原樣) 印刷 TIFF bytes。
+
+        :return: dict tiff_bytes / store_filename / converted / note / bleed_*
+        """
+        self.ensure_one()
+        if not raw:
+            raise UserError(_('檔案內容為空。'))
+        ext = self._layout_source_ext(filename)
+        if ext not in _LAYOUT_SOURCE_EXTS:
+            raise UserError(_(
+                '不支援的檔案類型「%s」。請上傳 TIFF／PDF／AI／JPG／PNG。'
+            ) % (filename or ext or '?'))
+
+        store_name = self._layout_store_tiff_name(filename)
+        if ext in ('.tif', '.tiff'):
+            self._assert_raw_is_tiff(raw)
+            return {
+                'tiff_bytes': raw,
+                'store_filename': filename if ext in ('.tif', '.tiff') else store_name,
+                'converted': False,
+                'note': '',
+                'pass_count': 1,
+            }
+
+        if ext in _LAYOUT_RASTER_EXTS:
+            return self._convert_raster_to_print_tiff(raw, filename, store_name)
+
+        if ext in _LAYOUT_VECTOR_EXTS:
+            return self._convert_vector_to_print_tiff(raw, filename, store_name)
+
+        raise UserError(_('不支援的檔案類型「%s」。') % filename)
+
+    def _read_raster_dpi(self, img):
+        """從 Pillow 圖讀 DPI；讀不到回 None。"""
+        dpi_info = img.info.get('dpi') or ()
+        if len(dpi_info) >= 1 and dpi_info[0]:
+            try:
+                val = float(dpi_info[0])
+                if val > 1:
+                    return val
+            except (TypeError, ValueError):
+                pass
+        # JPEG EXIF resolution
+        try:
+            exif = img.getexif()
+            if exif:
+                # 282=XResolution, 283=YResolution, 296=ResolutionUnit
+                xres = exif.get(282)
+                unit = exif.get(296) or 2
+                if xres:
+                    num = float(xres[0]) if isinstance(xres, tuple) else float(xres)
+                    den = float(xres[1]) if isinstance(xres, tuple) and len(xres) > 1 else 1.0
+                    val = num / (den or 1.0)
+                    if unit == 3:  # cm
+                        val = val * 2.54
+                    if val > 1:
+                        return val
+        except Exception:
+            pass
+        return None
+
+    def _pil_image_to_cmyk(self, img):
+        """位圖轉 CMYK；透明貼白底。"""
+        if Image is None:
+            raise UserError(_('伺服器未安裝 Pillow，無法處理圖檔。'))
+        if img.mode == 'CMYK':
+            return img
+        if img.mode in ('RGBA', 'RGBa'):
+            bg = Image.new('RGB', img.size, (255, 255, 255))
+            bg.paste(img, mask=img.split()[-1])
+            img = bg
+        elif img.mode == 'LA':
+            rgba = img.convert('RGBA')
+            bg = Image.new('RGB', rgba.size, (255, 255, 255))
+            bg.paste(rgba, mask=rgba.split()[-1])
+            img = bg
+        elif img.mode == 'P':
+            img = img.convert('RGBA')
+            bg = Image.new('RGB', img.size, (255, 255, 255))
+            if 'A' in img.getbands():
+                bg.paste(img, mask=img.split()[-1])
+            else:
+                bg.paste(img)
+            img = bg
+        elif img.mode == 'L':
+            img = img.convert('RGB')
+        elif img.mode != 'RGB':
+            img = img.convert('RGB')
+        return img.convert('CMYK')
+
+    def _convert_raster_to_print_tiff(self, raw, filename, store_name):
+        if Image is None:
+            raise UserError(_('伺服器未安裝 Pillow，無法處理 JPG／PNG。'))
+        notes = []
+        try:
+            img = Image.open(BytesIO(raw))
+            img.load()
+        except Exception as err:
+            raise UserError(_('無法開啟圖檔「%s」：%s') % (filename, err)) from err
+
+        width_px, height_px = img.size
+        if width_px <= 0 or height_px <= 0:
+            raise UserError(_('圖檔「%s」尺寸無效。') % filename)
+
+        dpi = self._read_raster_dpi(img)
+        bleed_w = bleed_h = None
+        if dpi:
+            bleed_w = self._format_layout_cm((width_px / dpi) * 2.54)
+            bleed_h = self._format_layout_cm((height_px / dpi) * 2.54)
+            notes.append(_('依檔案 DPI %.0f 換算尺寸') % dpi)
+        else:
+            fw, fh = self._line_fallback_size_cm()
+            if fw > 0 and fh > 0:
+                # 用訂單／出血尺寸反推 DPI（取寬向）
+                dpi = width_px / (fw / 2.54)
+                bleed_w = self._format_layout_cm(fw)
+                bleed_h = self._format_layout_cm(fh)
+                notes.append(_('檔案無 DPI，依產品／出血尺寸 %s×%s cm 反推') % (bleed_w, bleed_h))
+            else:
+                dpi = _LAYOUT_FALLBACK_DPI
+                bleed_w = self._format_layout_cm((width_px / dpi) * 2.54)
+                bleed_h = self._format_layout_cm((height_px / dpi) * 2.54)
+                notes.append(_(
+                    '檔案無 DPI 且無產品寬高，暫用 DPI %.0f 估算尺寸；請核對出血後寬高'
+                ) % dpi)
+
+        try:
+            cmyk = self._pil_image_to_cmyk(img)
+            buf = BytesIO()
+            cmyk.save(
+                buf,
+                format='TIFF',
+                compression='tiff_lzw',
+                dpi=(dpi, dpi),
+            )
+            tiff_bytes = buf.getvalue()
+        except Exception as err:
+            raise UserError(_('JPG／PNG 轉 TIFF 失敗：%s') % err) from err
+        finally:
+            try:
+                img.close()
+            except Exception:
+                pass
+
+        return {
+            'tiff_bytes': tiff_bytes,
+            'store_filename': store_name,
+            'converted': True,
+            'note': '；'.join(str(n) for n in notes),
+            'bleed_width': bleed_w,
+            'bleed_height': bleed_h,
+            'pass_count': 1,
+        }
+
+    def _convert_vector_to_print_tiff(self, raw, filename, store_name):
+        from odoo.addons.dtsc_print_nesting.utils import ai_to_tiff
+
+        info = ai_to_tiff.inspect_ai_bytes(raw)
+        if not info.pdf_compatible:
+            raise UserError(_(
+                '「%s」不是 PDF 相容檔，伺服器無法直接轉 TIFF。'
+                '請另存為 PDF，或在 Illustrator 勾選「建立 PDF 相容檔」後再上傳。\n%s'
+            ) % (filename, info.message or ''))
+        try:
+            tiff_bytes, meta = ai_to_tiff.convert_ai_to_tiff_bytes(raw)
+        except Exception as err:
+            _logger.exception('vector to tiff failed: %s', filename)
+            raise UserError(_('PDF／AI 轉 TIFF 失敗：%s') % err) from err
+
+        bleed_w = self._format_layout_cm(meta.get('width_cm') or 0) if meta.get('width_cm') else False
+        bleed_h = self._format_layout_cm(meta.get('height_cm') or 0) if meta.get('height_cm') else False
+        pass_count = max(int(info.page_count or 1), 1)
+        note = _('已由 PDF／AI 轉成 CMYK TIFF（DPI %.0f）') % (meta.get('dpi') or 0)
+        if pass_count > 1:
+            note = note + _(
+                '；檔案共 %s 頁（印刷池顯示第 1 面；多面打印時按遍數整合导出）'
+            ) % pass_count
+        return {
+            'tiff_bytes': tiff_bytes,
+            'store_filename': store_name,
+            'converted': True,
+            'note': note,
+            'bleed_width': bleed_w,
+            'bleed_height': bleed_h,
+            'pass_count': pass_count,
+        }
+
+    def _has_layout_source_pdf(self):
+        self.ensure_one()
+        if self.layout_source_pdf_filename:
+            return True
+        return bool(self.env['ir.attachment'].sudo().search([
+            ('res_model', '=', self._name),
+            ('res_id', '=', self.id),
+            ('res_field', '=', 'layout_source_pdf'),
+            ('file_size', '>', 0),
+        ], limit=1))
+
+    def _read_layout_source_pdf_raw(self):
+        self.ensure_one()
+        att = self.env['ir.attachment'].sudo().search([
+            ('res_model', '=', self._name),
+            ('res_id', '=', self.id),
+            ('res_field', '=', 'layout_source_pdf'),
+        ], limit=1)
+        if not att or not att.raw:
+            raise UserError(_('項次缺少多面源 PDF，無法做多面整合。'))
+        return att.raw
+
+    def _store_layout_source_pdf_raw(self, raw, filename):
+        self.ensure_one()
+        Attachment = self.env['ir.attachment'].with_context(image_no_postprocess=True)
+        old = Attachment.search([
+            ('res_model', '=', self._name),
+            ('res_id', '=', self.id),
+            ('res_field', '=', 'layout_source_pdf'),
+        ])
+        old.unlink()
+        ext = self._layout_source_ext(filename)
+        mimetype = 'application/pdf' if ext == '.pdf' else 'application/postscript'
+        Attachment.create({
+            'name': filename,
+            'res_model': self._name,
+            'res_id': self.id,
+            'res_field': 'layout_source_pdf',
+            'type': 'binary',
+            'raw': raw,
+            'mimetype': mimetype,
+        })
+        self.invalidate_recordset(['layout_source_pdf'])
+        models.Model.write(self, {
+            'layout_source_pdf_filename': filename,
+        })
+
+    def _clear_layout_source_pdf(self):
+        Attachment = self.env['ir.attachment']
+        for rec in self:
+            Attachment.search([
+                ('res_model', '=', rec._name),
+                ('res_id', '=', rec.id),
+                ('res_field', '=', 'layout_source_pdf'),
+            ]).unlink()
+            models.Model.write(rec, {
+                'layout_source_pdf_filename': False,
+                'layout_pass_count': 1,
+            })
+            rec.invalidate_recordset(['layout_source_pdf'])
 
     def clear_layout_tiff(self):
         """清除 TIFF 附件與預覽（不經 Binary onchange）。"""
@@ -534,6 +848,7 @@ class CheckOutLineLayout(models.Model):
                 'layout_tiff_colorspace': False,
             })
             rec.invalidate_recordset(['layout_tiff'])
+            rec._clear_layout_source_pdf()
         return True
 
     # ------------------------------------------------------------------
@@ -763,8 +1078,11 @@ class CheckOutLineLayout(models.Model):
 
     @api.model
     def _validate_layout_tiff_filename(self, filename):
+        """相容舊呼叫：現改為允許多格式來源（最終仍存印刷 TIFF）。"""
         if not filename:
             return
         ext = os.path.splitext(filename)[1].lower()
-        if ext not in ('.tif', '.tiff'):
-            raise UserError(_('自動排版僅允許上傳 TIFF 圖檔（.tif / .tiff），目前檔名：%s') % filename)
+        if ext not in _LAYOUT_SOURCE_EXTS:
+            raise UserError(_(
+                '自動排版僅允許上傳 TIFF／PDF／AI／JPG／PNG，目前檔名：%s'
+            ) % filename)

@@ -2984,7 +2984,39 @@ class CheckOutlineAfterMakePriceList(models.Model):
     def _compute_total_price(self):
         for record in self:
             record.total_price = record.price + record.price_base
-    
+
+
+    def _get_auto_qty(self):
+        self.ensure_one()
+        maketype = self.aftermakepricelist_id.name if self.aftermakepricelist_id else False
+        line = self.checkoutline_id
+        if not maketype or not line:
+            return False
+        return maketype.calculate_qty(line.product_width, line.product_height, line.quantity)
+
+    def _apply_auto_qty(self):
+        """依後加工预设算法覆寫數量；手動模式不處理。"""
+        for record in self:
+            auto_qty = record._get_auto_qty()
+            if auto_qty is not False:
+                record.qty = auto_qty
+
+    @api.onchange('aftermakepricelist_id')
+    def _onchange_aftermakepricelist_id(self):
+        for record in self:
+            auto_qty = record._get_auto_qty()
+            if auto_qty is not False:
+                record.qty = auto_qty
+            elif not record.qty:
+                record.qty = 1
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        records = super().create(vals_list)
+        records._apply_auto_qty()
+        return records
+  
+   
     def action_delete_record(self):
         """删除当前记录"""
         self.unlink()
@@ -3283,7 +3315,15 @@ class CheckOutLine(models.Model):
                 disallowed = set(vals.keys()) - allowed_fields - {'__last_update'}
                 if disallowed:
                     raise UserError("此訂單已出貨，僅允許修改價格相關欄位。")
-        return super().write(vals)
+        res = super().write(vals)
+        if any(k in vals for k in ('product_width', 'product_height', 'quantity')):
+            self.mapped('aftermakepricelist_lines')._apply_auto_qty()
+        return res
+
+    @api.onchange('product_width', 'product_height', 'quantity')
+    def _onchange_size_qty_aftermake(self):
+        for line in self:
+            line.aftermakepricelist_lines._apply_auto_qty()
         
     ####权限
     is_in_by_mg = fields.Boolean(compute='_compute_is_in_by_mg')

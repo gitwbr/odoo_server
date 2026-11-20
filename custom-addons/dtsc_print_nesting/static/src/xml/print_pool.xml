@@ -182,15 +182,24 @@
                                             <button type="button"
                                                     class="btn btn-primary btn-sm"
                                                     t-att-disabled="state.locking or state.packingStrip"
-                                                    t-on-click="() => this.lockStrip(strip)"
-                                                    title="只鎖定這一捲的截斷範圍並生成印刷單">
-                                                生成此捲印刷單
+                                                    t-on-click="() => this.lockStrip(strip, 'single')"
+                                                    title="單面打印：生成印刷單並合成排版 TIFF">
+                                                生成此捲（單面TIFF）
+                                            </button>
+                                            <button type="button"
+                                                    class="btn btn-outline-primary btn-sm"
+                                                    t-att-disabled="state.locking or state.packingStrip"
+                                                    t-on-click="() => this.lockStrip(strip, 'multi')"
+                                                    title="多面打印：同一位置多遍；导出按遍數整合 PDF（ABC1／ABC2／ABC3）">
+                                                生成此捲（多面PDF）
                                             </button>
                                             <label class="small mb-0">截斷至 (mm)</label>
                                             <input type="number" class="form-control form-control-sm"
-                                                   style="width:110px"
+                                                   style="width:90px"
+                                                   step="1"
+                                                   min="0"
                                                    t-att-value="state.cutoffs[strip.key]"
-                                                   t-att-max="strip.capacity_mm"
+                                                   t-att-max="Math.round(strip.capacity_mm || 0)"
                                                    t-on-input="(ev) => this.onCutoffInput(strip.key, ev)"/>
                                             <span class="small text-muted">
                                                 ≈ <t t-esc="mmToM(state.cutoffs[strip.key])"/> m
