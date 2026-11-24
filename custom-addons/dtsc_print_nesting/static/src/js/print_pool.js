@@ -1,20 +1,22 @@
 /** @odoo-module **/
 
-import { Component, onWillStart, useState } from "@odoo/owl";
+import { Component, onWillStart, useRef, useState } from "@odoo/owl";
 import { registry } from "@web/core/registry";
 import { useService } from "@web/core/utils/hooks";
+import { session } from "@web/session";
 
 export class PrintPoolAction extends Component {
     setup() {
         this.orm = useService("orm");
         this.action = useService("action");
         this.notification = useService("notification");
+        this.bufferFileInputRef = useRef("bufferFileInput");
         this.state = useState({
             loading: true,
             error: "",
             materials: [],
             materialFilter: "",
-            selectedId: null,
+            selectedId: null, // material id | "buffer"
             layout: null,
             cutoffs: {}, // stripKey -> cutoff_mm
             archiving: false,
@@ -33,11 +35,21 @@ export class PrintPoolAction extends Component {
             dragLabel: "",
             moveTargets: [],
             dragFromMaterialId: null,
+            dragFromBuffer: false,
+            // 緩衝池
+            bufferPieces: [],
+            bufferCount: 0,
+            bufferUploadingKey: "",
             // 區分點擊釘選 vs 拖動
             _pressMoved: false,
         });
         this._dragPayload = null;
+        this._bufferReplacePiece = null;
         onWillStart(() => this.reloadOverview(true));
+    }
+
+    get isBufferSelected() {
+        return this.state.selectedId === "buffer";
     }
 
     /**
@@ -50,16 +62,43 @@ export class PrintPoolAction extends Component {
             const method = optimize ? "optimize_and_refresh" : "get_pool_overview";
             const data = await this.orm.call("dtsc.print.pool", method, []);
             this.state.materials = data.materials || [];
+            this._applyBuffer(data);
             this.state.loading = false;
-            const stillThere = this.state.materials.some((m) => m.id === this.state.selectedId);
-            if (stillThere) {
-                await this.selectMaterial(this.state.selectedId);
-            } else if (this.state.materials.length) {
-                await this.selectMaterial(this.state.materials[0].id);
+            if (this.state.selectedId === "buffer") {
+                await this.selectBuffer();
             } else {
-                this.state.layout = null;
-                this.state.selectedId = null;
+                const stillThere = this.state.materials.some((m) => m.id === this.state.selectedId);
+                if (stillThere) {
+                    await this.selectMaterial(this.state.selectedId);
+                } else if (this.state.materials.length) {
+                    await this.selectMaterial(this.state.materials[0].id);
+                } else if (this.state.bufferCount) {
+                    await this.selectBuffer();
+                } else {
+                    this.state.layout = null;
+                    this.state.selectedId = null;
+                }
             }
+        } catch (e) {
+            this.state.loading = false;
+            this.state.error = e.message || String(e);
+        }
+    }
+
+    _applyBuffer(data) {
+        this.state.bufferPieces = data.buffer_pieces || [];
+        this.state.bufferCount = data.buffer_count || this.state.bufferPieces.length || 0;
+    }
+
+    async selectBuffer() {
+        this.state.selectedId = "buffer";
+        this.state.layout = null;
+        this.state.loading = true;
+        this.state.error = "";
+        try {
+            const data = await this.orm.call("dtsc.print.pool", "get_buffer_pieces", []);
+            this._applyBuffer(data);
+            this.state.loading = false;
         } catch (e) {
             this.state.loading = false;
             this.state.error = e.message || String(e);
@@ -643,18 +682,22 @@ export class PrintPoolAction extends Component {
             return;
         }
         this.state._pressMoved = true;
+        const fromBuffer = !!piece.from_buffer || this.state.selectedId === "buffer";
         const payload = {
             key: piece.key,
             makeinline_id: piece.makeinline_id,
             piece_idx: piece.piece_idx ?? piece.line_qty_index ?? 0,
             label: piece.label,
-            from_material_id: this.state.selectedId,
-            strip_key: strip.key,
-            lot_id: strip.lot_id || false,
+            from_material_id: fromBuffer
+                ? piece.from_material_id || false
+                : this.state.selectedId,
+            from_buffer: fromBuffer,
+            strip_key: strip ? strip.key : false,
+            lot_id: strip ? strip.lot_id || false : false,
             x: piece.x,
             y: piece.y,
-            w: piece.w,
-            h: piece.h,
+            w: piece.w || piece.bleed_w_mm,
+            h: piece.h || piece.bleed_h_mm,
             rotated: piece.rotated,
             pinned: !!piece.pinned,
         };
@@ -667,9 +710,14 @@ export class PrintPoolAction extends Component {
         }
         this.state.dragging = true;
         this.state.dragLabel = piece.label || "";
-        this.state.dragFromMaterialId = this.state.selectedId;
+        this.state.dragFromMaterialId = fromBuffer ? null : this.state.selectedId;
+        this.state.dragFromBuffer = fromBuffer;
         // 非同步載入可放門幅
         this._loadMoveTargets(payload);
+    }
+
+    onBufferPieceDragStart(piece, ev) {
+        this.onPieceDragStart(null, { ...piece, from_buffer: true }, ev);
     }
 
     async _loadMoveTargets(payload) {
@@ -677,7 +725,7 @@ export class PrintPoolAction extends Component {
             const res = await this.orm.call("dtsc.print.pool", "get_piece_move_targets", [
                 payload.makeinline_id,
                 payload.piece_idx,
-                payload.from_material_id,
+                payload.from_material_id || false,
             ]);
             if (!this.state.dragging) {
                 return;
@@ -697,6 +745,7 @@ export class PrintPoolAction extends Component {
         this.state.moveTargets = [];
         this.state.dragLabel = "";
         this.state.dragFromMaterialId = null;
+        this.state.dragFromBuffer = false;
         // 稍後清 payload，讓 click 能判斷是否剛拖過
         setTimeout(() => {
             this._dragPayload = null;
@@ -718,26 +767,172 @@ export class PrintPoolAction extends Component {
         const payload = this._dragPayload;
         this.state.dragging = false;
         this.state.moveTargets = [];
+        this.state.dragFromBuffer = false;
         if (!payload || !targetMat) {
             return;
         }
         try {
-            const res = await this.orm.call("dtsc.print.pool", "move_piece_to_material", [
+            const method = payload.from_buffer ? "restore_piece_from_buffer" : "move_piece_to_material";
+            const res = await this.orm.call("dtsc.print.pool", method, [
                 payload.makeinline_id,
                 payload.piece_idx,
                 targetMat.id,
             ]);
-            this.notification.add(`已移至 ${res.material_name}（未釘選；點重新整理會重算最優門幅）`, {
-                type: "success",
-            });
+            if (res.overview) {
+                this.state.materials = res.overview.materials || [];
+                this._applyBuffer(res.overview);
+            }
+            this.notification.add(
+                payload.from_buffer
+                    ? `已從緩衝池移回 ${res.material_name}`
+                    : `已移至 ${res.material_name}（未釘選；點重新整理會重算最優門幅）`,
+                { type: "success" }
+            );
             this._dragPayload = null;
-            // 拖放後不要走 optimize，否則剛指定的門幅會被清掉
             await this.reloadOverview(false);
             if (targetMat.id) {
                 await this.selectMaterial(targetMat.id);
             }
         } catch (e) {
             this.notification.add(e.message || String(e), { type: "danger" });
+        }
+    }
+
+    async onBufferDockDrop(ev) {
+        ev.preventDefault();
+        const payload = this._dragPayload;
+        this.state.dragging = false;
+        this.state.moveTargets = [];
+        if (!payload || payload.from_buffer) {
+            return;
+        }
+        try {
+            const res = await this.orm.call("dtsc.print.pool", "move_piece_to_buffer", [
+                payload.makeinline_id,
+                payload.piece_idx,
+                payload.from_material_id || false,
+            ]);
+            if (res.overview) {
+                this.state.materials = res.overview.materials || [];
+                this._applyBuffer(res.overview);
+            } else {
+                this._applyBuffer(res);
+            }
+            this.notification.add("已移入緩衝池（暫不排版、不可轉印刷單）", { type: "success" });
+            this._dragPayload = null;
+            await this.reloadOverview(false);
+            await this.selectBuffer();
+        } catch (e) {
+            this.notification.add(e.message || String(e), { type: "danger" });
+        }
+    }
+
+    async restoreBufferPiece(piece, matId) {
+        if (!piece) {
+            return;
+        }
+        try {
+            const res = await this.orm.call("dtsc.print.pool", "restore_piece_from_buffer", [
+                piece.makeinline_id,
+                piece.piece_idx,
+                matId || piece.from_material_id || false,
+            ]);
+            this.notification.add(`已移回 ${res.material_name}`, { type: "success" });
+            await this.reloadOverview(false);
+            if (res.material_id) {
+                await this.selectMaterial(res.material_id);
+            }
+        } catch (e) {
+            this.notification.add(e.message || String(e), { type: "danger" });
+        }
+    }
+
+    onBufferReplaceClick(piece, ev) {
+        if (ev) {
+            ev.preventDefault();
+            ev.stopPropagation();
+        }
+        if (!piece || !piece.checkout_line_id || this.state.bufferUploadingKey) {
+            if (piece && !piece.checkout_line_id) {
+                this.notification.add("此項次沒有對應大圖訂單行，無法更換圖片。", { type: "warning" });
+            }
+            return;
+        }
+        this._bufferReplacePiece = piece;
+        const input = this.bufferFileInputRef.el;
+        if (input) {
+            input.value = "";
+            input.click();
+        }
+    }
+
+    _postBufferUpload(url, formData) {
+        return new Promise((resolve, reject) => {
+            const xhr = new XMLHttpRequest();
+            xhr.open("POST", url);
+            xhr.responseType = "text";
+            xhr.onload = () => {
+                if (xhr.status >= 200 && xhr.status < 300) {
+                    resolve(xhr.responseText);
+                } else {
+                    reject(new Error(`上傳失敗（HTTP ${xhr.status}）`));
+                }
+            };
+            xhr.onerror = () => reject(new Error("網路上傳失敗"));
+            xhr.onabort = () => reject(new Error("上傳已取消"));
+            xhr.send(formData);
+        });
+    }
+
+    async onBufferFileChange(ev) {
+        const file = ev.target.files && ev.target.files[0];
+        ev.target.value = "";
+        const piece = this._bufferReplacePiece;
+        this._bufferReplacePiece = null;
+        if (!file || !piece || !piece.checkout_line_id) {
+            return;
+        }
+        const lower = (file.name || "").toLowerCase();
+        const allowed = [".tif", ".tiff", ".jpg", ".jpeg", ".png", ".pdf", ".ai"];
+        if (!allowed.some((ext) => lower.endsWith(ext))) {
+            this.notification.add("僅允許上傳 TIFF／PDF／AI／JPG／PNG", { type: "danger" });
+            return;
+        }
+        const maxSize = Math.max(session.max_file_upload_size || 0, 512 * 1024 * 1024);
+        if (file.size > maxSize) {
+            this.notification.add("檔案超過上傳大小上限。", { type: "danger" });
+            return;
+        }
+        this.state.bufferUploadingKey = piece.key;
+        try {
+            const formData = new FormData();
+            formData.append("csrf_token", odoo.csrf_token);
+            formData.append("line_id", String(piece.checkout_line_id));
+            formData.append("ufile", file, file.name);
+            const raw = await this._postBufferUpload(
+                "/dtsc_print_nesting/layout_tiff/upload",
+                formData
+            );
+            const result = JSON.parse(raw);
+            if (result.error) {
+                this.notification.add(result.error, { type: "danger" });
+                return;
+            }
+            const note = result.convert_note ? `（${result.convert_note}）` : "";
+            if (result.has_preview === false) {
+                this.notification.add(
+                    "圖檔已替換大圖訂單，但預覽產生失敗，請回大圖訂單檢查。" + note,
+                    { type: "warning" }
+                );
+            } else {
+                this.notification.add("已更換圖片並更新預覽" + note, { type: "success" });
+            }
+            // 重新讀緩衝池（預覽 URL / 出血尺寸會變）
+            await this.selectBuffer();
+        } catch (err) {
+            this.notification.add((err && err.message) || "上傳失敗", { type: "danger" });
+        } finally {
+            this.state.bufferUploadingKey = "";
         }
     }
 

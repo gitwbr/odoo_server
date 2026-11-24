@@ -55,6 +55,12 @@ class PrintPoolPin(models.Model):
         default=False,
         help='使用者手動旋轉／翻轉後為 True；即使角度為 0° 也禁止排版引擎再自動轉回去。',
     )
+    in_buffer = fields.Boolean(
+        string='在緩衝池',
+        default=False,
+        index=True,
+        help='臨時移出排版、不改工單；緩衝池圖塊不參與排版、不可轉印刷單。',
+    )
 
     _sql_constraints = [
         (

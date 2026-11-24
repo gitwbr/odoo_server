@@ -5,24 +5,36 @@
             <div class="o_print_pool_header d-flex align-items-center justify-content-between px-3 py-2 border-bottom bg-view">
                 <div>
                     <strong>印刷池</strong>
-                    <span class="text-muted ms-2">釘選保留位置 · 重新整理重算最優排版 · 拖動可暫改門幅</span>
+                    <span class="text-muted ms-2">釘選 · 緩衝池暫存換圖 · 拖動改門幅 · 重新整理重算</span>
                 </div>
                 <div>
                     <button class="btn btn-secondary btn-sm"
-                            title="清除未釘選的手動門幅，按最合理方式重算分配與排版（已釘選不動）"
+                            title="清除未釘選的手動門幅，按最合理方式重算分配與排版（已釘選／緩衝池不動）"
                             t-on-click="() => this.reloadOverview(true)"
                             t-att-disabled="state.loading">重新整理</button>
                 </div>
             </div>
 
             <div t-if="state.error" class="alert alert-danger m-2" t-esc="state.error"/>
+            <input type="file"
+                   class="d-none"
+                   t-ref="bufferFileInput"
+                   accept=".pdf,.ai,.jpg,.jpeg,.png,.tif,.tiff,application/pdf,image/jpeg,image/png,image/tiff"
+                   t-on-change="onBufferFileChange"/>
 
-            <!-- 拖動時頂部門幅停靠區 -->
+            <!-- 拖動時頂部停靠區：緩衝池 + 其他門幅 -->
             <div t-if="state.dragging" class="o_print_pool_dock px-3 py-2 border-bottom">
                 <div class="d-flex align-items-center flex-wrap gap-2">
                     <span class="fw-bold me-1">
-                        拖放「<t t-esc="state.dragLabel"/>」到其他門幅：
+                        拖放「<t t-esc="state.dragLabel"/>」：
                     </span>
+                    <div t-if="!state.dragFromBuffer"
+                         class="o_print_pool_dock_item o_print_pool_dock_buffer"
+                         t-on-dragover="onDockDragOver"
+                         t-on-drop="onBufferDockDrop">
+                        <div class="fw-semibold">緩衝池</div>
+                        <div class="small text-muted">暫存換圖 · 不轉印刷單</div>
+                    </div>
                     <t t-if="!state.moveTargets.length">
                         <span class="text-muted small">沒有其他可放門幅（或正在載入…）</span>
                     </t>
@@ -42,22 +54,46 @@
             </div>
 
             <div class="o_print_pool_body d-flex flex-grow-1 overflow-hidden">
-                <!-- 左：材料 -->
-                <div class="o_print_pool_left border-end overflow-auto">
-                    <div class="o_print_pool_mat_search p-2 border-bottom sticky-top bg-view">
-                        <input type="search"
-                               class="form-control form-control-sm"
-                               placeholder="搜尋編號／名稱，如 PVC51in"
-                               t-att-value="state.materialFilter"
-                               t-on-input="onMaterialFilterInput"/>
-                        <div class="d-flex justify-content-between align-items-center mt-1">
-                            <span class="text-muted small">全部捲材類目</span>
-                            <button t-if="state.materialFilter"
-                                    type="button"
-                                    class="btn btn-link btn-sm p-0"
-                                    t-on-click="clearMaterialFilter">清除</button>
+                <!-- 左：緩衝池置頂 + 材料 -->
+                <div class="o_print_pool_left border-end d-flex flex-column">
+                    <div class="o_print_pool_left_top flex-shrink-0">
+                        <div t-att-class="'o_print_pool_buffer_nav p-2 border-bottom ' + (isBufferSelected ? 'active' : '')"
+                             t-on-click="() => this.selectBuffer()"
+                             t-on-dragover="onDockDragOver"
+                             t-on-drop="onBufferDockDrop"
+                             title="暫存要換下的圖；不參與排版、不可轉印刷單">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div class="fw-bold">緩衝池</div>
+                                <span class="badge text-bg-secondary" t-esc="state.bufferCount"/>
+                            </div>
+                            <div class="small text-muted">拖圖進來暫存 · 點此查看</div>
+                            <div t-if="state.bufferPieces.length" class="o_print_pool_buffer_mini mt-1 d-flex flex-wrap gap-1">
+                                <t t-foreach="state.bufferPieces.slice(0, 6)" t-as="bp" t-key="bp.key">
+                                    <div class="o_print_pool_buffer_mini_item"
+                                         t-att-title="bp.label">
+                                        <img t-if="bp.preview_url" t-att-src="bp.preview_url" alt=""/>
+                                        <span t-else="" class="o_print_pool_buffer_mini_ph" t-esc="(bp.label || '').slice(-4)"/>
+                                    </div>
+                                </t>
+                                <span t-if="state.bufferCount > 6" class="small text-muted align-self-center">+<t t-esc="state.bufferCount - 6"/></span>
+                            </div>
+                        </div>
+                        <div class="o_print_pool_mat_search p-2 border-bottom bg-view">
+                            <input type="search"
+                                   class="form-control form-control-sm"
+                                   placeholder="搜尋編號／名稱，如 PVC51in"
+                                   t-att-value="state.materialFilter"
+                                   t-on-input="onMaterialFilterInput"/>
+                            <div class="d-flex justify-content-between align-items-center mt-1">
+                                <span class="text-muted small">全部捲材類目</span>
+                                <button t-if="state.materialFilter"
+                                        type="button"
+                                        class="btn btn-link btn-sm p-0"
+                                        t-on-click="clearMaterialFilter">清除</button>
+                            </div>
                         </div>
                     </div>
+                    <div class="o_print_pool_left_list flex-grow-1 overflow-auto">
                     <t t-if="!state.materials.length">
                         <div class="p-3 text-muted">尚無捲材類目。請先在產品主檔設定捲材門幅（寬度 cm）。</div>
                     </t>
@@ -91,12 +127,65 @@
                             </div>
                         </div>
                     </t>
+                    </div>
                 </div>
 
-                <!-- 右：長條 -->
+                <!-- 右：緩衝池內容 / 長條 -->
                 <div class="o_print_pool_right flex-grow-1 overflow-auto p-3">
                     <t t-if="state.loading">
                         <div class="text-muted">載入中…</div>
+                    </t>
+                    <t t-elif="isBufferSelected">
+                        <div class="mb-2">
+                            <strong>緩衝池</strong>
+                            <span class="text-muted ms-2">共 <t t-esc="state.bufferCount"/> 塊 · 僅暫存顯示，不轉印刷單</span>
+                        </div>
+                        <div t-if="!state.bufferPieces.length" class="text-muted">
+                            緩衝池是空的。從右側捲料把圖拖到上方／左側「緩衝池」即可暫存。
+                        </div>
+                        <div t-else="" class="o_print_pool_buffer_grid">
+                            <t t-foreach="state.bufferPieces" t-as="bp" t-key="bp.key">
+                                <div class="o_print_pool_buffer_card"
+                                     draggable="true"
+                                     t-on-dragstart="(ev) => this.onBufferPieceDragStart(bp, ev)"
+                                     t-on-dragend="onPieceDragEnd"
+                                     t-att-title="bp.label">
+                                    <div class="o_print_pool_buffer_thumb">
+                                        <img t-if="bp.preview_url" t-att-src="bp.preview_url" alt=""/>
+                                        <div t-else="" class="o_print_pool_buffer_thumb_ph">無預覽</div>
+                                    </div>
+                                    <div class="o_print_pool_buffer_meta">
+                                        <div class="fw-semibold" t-esc="bp.label"/>
+                                        <div class="small text-muted">
+                                            <t t-if="bp.from_material_name">來自 <t t-esc="bp.from_material_name"/></t>
+                                            <t t-else="">來源門幅未記</t>
+                                        </div>
+                                        <div class="small text-muted">
+                                            <t t-esc="(bp.bleed_w_mm || 0).toFixed ? (bp.bleed_w_mm || 0).toFixed(0) : bp.bleed_w_mm"/>
+                                            ×
+                                            <t t-esc="(bp.bleed_h_mm || 0).toFixed ? (bp.bleed_h_mm || 0).toFixed(0) : bp.bleed_h_mm"/>
+                                            mm
+                                        </div>
+                                        <div class="d-flex flex-wrap gap-1 mt-1">
+                                            <button type="button"
+                                                    class="btn btn-sm btn-outline-primary"
+                                                    t-on-click="() => this.restoreBufferPiece(bp)"
+                                                    t-att-disabled="!bp.from_material_id or state.bufferUploadingKey">
+                                                移回原門幅
+                                            </button>
+                                            <button type="button"
+                                                    class="btn btn-sm btn-primary"
+                                                    title="重新上傳並替換大圖訂單印刷圖檔／預覽"
+                                                    t-on-click="(ev) => this.onBufferReplaceClick(bp, ev)"
+                                                    t-att-disabled="!bp.checkout_line_id or state.bufferUploadingKey">
+                                                <t t-if="state.bufferUploadingKey === bp.key">上傳中…</t>
+                                                <t t-else="">更換圖片</t>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </t>
+                        </div>
                     </t>
                     <t t-elif="state.layout">
                         <div class="mb-2 d-flex align-items-center flex-wrap gap-2">

@@ -151,6 +151,7 @@ class PrintPool(models.AbstractModel):
             ('pinned', '=', False),
             ('flip_h', '=', False),
             ('orient_locked', '=', False),
+            ('in_buffer', '=', False),
             ('rotation', 'in', [0, False]),
         ])
         if pins:
@@ -180,6 +181,7 @@ class PrintPool(models.AbstractModel):
                 continue
             by_mat[mat_id].append(ml_id)
             pcs_by_mat[mat_id] += 1
+        buffer_pieces = self._get_buffer_pieces_data()
 
         # 有待排／有庫存捲／有印刷歷史的類目都要出現；再加上有門幅的捲材主檔
         mat_ids = set(by_mat.keys())
@@ -224,7 +226,11 @@ class PrintPool(models.AbstractModel):
             0 if m['has_leftover'] else 1,
             m['name'] or '',
         ))
-        return {'materials': materials}
+        return {
+            'materials': materials,
+            'buffer_pieces': buffer_pieces,
+            'buffer_count': len(buffer_pieces),
+        }
 
     @api.model
     def get_material_layout(self, material_id):
@@ -641,6 +647,7 @@ class PrintPool(models.AbstractModel):
             'makeinline_id': ml.id,
             'piece_idx': int(piece_idx or 0),
             'label': '%s-%s' % (ml.make_order_id.name or '', ml.sequence or ''),
+            'can_buffer': True,
         }
 
     @api.model
@@ -669,6 +676,7 @@ class PrintPool(models.AbstractModel):
             'makeinline_id': ml.id,
             'piece_idx': idx,
             'material_id': mat.id,
+            'in_buffer': False,
             'pinned': False,
             'strip_key': False,
             'lot_id': False,
@@ -679,6 +687,9 @@ class PrintPool(models.AbstractModel):
             'rotated': False,
         }
         if pin:
+            # 保留已鎖定的朝向
+            if pin.orient_locked or pin.flip_h or pin.rotation:
+                vals.pop('rotated', None)
             pin.write(vals)
         else:
             Pin.create(vals)
@@ -1122,20 +1133,169 @@ class PrintPool(models.AbstractModel):
     # Pin / piece helpers
     # ------------------------------------------------------------------
     def _pin_map_for_material(self, mat):
-        pins = self.env['dtsc.print.pool.pin'].search([('material_id', '=', mat.id)])
+        pins = self.env['dtsc.print.pool.pin'].search([
+            ('material_id', '=', mat.id),
+            ('in_buffer', '=', False),
+        ])
         return {(p.makeinline_id.id, p.piece_idx): p for p in pins}
 
     def _piece_material_for_line(self, ml):
-        """回傳 {piece_idx: material_id}（含 pin 覆蓋）。"""
+        """回傳 {piece_idx: material_id}（含 pin 覆蓋）。
+
+        緩衝池圖塊回傳 False，不歸屬任何門幅、不進排版／轉單。
+        """
         remain = max(int(ml.quantity or 0) - int(ml.print_placed_qty or 0), 0)
         default = ml.print_material_id.id if ml.print_material_id else False
         pins = {
-            p.piece_idx: p.material_id.id
+            p.piece_idx: p
             for p in self.env['dtsc.print.pool.pin'].search([
                 ('makeinline_id', '=', ml.id),
             ])
         }
-        return {i: pins.get(i, default) for i in range(remain)}
+        result = {}
+        for i in range(remain):
+            pin = pins.get(i)
+            if pin and pin.in_buffer:
+                result[i] = False
+            elif pin and pin.material_id:
+                result[i] = pin.material_id.id
+            else:
+                result[i] = default
+        return result
+
+    def _get_buffer_pieces_data(self):
+        """緩衝池圖塊列表（含預覽）。"""
+        Pin = self.env['dtsc.print.pool.pin']
+        pins = Pin.search([('in_buffer', '=', True)], order='id desc')
+        out = []
+        for pin in pins:
+            ml = pin.makeinline_id
+            if not ml or not ml.exists():
+                continue
+            # 已不在待排範圍則清掉緩衝標記
+            remain = max(int(ml.quantity or 0) - int(ml.print_placed_qty or 0), 0)
+            if pin.piece_idx >= remain or ml.print_state not in ('none', 'partial'):
+                pin.in_buffer = False
+                continue
+            if ml.make_order_id and ml.make_order_id.install_state in ('stock_in', 'cancel'):
+                pin.in_buffer = False
+                continue
+            w, h = ml._parse_size_cm()
+            rot = self._normalize_rotation(pin.rotation, pin.rotated)
+            cl = ml.checkout_line_id
+            out.append({
+                'key': 'buf:%s:%s' % (ml.id, pin.piece_idx),
+                'makeinline_id': ml.id,
+                'piece_idx': pin.piece_idx,
+                'checkout_line_id': cl.id if cl else False,
+                'label': '%s-%s' % (ml.make_order_id.name or '', ml.sequence or ''),
+                'preview_url': self._makeinline_preview_url(ml),
+                'bleed_w_mm': w,
+                'bleed_h_mm': h,
+                'rotation': rot,
+                'rotated': rot in (90, 270),
+                'flip_h': bool(pin.flip_h),
+                'from_material_id': pin.material_id.id if pin.material_id else False,
+                'from_material_name': pin.material_id.display_name if pin.material_id else '',
+            })
+        return out
+
+    @api.model
+    def get_buffer_pieces(self):
+        data = self._get_buffer_pieces_data()
+        return {'buffer_pieces': data, 'buffer_count': len(data)}
+
+    @api.model
+    def move_piece_to_buffer(self, makeinline_id, piece_idx, material_id=None):
+        """把圖塊移入緩衝池：暫離排版，工單不變，不可轉印刷單。"""
+        ml = self.env['dtsc.makeinline'].browse(int(makeinline_id))
+        if not ml:
+            raise UserError(_('項次不存在。'))
+        idx = int(piece_idx or 0)
+        remain = max(int(ml.quantity or 0) - int(ml.print_placed_qty or 0), 0)
+        if idx < 0 or idx >= remain:
+            raise UserError(_('此圖塊已不在待排範圍。'))
+        mat_id = int(material_id or 0) or (ml.print_material_id.id if ml.print_material_id else 0)
+        if not mat_id:
+            raise UserError(_('無法判定圖塊原屬門幅。'))
+        Pin = self.env['dtsc.print.pool.pin']
+        pin = Pin.search([
+            ('makeinline_id', '=', ml.id),
+            ('piece_idx', '=', idx),
+        ], limit=1)
+        vals = {
+            'makeinline_id': ml.id,
+            'piece_idx': idx,
+            'material_id': mat_id,
+            'in_buffer': True,
+            'pinned': False,
+            'strip_key': False,
+            'lot_id': False,
+            'x_mm': 0.0,
+            'y_mm': 0.0,
+            'width_mm': 0.0,
+            'height_mm': 0.0,
+        }
+        if pin:
+            # 保留朝向／翻轉；門幅記為來源方便移回
+            if not pin.material_id:
+                vals['material_id'] = mat_id
+            else:
+                vals.pop('material_id', None)
+            pin.write(vals)
+        else:
+            Pin.create(vals)
+        return {
+            'ok': True,
+            'buffer_pieces': self._get_buffer_pieces_data(),
+            'overview': self.get_pool_overview(),
+        }
+
+    @api.model
+    def restore_piece_from_buffer(self, makeinline_id, piece_idx, material_id=None):
+        """從緩衝池移回指定門幅（或原門幅）重新參與排版。"""
+        ml = self.env['dtsc.makeinline'].browse(int(makeinline_id))
+        if not ml:
+            raise UserError(_('項次不存在。'))
+        idx = int(piece_idx or 0)
+        Pin = self.env['dtsc.print.pool.pin']
+        pin = Pin.search([
+            ('makeinline_id', '=', ml.id),
+            ('piece_idx', '=', idx),
+            ('in_buffer', '=', True),
+        ], limit=1)
+        if not pin:
+            raise UserError(_('此圖塊不在緩衝池。'))
+        mat_id = int(material_id or 0) or (pin.material_id.id if pin.material_id else 0) or (
+            ml.print_material_id.id if ml.print_material_id else 0
+        )
+        if not mat_id:
+            raise UserError(_('請指定要移回的門幅。'))
+        mat = self.env['product.template'].browse(mat_id)
+        candidates = ml.print_material_candidate_ids or ml._resolve_roll_materials()
+        if mat not in candidates:
+            raise UserError(_('「%s」不在此項次可選捲材內。') % mat.display_name)
+        w_mm, h_mm = ml._parse_size_cm()
+        if not ml._piece_fits_roll_width(w_mm, h_mm, ml._roll_width_mm_of(mat)):
+            raise UserError(_('圖塊尺寸放不進「%s」門幅。') % mat.display_name)
+        pin.write({
+            'in_buffer': False,
+            'material_id': mat.id,
+            'pinned': False,
+            'strip_key': False,
+            'lot_id': False,
+            'x_mm': 0.0,
+            'y_mm': 0.0,
+            'width_mm': 0.0,
+            'height_mm': 0.0,
+        })
+        return {
+            'ok': True,
+            'material_id': mat.id,
+            'material_name': mat.display_name,
+            'buffer_pieces': self._get_buffer_pieces_data(),
+            'overview': self.get_pool_overview(),
+        }
 
     def _pending_piece_material_map(self):
         """所有待排圖塊 → 所屬門幅。"""
