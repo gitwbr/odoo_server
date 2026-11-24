@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_dtsc_cash_bank_tree" model="ir.ui.view">
+        <field name="name">dtsc.cash.bank.tree</field>
+        <field name="model">dtsc.cash.bank</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="account_number"/>
+                <field name="opening_balance" sum="期初合計"/>
+                <field name="balance" sum="餘額合計"/>
+                <field name="note"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_dtsc_cash_bank_form" model="ir.ui.view">
+        <field name="name">dtsc.cash.bank.form</field>
+        <field name="model">dtsc.cash.bank</field>
+        <field name="arch" type="xml">
+            <form string="銀行帳戶">
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_view_transactions" type="object"
+                                class="oe_stat_button" icon="fa-list">
+                            <field name="transaction_count" widget="statinfo" string="流水"/>
+                        </button>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="name"/>
+                            <field name="account_number"/>
+                            <field name="sequence"/>
+                            <field name="active"/>
+                        </group>
+                        <group>
+                            <field name="opening_balance"/>
+                            <field name="balance" readonly="1"/>
+                        </group>
+                    </group>
+                    <group>
+                        <field name="note" placeholder="備註"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_dtsc_cash_bank" model="ir.actions.act_window">
+        <field name="name">銀行帳戶</field>
+        <field name="res_model">dtsc.cash.bank</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+</odoo>

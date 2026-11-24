@@ -233,7 +233,7 @@ class PettyManager(models.Model):
         row += 1
         for doc in records:
             for order in doc.pettycash_ids:
-                sheet.write(row, 0, order.date_c.strftime('%Y-%m-%d'), merge_format)
+                sheet.write(row, 0, order.date_c.strftime('%Y-%m-%d') if order.date_c else "", merge_format)
                 sheet.write(row, 1, order.project if order.project else "", merge_format)
                 sheet.write(row, 2, str(order.in_cash) if order.in_cash else "", merge_format)
                 sheet.write(row, 3, str(order.out_cash) if order.out_cash else "", merge_format)

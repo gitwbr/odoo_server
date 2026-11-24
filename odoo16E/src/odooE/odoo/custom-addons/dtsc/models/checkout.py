@@ -1467,6 +1467,7 @@ class Checkout(models.Model):
             target_record.lock_price = True
         target_record.hebing_type = "1"
         name_list = []
+
         for record in other_records:
             record.hebing_type = "2"
             record.hebing_comment = "合併至:" + target_record.name
@@ -1482,7 +1483,21 @@ class Checkout(models.Model):
                 
         if name_list:
             original_comment = target_record.hebing_comment or ""
-            target_record.hebing_comment = original_comment + '-'.join(name_list)            
+            target_record.hebing_comment = original_comment + '-'.join(name_list)
+
+        # 廠區備註合併到主單：每段前標示原單號，備註相同的單號合併在同一段
+        factory_parts = {}
+        for src in [target_record] + list(other_records):
+            text = (src.comment_factory or '').strip()
+            if text:
+                factory_parts.setdefault(text, []).append(src.name)
+
+        if factory_parts:
+            # 寫入合併後的廠區備註（inverse 為空，會直接存到主單）
+            target_record.comment_factory = '\n'.join(
+                ' / '.join(names) + '\n' + text for text, names in factory_parts.items()
+            )
+
         return {
             'type': 'ir.actions.client',
             'tag': 'display_notification',
@@ -1519,7 +1534,8 @@ class Checkout(models.Model):
                             only_expensed = False  
                         make_in_flag = 1
                     elif line.is_purchse == "make_out":
-                        make_out_flag = 1
+                        if line.product_id.can_be_expensed != True:
+                            make_out_flag = 1
                 
                 if make_in_flag == 1:
                     if only_expensed == False:#含有非服务项次才会检查工单
@@ -1595,7 +1611,8 @@ class Checkout(models.Model):
                     only_expensed = False  
                 make_in_flag = 1
             elif line.is_purchse == "make_out":
-                make_out_flag = 1
+                if line.product_id.can_be_expensed != True:
+                    make_out_flag = 1
         
         if make_in_flag == 1:
             if only_expensed == False:#含有非服务项次才会检查工单
@@ -2326,7 +2343,8 @@ class Checkout(models.Model):
                         only_expensed = False 
                     make_in_flag = 1
                 elif record.is_purchse == "make_out":
-                    make_out_flag = 1
+                    if record.product_id.can_be_expensed != True:
+                        make_out_flag = 1
             
             if make_in_flag == 1:
                 if only_expensed == False:#含有非服务项次才会检查工单
@@ -2937,6 +2955,36 @@ class CheckOutlineAfterMakePriceList(models.Model):
     def _compute_total_price(self):
         for record in self:
             record.total_price = record.price + record.price_base
+
+    def _get_auto_qty(self):
+        self.ensure_one()
+        maketype = self.aftermakepricelist_id.name if self.aftermakepricelist_id else False
+        line = self.checkoutline_id
+        if not maketype or not line:
+            return False
+        return maketype.calculate_qty(line.product_width, line.product_height, line.quantity)
+
+    def _apply_auto_qty(self):
+        """依後加工预设算法覆寫數量；手動模式不處理。"""
+        for record in self:
+            auto_qty = record._get_auto_qty()
+            if auto_qty is not False:
+                record.qty = auto_qty
+
+    @api.onchange('aftermakepricelist_id')
+    def _onchange_aftermakepricelist_id(self):
+        for record in self:
+            auto_qty = record._get_auto_qty()
+            if auto_qty is not False:
+                record.qty = auto_qty
+            elif not record.qty:
+                record.qty = 1
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        records = super().create(vals_list)
+        records._apply_auto_qty()
+        return records
     
     def action_delete_record(self):
         """删除当前记录"""
@@ -3247,7 +3295,15 @@ class CheckOutLine(models.Model):
                         "此訂單已出貨，僅允許修改價格相關欄位。不允許修改：%s"
                         % ', '.join(sorted(disallowed))
                     )
-        return super().write(vals)
+        res = super().write(vals)
+        if any(k in vals for k in ('product_width', 'product_height', 'quantity')):
+            self.mapped('aftermakepricelist_lines')._apply_auto_qty()
+        return res
+
+    @api.onchange('product_width', 'product_height', 'quantity')
+    def _onchange_size_qty_aftermake(self):
+        for line in self:
+            line.aftermakepricelist_lines._apply_auto_qty()
         
     ####权限
     is_in_by_mg = fields.Boolean(compute='_compute_is_in_by_mg')
@@ -3852,14 +3908,25 @@ class AccountMove(models.Model):
             record.report_month = month_record.id if month_record else False
     
     
-    @api.depends("partner_id",'partner_id.name','partner_id.sell_user.name')
+    @api.depends(
+        'is_online',
+        'partner_id',
+        'partner_id.name',
+        'partner_id.custom_id',
+        'partner_id.sell_user',
+        'partner_id.sell_user.name',
+    )
     def _compute_partner_display_name(self):
         for record in self:
-            if record.is_online == True:
-                store_string = "商城訂單"
-                record.partner_display_name = f"{store_string}, {record.partner_id.name}"
+            if record.is_online:
+                record.partner_display_name = f"商城訂單, {record.partner_id.name or ''}"
             elif record.partner_id:
-                record.partner_display_name = f"{record.partner_id.custom_id}, {record.partner_id.name}, {record.partner_id.sell_user.name}"
+                custom_id = record.partner_id.custom_id or ''
+                name = record.partner_id.name or ''
+                sell_user = record.partner_id.sell_user.name or ''
+                record.partner_display_name = f"{custom_id}, {name}, {sell_user}"
+            else:
+                record.partner_display_name = False
 
     @api.model
     def create(self, vals):

@@ -103,6 +103,7 @@ addons_backup/
 backup/
 
 /odoo16E/backups/
+/odoo16E/odooE_db.dump
 /.codex
 .codex-home/
 .codex-wrapper/

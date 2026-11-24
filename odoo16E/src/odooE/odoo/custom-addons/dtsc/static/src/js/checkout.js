@@ -22,6 +22,34 @@ odoo.define('dtsc.checkout', function (require) {
             return null;
         }
     }
+
+    function calcAftermakeQty(mode, width, height, productQty) {
+        var w = parseFloat(width) || 0;
+        var h = parseFloat(height) || 0;
+        var pq = parseFloat(productQty) || 1;
+        if (!mode || mode === 'manual') return null;
+        if (!(w > 0 && h > 0)) return null;
+        if (mode === 'corner4') return 4 * pq;
+        var spacingMap = { edge_30: 30, edge_45: 45, edge_60: 60 };
+        var spacing = spacingMap[mode];
+        if (spacing) {
+            return (Math.floor(w / spacing) * 2 + Math.floor(h / spacing) * 2) * pq;
+        }
+        return null;
+    }
+
+    function updateAftermakeQuantities($table) {
+        var width = $table.find('#param1').val();
+        var height = $table.find('#param2').val();
+        var productQty = $table.find('#quantity').val() || 1;
+        $table.find("input[name^='quantity_'][data-qty-calc-mode]").each(function () {
+            var mode = $(this).attr('data-qty-calc-mode');
+            var autoQty = calcAftermakeQty(mode, width, height, productQty);
+            if (autoQty !== null) {
+                $(this).val(autoQty);
+            }
+        });
+    }
 	
 	async function rpcQuery2(model, method, domain, data) {
 		try {
@@ -414,14 +442,14 @@ odoo.define('dtsc.checkout', function (require) {
 		
 		bindParamInputEvents: function() { 
 			var self = this;
-			   $(document).on('input', '.size_class', function() {
+			   $(document).on('input', '.size_class, .quantity_class', function() {
 				var $table = $(this).closest('table');
             
 				// 检查table中的param1和param2输入框是否都有值
 				var param1Value = $table.find('input[id="param1"]').val();
 				var param2Value = $table.find('input[id="param2"]').val();
 
-				if (param1Value && param2Value) {
+				if (param1Value && param2Value && $(this).hasClass('size_class')) {
 					// 如果两个输入框都有值，则更改当前table中id为total_units的input的值
 					//$table.find('input[id="total_units"]').val("111");
 					var param1 = Number(param1Value);
@@ -445,6 +473,7 @@ odoo.define('dtsc.checkout', function (require) {
 					$table.find('input[id="total_units"]').val(result);
 					$table.find('input[id="quantity"]').val(1);
 				}
+				updateAftermakeQuantities($table);
 			});
 		},
 		createBannerTable:function(selectedCustomer,categories){
@@ -929,8 +958,7 @@ odoo.define('dtsc.checkout', function (require) {
 								'product.maketype.rel', 
 								'search_read', 
 								[['product_id', '=', parseInt(selectedProductId)]], 
-								['make_type_id', 'sequence'], 
-								{ order: 'sequence ASC, id ASC' } // 添加排序条件
+								['make_type_id', 'sequence']
 							);
 							debugLog("productMakeTypeRelResults:", productMakeTypeRelResults);
 							if (!productMakeTypeRelResults) {
@@ -938,11 +966,18 @@ odoo.define('dtsc.checkout', function (require) {
 							}
 							if (productMakeTypeRelResults && productMakeTypeRelResults.length > 0) {
 								productMakeTypeRelResults.sort((a, b) => (a.sequence || 0) - (b.sequence || 0));
+								var $postTable = $(this).closest('table');
+								var makeTypeIds = productMakeTypeRelResults.map(function (p) { return p.make_type_id[0]; });
+								var makeTypeModeMap = {};
+								var makeTypeResults = await rpcQuery('dtsc.maketype', 'search_read', [['id', 'in', makeTypeIds]], ['qty_calc_mode']);
+								if (makeTypeResults) {
+									makeTypeResults.forEach(function (m) { makeTypeModeMap[m.id] = m.qty_calc_mode || 'manual'; });
+								}
 								// 添加标题行
 								var headerTr = $('<tr>').addClass('table-active product_attribute_class tr_product_attribute_class');
 								var headerTh = $('<th>').css('text-align','unset').attr('colspan', '6').text('後加工方式, 此區塊估價將由業務人員與您討論後提供');
 								headerTr.append(headerTh);
-								 $(this).closest('table').append(headerTr);
+								 $postTable.append(headerTr);
 								let currentRow;
 								for (let i = 0; i < productMakeTypeRelResults.length; i++) {
 									const postProcess = productMakeTypeRelResults[i];
@@ -950,17 +985,20 @@ odoo.define('dtsc.checkout', function (require) {
 									
 									if (i % 3 === 0) {
 										currentRow = $('<tr>').addClass('product_attribute_checkboxs tr_product_attribute_class');
-										$(this).closest('table').append(currentRow);
+										$postTable.append(currentRow);
 									}
+									var makeTypeId = postProcess.make_type_id[0];
+									var calcMode = makeTypeModeMap[makeTypeId] || 'manual';
+									var initQty = calcAftermakeQty(calcMode, $postTable.find('#param1').val(), $postTable.find('#param2').val(), $postTable.find('#quantity').val() || 1);
 									
 									var newTdCheckbox = $('<td>').attr('colspan', '2');
 									var newDivCheckbox = $('<div>').css('text-align', 'left').addClass('form-check');
 									var newLabelCheckbox = $('<label>').addClass('form-check-label');
-									var newInputCheckbox = $('<input>').css({'margin': '0 10px 0 0'}).attr({ type: 'checkbox', name: 'multiple[]', value: postProcess.make_type_id[0], id: postProcess.id });
+									var newInputCheckbox = $('<input>').css({'margin': '0 10px 0 0'}).attr({ type: 'checkbox', name: 'multiple[]', value: makeTypeId, id: postProcess.id });
 
 									var quantityLabel = $('<label>').css({ 'margin-left': '10px', 'margin-right': '5px' }).text('數量:');
 									var quantityInput = $('<input>')
-										.attr({ type: 'text', name: `quantity_${postProcess.make_type_id[0]}`, value: '1' })
+										.attr({ type: 'text', name: `quantity_${makeTypeId}`, value: initQty !== null ? initQty : '1', 'data-qty-calc-mode': calcMode })
 										.css({ width: '50px', 'margin-left': '5px' });
 									
 									newLabelCheckbox.append(newInputCheckbox).append(postProcess.make_type_id[1]);

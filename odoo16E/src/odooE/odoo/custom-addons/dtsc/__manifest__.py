@@ -156,6 +156,7 @@
             'dtsc/static/src/js/website_custom.js',
             'dtsc/static/src/js/my_checkout_entry_button.js',
             'dtsc/static/src/js/website_sale_extra_info.js',
+            'dtsc/static/src/js/website_sale_tracking_no_purchase.js',
         ],
     },
     # only loaded in demonstration mode

@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="dtsc_cashflow.DashboardAction" owl="1">
+        <div class="o_cashflow_dashboard">
+            <div class="o_cashflow_dashboard_header">
+                <h1>金流看板</h1>
+                <div class="o_cashflow_dashboard_actions">
+                    <button class="btn btn-primary" t-on-click="() => this.applyFilters()">套用篩選</button>
+                    <button class="btn btn-secondary" t-on-click="() => this.preset('month')">本月</button>
+                    <button class="btn btn-secondary" t-on-click="() => this.preset(30)">近30天</button>
+                    <button class="btn btn-secondary" t-on-click="() => this.preset(90)">近90天</button>
+                    <button class="btn btn-secondary" t-on-click="() => this.openTransactions()">打開流水</button>
+                    <button class="btn btn-secondary" t-on-click="() => this.openBanks()">銀行帳戶</button>
+                </div>
+            </div>
+
+            <div class="o_cashflow_filters">
+                <label>
+                    <span>銀行帳戶</span>
+                    <select t-model="state.filters.bank_id">
+                        <option value="0">全部銀行</option>
+                        <t t-foreach="state.banks" t-as="bank" t-key="bank.id">
+                            <option t-att-value="bank.id" t-esc="bank.name"/>
+                        </t>
+                    </select>
+                </label>
+                <label>
+                    <span>流水類型</span>
+                    <select t-model="state.filters.type_filter">
+                        <t t-foreach="state.typeOptions" t-as="opt" t-key="opt.value">
+                            <option t-att-value="opt.value" t-esc="opt.label"/>
+                        </t>
+                    </select>
+                </label>
+                <label>
+                    <span>開始日期</span>
+                    <input type="date" t-model="state.filters.date_from"/>
+                </label>
+                <label>
+                    <span>結束日期</span>
+                    <input type="date" t-model="state.filters.date_to"/>
+                </label>
+            </div>
+
+            <t t-if="state.error">
+                <div class="alert alert-danger" t-esc="state.error"/>
+            </t>
+            <t t-if="state.loading">
+                <div class="o_cashflow_loading">載入中...</div>
+            </t>
+
+            <div class="o_cashflow_kpi">
+                <div class="o_cashflow_kpi_card"><span>銀行帳戶數</span><strong t-esc="state.kpi.bank_count or 0"/></div>
+                <div class="o_cashflow_kpi_card"><span>銀行總餘額</span><strong t-esc="formatMoney(state.kpi.total_balance)"/></div>
+                <div class="o_cashflow_kpi_card"><span>區間已收</span><strong t-esc="formatMoney(state.kpi.receive_amount)"/></div>
+                <div class="o_cashflow_kpi_card"><span>區間已付</span><strong t-esc="formatMoney(state.kpi.pay_amount)"/></div>
+                <div class="o_cashflow_kpi_card"><span>區間零用金劃撥</span><strong t-esc="formatMoney(state.kpi.petty_amount)"/></div>
+                <div class="o_cashflow_kpi_card"><span>區間淨流入</span><strong t-esc="formatMoney(state.kpi.net_amount)"/></div>
+                <div class="o_cashflow_kpi_card"><span>區間應收未收</span><strong t-esc="formatMoney(state.kpi.unsettled_receivable)"/></div>
+                <div class="o_cashflow_kpi_card"><span>區間應付未付</span><strong t-esc="formatMoney(state.kpi.unsettled_payable)"/></div>
+            </div>
+
+            <h3>折線圖（已收 / 已付 / 淨流入）</h3>
+            <div class="o_cashflow_chart_wrap">
+                <canvas t-ref="chartCanvas"/>
+            </div>
+
+            <h3>銀行餘額</h3>
+            <table class="table table-sm table-striped o_cashflow_table">
+                <thead>
+                    <tr><th>銀行</th><th>帳號</th><th class="text-end">當前餘額</th></tr>
+                </thead>
+                <tbody>
+                    <t t-if="!state.bankRows.length">
+                        <tr><td colspan="3">尚無銀行帳戶</td></tr>
+                    </t>
+                    <t t-foreach="state.bankRows" t-as="row" t-key="row.id">
+                        <tr>
+                            <td t-esc="row.name"/>
+                            <td t-esc="row.account_number"/>
+                            <td class="text-end" t-esc="formatMoney(row.balance)"/>
+                        </tr>
+                    </t>
+                </tbody>
+            </table>
+
+            <h3>流水明細（最多 300 筆）</h3>
+            <div class="o_cashflow_tx_wrap">
+                <table class="table table-sm table-hover o_cashflow_table">
+                    <thead>
+                        <tr>
+                            <th>日期</th><th>單號</th><th>銀行帳戶</th><th>類型</th>
+                            <th class="text-end">金額</th><th>操作人員</th><th>備註</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <t t-if="!state.transactions.length">
+                            <tr><td colspan="7">此區間沒有流水</td></tr>
+                        </t>
+                        <t t-foreach="state.transactions" t-as="tx" t-key="tx.id">
+                            <tr>
+                                <td t-esc="tx.date"/>
+                                <td t-esc="tx.name"/>
+                                <td t-esc="tx.bank"/>
+                                <td t-esc="tx.type"/>
+                                <td class="text-end" t-esc="formatMoney(tx.amount)"/>
+                                <td t-esc="tx.operator"/>
+                                <td t-esc="tx.note"/>
+                            </tr>
+                        </t>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </t>
+</templates>

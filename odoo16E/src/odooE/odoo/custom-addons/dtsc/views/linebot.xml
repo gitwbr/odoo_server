@@ -1,6 +1,7 @@
 <odoo>
 	<template id="liff_leave_confirm_page" name="請假審核理由填寫">
 		<script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+		<input type="hidden" id="odoo_liff_id" t-att-value="liff_id or ''"/>
 	  <style>
 		body {
 		  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
@@ -57,62 +58,67 @@
 
 	  <script>
 		document.addEventListener("DOMContentLoaded", function () {
-		  const queryString = window.location.search;
+		  var decodedQueryString = decodeURIComponent(window.location.search);
+		  var leaveMatch = decodedQueryString.match(/leave_id=([a-zA-Z0-9\-]+)/);
+		  var leaveId = leaveMatch ? leaveMatch[1] : null;
+		  var match = decodedQueryString.match(/liffid=([a-zA-Z0-9\-]+)/);
+		  var liffId = (document.getElementById("odoo_liff_id") || {}).value
+			|| (match ? match[1] : null)
+			|| null;
+		  var liffReady = false;
 
-			const decodedQueryString = decodeURIComponent(queryString);
-			const regexleave_id = /leave_id=([a-zA-Z0-9\-]+)/
-			let leaveIdddd = decodedQueryString.match(regexleave_id);
-			const leaveId = leaveIdddd[1]
-			<!-- alert(leaveId) -->
-			  if (!leaveId) {
-				alert("找不到請假單 ID");
-				return;
-			  }
-			const regex = /liffid=([a-zA-Z0-9\-]+)/; // Matches 'liffid=' followed by any alphanumeric or dash
-			const match = decodedQueryString.match(regex);
-			const liffId = match[1];
-			<!-- alert(liffId) -->
-			<!-- alert(leaveId) -->
-		  liff.init({ liffId: liffId }).then(() => {
-			  document.getElementById("submit_btn").addEventListener("click", function () {
-				let reason = document.getElementById("reject_reason").value.trim();
-				if (!reason) {
-					alert("請填寫理由後再送出！");
-					return;
-				}
-
-				liff.getProfile().then(function (profile) {
-					
-				//alert(liffId)
-					<!-- alert(leaveId) -->
-					<!-- alert(reason) -->
-					<!-- alert(profile.userId) -->
-					fetch("/leave/reject_reason", {
-					method: "POST",
-					headers: { "Content-Type": "application/json" },
-					body: JSON.stringify({
-					  leave_id: leaveId,
-					  reject_reason: reason,
-					  line_id: profile.userId
-					})
-					})
-					.then(res => res.json())
-					.then(data => {
-						alert(data.message || "✅ 已送出！");
-						liff.closeWindow();
-					})
-					.catch(err => {
-						console.error(err);
-						alert("❌ 發送失敗，請稍後再試");
-					});
-				});
+		  document.getElementById("submit_btn").addEventListener("click", function () {
+			if (!leaveId) {
+			  alert("找不到請假單 ID");
+			  return;
+			}
+			if (!liffReady) {
+			  alert("頁面尚未初始化完成，請稍後再送出");
+			  return;
+			}
+			var reason = document.getElementById("reject_reason").value.trim();
+			if (!reason) {
+			  alert("請填寫理由後再送出！");
+			  return;
+			}
+			liff.getProfile().then(function (profile) {
+			  fetch("/leave/reject_reason", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({
+				  leave_id: leaveId,
+				  reject_reason: reason,
+				  line_id: profile.userId
+				})
+			  })
+			  .then(function (res) { return res.json(); })
+			  .then(function (data) {
+				alert(data.message || "✅ 已送出！");
+				liff.closeWindow();
+			  })
+			  .catch(function (err) {
+				console.error(err);
+				alert("❌ 發送失敗，請稍後再試");
 			  });
 			});
+		  });
+
+		  if (!liffId) {
+			alert("缺少 LIFF 配置，請聯繫管理員");
+			return;
+		  }
+		  liff.init({ liffId: liffId }).then(function () {
+			liffReady = true;
+		  }).catch(function (err) {
+			console.error("LIFF初始化失败:", err);
+			alert("頁面初始化失敗，請重新打開");
+		  });
 		});
 	  </script>
 	</template>
 	<template id="liff_leave_page" name="請假系統">
 		<script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+		<input type="hidden" id="odoo_liff_id" t-att-value="liff_id or ''"/>
 		<style>
 			body {
 				font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
@@ -447,109 +453,129 @@
 			}
 			
 			document.addEventListener("DOMContentLoaded", function () {
-				const queryString = window.location.search;
-				const decodedQueryString = decodeURIComponent(queryString);
-				const regex = /liffid=([a-zA-Z0-9\-]+)/;
-				const match = decodedQueryString.match(regex);
-				const liffId = match ? match[1] : null;
-				if (!liffId) return;
+				var match = decodeURIComponent(window.location.search).match(/liffid=([a-zA-Z0-9\-]+)/);
+				var liffId = (document.getElementById("odoo_liff_id") || {}).value
+					|| (match ? match[1] : null)
+					|| null;
+				var liffReady = false;
 
-				liff.init({ liffId: liffId }).then(() => {
-					const endDate = new Date();
-					const startDate = new Date();
-					startDate.setDate(endDate.getDate() - 6);
-
-					const toInputString = (date) => date.toISOString().split("T")[0];
-					
-					// 查詢假期餘額
+				function toLocalYMD(date) {
+					var y = date.getFullYear();
+					var m = String(date.getMonth() + 1).padStart(2, "0");
+					var day = String(date.getDate()).padStart(2, "0");
+					return y + "-" + m + "-" + day;
+				}
+				function loadLeaveBalances() {
 					liff.getProfile().then(function (profile) {
-						const lineId = profile.userId;
-
-						// 查詢假期餘額
 						fetch('/get_leave_balances', {
 							method: 'POST',
 							headers: { 'Content-Type': 'application/json' },
-							body: JSON.stringify({ line_id: lineId })
+							body: JSON.stringify({ line_id: profile.userId })
 						})
-						.then(response => response.json())
-						.then(data => {
+						.then(function (response) { return response.json(); })
+						.then(function (data) {
 							if (data.data) {
-								const labelMap = {
+								var labelMap = {
 									tx: "特休",
 									bj: "病假",
 									sj: "事假",
 									slj: "生理假",
-									jtzgj: "家庭照顧假"
+									jtzgj: "家庭照顧假",
+									hj: "婚假",
+									saj: "喪假"
 								};
-
-								const displayText = Object.entries(data.data)
-									.map(([k, v]) => `${labelMap[k] || k}：${v} 小时`)
+								var gender = data.data.gender || '';
+								var sljOption = document.querySelector('#leave_type option[value="slj"]');
+								if (sljOption) {
+									sljOption.hidden = gender !== 'female';
+									sljOption.disabled = gender !== 'female';
+								}
+								var displayText = Object.entries(data.data)
+									.filter(function (kv) { return labelMap[kv[0]]; })
+									.map(function (kv) { return (labelMap[kv[0]] || kv[0]) + "：" + kv[1] + " 小时"; })
 									.join('｜');
-
-								document.getElementById("leave_balances_display").innerText = `🌿 可用假期｜${displayText}`;
+								document.getElementById("leave_balances_display").innerText = "🌿 可用假期｜" + displayText;
 							}
 						});
 					});
-					
-					document.getElementById("start_date").value = toInputString(startDate);
-					document.getElementById("end_date").value = toInputString(endDate);
-			
-					document.getElementById("do_btn").addEventListener("click", function () {
-						document.getElementById("leaveModal").style.display = "flex";
+				}
+
+				var endDate = new Date();
+				var startDate = new Date();
+				startDate.setDate(endDate.getDate() - 6);
+				document.getElementById("start_date").value = toLocalYMD(startDate);
+				document.getElementById("end_date").value = toLocalYMD(endDate);
+
+				document.getElementById("do_btn").addEventListener("click", function () {
+					document.getElementById("leaveModal").style.display = "flex";
+				});
+
+				document.getElementById("query_btn").addEventListener("click", function () {
+					var sDate = document.getElementById("start_date").value;
+					var eDate = document.getElementById("end_date").value;
+					if (!sDate || !eDate) {
+						alert("請選擇起始與結束日期！");
+						return;
+					}
+					if (!liffReady) {
+						alert("頁面尚未初始化完成，請稍後再點查詢");
+						return;
+					}
+					var checkedStatuses = Array.from(document.querySelectorAll(".status-checkbox"))
+						.filter(function (cb) { return cb.checked; })
+						.map(function (cb) { return cb.value; });
+					document.getElementById("result").innerHTML =
+						"<p class=\"text-muted\">查詢 " + sDate + " 到 " + eDate + " 的請假資料中...</p>";
+					liff.getProfile().then(function (profile) {
+						searchLeaveData(sDate, eDate, profile.userId, checkedStatuses);
+					}).catch(function (err) {
+						console.error("getProfile failed:", err);
+						document.getElementById("result").innerHTML =
+							"<p class=\"text-danger\">無法取得用戶資訊，請重新打開頁面</p>";
 					});
-					
-					document.getElementById("query_btn").addEventListener("click", () => {
-						const sDate = document.getElementById("start_date").value;
-						const eDate = document.getElementById("end_date").value;
-						if (!sDate || !eDate) {
-							alert("請選擇起始與結束日期！");
-							return;
-						}
-						const checkedStatuses = Array.from(document.querySelectorAll(".status-checkbox"))
-							.filter(cb => cb.checked)
-							.map(cb => cb.value);
-						liff.getProfile().then(function (profile) {
-							const lineId = profile.userId;
-							searchLeaveData(sDate, eDate, lineId, checkedStatuses);
-						});
+				});
 
-						document.getElementById("result").innerHTML = `
-							<p class="text-muted">查詢 ${sDate} 到 ${eDate} 的請假資料中...</p>
-						`;
+				document.getElementById("submitLeaveBtn").addEventListener("click", function () {
+					var leaveType = document.getElementById("leave_type").value;
+					var leaveStart = document.getElementById("leave_start").value;
+					var leaveEnd = document.getElementById("leave_end").value;
+					var note = document.getElementById("leave_note").value;
+					var fileInput = document.getElementById("leave_file");
+					var file = fileInput.files[0];
+					if (!leaveStart || !leaveEnd) {
+						alert("請選擇完整的起始與結束時間！");
+						return;
+					}
+					if (!liffReady) {
+						alert("頁面尚未初始化完成，請稍後再送出");
+						return;
+					}
+					liff.getProfile().then(function (profile) {
+						if (file) {
+							var reader = new FileReader();
+							reader.onload = function () {
+								var base64file = reader.result.split(',')[1];
+								submitLeaveRequest(profile.userId, leaveType, leaveStart, leaveEnd, note, base64file);
+							};
+							reader.readAsDataURL(file);
+						} else {
+							submitLeaveRequest(profile.userId, leaveType, leaveStart, leaveEnd, note, null);
+						}
 					});
-					
-					
-					document.getElementById("submitLeaveBtn").addEventListener("click", function () {
-						const leaveType = document.getElementById("leave_type").value;
-						const leaveStart = document.getElementById("leave_start").value;
-						const leaveEnd = document.getElementById("leave_end").value;
-						const note = document.getElementById("leave_note").value;
-						const fileInput = document.getElementById("leave_file");
-						const file = fileInput.files[0];
+				});
 
-						if (!leaveStart || !leaveEnd) {
-							alert("請選擇完整的起始與結束時間！");
-							return;
-						}
-
-						liff.getProfile().then(function (profile) {
-							const lineId = profile.userId;
-							const userName = profile.displayName;
-
-							if (file) {
-								const reader = new FileReader();
-								reader.onload = function () {
-									const base64file = reader.result.split(',')[1];  // 去除 data:xxx;base64, 前綴
-
-									submitLeaveRequest(lineId, leaveType, leaveStart, leaveEnd, note, base64file);
-								};
-								reader.readAsDataURL(file);
-							} else {
-								submitLeaveRequest(lineId, leaveType, leaveStart, leaveEnd, note, null);
-							}
-						});
-					});					
-					
+				if (!liffId) {
+					document.getElementById("result").innerHTML =
+						"<p class=\"text-danger\">缺少 LIFF 配置，請聯繫管理員</p>";
+					return;
+				}
+				liff.init({ liffId: liffId }).then(function () {
+					liffReady = true;
+					loadLeaveBalances();
+				}).catch(function (err) {
+					console.error("LIFF初始化失败:", err);
+					document.getElementById("result").innerHTML =
+						"<p class=\"text-danger\">頁面初始化失敗，請重新打開</p>";
 				});
 			});
 			]]>
@@ -558,6 +584,7 @@
 	
 	<template id="liff_attendance_query_page" name="考勤紀錄查詢">
 		<script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+		<input type="hidden" id="odoo_liff_id" t-att-value="liff_id or ''"/>
 
 		<style>
 			body {
@@ -842,83 +869,97 @@
 			}
 
 			document.addEventListener("DOMContentLoaded", function () {
-				const queryString = window.location.search;
-				const decodedQueryString = decodeURIComponent(queryString);
-				const regex = /liffid=([a-zA-Z0-9\-]+)/;
-				const match = decodedQueryString.match(regex);
-				const liffId = match ? match[1] : null;
-				if (!liffId) return;
+				var match = decodeURIComponent(window.location.search).match(/liffid=([a-zA-Z0-9\-]+)/);
+				var liffId = (document.getElementById("odoo_liff_id") || {}).value
+					|| (match ? match[1] : null)
+					|| null;
+				var liffReady = false;
 
-				liff.init({ liffId: liffId }).then(() => {
-					const endDate = new Date();
-					const startDate = new Date();
-					startDate.setDate(endDate.getDate() - 6);
+				function toLocalYMD(date) {
+					var y = date.getFullYear();
+					var m = String(date.getMonth() + 1).padStart(2, "0");
+					var day = String(date.getDate()).padStart(2, "0");
+					return y + "-" + m + "-" + day;
+				}
 
-					const toInputString = (date) => date.toISOString().split("T")[0];
-					
-					const hourSelect = document.getElementById("fixHour");
-					const minuteSelect = document.getElementById("fixMinute");
-					for (let h = 0; h < 24; h++) {
-						const val = h.toString().padStart(2, '0');
-						hourSelect.innerHTML += `<option value="${val}">${val} 時</option>`;
+				// 默认日期与查询按钮：不依赖 LIFF init（否则 URL 无 liffid 时点查询完全无请求）
+				var endDate = new Date();
+				var startDate = new Date();
+				startDate.setDate(endDate.getDate() - 6);
+				document.getElementById("start_date").value = toLocalYMD(startDate);
+				document.getElementById("end_date").value = toLocalYMD(endDate);
+
+				var hourSelect = document.getElementById("fixHour");
+				var minuteSelect = document.getElementById("fixMinute");
+				for (var h = 0; h < 24; h++) {
+					var hv = h.toString().padStart(2, "0");
+					hourSelect.innerHTML += "<option value=\"" + hv + "\">" + hv + " 時</option>";
+				}
+				for (var m = 0; m < 60; m += 5) {
+					var mv = m.toString().padStart(2, "0");
+					minuteSelect.innerHTML += "<option value=\"" + mv + "\">" + mv + " 分</option>";
+				}
+
+				document.getElementById("query_btn").addEventListener("click", function () {
+					var sDate = document.getElementById("start_date").value;
+					var eDate = document.getElementById("end_date").value;
+					if (!sDate || !eDate) {
+						alert("請選擇起始與結束日期！");
+						return;
 					}
-					for (let m = 0; m < 60; m += 5) {
-						const val = m.toString().padStart(2, '0');
-						minuteSelect.innerHTML += `<option value="${val}">${val} 分</option>`;
+					if (!liffReady) {
+						alert("頁面尚未初始化完成，請稍後再點查詢");
+						return;
 					}
-					
-					document.getElementById("start_date").value = toInputString(startDate);
-					document.getElementById("end_date").value = toInputString(endDate);
-			
-					document.getElementById("query_btn").addEventListener("click", () => {
-						const sDate = document.getElementById("start_date").value;
-						const eDate = document.getElementById("end_date").value;
-						if (!sDate || !eDate) {
-							alert("請選擇起始與結束日期！");
-							return;
-						}
-						const checkedStatuses = Array.from(document.querySelectorAll(".status-checkbox"))
-							.filter(cb => cb.checked)
-							.map(cb => cb.value);
-						liff.getProfile().then(function (profile) {
-							const lineId = profile.userId;
-							searchDakaData(sDate, eDate, lineId, checkedStatuses);
-						});
-
-						document.getElementById("result").innerHTML = `
-							<p class="text-muted">查詢 ${sDate} 到 ${eDate} 的考勤資料中...</p>
-						`;
+					var checkedStatuses = Array.from(document.querySelectorAll(".status-checkbox"))
+						.filter(function (cb) { return cb.checked; })
+						.map(function (cb) { return cb.value; });
+					document.getElementById("result").innerHTML =
+						"<p class=\"text-muted\">查詢 " + sDate + " 到 " + eDate + " 的考勤資料中...</p>";
+					liff.getProfile().then(function (profile) {
+						searchDakaData(sDate, eDate, profile.userId, checkedStatuses);
+					}).catch(function (err) {
+						console.error("getProfile failed:", err);
+						document.getElementById("result").innerHTML =
+							"<p class=\"text-danger\">無法取得用戶資訊，請重新打開頁面</p>";
 					});
-					
-					document.addEventListener("click", function (e) {
-						if (e.target.classList.contains("fix-btn")) {
-							const rowIndex = e.target.getAttribute("data-index");
-							const fixType = e.target.getAttribute("data-type");
-							
-							document.getElementById("fixType").value = fixType;
-							document.getElementById("fixModal").style.display = "flex";
-							document.getElementById("submitFixBtn").setAttribute("data-index", rowIndex);
-						}
-					});
+				});
 
-					document.getElementById("submitFixBtn").addEventListener("click", function () {
-						const type = document.getElementById("fixType").value;
-						const hour = document.getElementById("fixHour").value;
-						const minute = document.getElementById("fixMinute").value;
-						const note = document.getElementById("fixNote").value;
-						const rowIndex = this.getAttribute("data-index");
+				document.addEventListener("click", function (e) {
+					if (e.target.classList.contains("fix-btn")) {
+						var rowIndex = e.target.getAttribute("data-index");
+						var fixType = e.target.getAttribute("data-type");
+						document.getElementById("fixType").value = fixType;
+						document.getElementById("fixModal").style.display = "flex";
+						document.getElementById("submitFixBtn").setAttribute("data-index", rowIndex);
+					}
+				});
 
-						// 模拟送出：实际应替换为 POST 请求
-						alert(`補卡資料\n類型：${type}\n時間：${hour}:${minute}\n說明：${note}\n`);
-						liff.getProfile().then(function (profile) {
-							const lineId = profile.userId;
-							buka(type,hour,minute,rowIndex, lineId,note)
-						});
-						
-						// 清空 & 關閉 modal
-						document.getElementById("fixModal").style.display = "none";
-						document.getElementById("fixNote").value = "";
+				document.getElementById("submitFixBtn").addEventListener("click", function () {
+					var type = document.getElementById("fixType").value;
+					var hour = document.getElementById("fixHour").value;
+					var minute = document.getElementById("fixMinute").value;
+					var note = document.getElementById("fixNote").value;
+					var rowIndex = this.getAttribute("data-index");
+					liff.getProfile().then(function (profile) {
+						buka(type, hour, minute, rowIndex, profile.userId, note);
 					});
+					document.getElementById("fixModal").style.display = "none";
+					document.getElementById("fixNote").value = "";
+				});
+
+				if (!liffId) {
+					document.getElementById("result").innerHTML =
+						"<p class=\"text-danger\">缺少 LIFF 配置，請聯繫管理員</p>";
+					return;
+				}
+				liff.init({ liffId: liffId }).then(function () {
+					liffReady = true;
+					console.log("LIFF init ok, id=", liffId);
+				}).catch(function (err) {
+					console.error("LIFF初始化失败:", err);
+					document.getElementById("result").innerHTML =
+						"<p class=\"text-danger\">頁面初始化失敗，請重新打開</p>";
 				});
 			});
 			]]>
@@ -1042,6 +1083,10 @@
 				  document.getElementById("current-time").innerText = "打卡時間：" + now.toLocaleTimeString();
 			  }
 			  function sendCheckInData(lat, lng, lineId,type) {
+				  if (window.__dtsc_checkin_busy) return;
+				  window.__dtsc_checkin_busy = true;
+				  var btn = document.getElementById("checkin-btn");
+				  if (btn) btn.disabled = true;
 				  fetch('/incheck', {
 					  method: 'POST',
 					  headers: {
@@ -1055,6 +1100,8 @@
 				  })
 				  .catch((error) => {
 					  console.error('Error:', error);
+					  window.__dtsc_checkin_busy = false;
+					  if (btn) btn.disabled = false;
 				  });
 			  }
 			document.addEventListener("DOMContentLoaded", function() {
@@ -1163,6 +1210,10 @@
 				  document.getElementById("current-time").innerText = "打卡時間：" + now.toLocaleTimeString();
 			  }
 			  function sendCheckInData(lineId,type) {
+				  if (window.__dtsc_checkin_busy) return;
+				  window.__dtsc_checkin_busy = true;
+				  var btn = document.getElementById("checkin-btn");
+				  if (btn) btn.disabled = true;
 				  fetch('/incheck', {
 					  method: 'POST',
 					  headers: {
@@ -1176,6 +1227,8 @@
 				  })
 				  .catch((error) => {
 					  console.error('Error:', error);
+					  window.__dtsc_checkin_busy = false;
+					  if (btn) btn.disabled = false;
 				  });
 			  }
 			document.addEventListener("DOMContentLoaded", function() {
@@ -1494,6 +1547,7 @@
 		<field name="numbercall">-1</field>
 		<field name="active">True</field>
 		<field name="doall">True</field>
-		<field name="nextcall" eval="(datetime.utcnow() + relativedelta(hour=15, minute=30, second=0)).strftime('%Y-%m-%d %H:%M:%S')"/>
+		<!-- UTC 20:30 = 台北 04:30，業務日切點後再跑缺卡 -->
+		<field name="nextcall" eval="(datetime.utcnow() + relativedelta(hour=20, minute=30, second=0)).strftime('%Y-%m-%d %H:%M:%S')"/>
 	</record>
 </odoo>

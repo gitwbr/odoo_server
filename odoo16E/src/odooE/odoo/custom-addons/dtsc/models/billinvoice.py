@@ -400,14 +400,28 @@ class AccountMove(models.Model):
     bill_invoice_name = fields.Char("發票編號")
     sale_price = fields.Integer("銷售總額" , compute="_compute_sale_price",store=True)
     tax_price = fields.Integer("稅額"  , compute="_compute_tax_price",store=True,inverse="_inverse_tax_price")
+    # 人工改過稅額後為 True，compute 不再覆蓋；取消勾選可恢復按稅別自動計算
+    tax_price_manual = fields.Boolean("手動稅額", default=False)
     total_price = fields.Integer("含稅總價" , compute="_compute_total_price",store=True)
     yw = fields.Many2one(string="業務",related="partner_id.sell_user" )
     vat_num = fields.Char(string="發票號")
     
     
     def _inverse_tax_price(self):
+        """手動編輯稅額時標記，避免後續 sale_price 重算把人工值蓋掉。"""
         for record in self:
-            record.tax_price = record.tax_price
+            record.tax_price_manual = True
+        # 立刻落庫，避免同一次保存裡後續 compute 從 DB 讀到舊稅額
+        self.flush_recordset(['tax_price', 'tax_price_manual'])
+
+    def write(self, vals):
+        res = super().write(vals)
+        # 取消「手動稅額」時立刻按現行稅別重算
+        if 'tax_price_manual' in vals and not vals.get('tax_price_manual'):
+            to_recompute = self.filtered(lambda r: not r.tax_price_manual)
+            if to_recompute:
+                to_recompute._compute_tax_price()
+        return res
     
     @api.depends("amount_untaxed_signed")
     def _compute_sale_price(self):
@@ -419,12 +433,28 @@ class AccountMove(models.Model):
             else:
                 record.sale_price = record.amount_untaxed_signed
                 
-    @api.depends("sale_price")
+    @api.depends(
+        "sale_price",
+        "move_type",
+        "is_online",
+        "supp_invoice_form",
+        "partner_id.custom_invoice_form",
+    )
     def _compute_tax_price(self):
+        # 依賴變更時 cache 會被清掉，手動單需從 DB 取回人工值，避免被重算覆蓋
+        manual_ids = [r.id for r in self if r.tax_price_manual and isinstance(r.id, int)]
+        db_tax = {}
+        if manual_ids:
+            self.env.cr.execute(
+                "SELECT id, tax_price FROM account_move WHERE id IN %s",
+                (tuple(manual_ids),),
+            )
+            db_tax = dict(self.env.cr.fetchall())
+
         for record in self:
-            # print("==========================================")
-            # print(record.supp_invoice_form)
-            # print(record.move_type)
+            if record.tax_price_manual:
+                record.tax_price = db_tax.get(record.id, record.tax_price or 0)
+                continue
             if record.move_type == "out_invoice":
                 if record.partner_id.custom_invoice_form in ["21","22"] or record.is_online == True:
                     if(record.sale_price > 0):

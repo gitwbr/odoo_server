@@ -1041,13 +1041,13 @@ class CheckoutInherit(models.Model):
         row += 1
  
 
-        # 汇款信息
-        sheet.merge_range(row, 0,row, 13, "匯款銀行: 合作金庫 南土城分行006 戶名: 科影數位影像(股)公司. 帳號: 3605717004868", border_format)
+        # 汇款信息（与 PDF 一致，读公司设定）
+        sheet.merge_range(row, 0,row, 13, company_id.crm_report_account or "", border_format)
         row += 1
         sheet.write(row, 0, "業務:", border_format)
         sheet.merge_range(row, 1,row, 4, records[0].user_id.name if records[0].user_id else "", border_format)
         sheet.merge_range(row, 5,row, 6, "聯絡電話:", border_format)
-        sheet.merge_range(row, 7,row, 13, "2221-8868", border_format)
+        sheet.merge_range(row, 7,row, 13, company_id.phone or "", border_format)
         row += 1
         sheet.merge_range(row, 0,row, 5, "主管確認簽章", border_format)
         sheet.merge_range(row, 6,row, 13, "客戶確認簽章", border_format)
@@ -1183,7 +1183,7 @@ class CrmReport(models.AbstractModel):
 class CheckoutLineCrm(models.Model):
     _inherit = 'dtsc.checkoutline'
     
-    crm_chengben = fields.Integer("成本")
+    crm_chengben = fields.Float("成本", digits=(16, 2))
     crm_chengben_comment = fields.Char("備註")
     
     def write(self, vals):

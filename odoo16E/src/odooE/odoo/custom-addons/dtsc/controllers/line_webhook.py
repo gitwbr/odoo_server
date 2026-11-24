@@ -5,6 +5,7 @@ import hashlib
 import base64
 from odoo import http, fields
 from odoo.http import request
+from odoo.exceptions import UserError
 from datetime import datetime, timedelta, date, timezone, time
 from odoo.fields import Datetime
 import re
@@ -15,6 +16,7 @@ import math
 # LINE_ACCESS_TOKEN = "RzpIwA5Pl4MUys7quVI8WSXr5BurNvmD+MrYgm8DJiqTEJwwkd8Y7QNJxuG3WwLoA6CrXYL8EbJMicicCS8j3lUvd8v4gmBF3QBx01ptV1LrVO54lijV5p8PSAdCDD8WQHb2iOy85ULe8b4S5lc/fQdB04t89/1O/w1cDnyilFU="
 import pytz
 import logging
+import zlib
 _logger = logging.getLogger(__name__)
 import uuid
 from urllib.parse import parse_qs, unquote
@@ -34,9 +36,14 @@ class LineBotController(http.Controller):
             'tx': employee.tx_days ,
             'bj': employee.bj_days,
             'sj': employee.sj_days,
-            'slj': employee.slj_days,
             'jtzgj': employee.jtzgj_days,
+            'hj': employee.hj_days,
+            'saj': employee.saj_days,
+            'gender': employee.gender or '',
         }
+        # 生理假僅女性顯示 / 可用
+        if employee.gender == 'female':
+            data['slj'] = employee.slj_days
 
         # return {'data': data}
         return json.dumps({"success": True, "data": data})
@@ -137,6 +144,9 @@ class LineBotController(http.Controller):
         
         if employee.out_company_date != False:
             return json.dumps({'success': True, 'message': "您已離職，不能繼續查詢！"})
+
+        if leave_type == 'slj' and employee.gender != 'female':
+            return json.dumps({'success': False, 'message': "生理假僅限女性員工申請。"})
             
         current_date = datetime.now()            
         next_year_str = current_date.strftime('%y')  # 两位数的年份 
@@ -160,6 +170,38 @@ class LineBotController(http.Controller):
             new_name = "L"+next_year_str+next_month_str+"00001" 
         
         leave_hours = self._compute_leave_hours(stime_raw, etime_raw,employee)
+        if leave_type == 'slj':
+            try:
+                request.env['dtsc.leave'].sudo()._check_slj_monthly_limit(
+                    employee, fix_stime, leave_hours
+                )
+            except UserError as e:
+                return json.dumps({'success': False, 'message': e.args[0] if e.args else str(e)})
+
+        # 婚假 / 喪假：需管理員先發放額度與有效期，申請時校驗
+        if leave_type in ('hj', 'saj'):
+            label = '婚假' if leave_type == 'hj' else '喪假'
+            qfld = 'hj_days' if leave_type == 'hj' else 'saj_days'
+            start_fld = 'hj_start_date' if leave_type == 'hj' else 'saj_start_date'
+            end_fld = 'hj_end_date' if leave_type == 'hj' else 'saj_end_date'
+            remain = float(getattr(employee, qfld) or 0.0)
+            q_start = getattr(employee, start_fld)
+            q_end = getattr(employee, end_fld)
+            if not q_start or not q_end:
+                return json.dumps({'success': False, 'message': f"尚未設定{label}有效期，請聯繫管理員。"})
+            leave_day = stime.date()
+            end_day = etime.date()
+            if leave_day < q_start or end_day > q_end:
+                return json.dumps({
+                    'success': False,
+                    'message': f"{label}僅可在 {q_start} ~ {q_end} 期間申請。",
+                })
+            if leave_hours > remain + 0.0001:
+                return json.dumps({
+                    'success': False,
+                    'message': f"{label}剩餘 {remain:g} 小時，不足申請 {leave_hours:g} 小時。",
+                })
+
         leave = request.env['dtsc.leave'].sudo().create({
             "employee_id": employee.id,
             "line_user_id": line_id,
@@ -191,13 +233,19 @@ class LineBotController(http.Controller):
         attendance = request.env["dtsc.attendance"].sudo().browse(record_id)
         if not attendance.exists():
             return json.dumps({"success": False, "message": "找不到資料"})
-        if fix_type == "in":
-            original_date = attendance.work_date
-        elif fix_type == "out":
-            original_date = attendance.work_date
-        else:
+        if fix_type not in ("in", "out"):
             return json.dumps({"success": False, "message": "補卡類型錯誤"})
-                    # 更新補卡時間與狀態
+
+        original_date = attendance.work_date
+        # 補下班：補卡時刻早於（等於）上班標準 → 視為次日（含 00:xx 收班、02:00 跨日班）
+        if fix_type == "out" and original_date:
+            setting = request.env["dtsc.linebot"].sudo().search([("linebot_type", "=", "for_worker")], limit=1)
+            Att = request.env["dtsc.attendance"]
+            std_in = Att._std_time(attendance.name, setting, "in")
+            punch_t = time(hour=hour, minute=minute)
+            if punch_t <= std_in:
+                original_date = original_date + timedelta(days=1)
+
         # 使用者輸入的當地時間（如台灣時間 09:00）
         local_time = datetime.combine(original_date, datetime.min.time()).replace(
             hour=hour, minute=minute, second=0, microsecond=0
@@ -283,11 +331,18 @@ class LineBotController(http.Controller):
             return {'error': '缺少必要參數'}
 
         employee = request.env["dtsc.workqrcode"].sudo().search([('line_user_id', '=', line_id)], limit=1)
-        
-        
-        if employee.out_company_date != False:
+        if not employee:
+            # 相容：有時前端可能傳員工姓名
+            employee = request.env["dtsc.workqrcode"].sudo().search([('name', '=', line_id)], limit=1)
+        if not employee:
+            return json.dumps({'success': True, 'data': []})
+
+        if employee.out_company_date:
             return json.dumps({'success': True, 'data': "您已離職，不能繼續查詢！"})
-        
+
+        # 查詢仍以該員工綁定的 LINE ID 為準
+        line_id = employee.line_user_id or line_id
+
         start_dt = datetime.strptime(stime, "%Y-%m-%d")
         end_dt = datetime.strptime(etime, "%Y-%m-%d") + timedelta(days=1)  # 包含整天
             
@@ -328,16 +383,12 @@ class LineBotController(http.Controller):
         Attendance = request.env['dtsc.attendance']
         Calendar = request.env['dtsc.calendar']
         tz = pytz.timezone("Asia/Taipei")
-        now_date = datetime.now()
+        # 以台北時區為準：業務日（凌晨4點前算前一天）；存入 Odoo 的時間用 UTC naive
         now = datetime.now(tz)
-        today = now.date()
+        today = request.env['dtsc.attendance']._get_business_date(now)
+        now_utc = now.astimezone(pytz.utc).replace(tzinfo=None)
         ip = request.httprequest.remote_addr
-        # 搜尋今天的打卡紀錄
-        existing_attendance = Attendance.sudo().search([
-            ('line_user_id', '=', line_id),
-            ('work_date', '>=', today)
-        ], limit=1)
-        
+
         lineObj = request.env["dtsc.linebot"].sudo().search([("linebot_type","=","for_worker")],limit=1)
         employee = request.env["dtsc.workqrcode"].sudo().search([("line_user_id","=",line_id)],limit=1)
         
@@ -356,7 +407,7 @@ class LineBotController(http.Controller):
         # 打卡狀態預設
         in_status = out_status = None
         
-        if employee.out_company_date != False:
+        if employee.out_company_date:
             return json.dumps({'success': True, 'data': "您已離職，不能繼續打卡！"})
         
         if lineObj.use_type == "ip":
@@ -368,74 +419,86 @@ class LineBotController(http.Controller):
                     flag = 1
             if flag == 0:
                 return json.dumps({'success': True, 'data': "請先連接公司網絡后打卡！"})
+
+        # 事務級鎖：同一 LINE + 日期 串行，避免並發多筆
+        lock_key = zlib.crc32(f"{line_id}|{today}".encode("utf-8")) & 0x7FFFFFFF
+        request.env.cr.execute("SELECT pg_advisory_xact_lock(%s)", (lock_key,))
+
+        existing_attendance = Attendance.sudo().search([
+            ('line_user_id', '=', line_id),
+            ('work_date', '=', today)
+        ], limit=1, order='id asc')
         
         if existing_attendance:
             # 判斷是否為 1 分鐘內的重複打卡
             if daka_type == "out" and existing_attendance.out_time:
-                if abs((now_date - existing_attendance.out_time).total_seconds()) < 60:
+                if abs((now_utc - existing_attendance.out_time).total_seconds()) < 60:
                     repeat = True
             elif daka_type == "in" and existing_attendance.in_time:
-                if abs((now_date - existing_attendance.in_time).total_seconds()) < 60:
+                if abs((now_utc - existing_attendance.in_time).total_seconds()) < 60:
                     repeat = True
 
             if not repeat:
                 # 正常更新
                 if daka_type == "out":
                     existing_attendance.sudo().write({
-                        'out_time': now_date,
+                        'out_time': now_utc,
                         'lat_out': latitude,
                         'lang_out': longitude,
                         'att_ip_out':ip,
                     })
                 else:
                     existing_attendance.sudo().write({
-                        'in_time': now_date,
-                        'lat_out': latitude,
-                        'lang_out': longitude,
+                        'in_time': now_utc,
+                        'lat_in': latitude,
+                        'lang_in': longitude,
                         'att_ip':ip,
                     })
         else:
-            # 無紀錄，新增
+            # 無紀錄，新增（work_date 用台北日期，避免 UTC 跨日寫成前一天）
+            vals = {
+                'line_user_id': line_id,
+                'name': employee.id,
+                'work_date': today,
+            }
             if daka_type == "out":
-                Attendance.sudo().create({
-                    'line_user_id': line_id,
-                    'out_time': now_date,
-                    'lat_in': latitude,
-                    'lang_in': longitude,
-                    'work_date' : now_date.date(),
-                    'att_ip_out':ip,
+                vals.update({
+                    'out_time': now_utc,
+                    'lat_out': latitude,
+                    'lang_out': longitude,
+                    'att_ip_out': ip,
                 })
             else:
-                Attendance.sudo().create({
-                    'line_user_id': line_id,
-                    'in_time': now_date,
+                vals.update({
+                    'in_time': now_utc,
                     'lat_in': latitude,
                     'lang_in': longitude,
-                    'work_date' : now_date.date(),
-                    'att_ip':ip,
+                    'att_ip': ip,
                 })
-        
-        # if not repeat:
-            # if daka_type == "in":
-                # if now > expected_in:
-                    # in_status = "cd"  # 遲到（遲到 = 'cd'）
-                    # Calendar.sudo().create({
-                        # 'name': "遲到",
-                        # 'start_date': now_date,
-                        # 'end_date': now_date,
-                        # 'event_type': "late",
-                        # 'employee_id': employee.id,  
-                    # })
-            # elif daka_type == "out":
-                # if now < expected_out:
-                    # out_status = "zt"  # 早退（早退 = 'zt'）
-                    # Calendar.sudo().create({
-                        # 'name': "早退",
-                        # 'start_date': now_date,
-                        # 'end_date': now_date,
-                        # 'event_type': "early",
-                        # 'employee_id': employee.id, 
-                    # })
+            try:
+                with request.env.cr.savepoint():
+                    Attendance.sudo().create(vals)
+            except Exception:
+                # 唯一約束衝突時改為更新已有記錄
+                existing_attendance = Attendance.sudo().search([
+                    ('line_user_id', '=', line_id),
+                    ('work_date', '=', today)
+                ], limit=1, order='id asc')
+                if existing_attendance and not repeat:
+                    if daka_type == "out":
+                        existing_attendance.sudo().write({
+                            'out_time': now_utc,
+                            'lat_out': latitude,
+                            'lang_out': longitude,
+                            'att_ip_out': ip,
+                        })
+                    else:
+                        existing_attendance.sudo().write({
+                            'in_time': now_utc,
+                            'lat_in': latitude,
+                            'lang_in': longitude,
+                            'att_ip': ip,
+                        })
         
         # 訊息組裝
         tz = pytz.timezone("Asia/Taipei")
@@ -474,15 +537,27 @@ class LineBotController(http.Controller):
     #打卡查询
     @http.route('/liff_search_checkin', type='http', auth="public", website=True)
     def liff_search_checkin(self, **kw):
-        return request.render("dtsc.liff_attendance_query_page")
+        lineObj = request.env["dtsc.linebot"].sudo().search([("linebot_type", "=", "for_worker")], limit=1)
+        # 查询页 LIFF ID 存在 liff_url；URL 里未必带 liffid，需服务端注入
+        liff_id = (lineObj.liff_url or lineObj.liff_id or "").strip() if lineObj else ""
+        if "liff.line.me/" in liff_id:
+            liff_id = liff_id.split("liff.line.me/")[-1].split("?")[0].strip()
+        return request.render("dtsc.liff_attendance_query_page", {"liff_id": liff_id})
+    def _worker_liff_id(self, field_name):
+        lineObj = request.env["dtsc.linebot"].sudo().search([("linebot_type", "=", "for_worker")], limit=1)
+        liff_id = (getattr(lineObj, field_name, None) or "").strip() if lineObj else ""
+        if "liff.line.me/" in liff_id:
+            liff_id = liff_id.split("liff.line.me/")[-1].split("?")[0].strip()
+        return liff_id
+
     #请假    
     @http.route('/liff_leave_page', type='http', auth="public", website=True)
     def liff_leave_page(self, **kw):
-        return request.render("dtsc.liff_leave_page")
+        return request.render("dtsc.liff_leave_page", {"liff_id": self._worker_liff_id("liff_leave")})
     #請假確認頁面    
     @http.route('/liff_leave_confirm_page', type='http', auth="public", website=True)
     def liff_leave_confirm_page(self, **kw):
-        return request.render("dtsc.liff_leave_confirm_page")
+        return request.render("dtsc.liff_leave_confirm_page", {"liff_id": self._worker_liff_id("liff_leave_confirm")})
     
     
     def get_user_display_name(self,user_id, access_token):
@@ -1177,6 +1252,8 @@ class LineBotController(http.Controller):
                             'sj': 'sj_days',     # 事假
                             'slj': 'slj_days',   # 生理假
                             'jtzgj': 'jtzgj_days',  # 家庭照顧假
+                            'hj': 'hj_days',     # 婚假（管理員發放）
+                            'saj': 'saj_days',   # 喪假（管理員發放）
                         }
                         hours = float(leave.leave_hours or 0.0)
                         in_h = out_h = 0.0
@@ -1194,16 +1271,13 @@ class LineBotController(http.Controller):
                             'out_quota_hours': round(out_h, 2),
                         })
                         
-                        if leave.leave_type == 'tx':  # 特休
-                            employee.tx_days = employee.tx_days - leave.leave_hours
-                        elif leave.leave_type == 'bj':  # 病假
-                            employee.bj_days = employee.bj_days - leave.leave_hours
-                        elif leave.leave_type == 'sj':  # 事假
-                            employee.sj_days = employee.sj_days - leave.leave_hours
-                        elif leave.leave_type == 'slj':  # 生理假
-                            employee.slj_days = employee.slj_days - leave.leave_hours
-                        elif leave.leave_type == 'jtzgj':  # 家庭照顧假
-                            employee.jtzgj_days = employee.jtzgj_days - leave.leave_hours
+                        if qfld:
+                            new_remain = float(getattr(employee, qfld) or 0.0) - hours
+                            employee.with_context(
+                                leave_quota_source='leave',
+                                leave_quota_leave_id=leave.id,
+                                leave_quota_note=f'請假核准扣減 {hours} 小時',
+                            ).sudo().write({qfld: new_remain})
                         
                         self.reply_to_line(leave.employee_id.line_user_id, message)
                         

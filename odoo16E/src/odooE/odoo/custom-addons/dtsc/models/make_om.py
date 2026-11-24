@@ -545,7 +545,15 @@ class MakeOm(models.Model):
             
     def set_boolean_field_false(self):
         for record in self.order_ids:
-            record.is_select = False    
+            record.is_select = False
+
+    def set_aftermake_field_true(self):
+        for record in self.order_ids:
+            record.is_aftermake = True
+
+    def set_aftermake_field_false(self):
+        for record in self.order_ids:
+            record.is_aftermake = False    
             
             
 

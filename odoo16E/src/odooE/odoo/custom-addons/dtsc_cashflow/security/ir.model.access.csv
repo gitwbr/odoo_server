@@ -1,0 +1,9 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_dtsc_cash_bank_gly,dtsc.cash.bank gly,model_dtsc_cash_bank,dtsc.group_dtsc_gly,1,1,1,1
+access_dtsc_cash_bank_kj,dtsc.cash.bank kj,model_dtsc_cash_bank,dtsc.group_dtsc_kj,1,1,1,1
+access_dtsc_cash_transaction_gly,dtsc.cash.transaction gly,model_dtsc_cash_transaction,dtsc.group_dtsc_gly,1,1,1,1
+access_dtsc_cash_transaction_kj,dtsc.cash.transaction kj,model_dtsc_cash_transaction,dtsc.group_dtsc_kj,1,1,1,1
+access_dtsc_cash_dashboard_gly,dtsc.cash.dashboard gly,model_dtsc_cash_dashboard,dtsc.group_dtsc_gly,1,1,1,1
+access_dtsc_cash_dashboard_kj,dtsc.cash.dashboard kj,model_dtsc_cash_dashboard,dtsc.group_dtsc_kj,1,1,1,1
+access_dtsc_cash_settle_wizard_gly,dtsc.cash.settle.wizard gly,model_dtsc_cash_settle_wizard,dtsc.group_dtsc_gly,1,1,1,1
+access_dtsc_cash_settle_wizard_kj,dtsc.cash.settle.wizard kj,model_dtsc_cash_settle_wizard,dtsc.group_dtsc_kj,1,1,1,1

@@ -212,6 +212,11 @@
 				<span>大圖訂單：</span>
 				<strong t-field="order.checkout_id.name" />
 			</p>
+			<div id="o_dtsc_ga_purchase" class="d-none"
+				t-att-data-transaction-id="order.name"
+				t-att-data-value="order.amount_total"
+				t-att-data-currency="order.currency_id.name"
+				t-att-data-email="(order.partner_id.email or '').strip().lower()"/>
 		</xpath>
 	</template>
 
