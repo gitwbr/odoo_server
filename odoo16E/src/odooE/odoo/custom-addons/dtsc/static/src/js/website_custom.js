@@ -17,8 +17,15 @@ odoo.define('dtsc.website_custom', function (require) {
         ".o_wsale_image_viewer img",
     ].join(", ");
 
+    const blockWebsiteContextMenu = ["shop.coinimaging.com.tw", "coinimaging.euhon.com"].includes(window.location.hostname)
+        && document.documentElement.hasAttribute("data-website-id");
+
     document.addEventListener("contextmenu", (ev) => {
-        if (ev.target.matches?.(productImageSelector) && !document.body.classList.contains("editor_enable")) {
+        if (document.body.classList.contains("editor_enable")) {
+            return;
+        }
+
+        if (blockWebsiteContextMenu || ev.target.matches?.(productImageSelector)) {
             ev.preventDefault();
         }
     }, true);
