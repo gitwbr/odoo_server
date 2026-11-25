@@ -200,17 +200,26 @@ export class LayoutTiffUploadField extends Component {
                 return;
             }
             this.state.fileName = "";
-            await this._applyUploadResultToRecord({
-                filename: false,
-                bleed_width: this.props.record.data.layout_bleed_width,
-                bleed_height: this.props.record.data.layout_bleed_height,
-                colorspace: false,
-                preview: false,
-                has_preview: false,
-            });
+            try {
+                await this._applyUploadResultToRecord({
+                    filename: false,
+                    bleed_width: this.props.record.data.layout_bleed_width,
+                    bleed_height: this.props.record.data.layout_bleed_height,
+                    colorspace: false,
+                    preview: false,
+                    has_preview: false,
+                });
+            } catch (uiErr) {
+                // 後端已清除成功；畫面刷新失敗不擋，請用戶重開表單即可
+                console.warn("layout tiff clear UI refresh", uiErr);
+            }
+            this.notification.add(_t("已清除圖檔"), { type: "success" });
         } catch (err) {
             console.error(err);
-            this.notification.add(_t("清除失敗"), { type: "danger" });
+            this.notification.add(
+                (err && (err.data && err.data.message)) || (err && err.message) || _t("清除失敗"),
+                { type: "danger" }
+            );
         } finally {
             this.state.uploading = false;
             this.state.phase = "";

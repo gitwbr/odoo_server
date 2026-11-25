@@ -69,11 +69,21 @@ class LayoutTiffController(http.Controller):
         auth='user',
     )
     def clear_layout_tiff(self, line_id=None):
-        line = request.env['dtsc.checkoutline'].browse(int(line_id or 0))
-        if not line.exists():
-            return {'error': _('訂單行不存在。')}
-        line.clear_layout_tiff()
-        return {'ok': True}
+        try:
+            line = request.env['dtsc.checkoutline'].browse(int(line_id or 0))
+            if not line.exists():
+                return {'error': _('訂單行不存在。')}
+            line.check_access_rights('write')
+            line.check_access_rule('write')
+            line.clear_layout_tiff()
+            return {'ok': True}
+        except AccessError:
+            return {'error': _('無權清除此訂單行的圖檔。')}
+        except UserError as err:
+            return {'error': err.args[0] if err.args else str(err)}
+        except Exception:
+            _logger.exception('layout tiff clear failed')
+            return {'error': _('清除失敗，請稍後再試或聯絡管理員。')}
 
     @http.route(
         '/dtsc_print_nesting/layout_ai/upload',
@@ -124,8 +134,18 @@ class LayoutTiffController(http.Controller):
         auth='user',
     )
     def clear_layout_ai(self, line_id=None):
-        line = request.env['dtsc.checkoutline'].browse(int(line_id or 0))
-        if not line.exists():
-            return {'error': _('訂單行不存在。')}
-        line.clear_layout_ai()
-        return {'ok': True}
+        try:
+            line = request.env['dtsc.checkoutline'].browse(int(line_id or 0))
+            if not line.exists():
+                return {'error': _('訂單行不存在。')}
+            line.check_access_rights('write')
+            line.check_access_rule('write')
+            line.clear_layout_ai()
+            return {'ok': True}
+        except AccessError:
+            return {'error': _('無權清除此訂單行的 AI 檔。')}
+        except UserError as err:
+            return {'error': err.args[0] if err.args else str(err)}
+        except Exception:
+            _logger.exception('layout ai clear failed')
+            return {'error': _('清除失敗，請稍後再試或聯絡管理員。')}

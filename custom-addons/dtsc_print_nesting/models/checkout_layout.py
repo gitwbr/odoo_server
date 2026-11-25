@@ -820,7 +820,8 @@ class CheckOutLineLayout(models.Model):
         })
 
     def _clear_layout_source_pdf(self):
-        Attachment = self.env['ir.attachment']
+        # 附件可能是同事上傳的，刪除需 sudo，否則會 AccessError→前端「清除失敗」
+        Attachment = self.env['ir.attachment'].sudo()
         for rec in self:
             Attachment.search([
                 ('res_model', '=', rec._name),
@@ -835,20 +836,23 @@ class CheckOutLineLayout(models.Model):
 
     def clear_layout_tiff(self):
         """清除 TIFF 附件與預覽（不經 Binary onchange）。"""
-        Attachment = self.env['ir.attachment']
+        # 附件 create_uid 可能不是當前用戶；必須 sudo 才能清掉別人上傳的檔
+        Attachment = self.env['ir.attachment'].sudo()
         for rec in self:
             Attachment.search([
                 ('res_model', '=', rec._name),
                 ('res_id', '=', rec.id),
-                ('res_field', '=', 'layout_tiff'),
+                ('res_field', 'in', ('layout_tiff', 'layout_tiff_preview', 'layout_source_pdf')),
             ]).unlink()
             models.Model.write(rec, {
                 'layout_tiff_filename': False,
-                'layout_tiff_preview': False,
                 'layout_tiff_colorspace': False,
+                'layout_source_pdf_filename': False,
+                'layout_pass_count': 1,
             })
-            rec.invalidate_recordset(['layout_tiff'])
-            rec._clear_layout_source_pdf()
+            rec.invalidate_recordset([
+                'layout_tiff', 'layout_tiff_preview', 'layout_source_pdf',
+            ])
         return True
 
     # ------------------------------------------------------------------
@@ -944,7 +948,7 @@ class CheckOutLineLayout(models.Model):
         }
 
     def clear_layout_ai(self):
-        Attachment = self.env['ir.attachment']
+        Attachment = self.env['ir.attachment'].sudo()
         for rec in self:
             Attachment.search([
                 ('res_model', '=', rec._name),

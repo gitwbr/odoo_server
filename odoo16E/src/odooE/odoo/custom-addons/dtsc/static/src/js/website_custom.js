@@ -11,6 +11,30 @@ odoo.define('dtsc.website_custom', function (require) {
         return;
     }
 
+    const productImageSelector = [
+        ".oe_product_image_img_wrapper img",
+        ".o_wsale_product_images img",
+        ".o_wsale_image_viewer img",
+    ].join(", ");
+
+    document.addEventListener("contextmenu", (ev) => {
+        if (ev.target.matches?.(productImageSelector) && !document.body.classList.contains("editor_enable")) {
+            ev.preventDefault();
+        }
+    }, true);
+
+    if (window.location.hostname === "coinimaging.euhon.com" && !document.body.classList.contains("editor_enable")) {
+        const categories = new Set(["/shop/category/1", "/shop/category/2", "/shop/category/3"]);
+        const cards = document.querySelectorAll(
+            '#wrap .s_three_columns a[href^="https://shop.coinimaging.com.tw/shop/category/"]'
+        );
+        for (const card of cards) {
+            if (categories.has(card.pathname) && card.querySelector("img.card-img-top")) {
+                card.href = card.pathname + card.search + card.hash;
+            }
+        }
+    }
+
     publicWidget.registry.WebsiteSale.include({
         init: function () {
             console.log("WebsiteSale 被扩展成功");

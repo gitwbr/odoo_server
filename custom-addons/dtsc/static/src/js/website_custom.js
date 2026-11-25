@@ -11,6 +11,18 @@ odoo.define('dtsc.website_custom', function (require) {
         return;
     }
 
+    const productImageSelector = [
+        ".oe_product_image_img_wrapper img",
+        ".o_wsale_product_images img",
+        ".o_wsale_image_viewer img",
+    ].join(", ");
+
+    document.addEventListener("contextmenu", (ev) => {
+        if (ev.target.matches?.(productImageSelector) && !document.body.classList.contains("editor_enable")) {
+            ev.preventDefault();
+        }
+    }, true);
+
     publicWidget.registry.WebsiteSale.include({
         init: function () {
             console.log("WebsiteSale 被扩展成功");

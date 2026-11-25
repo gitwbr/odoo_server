@@ -186,18 +186,26 @@ export class LayoutAiUploadField extends Component {
             }
             this.state.fileName = "";
             this.state.pdfCompatible = undefined;
-            await this._applyUploadResultToRecord({
-                filename: false,
-                pdf_compatible: false,
-                page_count: 0,
-                width_cm: false,
-                height_cm: false,
-                message: false,
-                prepress_state: "none",
-            });
+            try {
+                await this._applyUploadResultToRecord({
+                    filename: false,
+                    pdf_compatible: false,
+                    page_count: 0,
+                    width_cm: false,
+                    height_cm: false,
+                    message: false,
+                    prepress_state: "none",
+                });
+            } catch (uiErr) {
+                console.warn("layout ai clear UI refresh", uiErr);
+            }
+            this.notification.add(_t("已清除 AI 檔"), { type: "success" });
         } catch (err) {
             console.error(err);
-            this.notification.add(_t("清除失敗"), { type: "danger" });
+            this.notification.add(
+                (err && (err.data && err.data.message)) || (err && err.message) || _t("清除失敗"),
+                { type: "danger" }
+            );
         } finally {
             this.state.uploading = false;
             this.state.phase = "";

@@ -213,6 +213,7 @@ class CustomerUploadNotice(models.Model):
     def action_confirm(self):
         user = self.env.user
         now = fields.Datetime.now()
+        partners = self.env['res.partner'].sudo()
         for notice in self:
             if user not in notice.notify_user_ids:
                 raise AccessError(_('你沒有權限確認這則上傳通知'))
@@ -223,6 +224,12 @@ class CustomerUploadNotice(models.Model):
                 'confirmed_by': user.id,
                 'confirmed_at': now,
             })
+            partners |= notice.sudo().notify_user_ids.partner_id
+        if partners:
+            self.env['bus.bus'].sudo()._sendmany([
+                (partner, 'dtsc/customer_upload_alert', {'refresh': True})
+                for partner in partners
+            ])
         return True
 
 
